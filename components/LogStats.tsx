@@ -80,8 +80,8 @@ export default function LogStats({ logs }: LogStatsProps) {
             <span className="text-2xl">{stat.icon}</span>
             <div className={`w-3 h-3 rounded-full ${stat.color} pulse-glow`}></div>
           </div>
-          <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-          <div className="text-xs text-white/70">{stat.label}</div>
+          <div className="text-2xl font-bold text-theme mb-1">{stat.value}</div>
+          <div className="text-xs text-theme-muted">{stat.label}</div>
         </div>
       ))}
     </div>

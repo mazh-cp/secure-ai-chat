@@ -186,12 +186,18 @@ export default function SettingsForm() {
     const reader = new FileReader()
     reader.onloadend = () => {
       const base64String = reader.result as string
-      setSettings(prev => ({
-        ...prev,
+      const updatedSettings = {
+        ...settings,
         logoData: base64String,
         logoUrl: '', // Clear URL if file is uploaded
-      }))
+      }
+      setSettings(updatedSettings)
       setLogoPreview(base64String)
+      // Save immediately when uploaded
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('appSettings', JSON.stringify(updatedSettings))
+        window.dispatchEvent(new CustomEvent('settingsUpdated'))
+      }
     }
     reader.onerror = () => {
       alert('Failed to read file. Please try again.')
@@ -210,6 +216,15 @@ export default function SettingsForm() {
     const fileInput = document.getElementById('logoFile') as HTMLInputElement
     if (fileInput) {
       fileInput.value = ''
+    }
+    // Save immediately when cleared
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('appSettings', JSON.stringify({
+        ...settings,
+        logoUrl: '',
+        logoData: '',
+      }))
+      window.dispatchEvent(new CustomEvent('settingsUpdated'))
     }
   }
 
@@ -253,7 +268,7 @@ export default function SettingsForm() {
               <button
                 type="button"
                 onClick={() => handleClear('openAiKey')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 dark:text-red-300 hover:text-red-500 dark:hover:text-red-200 text-sm transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
               >
                 Clear
               </button>
@@ -282,7 +297,7 @@ export default function SettingsForm() {
                 <button
                   type="button"
                   onClick={() => handleClear('lakeraAiKey')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-red-300 hover:text-red-200 text-sm transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
                 >
                   Clear
                 </button>
@@ -311,13 +326,13 @@ export default function SettingsForm() {
                 <button
                   type="button"
                   onClick={() => handleClear('lakeraEndpoint')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-red-300 hover:text-red-200 text-sm transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
                 >
                   Reset
                 </button>
               )}
             </div>
-            <p className="text-xs text-white/60 mt-1">
+            <p className="text-xs text-theme-subtle mt-1">
               🔒 Paste only (Ctrl/Cmd + V) - Default: https://api.lakera.ai/v2/guard
             </p>
           </div>
@@ -340,7 +355,7 @@ export default function SettingsForm() {
                 <button
                   type="button"
                   onClick={() => handleClear('lakeraProjectId')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-red-300 hover:text-red-200 text-sm transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
                 >
                   Clear
                 </button>
@@ -352,20 +367,20 @@ export default function SettingsForm() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/20">
+          <div className="flex items-center justify-between pt-4 border-t border-palette-border-default/20">
             <button
               type="button"
               onClick={handleClearAll}
-              className="px-4 py-2 text-red-400 dark:text-red-300 hover:text-red-500 dark:hover:text-red-200 transition-colors text-sm glass-button rounded-xl"
+              className="glass-button text-theme-subtle hover:text-red-400 transition-colors text-sm px-4 py-2 rounded-xl"
             >
               Clear All Keys
             </button>
             <div className="flex items-center space-x-4">
               {saveStatus === 'success' && (
-                <span className="text-green-500 dark:text-green-300 text-sm">✓ Saved successfully</span>
+                <span className="text-green-400 text-sm">✓ Saved successfully</span>
               )}
               {saveStatus === 'error' && (
-                <span className="text-red-500 dark:text-red-300 text-sm">✗ Failed to save</span>
+                <span className="text-red-400 text-sm">✗ Failed to save</span>
               )}
               <button
                 type="submit"
@@ -378,7 +393,7 @@ export default function SettingsForm() {
           </div>
 
           {/* Page Heading Setting */}
-          <div className="pt-6 border-t border-white/20">
+          <div className="pt-6 border-t border-palette-border-default/20">
             <h3 className="text-lg font-semibold text-theme mb-4">Page Customization</h3>
             
             <div className="mb-4">
@@ -398,29 +413,12 @@ export default function SettingsForm() {
                 Custom heading text displayed on the main chat page
               </p>
             </div>
+          </div>
 
-            <div className="mb-4">
-              <label htmlFor="logoUrl" className={labelClass}>
-                Logo URL (Optional)
-              </label>
-              <input
-                type="text"
-                id="logoUrl"
-                name="logoUrl"
-                value={settings.logoUrl}
-                onChange={(e) => {
-                  setSettings(prev => ({ ...prev, logoUrl: e.target.value, logoData: '' }))
-                  setLogoPreview(e.target.value || '')
-                }}
-                placeholder="Enter logo image URL or path (e.g., /logo.png)"
-                className={inputClass}
-                disabled={!!settings.logoData}
-              />
-              <p className="text-xs text-theme-subtle mt-1">
-                URL or path to your logo image. Disabled when a file is uploaded.
-              </p>
-            </div>
-
+          {/* Site Logo */}
+          <div className="pt-6 border-t border-palette-border-default/20">
+            <h3 className="text-sm font-medium text-theme mb-4">Site Logo</h3>
+            
             <div className="mb-4">
               <label htmlFor="logoFile" className={labelClass}>
                 Upload Logo File
@@ -431,31 +429,26 @@ export default function SettingsForm() {
                     type="file"
                     id="logoFile"
                     name="logoFile"
-                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                    accept="image/png,image/jpeg,image/jpg,image/svg+xml"
                     onChange={handleLogoFileUpload}
                     className="hidden"
-                    disabled={!!settings.logoUrl}
                   />
                   <label
                     htmlFor="logoFile"
-                    className={`
-                      block w-full glass-input text-center py-3 rounded-xl cursor-pointer
-                      transition-all hover:scale-[1.02]
-                      ${settings.logoUrl ? 'opacity-50 cursor-not-allowed' : 'hover:border-copper/50'}
-                    `}
+                    className="block w-full glass-input text-center py-3 rounded-xl cursor-pointer transition-all hover:scale-[1.02] hover:border-copper/50"
                   >
                     {settings.logoData ? '✓ Logo Uploaded' : 'Choose Logo File'}
                   </label>
                 </div>
                 
-                {(logoPreview || settings.logoData || settings.logoUrl) && (
+                {(logoPreview || settings.logoData) && (
                   <div className="relative">
                     <div className="glass-card p-4 rounded-xl">
                       <p className="text-xs text-theme-subtle mb-2">Logo Preview:</p>
-                      <div className="relative w-full h-32 bg-white/10 rounded-lg overflow-hidden flex items-center justify-center">
+                      <div className="relative w-full h-32 bg-palette-bg-tertiary/10 rounded-lg overflow-hidden flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={logoPreview || settings.logoData || settings.logoUrl}
+                          src={logoPreview || settings.logoData}
                           alt="Logo preview"
                           className="max-w-full max-h-full object-contain"
                           onError={() => setLogoPreview('')}
@@ -464,7 +457,7 @@ export default function SettingsForm() {
                       <button
                         type="button"
                         onClick={handleClearLogo}
-                        className="mt-2 px-3 py-1 text-xs glass-button text-red-300 hover:text-red-200 rounded-lg transition-colors"
+                        className="mt-2 px-3 py-1 text-xs glass-button text-theme-subtle hover:text-red-400 rounded-lg transition-colors"
                       >
                         Remove Logo
                       </button>
@@ -473,7 +466,7 @@ export default function SettingsForm() {
                 )}
               </div>
               <p className="text-xs text-theme-subtle mt-1">
-                Upload a logo file (JPEG, PNG, GIF, WebP, or SVG, max 5MB). Disabled when URL is set.
+                Upload a logo file (PNG, JPG, or SVG, max 5MB). Logo will appear in the top header.
               </p>
             </div>
           </div>
@@ -481,7 +474,7 @@ export default function SettingsForm() {
           {/* Security Notice */}
           <div className="mt-6 p-4 glass-card border-yellow-400/30 rounded-xl">
             <p className="text-sm text-theme">
-              <strong className="text-yellow-500 dark:text-yellow-300">Security Notice:</strong> All keys are stored locally in your browser&apos;s localStorage. 
+              <strong className="text-yellow-400">Security Notice:</strong> All keys are stored locally in your browser&apos;s localStorage. 
               They are never transmitted to any server except when making API calls. 
               Copying of keys is disabled to prevent accidental exposure.
             </p>

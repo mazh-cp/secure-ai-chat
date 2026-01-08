@@ -265,7 +265,7 @@ export default function ChatInterface() {
         <div className="glass-card rounded-xl p-4 border-yellow-400/30 mb-4">
           <p className="text-sm text-theme">
             ⚠️ OpenAI API key not configured.{' '}
-            <Link href="/settings" className="underline hover:text-theme transition-colors">
+            <Link href="/settings" className="underline hover:text-brand-berry transition-colors">
               Go to Settings
             </Link>{' '}
             to add your API key.

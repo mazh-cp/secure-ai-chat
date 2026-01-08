@@ -35,7 +35,7 @@ export default function MessageInput({ onSendMessage, isLoading, disabled }: Mes
         <button
           type="submit"
           disabled={!input.trim() || isDisabled}
-          className="glass-button text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none border-brand-berry/30"
+          className="glass-button text-theme px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
         >
           Send
         </button>

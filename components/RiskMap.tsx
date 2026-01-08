@@ -42,7 +42,7 @@ function getSeverityBadge(severity: OWASPRisk['severity']) {
 export default function RiskMap({ risks, onRiskSelect, selectedRisk, getRiskCount }: RiskMapProps) {
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+      <h2 className="text-xl font-semibold text-theme mb-4">
         OWASP Top 10 for LLMs 2025
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -81,7 +81,7 @@ export default function RiskMap({ risks, onRiskSelect, selectedRisk, getRiskCoun
               
               {/* Activity Count */}
               {count > 0 && (
-                <div className="absolute top-2 right-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                <div className="absolute top-2 right-2 glass-card text-theme rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                   {count}
                 </div>
               )}

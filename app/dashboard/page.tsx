@@ -89,7 +89,7 @@ export default function DashboardPage() {
       <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30">
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">🚫</div>
-          <div className="text-3xl font-bold text-red-400 dark:text-red-300 mb-1">{blockedCount}</div>
+          <div className="text-3xl font-bold text-red-400 mb-1">{blockedCount}</div>
           <div className="text-xs text-theme-subtle text-center">Blocked</div>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-yellow-400/30">
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
-          <div className="text-3xl font-bold text-yellow-400 dark:text-yellow-300 mb-1">{flaggedCount}</div>
+          <div className="text-3xl font-bold text-yellow-400 mb-1">{flaggedCount}</div>
           <div className="text-xs text-theme-subtle text-center">Flagged</div>
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function DashboardPage() {
       <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30">
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
-          <div className="text-3xl font-bold text-red-400 dark:text-red-300 mb-1">{errorLogs}</div>
+          <div className="text-3xl font-bold text-red-400 mb-1">{errorLogs}</div>
           <div className="text-xs text-theme-subtle text-center">Errors</div>
         </div>
       </div>
@@ -134,7 +134,7 @@ export default function DashboardPage() {
               onClick={() => setFilter('all')}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === 'all'
-                  ? 'glass-button text-white scale-105 border-brand-berry/50'
+                  ? 'glass-button text-theme scale-105'
                   : 'glass text-theme-muted hover:text-brand-berry hover:scale-105 hover:border-brand-berry/30'
               }`}
             >
@@ -144,7 +144,7 @@ export default function DashboardPage() {
               onClick={() => setFilter('chat')}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === 'chat'
-                  ? 'glass-button text-white scale-105 border-brand-berry/50'
+                  ? 'glass-button text-theme scale-105'
                   : 'glass text-theme-muted hover:text-brand-berry hover:scale-105 hover:border-brand-berry/30'
               }`}
             >
@@ -154,7 +154,7 @@ export default function DashboardPage() {
               onClick={() => setFilter('file_scan')}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === 'file_scan'
-                  ? 'glass-button text-white scale-105 border-brand-berry/50'
+                  ? 'glass-button text-theme scale-105'
                   : 'glass text-theme-muted hover:text-brand-berry hover:scale-105 hover:border-brand-berry/30'
               }`}
             >
@@ -164,7 +164,7 @@ export default function DashboardPage() {
               onClick={() => setFilter('error')}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === 'error'
-                  ? 'glass-button text-red-400 dark:text-red-300 scale-105 border-red-400/30'
+                  ? 'glass-button text-red-400 scale-105'
                   : 'glass text-theme-muted hover:text-theme hover:scale-105'
               }`}
             >
@@ -174,7 +174,7 @@ export default function DashboardPage() {
 
           <button
             onClick={handleClearLogs}
-            className="px-4 py-2 glass-button text-red-400 dark:text-red-300 rounded-xl hover:text-red-500 dark:hover:text-red-200 transition-all text-sm font-medium"
+            className="px-4 py-2 glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all text-sm font-medium"
           >
             Clear All Logs
           </button>

@@ -34,37 +34,37 @@ function getScanStatusBadge(status: UploadedFile['scanStatus']) {
   switch (status) {
     case 'pending':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-white/70">
+        <span className="px-2 py-1 text-xs rounded-full glass text-theme-muted">
           Pending Scan
         </span>
       )
     case 'scanning':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-button text-blue-200 animate-pulse">
+        <span className="px-2 py-1 text-xs rounded-full glass-button text-blue-300 animate-pulse">
           Scanning...
         </span>
       )
     case 'safe':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-green-300 border-green-400/30">
+        <span className="px-2 py-1 text-xs rounded-full glass-card text-green-300 border-green-400/30">
           ✓ Safe
         </span>
       )
     case 'flagged':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-red-300 border-red-400/50">
+        <span className="px-2 py-1 text-xs rounded-full glass-card text-red-300 border-red-400/50">
           ⚠️ Flagged
         </span>
       )
     case 'error':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-yellow-300 border-yellow-400/30">
+        <span className="px-2 py-1 text-xs rounded-full glass-card text-yellow-300 border-yellow-400/30">
           ⚠️ Error
         </span>
       )
     case 'not_scanned':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-white/50 border-white/20">
+        <span className="px-2 py-1 text-xs rounded-full glass text-theme-subtle border-brand-berry/20">
           Not Scanned
         </span>
       )
@@ -76,10 +76,10 @@ function getScanStatusBadge(status: UploadedFile['scanStatus']) {
 export default function FileList({ files, onRemove, onScan, isScanning, lakeraScanEnabled = true }: FileListProps) {
   if (files.length === 0) {
     return (
-      <div className="glass rounded-2xl p-8 text-center border-white/20">
-        <div className="text-white/40 text-4xl mb-4">📁</div>
-        <p className="text-white/70">No files uploaded yet</p>
-        <p className="text-white/50 text-sm mt-1">Upload files to get started with RAG</p>
+      <div className="glass rounded-2xl p-8 text-center border-brand-berry/20">
+        <div className="text-theme-subtle text-4xl mb-4">📁</div>
+        <p className="text-theme-muted">No files uploaded yet</p>
+        <p className="text-theme-subtle text-sm mt-1">Upload files to get started with RAG</p>
       </div>
     )
   }
@@ -100,15 +100,15 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
 
               {/* File Info */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-medium truncate" title={file.name}>
+                <h3 className="text-theme font-medium truncate" title={file.name}>
                   {file.name}
                 </h3>
                 <div className="flex items-center space-x-3 mt-1">
-                  <span className="text-white/60 text-sm">
+                  <span className="text-theme-muted text-sm">
                     {formatFileSize(file.size)}
                   </span>
-                  <span className="text-white/40">•</span>
-                  <span className="text-white/60 text-sm">
+                  <span className="text-theme-subtle">•</span>
+                  <span className="text-theme-muted text-sm">
                     {formatDate(file.uploadedAt)}
                   </span>
                 </div>
@@ -117,7 +117,7 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
                 <div className="mt-2 flex items-center space-x-2">
                   {getScanStatusBadge(file.scanStatus)}
                   {file.scanResult && file.scanStatus !== 'safe' && (
-                    <span className="text-xs text-white/50 truncate" title={file.scanResult}>
+                    <span className="text-xs text-theme-subtle truncate" title={file.scanResult}>
                       {file.scanResult}
                     </span>
                   )}
@@ -132,14 +132,14 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
                 <button
                   onClick={() => onScan(file.id)}
                   disabled={isScanning || !lakeraScanEnabled}
-                  className="px-3 py-1 text-sm glass-button text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border-brand-berry/30"
+                  className="px-3 py-1 text-sm glass-button text-theme rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   title={!lakeraScanEnabled ? 'Enable Lakera scanning to scan files' : ''}
                 >
                   {isScanning ? 'Scanning...' : 'Scan'}
                 </button>
               )}
               {!lakeraScanEnabled && (file.scanStatus === 'pending' || file.scanStatus === 'error' || file.scanStatus === 'not_scanned') && (
-                <span className="text-xs text-yellow-300/80 ml-2">
+                <span className="text-xs text-yellow-400 ml-2">
                   (Scanning disabled)
                 </span>
               )}
@@ -147,7 +147,7 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
               {/* Remove Button */}
               <button
                 onClick={() => onRemove(file.id)}
-                className="px-3 py-1 text-sm glass text-red-300 hover:text-red-200 rounded-xl transition-all border-red-400/30"
+                className="px-3 py-1 text-sm glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all"
               >
                 Remove
               </button>
@@ -156,8 +156,8 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
 
           {/* Scan Details (if flagged) */}
           {file.scanStatus === 'flagged' && file.scanDetails && (
-            <div className="mt-3 p-3 glass rounded-xl border-red-400/30">
-              <p className="text-red-200 text-sm font-medium">Security Issues Detected:</p>
+            <div className="mt-3 p-3 glass-card rounded-xl border-red-400/30">
+              <p className="text-red-300 text-sm font-medium">Security Issues Detected:</p>
               {file.scanDetails.categories && (
                 <ul className="mt-1 text-red-300 text-xs space-y-1">
                   {Object.entries(file.scanDetails.categories)
@@ -173,7 +173,7 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
       ))}
 
       {/* Summary */}
-      <div className="text-center text-white/50 text-sm pt-2">
+      <div className="text-center text-theme-subtle text-sm pt-2">
         {files.length} file{files.length !== 1 ? 's' : ''} • 
         {' '}{files.filter(f => f.scanStatus === 'safe').length} safe • 
         {' '}{files.filter(f => f.scanStatus === 'flagged').length} flagged • 

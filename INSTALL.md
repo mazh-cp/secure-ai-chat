@@ -138,11 +138,18 @@ For production environments, consider:
    ```
 
 4. **Firewall Configuration:**
+   
+   The installation script automatically configures UFW firewall:
+   - SSH (port 22) is allowed to prevent lockout
+   - Application port (default 3000) is allowed for both localhost and public access
+   
+   If you need to manually configure additional ports:
    ```bash
-   sudo ufw allow 22/tcp   # SSH
-   sudo ufw allow 80/tcp   # HTTP
-   sudo ufw allow 443/tcp  # HTTPS
-   sudo ufw enable
+   sudo ufw allow 22/tcp   # SSH (already configured by script)
+   sudo ufw allow 3000/tcp # Application port (already configured by script)
+   sudo ufw allow 80/tcp   # HTTP (if using reverse proxy)
+   sudo ufw allow 443/tcp  # HTTPS (if using SSL)
+   sudo ufw status         # View current rules
    ```
 
 ### Troubleshooting
@@ -166,6 +173,91 @@ For production environments, consider:
 **Issue: Permission denied errors**
 - Solution: Don't run as root. The script uses sudo when needed
 - Solution: Ensure your user has sudo privileges
+
+**Issue: Application not accessible via public IP**
+
+This is a common issue with multiple possible causes:
+
+1. **Application not binding to 0.0.0.0:**
+   - Verify HOSTNAME is set to `0.0.0.0` in `.env.local`
+   - Use the provided start script: `./start-app.sh` (created by install script)
+   - Or manually: `HOSTNAME=0.0.0.0 npm start`
+   - Check if app is listening: 
+     ```bash
+     # Modern systems (ss is preferred, available by default)
+     sudo ss -tlnp | grep :3000
+     # OR if netstat is installed (may need: sudo apt install net-tools)
+     sudo netstat -tlnp | grep :3000
+     ```
+   - Should show `0.0.0.0:3000`, not `127.0.0.1:3000`
+
+2. **UFW Firewall blocking:**
+   - Check UFW status: `sudo ufw status verbose`
+   - Verify port is allowed: `sudo ufw allow 3000/tcp`
+   - Check UFW logs: `sudo tail -f /var/log/ufw.log`
+   - Temporarily test without firewall: `sudo ufw disable` (re-enable after testing!)
+
+3. **Cloud Provider Firewall Rules:**
+   
+   **AWS EC2:**
+   - Go to EC2 Dashboard → Security Groups
+   - Select your instance's security group
+   - Inbound rules: Add rule for port 3000 (TCP) from 0.0.0.0/0 (or specific IP)
+   
+   **Google Cloud Platform (GCP):**
+   - Go to VPC Network → Firewall
+   - Create new rule: Allow TCP port 3000 from 0.0.0.0/0
+   - Apply to all targets or specific VM tags
+   
+   **Microsoft Azure:**
+   - Go to VM → Networking → Inbound port rules
+   - Add inbound rule: Allow TCP port 3000 from Any source IP
+   - Or configure Network Security Group (NSG) rules
+   
+   **DigitalOcean:**
+   - Go to Networking → Firewalls
+   - Add inbound rule: TCP port 3000 from all IPv4/IPv6
+   
+   **Linode:**
+   - Go to Firewalls → Create Firewall
+   - Add inbound rule: TCP port 3000 from all IPv4/IPv6
+
+4. **Network Interface Check:**
+   - List interfaces: `ip addr show` or `ifconfig`
+   - Find your public IP: `curl ifconfig.me` or `curl ipinfo.io/ip`
+   - Verify app is on correct interface
+
+5. **Testing Steps:**
+   ```bash
+   # 1. Check if app is listening on all interfaces (preferred method)
+   sudo ss -tlnp | grep :3000
+   # Should show: tcp LISTEN 0 511 0.0.0.0:3000 ... (NOT 127.0.0.1:3000)
+   # Alternative (if net-tools installed): sudo netstat -tlnp | grep :3000
+   # Install net-tools if needed: sudo apt install net-tools
+   
+   # 2. Test locally on VM
+   curl http://localhost:3000
+   
+   # 3. Test from VM using public IP
+   PUBLIC_IP=$(curl -s ifconfig.me)
+   echo "Testing public IP: $PUBLIC_IP"
+   curl http://$PUBLIC_IP:3000
+   
+   # 4. Test from external machine
+   curl http://YOUR_VM_PUBLIC_IP:3000
+   
+   # 5. Check firewall rules
+   sudo ufw status numbered
+   
+   # 6. Check if port is open externally (from external machine)
+   # Install nmap if needed: sudo apt install nmap
+   nmap -p 3000 YOUR_VM_PUBLIC_IP
+   
+   # 7. Alternative: Test port connectivity (from external machine)
+   telnet YOUR_VM_PUBLIC_IP 3000
+   # OR
+   nc -zv YOUR_VM_PUBLIC_IP 3000
+   ```
 
 ### Manual Installation
 

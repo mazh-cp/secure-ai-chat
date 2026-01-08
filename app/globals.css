@@ -3,23 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 17, 24, 39;
-  --background-end-rgb: 31, 41, 55;
-  /* Earthy Brown Color Palette - https://colordrop.io/palette/75145 */
-  --wheat: 243, 229, 171; /* #f3e5ab - soft wheat */
-  --harvest-gold: 224, 197, 124; /* #e0c57c - harvest gold */
-  --whiskey: 209, 163, 92; /* #d1a35c - whiskey */
-  --copper: 184, 124, 60; /* #b87c3c - copper */
-  --paarl: 160, 92, 44; /* #a05c2c - paarl */
-  --tobacco-brown: 111, 76, 62; /* #6f4c3e - tobacco brown */
-  --congo-brown: 90, 62, 60; /* #5a3e3c - congo brown */
-  --thunder: 59, 45, 47; /* #3b2d2f - thunder */
-  /* Brand/Accent Colors - Default (Light Mode) */
-  --brand-berry: 184, 124, 60; /* #b87c3c - copper (light mode) */
-  --brand-berry-rgb: rgb(184, 124, 60);
-  --brand-berry-light: 224, 197, 124; /* #e0c57c - harvest-gold */
-  --brand-berry-dark: 160, 92, 44; /* #a05c2c - paarl */
+  /* Shared Brand Colors (same in both modes) */
+  --accent-primary: 142, 97, 240; /* #8E61F0 */
+  --accent-secondary: 78, 69, 146; /* #4E4592 */
+  
+  /* Dark Mode Default Values */
+  --bg-primary: 20, 28, 44; /* #141C2C */
+  --bg-secondary: 29, 40, 57; /* #1D2839 */
+  --bg-tertiary: 50, 60, 78; /* #323C4E */
+  --text-primary: 240, 237, 244; /* #F0EDF4 */
+  --text-secondary: 137, 143, 153; /* #898F99 */
+  --border-default: 89, 99, 113; /* #596371 */
+  
+  /* Legacy compatibility - mapped to new palette */
+  --foreground-rgb: var(--text-primary);
+  --background-start-rgb: var(--bg-primary);
+  --background-end-rgb: var(--bg-secondary);
+  --brand-berry: var(--accent-primary);
+  --brand-berry-rgb: rgb(var(--accent-primary));
+  --brand-berry-light: var(--accent-primary);
+  --brand-berry-dark: var(--accent-secondary);
+  
   /* Success/Secure Notice Design Tokens */
   --success-bg: rgba(34, 197, 94, 0.1);
   --success-border: rgba(34, 197, 94, 0.3);
@@ -43,28 +47,58 @@ body {
   overflow-x: hidden;
 }
 
-/* Dark Mode Background - Earthy Brown Theme */
+/* Dark Mode - Explicitly set dark mode values */
 html.dark {
   color-scheme: dark;
-  /* Brand/Accent Colors - Dark Mode */
-  --brand-berry: 186, 85, 211; /* #BA55D3 - MediumOrchid (dark mode accent) */
-  --brand-berry-rgb: rgb(186, 85, 211);
-  --brand-berry-light: 221, 160, 221; /* #DDA0DD - Plum (light variant for dark mode) */
-  --brand-berry-dark: 147, 112, 219; /* #9370DB - MediumPurple (dark variant for dark mode) */
+  /* Dark Mode Color Tokens */
+  --bg-primary: 20, 28, 44; /* #141C2C */
+  --bg-secondary: 29, 40, 57; /* #1D2839 */
+  --bg-tertiary: 50, 60, 78; /* #323C4E */
+  --text-primary: 240, 237, 244; /* #F0EDF4 */
+  --text-secondary: 137, 143, 153; /* #898F99 */
+  --border-default: 89, 99, 113; /* #596371 */
+  /* Legacy compatibility */
+  --brand-berry: var(--accent-primary);
+  --brand-berry-rgb: rgb(var(--accent-primary));
+  --brand-berry-light: var(--accent-primary);
+  --brand-berry-dark: var(--accent-secondary);
+  --foreground-rgb: var(--text-primary);
+  --background-start-rgb: var(--bg-primary);
+  --background-end-rgb: var(--bg-secondary);
 }
 
 html.dark body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(135deg, #3b2d2f 0%, #5a3e3c 25%, #6f4c3e 50%, #5a3e3c 75%, #3b2d2f 100%);
+  color: rgb(var(--text-primary, 240, 237, 244));
+  background: linear-gradient(135deg, rgb(var(--bg-primary, 20, 28, 44)) 0%, rgb(var(--bg-secondary, 29, 40, 57)) 25%, rgb(var(--bg-tertiary, 50, 60, 78)) 50%, rgb(var(--bg-secondary, 29, 40, 57)) 75%, rgb(var(--bg-primary, 20, 28, 44)) 100%);
   background-size: 400% 400%;
   animation: gradientShift 15s ease infinite;
   min-height: 100vh;
 }
 
-/* Light Mode Background - Earthy Brown Theme */
+/* Light Mode - Override with light mode values */
+html.light {
+  color-scheme: light;
+  /* Light Mode Color Tokens */
+  --bg-primary: 246, 247, 251; /* #F6F7FB */
+  --bg-secondary: 255, 255, 255; /* #FFFFFF */
+  --bg-tertiary: 238, 241, 247; /* #EEF1F7 */
+  --text-primary: 15, 23, 42; /* #0F172A */
+  --text-secondary: 71, 85, 105; /* #475569 */
+  --border-default: 203, 213, 225; /* #CBD5E1 */
+  /* Legacy compatibility */
+  --brand-berry: var(--accent-primary);
+  --brand-berry-rgb: rgb(var(--accent-primary));
+  --brand-berry-light: var(--accent-primary);
+  --brand-berry-dark: var(--accent-secondary);
+  --foreground-rgb: var(--text-primary);
+  --background-start-rgb: var(--bg-primary);
+  --background-end-rgb: var(--bg-secondary);
+}
+
+/* Light Mode Background */
 html.light body {
-  color: rgb(59, 45, 47);
-  background: linear-gradient(135deg, #f3e5ab 0%, #e0c57c 25%, #d1a35c 50%, #e0c57c 75%, #f3e5ab 100%);
+  color: rgb(var(--text-primary, 15, 23, 42));
+  background: linear-gradient(135deg, rgb(var(--bg-primary, 246, 247, 251)) 0%, rgb(var(--bg-secondary, 255, 255, 255)) 25%, rgb(var(--bg-tertiary, 238, 241, 247)) 50%, rgb(var(--bg-secondary, 255, 255, 255)) 75%, rgb(var(--bg-primary, 246, 247, 251)) 100%);
   background-size: 400% 400%;
   animation: gradientShift 15s ease infinite;
   min-height: 100vh;
@@ -108,7 +142,7 @@ html.light body {
 
   .bento-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(var(--brand-berry), 0.3);
+    box-shadow: 0 20px 40px rgba(var(--accent-primary), 0.3);
   }
 
   /* Bento Card Sizes */
@@ -152,121 +186,121 @@ html.light body {
   /* Glassmorphism Base Styles */
   /* Dark Mode Glass */
   .glass {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--bg-secondary), 0.3);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(var(--brand-berry), 0.3);
-    box-shadow: 0 8px 32px 0 rgba(var(--brand-berry), 0.2);
+    border: 1px solid rgba(var(--border-default), 0.3);
+    box-shadow: 0 8px 32px 0 rgba(var(--accent-primary), 0.2);
   }
 
   html.light .glass {
-    background: rgba(243, 229, 171, 0.4);
-    border: 1px solid rgba(209, 163, 92, 0.4);
-    box-shadow: 0 8px 32px 0 rgba(184, 124, 60, 0.15);
+    background: rgba(var(--bg-secondary), 0.4);
+    border: 1px solid rgba(var(--border-default), 0.4);
+    box-shadow: 0 8px 32px 0 rgba(var(--accent-primary), 0.15);
   }
 
   .glass-dark {
-    background: rgba(59, 45, 47, 0.3);
+    background: rgba(var(--bg-tertiary), 0.3);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(var(--brand-berry), 0.2);
+    border: 1px solid rgba(var(--border-default), 0.2);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 
   html.light .glass-dark {
-    background: rgba(243, 229, 171, 0.3);
-    border: 1px solid rgba(209, 163, 92, 0.3);
+    background: rgba(var(--bg-tertiary), 0.3);
+    border: 1px solid rgba(var(--border-default), 0.3);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(var(--bg-secondary), 0.15);
     backdrop-filter: blur(25px) saturate(200%);
     -webkit-backdrop-filter: blur(25px) saturate(200%);
-    border: 1px solid rgba(var(--brand-berry), 0.4);
+    border: 1px solid rgba(var(--border-default), 0.4);
     box-shadow: 
-      0 8px 32px 0 rgba(var(--brand-berry), 0.25),
-      inset 0 1px 0 rgba(var(--brand-berry-light), 0.3);
+      0 8px 32px 0 rgba(var(--accent-primary), 0.25),
+      inset 0 1px 0 rgba(var(--accent-primary), 0.3);
   }
 
   html.light .glass-card {
-    background: rgba(243, 229, 171, 0.6);
-    border: 1px solid rgba(209, 163, 92, 0.5);
+    background: rgba(var(--bg-secondary), 0.6);
+    border: 1px solid rgba(var(--border-default), 0.5);
     box-shadow: 
-      0 8px 32px 0 rgba(184, 124, 60, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      0 8px 32px 0 rgba(var(--accent-primary), 0.15),
+      inset 0 1px 0 rgba(var(--text-primary), 0.8);
   }
 
   .glass-button {
-    background: rgba(var(--brand-berry), 0.2);
+    background: rgba(var(--accent-primary), 0.2);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(var(--brand-berry), 0.4);
+    border: 1px solid rgba(var(--accent-primary), 0.4);
     box-shadow: 
-      0 4px 16px 0 rgba(var(--brand-berry), 0.2),
-      inset 0 1px 0 rgba(var(--brand-berry-light), 0.3);
+      0 4px 16px 0 rgba(var(--accent-primary), 0.2),
+      inset 0 1px 0 rgba(var(--accent-primary), 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   html.light .glass-button {
-    background: rgba(209, 163, 92, 0.3);
-    border: 1px solid rgba(184, 124, 60, 0.5);
+    background: rgba(var(--accent-primary), 0.3);
+    border: 1px solid rgba(var(--accent-primary), 0.5);
     box-shadow: 
-      0 4px 16px 0 rgba(184, 124, 60, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      0 4px 16px 0 rgba(var(--accent-primary), 0.15),
+      inset 0 1px 0 rgba(var(--text-primary), 0.7);
   }
 
   .glass-button:hover {
-    background: rgba(var(--brand-berry), 0.3);
+    background: rgba(var(--accent-primary), 0.3);
     transform: translateY(-2px);
-    border-color: rgba(var(--brand-berry), 0.6);
+    border-color: rgba(var(--accent-primary), 0.6);
     box-shadow: 
-      0 8px 24px 0 rgba(var(--brand-berry), 0.3),
-      inset 0 1px 0 rgba(var(--brand-berry-light), 0.5);
+      0 8px 24px 0 rgba(var(--accent-primary), 0.3),
+      inset 0 1px 0 rgba(var(--accent-primary), 0.5);
   }
 
   html.light .glass-button:hover {
-    background: rgba(209, 163, 92, 0.4);
-    border-color: rgba(184, 124, 60, 0.7);
+    background: rgba(var(--accent-primary), 0.4);
+    border-color: rgba(var(--accent-primary), 0.7);
     box-shadow: 
-      0 8px 24px 0 rgba(184, 124, 60, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      0 8px 24px 0 rgba(var(--accent-primary), 0.2),
+      inset 0 1px 0 rgba(var(--text-primary), 0.9);
   }
 
   .glass-input {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(var(--bg-secondary), 0.15);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(var(--brand-berry), 0.3);
+    border: 1px solid rgba(var(--border-default), 0.3);
     box-shadow: 
-      0 4px 16px 0 rgba(var(--brand-berry), 0.1),
-      inset 0 1px 0 rgba(var(--brand-berry-light), 0.2);
+      0 4px 16px 0 rgba(var(--accent-primary), 0.1),
+      inset 0 1px 0 rgba(var(--accent-primary), 0.2);
   }
 
   html.light .glass-input {
-    background: rgba(243, 229, 171, 0.6);
-    border: 1px solid rgba(209, 163, 92, 0.4);
+    background: rgba(var(--bg-secondary), 0.6);
+    border: 1px solid rgba(var(--border-default), 0.4);
     box-shadow: 
-      0 4px 16px 0 rgba(184, 124, 60, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      0 4px 16px 0 rgba(var(--accent-primary), 0.08),
+      inset 0 1px 0 rgba(var(--text-primary), 0.8);
   }
 
   .glass-input:focus {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(var(--brand-berry), 0.6);
+    background: rgba(var(--bg-secondary), 0.2);
+    border-color: rgba(var(--accent-primary), 0.6);
     box-shadow: 
-      0 4px 16px 0 rgba(var(--brand-berry), 0.2),
-      inset 0 1px 0 rgba(var(--brand-berry-light), 0.4),
-      0 0 0 3px rgba(var(--brand-berry), 0.2);
+      0 4px 16px 0 rgba(var(--accent-primary), 0.2),
+      inset 0 1px 0 rgba(var(--accent-primary), 0.4),
+      0 0 0 3px rgba(var(--accent-primary), 0.2);
   }
 
   html.light .glass-input:focus {
-    background: rgba(243, 229, 171, 0.8);
-    border-color: rgba(184, 124, 60, 0.6);
+    background: rgba(var(--bg-secondary), 0.8);
+    border-color: rgba(var(--accent-primary), 0.6);
     box-shadow: 
-      0 4px 16px 0 rgba(184, 124, 60, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 1),
-      0 0 0 3px rgba(184, 124, 60, 0.2);
+      0 4px 16px 0 rgba(var(--accent-primary), 0.15),
+      inset 0 1px 0 rgba(var(--text-primary), 1),
+      0 0 0 3px rgba(var(--accent-primary), 0.2);
   }
 
   .liquid-shimmer {
@@ -284,7 +318,7 @@ html.light body {
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(var(--brand-berry-light), 0.3),
+      rgba(var(--accent-primary), 0.3),
       transparent
     );
     animation: shimmer 3s infinite;
@@ -294,7 +328,7 @@ html.light body {
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(209, 163, 92, 0.4),
+      rgba(var(--accent-primary), 0.4),
       transparent
     );
   }
@@ -303,133 +337,133 @@ html.light body {
     text-wrap: balance;
   }
 
-  /* Theme-aware text colors */
+  /* Theme-aware text colors with safe fallbacks */
   .text-theme {
-    color: rgb(255, 255, 255);
+    color: rgb(var(--text-primary, 240, 237, 244));
   }
 
   html.light .text-theme {
-    color: rgb(59, 45, 47);
+    color: rgb(var(--text-primary, 15, 23, 42));
   }
 
   .text-theme-muted {
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(var(--text-primary, 240, 237, 244), 0.7);
   }
 
   html.light .text-theme-muted {
-    color: rgba(59, 45, 47, 0.7);
+    color: rgba(var(--text-primary, 15, 23, 42), 0.7);
   }
 
   .text-theme-subtle {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(var(--text-secondary, 137, 143, 153), 0.8);
   }
 
   html.light .text-theme-subtle {
-    color: rgba(59, 45, 47, 0.5);
+    color: rgba(var(--text-secondary, 71, 85, 105), 0.8);
   }
 
   /* Override text-white in light mode for better readability */
   html.light .text-white {
-    color: rgb(59, 45, 47) !important;
+    color: rgb(var(--text-primary)) !important;
   }
 
   /* Override text-white with opacity variants in light mode */
   html.light [class*="text-white/"] {
-    color: rgba(59, 45, 47, 0.7) !important;
+    color: rgba(var(--text-primary), 0.7) !important;
   }
 
   html.light [class*="text-white/60"] {
-    color: rgba(59, 45, 47, 0.6) !important;
+    color: rgba(var(--text-primary), 0.6) !important;
   }
 
   html.light [class*="text-white/70"] {
-    color: rgba(59, 45, 47, 0.7) !important;
+    color: rgba(var(--text-primary), 0.7) !important;
   }
 
   html.light [class*="text-white/50"] {
-    color: rgba(59, 45, 47, 0.5) !important;
+    color: rgba(var(--text-primary), 0.5) !important;
   }
 
   html.light [class*="text-white/40"] {
-    color: rgba(59, 45, 47, 0.4) !important;
+    color: rgba(var(--text-primary), 0.4) !important;
   }
 
   /* Override dark/black text colors in dark mode for better readability */
   html.dark .text-gray-900,
   html.dark .text-black {
-    color: rgb(255, 255, 255) !important;
+    color: rgb(var(--text-primary)) !important;
   }
 
   html.dark .text-gray-800 {
-    color: rgba(255, 255, 255, 0.95) !important;
+    color: rgba(var(--text-primary), 0.95) !important;
   }
 
   html.dark .text-gray-700 {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--text-primary), 0.9) !important;
   }
 
   html.dark .text-gray-600 {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: rgba(var(--text-primary), 0.8) !important;
   }
 
   html.dark .text-gray-500 {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: rgba(var(--text-secondary), 0.9) !important;
   }
 
   html.dark .text-gray-400 {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: rgba(var(--text-secondary), 0.8) !important;
   }
 
   html.dark .text-gray-300 {
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: rgba(var(--text-secondary), 0.7) !important;
   }
 
   html.dark .text-slate-900,
   html.dark .text-slate-800,
   html.dark .text-slate-700,
   html.dark .text-slate-600 {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--text-primary), 0.9) !important;
   }
 
   html.dark .text-zinc-900,
   html.dark .text-zinc-800,
   html.dark .text-zinc-700,
   html.dark .text-zinc-600 {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--text-primary), 0.9) !important;
   }
 
   html.dark .text-neutral-900,
   html.dark .text-neutral-800,
   html.dark .text-neutral-700,
   html.dark .text-neutral-600 {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--text-primary), 0.9) !important;
   }
 
   /* Ensure input placeholders are readable in light mode */
   html.light .glass-input::placeholder {
-    color: rgba(59, 45, 47, 0.6) !important;
+    color: rgba(var(--text-secondary), 0.8) !important;
   }
 
   html.light input::placeholder,
   html.light textarea::placeholder {
-    color: rgba(59, 45, 47, 0.6) !important;
+    color: rgba(var(--text-secondary), 0.8) !important;
   }
 
   /* Brand accent colors */
   .text-brand-accent {
-    color: var(--brand-berry-rgb);
+    color: rgb(var(--accent-primary));
   }
 
   html.light .text-brand-accent {
-    color: rgb(160, 92, 44);
+    color: rgb(var(--accent-primary));
   }
 
   .border-brand-accent {
-    border-color: rgba(var(--brand-berry), 0.5);
+    border-color: rgba(var(--border-default), 0.5);
   }
 
   html.light .border-brand-accent {
-    border-color: rgba(209, 163, 92, 0.5);
+    border-color: rgba(var(--border-default), 0.5);
   }
 
   /* Override brand-berry color classes to use CSS variable in dark mode */
@@ -497,13 +531,13 @@ html.light body {
     animation: float 3s ease-in-out infinite;
   }
 
-  /* Pulse glow - Earthy Brown */
+  /* Pulse glow */
   @keyframes pulseGlow {
     0%, 100% {
-      box-shadow: 0 0 20px rgba(var(--brand-berry-light), 0.4);
+      box-shadow: 0 0 20px rgba(var(--accent-primary), 0.4);
     }
     50% {
-      box-shadow: 0 0 30px rgba(var(--brand-berry-light), 0.6);
+      box-shadow: 0 0 30px rgba(var(--accent-primary), 0.6);
     }
   }
 
@@ -513,10 +547,10 @@ html.light body {
 
   @keyframes pulseGlowLight {
     0%, 100% {
-      box-shadow: 0 0 20px rgba(209, 163, 92, 0.4);
+      box-shadow: 0 0 20px rgba(var(--accent-primary), 0.4);
     }
     50% {
-      box-shadow: 0 0 30px rgba(209, 163, 92, 0.6);
+      box-shadow: 0 0 30px rgba(var(--accent-primary), 0.6);
     }
   }
 
@@ -525,24 +559,24 @@ html.light body {
   }
 }
 
-/* Custom scrollbar with Earthy Brown effect */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(184, 124, 60, 0.1);
+  background: rgba(var(--bg-tertiary), 0.1);
   backdrop-filter: blur(10px);
   border-radius: 10px;
 }
 
 html.light ::-webkit-scrollbar-track {
-  background: rgba(209, 163, 92, 0.05);
+  background: rgba(var(--bg-tertiary), 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(184, 124, 60, 0.4);
+  background: rgba(var(--border-default), 0.4);
   backdrop-filter: blur(10px);
   border-radius: 10px;
   border: 2px solid transparent;
@@ -550,36 +584,36 @@ html.light ::-webkit-scrollbar-track {
 }
 
 html.light ::-webkit-scrollbar-thumb {
-  background: rgba(209, 163, 92, 0.3);
+  background: rgba(var(--border-default), 0.3);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(184, 124, 60, 0.6);
+  background: rgba(var(--accent-primary), 0.6);
 }
 
 html.light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(209, 163, 92, 0.5);
+  background: rgba(var(--accent-primary), 0.5);
 }
 
-/* Selection styling - Earthy Brown */
+/* Selection styling */
 ::selection {
-  background: rgba(224, 197, 124, 0.3);
-  color: white;
+  background: rgba(var(--accent-primary), 0.3);
+  color: rgb(var(--text-primary));
 }
 
 html.light ::selection {
-  background: rgba(209, 163, 92, 0.3);
-  color: rgb(59, 45, 47);
+  background: rgba(var(--accent-primary), 0.3);
+  color: rgb(var(--text-primary));
 }
 
 ::-moz-selection {
-  background: rgba(224, 197, 124, 0.3);
-  color: white;
+  background: rgba(var(--accent-primary), 0.3);
+  color: rgb(var(--text-primary));
 }
 
 html.light ::-moz-selection {
-  background: rgba(209, 163, 92, 0.3);
-  color: rgb(59, 45, 47);
+  background: rgba(var(--accent-primary), 0.3);
+  color: rgb(var(--text-primary));
 }
 
 /* Success/Secure Notice Block Styles */

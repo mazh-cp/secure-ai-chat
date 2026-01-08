@@ -12,20 +12,50 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark')
+  // Initialize theme from existing class on html element (set by inline script) or default to dark
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const htmlClass = document.documentElement.classList.contains('dark') ? 'dark' : 
+                       document.documentElement.classList.contains('light') ? 'light' : null
+      if (htmlClass) return htmlClass
+      
+      // Fallback to localStorage
+      const savedTheme = localStorage.getItem('theme') as Theme | null
+      if (savedTheme) return savedTheme
+      
+      // Final fallback to system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      return prefersDark ? 'dark' : 'light'
+    }
+    return 'dark'
+  })
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    // Load theme from localStorage or default to dark
-    const savedTheme = localStorage.getItem('theme') as Theme | null
-    if (savedTheme) {
-      setTheme(savedTheme)
+    // Read the theme that was already applied by the inline script
+    const htmlHasDark = document.documentElement.classList.contains('dark')
+    const htmlHasLight = document.documentElement.classList.contains('light')
+    const currentHtmlTheme = htmlHasDark ? 'dark' : (htmlHasLight ? 'light' : null)
+    
+    // Sync React state with the theme class already on the HTML element
+    if (currentHtmlTheme && currentHtmlTheme !== theme) {
+      setTheme(currentHtmlTheme)
     } else {
-      // Check system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      setTheme(prefersDark ? 'dark' : 'light')
+      // If no theme class on HTML, check localStorage
+      const savedTheme = localStorage.getItem('theme') as Theme | null
+      if (savedTheme && savedTheme !== theme) {
+        setTheme(savedTheme)
+      } else if (!savedTheme && !currentHtmlTheme) {
+        // Check system preference if no saved theme and no HTML class
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        const systemTheme = prefersDark ? 'dark' : 'light'
+        if (systemTheme !== theme) {
+          setTheme(systemTheme)
+        }
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import Logo from './Logo'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -20,6 +19,74 @@ const navigation = [
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const pathname = usePathname()
+  const [logoData, setLogoData] = useState<string | null>(null)
+  const [openAIStatus, setOpenAIStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+
+  // Load logo from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const loadLogo = () => {
+        const storedSettings = localStorage.getItem('appSettings')
+        if (storedSettings) {
+          try {
+            const parsed = JSON.parse(storedSettings)
+            if (parsed.logoData) {
+              setLogoData(parsed.logoData)
+            } else {
+              setLogoData(null)
+            }
+          } catch (error) {
+            console.error('Failed to load logo settings:', error)
+            setLogoData(null)
+          }
+        } else {
+          setLogoData(null)
+        }
+      }
+
+      loadLogo()
+      window.addEventListener('settingsUpdated', loadLogo)
+      return () => window.removeEventListener('settingsUpdated', loadLogo)
+    }
+  }, [])
+
+  // Poll OpenAI health status
+  useEffect(() => {
+    const checkOpenAIHealth = async () => {
+      try {
+        // Get API key from localStorage
+        const stored = localStorage.getItem('apiKeys')
+        if (!stored) {
+          setOpenAIStatus('disconnected')
+          return
+        }
+
+        const apiKeys = JSON.parse(stored)
+        if (!apiKeys?.openAiKey) {
+          setOpenAIStatus('disconnected')
+          return
+        }
+
+        const response = await fetch('/api/health/openai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ openAiKey: apiKeys.openAiKey }),
+        })
+        const data = await response.json()
+        setOpenAIStatus(data.ok ? 'connected' : 'disconnected')
+      } catch (error) {
+        setOpenAIStatus('disconnected')
+      }
+    }
+
+    // Check immediately
+    checkOpenAIHealth()
+
+    // Poll every 45 seconds
+    const interval = setInterval(checkOpenAIHealth, 45000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="min-h-screen relative">
@@ -35,10 +102,22 @@ export default function Layout({ children }: LayoutProps) {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } w-64`}
       >
-        <div className="h-full glass-dark rounded-r-3xl border-r border-white/20 dark:border-white/20 light:border-black/10 p-6 flex flex-col">
-          {/* Logo Section */}
-          <div className="flex h-16 items-center justify-between border-b border-white/20 dark:border-white/20 light:border-black/10 pb-4 mb-6">
-            <Logo size="small" />
+        <div className="h-full glass-dark rounded-r-3xl border-r border-palette-border-default/20 p-6 flex flex-col">
+          {/* Header Section */}
+          <div className="flex h-16 items-center justify-between border-b border-palette-border-default/20 pb-4 mb-6">
+            {logoData ? (
+              <div className="flex items-center flex-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoData}
+                  alt="Site Logo"
+                  className="h-10 w-auto max-w-[200px] object-contain"
+                  onError={() => setLogoData(null)}
+                />
+              </div>
+            ) : (
+              <div className="flex-1"></div>
+            )}
             <button
               onClick={() => setSidebarOpen(false)}
               className="text-theme-muted hover:text-theme lg:hidden transition-colors"
@@ -77,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-white/20 dark:border-white/20 light:border-black/10 pt-4 mt-6">
+          <div className="border-t border-palette-border-default/20 pt-4 mt-6">
             <div className="text-xs text-theme-subtle">
               <p className="font-semibold text-theme-muted">Secure AI Chat</p>
               <p className="mt-1">Powered by Lakera AI</p>
@@ -89,7 +168,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-palette-bg-primary/20 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -97,7 +176,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : ''}`}>
         {/* Top bar */}
-        <header className="sticky top-0 z-20 glass-dark border-b border-white/20 dark:border-white/20 light:border-black/10">
+        <header className="sticky top-0 z-20 glass-dark border-b border-palette-border-default/20">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -112,8 +191,12 @@ export default function Layout({ children }: LayoutProps) {
 
             <div className="flex items-center space-x-4">
               <div className="hidden sm:block glass-button px-4 py-2 rounded-full">
-                <div className="flex items-center space-x-2 text-sm text-theme-muted">
-                  <div className="h-2 w-2 rounded-full bg-brand-berry pulse-glow"></div>
+                <div className="flex items-center space-x-2 text-sm text-theme-muted" title={openAIStatus === 'connected' ? 'OpenAI: Connected' : openAIStatus === 'disconnected' ? 'OpenAI: Disconnected' : 'OpenAI: Checking...'}>
+                  <div className={`h-2 w-2 rounded-full pulse-glow ${
+                    openAIStatus === 'connected' ? 'bg-green-400' : 
+                    openAIStatus === 'disconnected' ? 'bg-red-400' : 
+                    'bg-brand-berry'
+                  }`}></div>
                   <span>Secure Connection</span>
                 </div>
               </div>

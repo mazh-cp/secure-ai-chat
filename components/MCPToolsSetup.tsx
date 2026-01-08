@@ -23,7 +23,7 @@ export default function MCPToolsSetup() {
       </button>
 
       {isExpanded && (
-        <div className="mt-6 pt-6 border-t border-white/10 space-y-6">
+        <div className="mt-6 pt-6 border-t border-palette-border-default/10 space-y-6">
           {/* ToolHive Installation */}
           <div>
             <h3 className="text-sm font-semibold text-theme mb-2">ToolHive Installation</h3>
@@ -48,7 +48,7 @@ export default function MCPToolsSetup() {
               <li>In this demo&apos;s Tools tab, add a new tool with that endpoint</li>
               <li>Click Test Tool to verify it shows available tools</li>
             </ul>
-            <div className="mt-3 p-3 glass rounded-lg border-white/10">
+            <div className="mt-3 p-3 glass rounded-lg border-palette-border-default/10">
               <p className="text-xs text-theme-subtle mb-1">Example prompt:</p>
               <code className="text-xs font-mono text-theme block break-all">
                 Tell me more about https://checkpoint.com
@@ -73,7 +73,7 @@ export default function MCPToolsSetup() {
               <li>Add the endpoint URL as a new tool in this demo</li>
               <li>Create a file like &quot;hello.txt&quot; in your documents folder</li>
             </ul>
-            <div className="mt-3 p-3 glass rounded-lg border-white/10">
+            <div className="mt-3 p-3 glass rounded-lg border-palette-border-default/10">
               <p className="text-xs text-theme-subtle mb-1">Example prompt:</p>
               <code className="text-xs font-mono text-theme block break-all">
                 What is in the file in the /projects directory hello.txt

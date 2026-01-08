@@ -31,9 +31,9 @@ export default function LogViewer({ logs }: LogViewerProps) {
   if (logs.length === 0) {
     return (
       <div className="p-12 text-center">
-        <div className="text-white/40 text-4xl mb-4">📊</div>
-        <p className="text-white/70">No logs yet</p>
-        <p className="text-white/50 text-sm mt-1">Activity logs will appear here as you use the application</p>
+        <div className="text-theme-subtle text-4xl mb-4">📊</div>
+        <p className="text-theme-muted">No logs yet</p>
+        <p className="text-theme-subtle text-sm mt-1">Activity logs will appear here as you use the application</p>
       </div>
     )
   }
@@ -49,7 +49,7 @@ export default function LogViewer({ logs }: LogViewerProps) {
                 ? 'border-red-400/30'
                 : log.action === 'allowed'
                 ? 'border-green-400/30'
-                : 'border-white/20'
+                : 'border-brand-berry/20'
             }`}
           >
             {/* Header */}
@@ -58,21 +58,21 @@ export default function LogViewer({ logs }: LogViewerProps) {
                 <span className="text-2xl">{getTypeIcon(log.type)}</span>
                 <div>
                   <div className="flex items-center space-x-2 flex-wrap">
-                  <h3 className="text-white font-medium capitalize">
+                  <h3 className="text-theme font-medium capitalize">
                     {log.type.replace('_', ' ')}
                   </h3>
                     {getActionBadge(log.action)}
                     {log.source && (
-                      <span className="text-xs text-white/50">({log.source})</span>
+                      <span className="text-xs text-theme-subtle">({log.source})</span>
                     )}
                   </div>
-                  <p className="text-xs text-white/50 mt-1">
+                  <p className="text-xs text-theme-subtle mt-1">
                     {format(log.timestamp, 'MMM dd, yyyy HH:mm:ss')}
                   </p>
                 </div>
               </div>
               {log.userIP && (
-                <div className="text-xs text-white/60 glass px-2 py-1 rounded-lg">
+                <div className="text-xs text-theme-muted glass px-2 py-1 rounded-lg">
                   IP: {log.userIP}
                 </div>
               )}
@@ -80,13 +80,13 @@ export default function LogViewer({ logs }: LogViewerProps) {
 
             {/* Request Details */}
             {log.requestDetails && (
-              <div className="mb-3 p-3 glass rounded-xl border-white/10">
+              <div className="mb-3 p-3 glass-card rounded-xl border-brand-berry/10">
                 {(log.requestDetails.message || log.requestDetails.fileName) && (
                   <div className="space-y-2">
                     {log.requestDetails.message && (
                       <div>
-                        <span className="text-xs text-white/60 font-medium">Message:</span>
-                        <p className="text-sm text-white/80 mt-1 break-words">
+                        <span className="text-xs text-theme-subtle font-medium">Message:</span>
+                        <p className="text-sm text-theme-muted mt-1 break-words">
                           {log.requestDetails.message.substring(0, 200)}
                           {log.requestDetails.message.length > 200 ? '...' : ''}
                         </p>
@@ -95,19 +95,19 @@ export default function LogViewer({ logs }: LogViewerProps) {
                     {log.requestDetails.fileName && (
                       <div className="flex items-center space-x-4 flex-wrap">
                         <div>
-                          <span className="text-xs text-white/60 font-medium">File:</span>
-                          <p className="text-sm text-white/80">{log.requestDetails.fileName}</p>
+                          <span className="text-xs text-theme-subtle font-medium">File:</span>
+                          <p className="text-sm text-theme-muted">{log.requestDetails.fileName}</p>
                         </div>
                         {log.requestDetails.fileType && (
                           <div>
-                            <span className="text-xs text-white/60 font-medium">Type:</span>
-                            <p className="text-sm text-white/80">{log.requestDetails.fileType}</p>
+                            <span className="text-xs text-theme-subtle font-medium">Type:</span>
+                            <p className="text-sm text-theme-muted">{log.requestDetails.fileType}</p>
                           </div>
                         )}
                         {log.requestDetails.fileSize && (
                           <div>
-                            <span className="text-xs text-white/60 font-medium">Size:</span>
-                            <p className="text-sm text-white/80">
+                            <span className="text-xs text-theme-subtle font-medium">Size:</span>
+                            <p className="text-sm text-theme-muted">
                               {(log.requestDetails.fileSize / 1024).toFixed(2)} KB
                             </p>
                           </div>
@@ -121,41 +121,41 @@ export default function LogViewer({ logs }: LogViewerProps) {
 
             {/* Lakera Decision */}
             {log.lakeraDecision && (
-              <div className={`p-3 rounded-xl glass ${
+              <div className={`p-3 rounded-xl glass-card ${
                 log.lakeraDecision.flagged
                   ? 'border-red-400/30'
                   : 'border-green-400/30'
               }`}>
                 <div className="flex items-center space-x-2 mb-2 flex-wrap">
                   <span className="text-lg">🛡️</span>
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-theme">
                     Lakera AI Decision
                   </span>
                   {log.lakeraDecision.flagged ? (
-                    <span className="px-2 py-0.5 text-xs rounded-full glass text-red-300 border-red-400/50">
+                    <span className="px-2 py-0.5 text-xs rounded-full glass-card text-red-300 border-red-400/50">
                       Flagged
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 text-xs rounded-full glass text-green-300 border-green-400/30">
+                    <span className="px-2 py-0.5 text-xs rounded-full glass-card text-green-300 border-green-400/30">
                       Safe
                     </span>
                   )}
                 </div>
                 
                 {log.lakeraDecision.message && (
-                  <p className="text-xs text-white/70 mb-2">{log.lakeraDecision.message}</p>
+                  <p className="text-xs text-theme-muted mb-2">{log.lakeraDecision.message}</p>
                 )}
 
                 {log.lakeraDecision.categories && Object.keys(log.lakeraDecision.categories).length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs text-white/60 mb-1">Categories:</p>
+                    <p className="text-xs text-theme-subtle mb-1">Categories:</p>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(log.lakeraDecision.categories)
                         .filter(([, flagged]) => flagged)
                         .map(([category]) => (
                           <span
                             key={category}
-                            className="px-2 py-1 text-xs rounded-lg glass text-red-200 border-red-400/30 capitalize"
+                            className="px-2 py-1 text-xs rounded-lg glass-card text-red-300 border-red-400/30 capitalize"
                           >
                             {category.replace(/_/g, ' ')}
                           </span>
@@ -166,7 +166,7 @@ export default function LogViewer({ logs }: LogViewerProps) {
 
                 {log.lakeraDecision.scores && Object.keys(log.lakeraDecision.scores).length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs text-white/60">
+                    <p className="text-xs text-theme-subtle">
                       Threat Score: {Math.max(...Object.values(log.lakeraDecision.scores)).toFixed(2)}
                     </p>
                   </div>
@@ -176,8 +176,8 @@ export default function LogViewer({ logs }: LogViewerProps) {
 
             {/* Error Message */}
             {log.error && (
-              <div className="mt-3 p-3 glass rounded-xl border-red-400/30">
-                <p className="text-xs text-red-200 font-medium mb-1">Error:</p>
+              <div className="mt-3 p-3 glass-card rounded-xl border-red-400/30">
+                <p className="text-xs text-red-300 font-medium mb-1">Error:</p>
                 <p className="text-xs text-red-300">{log.error}</p>
               </div>
             )}

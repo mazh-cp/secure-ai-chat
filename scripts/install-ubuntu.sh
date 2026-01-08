@@ -71,6 +71,8 @@ echo "  3. Clone the repository"
 echo "  4. Install project dependencies"
 echo "  5. Set up environment configuration"
 echo "  6. Build the application"
+echo "  7. Configure UFW firewall rules"
+echo "  8. Verify installation"
 echo ""
 
 # Check if running in non-interactive mode (piped input)
@@ -98,7 +100,10 @@ sudo apt-get install -y -qq \
     ca-certificates \
     gnupg \
     lsb-release \
+    iproute2 \
     > /dev/null 2>&1
+# Note: ss (socket statistics) is part of iproute2 and is preferred over netstat
+# To install netstat: sudo apt install net-tools
 
 print_success "System packages installed"
 
@@ -206,6 +211,18 @@ EOF
     print_warning "Please edit .env.local and add your API keys before running the application"
 else
     print_info ".env.local already exists, skipping..."
+    # Ensure HOSTNAME is set to 0.0.0.0 for public access
+    if ! grep -q "^HOSTNAME=" .env.local; then
+        print_info "Adding HOSTNAME=0.0.0.0 to existing .env.local for public access..."
+        echo "HOSTNAME=0.0.0.0" >> .env.local
+        print_success "HOSTNAME added to .env.local"
+    elif grep -q "^HOSTNAME=127.0.0.1" .env.local || grep -q "^HOSTNAME=localhost" .env.local; then
+        print_warning "HOSTNAME is set to localhost/127.0.0.1. Updating to 0.0.0.0 for public access..."
+        sed -i 's/^HOSTNAME=.*/HOSTNAME=0.0.0.0/' .env.local
+        print_success "HOSTNAME updated to 0.0.0.0"
+    else
+        print_info "HOSTNAME is already configured in .env.local"
+    fi
 fi
 
 # Step 6: Build the application
@@ -228,8 +245,91 @@ else
     exit 1
 fi
 
-# Step 7: Verification
-print_header "Step 7: Verification"
+# Step 7: Configure UFW Firewall
+print_header "Step 7: Configuring UFW Firewall"
+
+# Check if UFW is installed
+if ! command -v ufw &> /dev/null; then
+    print_info "UFW is not installed. Installing..."
+    sudo apt-get install -y -qq ufw > /dev/null 2>&1
+    print_success "UFW installed"
+else
+    print_info "UFW is already installed"
+fi
+
+# Check UFW status
+UFW_STATUS=$(sudo ufw status | head -n 1)
+if echo "$UFW_STATUS" | grep -q "Status: active"; then
+    print_warning "UFW is already enabled. Adding rules..."
+    UFW_ENABLED=true
+else
+    print_info "UFW is inactive. Configuring and enabling..."
+    UFW_ENABLED=false
+fi
+
+# Allow SSH (critical - prevent lockout)
+print_info "Allowing SSH (port 22) to prevent lockout..."
+if sudo ufw status | grep -q "22/tcp"; then
+    print_info "SSH (port 22) is already allowed"
+else
+    sudo ufw allow 22/tcp > /dev/null 2>&1
+    print_success "SSH (port 22) allowed"
+fi
+
+# Allow application port (default 3000)
+print_info "Allowing application port ${APP_PORT}/tcp for both localhost and public access..."
+if sudo ufw status | grep -q "${APP_PORT}/tcp"; then
+    print_info "Port ${APP_PORT}/tcp is already allowed"
+else
+    sudo ufw allow ${APP_PORT}/tcp > /dev/null 2>&1
+    print_success "Port ${APP_PORT}/tcp allowed"
+fi
+
+# Enable UFW if not already enabled
+if [ "$UFW_ENABLED" = false ]; then
+    print_info "Enabling UFW..."
+    # Use yes to automatically answer 'y' to enable prompt
+    echo "y" | sudo ufw --force enable > /dev/null 2>&1
+    print_success "UFW enabled"
+else
+    print_info "Reloading UFW to apply new rules..."
+    sudo ufw reload > /dev/null 2>&1
+    print_success "UFW rules applied"
+fi
+
+# Display UFW status
+print_info "Current UFW rules:"
+sudo ufw status numbered | grep -E "(Status|${APP_PORT}|22/tcp)" || true
+print_success "Firewall configuration complete"
+
+# Create a wrapper script for starting the app with correct hostname
+print_info "Creating start script with proper hostname binding..."
+cat > "$FULL_PATH/start-app.sh" << 'EOF'
+#!/bin/bash
+# Start script for Secure AI Chat
+# Ensures the application binds to 0.0.0.0 for public access
+
+cd "$(dirname "$0")"
+
+# Load environment variables from .env.local if it exists
+if [ -f .env.local ]; then
+    set -a  # automatically export all variables
+    source .env.local 2>/dev/null || true
+    set +a
+fi
+
+# Ensure HOSTNAME is set to 0.0.0.0 for public access (override any localhost setting)
+export HOSTNAME=0.0.0.0
+export PORT=${PORT:-3000}
+
+echo "Starting Secure AI Chat on $HOSTNAME:$PORT..."
+npm start
+EOF
+chmod +x "$FULL_PATH/start-app.sh"
+print_success "Start script created: start-app.sh"
+
+# Step 8: Verification
+print_header "Step 8: Verification"
 
 # Check Node.js version
 NODE_MAJOR=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
@@ -272,17 +372,36 @@ echo "   - LAKERA_AI_KEY (optional, for security scanning)"
 echo ""
 echo "3. Start the application:"
 echo "   cd $FULL_PATH"
-echo "   npm run dev      # Development mode"
+echo "   npm run dev          # Development mode (binds to 0.0.0.0)"
 echo "   # OR"
-echo "   npm start        # Production mode"
+echo "   ./start-app.sh       # Production mode (recommended - binds to 0.0.0.0)"
+echo "   # OR"
+echo "   HOSTNAME=0.0.0.0 npm start  # Production mode (alternative)"
 echo ""
 echo "4. Access the application:"
-echo "   http://localhost:${APP_PORT}"
+echo "   Local:   http://localhost:${APP_PORT}"
+echo "   Network: http://\$(hostname -I | awk '{print \$1}'):${APP_PORT}"
+echo ""
+echo -e "${BLUE}Firewall Configuration:${NC}"
+echo "   - UFW firewall has been configured"
+echo "   - SSH (port 22) is allowed"
+echo "   - Application port ${APP_PORT} is allowed for both localhost and public access"
+echo ""
+echo -e "${YELLOW}Important: Cloud Provider Firewalls${NC}"
+echo "   If using AWS/GCP/Azure, you may also need to configure:"
+echo "   - AWS: Security Groups (allow inbound on port ${APP_PORT})"
+echo "   - GCP: Firewall Rules (allow tcp:${APP_PORT})"
+echo "   - Azure: Network Security Groups (allow port ${APP_PORT})"
+echo ""
+echo -e "${BLUE}Verification Commands:${NC}"
+echo "   After starting the app, verify it's listening on all interfaces:"
+echo "   sudo ss -tlnp | grep :${APP_PORT}"
+echo "   Should show: 0.0.0.0:${APP_PORT} (NOT 127.0.0.1:${APP_PORT})"
+echo "   (If you need netstat: sudo apt install net-tools)"
 echo ""
 echo -e "${BLUE}For production deployment, consider:${NC}"
 echo "   - Using a process manager like PM2"
 echo "   - Setting up a reverse proxy (nginx)"
 echo "   - Configuring SSL/TLS certificates"
-echo "   - Setting up firewall rules"
 echo ""
 echo -e "${GREEN}Installation script completed successfully!${NC}"

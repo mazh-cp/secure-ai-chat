@@ -17,8 +17,8 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         <div
           className={`rounded-2xl px-4 py-3 ${
             isUser
-              ? 'glass-button text-white'
-              : 'glass text-white/90'
+              ? 'glass-button text-theme'
+              : 'glass text-theme'
           } ${
             scanResult?.flagged ? 'border-2 border-red-400/50 ring-2 ring-red-400/30' : ''
           } transition-all hover:scale-[1.02]`}
@@ -30,7 +30,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           {/* Scan Result Indicator */}
           {scanResult && scanResult.scanned && (
             <div className={`mt-2 pt-2 border-t ${
-              isUser ? 'border-white/20' : 'border-white/10'
+              isUser ? 'border-palette-border-default/20' : 'border-palette-border-default/10'
             }`}>
               {scanResult.flagged ? (
                 <div className="space-y-1">
@@ -78,7 +78,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           )}
           
           <p className={`text-xs mt-2 ${
-            isUser ? 'text-white/70' : 'text-white/60'
+            isUser ? 'text-theme-muted' : 'text-theme-subtle'
           }`}>
             {format(message.timestamp, 'h:mm a')}
           </p>

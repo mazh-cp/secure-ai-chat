@@ -144,21 +144,21 @@ export default function RiskMapPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold text-theme">
           AI Risk Map
         </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-theme-muted">
           OWASP Top 10 for LLMs 2025 - Interactive risk visualization based on your session activity
         </p>
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          Based on <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">OWASP GenAI Security Project</a>
+        <p className="mt-2 text-xs text-theme-subtle">
+          Based on <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener noreferrer" className="text-palette-accent-primary hover:underline">OWASP GenAI Security Project</a>
         </p>
       </div>
 
       {/* Risk Map Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
             <RiskMap 
               risks={OWASP_TOP_10_2025}
               onRiskSelect={handleRiskSelect}
@@ -171,7 +171,7 @@ export default function RiskMapPage() {
         {/* Risk Detail Panel */}
         {selectedRisk && (
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
               <RiskDetail 
                 risk={selectedRisk}
                 relatedLogs={getRiskLogs(selectedRisk.id)}
@@ -184,8 +184,8 @@ export default function RiskMapPage() {
         {/* Quick Stats */}
         {!selectedRisk && (
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
+              <h2 className="text-lg font-semibold text-theme mb-4">
                 Risk Overview
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -213,14 +213,14 @@ export default function RiskMapPage() {
                   </div>
                   <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">Low</div>
                 </div>
-                <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                <div className="text-center p-4 glass-card rounded-lg border border-palette-border-default/20">
+                  <div className="text-2xl font-bold text-theme">
                     {riskAssociations.size}
                   </div>
-                  <div className="text-xs text-gray-700 dark:text-gray-300 mt-1">Active Risks</div>
+                  <div className="text-xs text-theme-muted mt-1">Active Risks</div>
                 </div>
               </div>
-              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              <p className="mt-4 text-sm text-theme-muted">
                 Click on any risk card above to view detailed information and related session activity.
               </p>
             </div>

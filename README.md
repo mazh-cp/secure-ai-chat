@@ -9,10 +9,14 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 - 🔒 **Security First**: Built with security headers and best practices
 - 💬 **Real-time Chat Interface**: Clean, modern UI for AI conversations
 - 🔐 **Encryption Ready**: Infrastructure for end-to-end message encryption
-- 🎨 **Modern Design**: Beautiful UI with Tailwind CSS
+- 🎨 **Modern Design**: Beautiful UI with Tailwind CSS and light/dark theme support
+- 🌓 **Theme System**: Semantic color tokens with automatic light/dark mode switching
 - ⚡ **Next.js 14**: Built with the latest Next.js App Router
 - 📱 **Responsive**: Works seamlessly on desktop and mobile devices
 - 🛡️ **Type Safety**: Full TypeScript support
+- 🔄 **Production Ready**: Auto-restart policies, health checks, error boundaries
+- 🐳 **Docker Support**: Complete Docker and Docker Compose configuration
+- ☸️ **Kubernetes Ready**: Deployment manifests with liveness/readiness probes
 
 ## Tech Stack
 
@@ -140,6 +144,30 @@ pnpm start
 
 The production server will start on port 3000 by default. You can change this by setting the `PORT` environment variable.
 
+### Production Deployment
+
+The application includes production-ready configurations for multiple deployment methods:
+
+**Docker:**
+```bash
+docker-compose up -d
+# Health check: curl http://localhost:3000/api/health
+```
+
+**systemd:**
+```bash
+sudo cp secure-ai-chat.service /etc/systemd/system/
+sudo systemctl enable secure-ai-chat
+sudo systemctl start secure-ai-chat
+```
+
+**Kubernetes:**
+```bash
+kubectl apply -f k8s-deployment.yaml
+```
+
+See [INSTALL.md](INSTALL.md) for detailed deployment instructions and restart verification steps.
+
 ### Environment Variables for Production
 
 Make sure to set all required environment variables in your production environment. See `.env.example` for reference.
@@ -221,6 +249,8 @@ Secure-Ai-Chat/
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
+- `npm run check` - Run type-check and lint (validates code before commit)
+- `npm run check:ci` - Run type-check, lint, and format check (for CI/CD)
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
 

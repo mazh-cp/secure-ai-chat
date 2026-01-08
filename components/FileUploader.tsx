@@ -169,10 +169,10 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
           </div>
 
           <div>
-            <p className="text-white font-medium">
+            <p className="text-theme font-medium">
               {isProcessing ? 'Processing...' : 'Drop file here or click to upload'}
             </p>
-            <p className="text-white/60 text-sm mt-1">
+            <p className="text-theme-muted text-sm mt-1">
               PDF, TXT, MD, JSON, CSV, DOCX up to 50 MB
             </p>
           </div>
@@ -182,13 +182,13 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
       {/* Error Message */}
       {error && (
         <div className="glass-card rounded-2xl p-3 border-red-400/30">
-          <p className="text-red-200 text-sm">⚠️ {error}</p>
+          <p className="text-red-300 text-sm">⚠️ {error}</p>
         </div>
       )}
 
       {/* Info */}
-      <div className="glass rounded-2xl p-3 border-white/20">
-        <p className="text-white/70 text-xs">
+      <div className="glass rounded-2xl p-3 border-brand-berry/20">
+        <p className="text-theme-muted text-xs">
           {ragScanEnabled && lakeraScanEnabled 
             ? '🔒 Files are processed locally and automatically scanned by Lakera AI for RAG security threats on upload.'
             : lakeraScanEnabled

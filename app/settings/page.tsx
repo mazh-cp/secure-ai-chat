@@ -10,7 +10,7 @@ import MCPToolsSetup from '@/components/MCPToolsSetup'
 export const dynamic = 'force-dynamic'
 
 // Dynamically import ThemeToggle to prevent SSR issues
-const ThemeToggle = dynamicImport(() => import('@/components/ThemeToggle'), {
+const DynamicThemeToggle = dynamicImport(() => import('@/components/ThemeToggle'), {
   ssr: false,
 })
 
@@ -43,7 +43,7 @@ export default function SettingsPage() {
 
       {/* Theme Toggle Card */}
       <div className="bento-card bento-span-2 glass-card">
-        <ThemeToggle />
+        <DynamicThemeToggle />
       </div>
 
       {/* Settings Form Card */}

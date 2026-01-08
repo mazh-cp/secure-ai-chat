@@ -1,0 +1,23 @@
+[Unit]
+Description=Secure AI Chat Application
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/secure-ai-chat
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="HOSTNAME=0.0.0.0"
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=secure-ai-chat
+
+# Health check via systemd timer (optional - can also use external monitoring)
+# Health check endpoint: http://localhost:3000/api/health
+
+[Install]
+WantedBy=multi-user.target
