@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Layout from '@/components/Layout'
 import { ThemeProvider } from '@/contexts/ThemeContext'
@@ -6,11 +6,15 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 export const metadata: Metadata = {
   title: 'Secure AI Chat - Powered by Lakera AI',
   description: 'A secure AI chat application with end-to-end encryption and privacy features',
-  viewport: 'width=device-width, initial-scale=1',
   robots: {
     index: false,
     follow: false,
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
