@@ -14,15 +14,6 @@ interface LakeraResponse {
   error?: string
 }
 
-interface ScanResult {
-  scanned: boolean
-  flagged: boolean
-  categories?: Record<string, boolean>
-  scores?: Record<string, number>
-  message?: string
-  threatLevel?: 'low' | 'medium' | 'high' | 'critical'
-}
-
 interface LakeraRequestBody {
   messages: Array<{ role: string; content: string }>
   context?: {

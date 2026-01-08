@@ -29,20 +29,55 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 
 ## Installation
 
-### Quick Setup (Automated)
+### Single-Step Installation (Ubuntu/Debian)
+
+⚠️ **Important**: Before using the remote installation script, ensure the repository is pushed to GitHub first:
+```bash
+./scripts/push-to-github.sh "Initial release"
+```
+
+**For fresh Ubuntu VM installation:**
+
+```bash
+# Option 1: Direct download and run (requires repo on GitHub)
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+
+# Option 2: Using wget (requires repo on GitHub)
+wget -qO- https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+
+# Option 3: Local installation (if you have the script file)
+bash scripts/install-ubuntu.sh
+```
+
+This script will automatically:
+- Install system dependencies (curl, git, build tools)
+- Install Node.js 20.x
+- Clone the repository
+- Install all npm dependencies
+- Set up environment configuration
+- Build the production application
+
+**If the script doesn't start**: The repository may not be on GitHub yet. See [INSTALLATION_TROUBLESHOOTING.md](INSTALLATION_TROUBLESHOOTING.md) for solutions.
+
+**After installation:**
+1. Edit `.env.local` to add your API keys
+2. Run `npm run dev` for development or `npm start` for production
+3. Access at `http://localhost:3000`
+
+### Quick Setup (Manual - Unix/Linux/macOS)
 
 **Unix/Linux/macOS:**
 ```bash
-git clone <repository-url>
-cd Secure-Ai-Chat
+git clone https://github.com/mazh-cp/secure-ai-chat.git
+cd secure-ai-chat
 chmod +x scripts/setup.sh
 ./scripts/setup.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-git clone <repository-url>
-cd Secure-Ai-Chat
+git clone https://github.com/mazh-cp/secure-ai-chat.git
+cd secure-ai-chat
 .\scripts\setup.ps1
 ```
 

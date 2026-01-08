@@ -453,6 +453,7 @@ export default function SettingsForm() {
                     <div className="glass-card p-4 rounded-xl">
                       <p className="text-xs text-theme-subtle mb-2">Logo Preview:</p>
                       <div className="relative w-full h-32 bg-white/10 rounded-lg overflow-hidden flex items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={logoPreview || settings.logoData || settings.logoUrl}
                           alt="Logo preview"

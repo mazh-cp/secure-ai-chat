@@ -63,15 +63,15 @@ export default function MCPToolsSetup() {
           <div>
             <h3 className="text-sm font-semibold text-theme mb-3">Add Filesystem MCP Server</h3>
             <ul className="space-y-2 text-sm text-theme-muted list-disc list-inside">
-              <li>Add "Filesystem" from the default registry in ToolHive</li>
+              <li>Add &quot;Filesystem&quot; from the default registry in ToolHive</li>
               <li>Configure:
                 <ul className="ml-6 mt-1 space-y-1 list-disc">
-                  <li>Host path: Full path to your documents folder (e.g., "/Users/steve/Documents/mcpdemodocs")</li>
-                  <li>Container path: "/projects"</li>
+                  <li>Host path: Full path to your documents folder (e.g., &quot;/Users/steve/Documents/mcpdemodocs&quot;)</li>
+                  <li>Container path: &quot;/projects&quot;</li>
                 </ul>
               </li>
               <li>Add the endpoint URL as a new tool in this demo</li>
-              <li>Create a file like "hello.txt" in your documents folder</li>
+              <li>Create a file like &quot;hello.txt&quot; in your documents folder</li>
             </ul>
             <div className="mt-3 p-3 glass rounded-lg border-white/10">
               <p className="text-xs text-theme-subtle mb-1">Example prompt:</p>
