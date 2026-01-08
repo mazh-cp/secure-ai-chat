@@ -1,0 +1,196 @@
+'use client'
+
+import { LogEntry } from '@/types/logs'
+import { format } from 'date-fns'
+
+interface LogViewerProps {
+  logs: LogEntry[]
+}
+
+function getActionBadge(action: LogEntry['action']) {
+  const badges = {
+    request: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30">Request</span>,
+    allowed: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30">✓ Allowed</span>,
+    blocked: <span className="px-2 py-1 text-xs rounded-full glass text-red-300 border-red-400/50">🚫 Blocked</span>,
+    scanned: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30">Scanned</span>,
+    error: <span className="px-2 py-1 text-xs rounded-full glass text-yellow-300 border-yellow-400/30">Error</span>,
+  }
+  return badges[action] || badges.request
+}
+
+function getTypeIcon(type: LogEntry['type']) {
+  const icons = {
+    chat: '💬',
+    file_scan: '📁',
+    error: '⚠️',
+  }
+  return icons[type] || '📝'
+}
+
+export default function LogViewer({ logs }: LogViewerProps) {
+  if (logs.length === 0) {
+    return (
+      <div className="p-12 text-center">
+        <div className="text-white/40 text-4xl mb-4">📊</div>
+        <p className="text-white/70">No logs yet</p>
+        <p className="text-white/50 text-sm mt-1">Activity logs will appear here as you use the application</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-h-[700px] overflow-y-auto p-6">
+      <div className="space-y-3">
+        {logs.map((log) => (
+          <div
+            key={log.id}
+            className={`p-4 rounded-xl glass-card transition-all hover:scale-[1.01] ${
+              log.action === 'blocked' || log.action === 'error'
+                ? 'border-red-400/30'
+                : log.action === 'allowed'
+                ? 'border-green-400/30'
+                : 'border-white/20'
+            }`}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">{getTypeIcon(log.type)}</span>
+                <div>
+                  <div className="flex items-center space-x-2 flex-wrap">
+                  <h3 className="text-white font-medium capitalize">
+                    {log.type.replace('_', ' ')}
+                  </h3>
+                    {getActionBadge(log.action)}
+                    {log.source && (
+                      <span className="text-xs text-white/50">({log.source})</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-white/50 mt-1">
+                    {format(log.timestamp, 'MMM dd, yyyy HH:mm:ss')}
+                  </p>
+                </div>
+              </div>
+              {log.userIP && (
+                <div className="text-xs text-white/60 glass px-2 py-1 rounded-lg">
+                  IP: {log.userIP}
+                </div>
+              )}
+            </div>
+
+            {/* Request Details */}
+            {log.requestDetails && (
+              <div className="mb-3 p-3 glass rounded-xl border-white/10">
+                {(log.requestDetails.message || log.requestDetails.fileName) && (
+                  <div className="space-y-2">
+                    {log.requestDetails.message && (
+                      <div>
+                        <span className="text-xs text-white/60 font-medium">Message:</span>
+                        <p className="text-sm text-white/80 mt-1 break-words">
+                          {log.requestDetails.message.substring(0, 200)}
+                          {log.requestDetails.message.length > 200 ? '...' : ''}
+                        </p>
+                      </div>
+                    )}
+                    {log.requestDetails.fileName && (
+                      <div className="flex items-center space-x-4 flex-wrap">
+                        <div>
+                          <span className="text-xs text-white/60 font-medium">File:</span>
+                          <p className="text-sm text-white/80">{log.requestDetails.fileName}</p>
+                        </div>
+                        {log.requestDetails.fileType && (
+                          <div>
+                            <span className="text-xs text-white/60 font-medium">Type:</span>
+                            <p className="text-sm text-white/80">{log.requestDetails.fileType}</p>
+                          </div>
+                        )}
+                        {log.requestDetails.fileSize && (
+                          <div>
+                            <span className="text-xs text-white/60 font-medium">Size:</span>
+                            <p className="text-sm text-white/80">
+                              {(log.requestDetails.fileSize / 1024).toFixed(2)} KB
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Lakera Decision */}
+            {log.lakeraDecision && (
+              <div className={`p-3 rounded-xl glass ${
+                log.lakeraDecision.flagged
+                  ? 'border-red-400/30'
+                  : 'border-green-400/30'
+              }`}>
+                <div className="flex items-center space-x-2 mb-2 flex-wrap">
+                  <span className="text-lg">🛡️</span>
+                  <span className="text-sm font-semibold text-white">
+                    Lakera AI Decision
+                  </span>
+                  {log.lakeraDecision.flagged ? (
+                    <span className="px-2 py-0.5 text-xs rounded-full glass text-red-300 border-red-400/50">
+                      Flagged
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 text-xs rounded-full glass text-green-300 border-green-400/30">
+                      Safe
+                    </span>
+                  )}
+                </div>
+                
+                {log.lakeraDecision.message && (
+                  <p className="text-xs text-white/70 mb-2">{log.lakeraDecision.message}</p>
+                )}
+
+                {log.lakeraDecision.categories && Object.keys(log.lakeraDecision.categories).length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-white/60 mb-1">Categories:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(log.lakeraDecision.categories)
+                        .filter(([, flagged]) => flagged)
+                        .map(([category]) => (
+                          <span
+                            key={category}
+                            className="px-2 py-1 text-xs rounded-lg glass text-red-200 border-red-400/30 capitalize"
+                          >
+                            {category.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {log.lakeraDecision.scores && Object.keys(log.lakeraDecision.scores).length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-white/60">
+                      Threat Score: {Math.max(...Object.values(log.lakeraDecision.scores)).toFixed(2)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Error Message */}
+            {log.error && (
+              <div className="mt-3 p-3 glass rounded-xl border-red-400/30">
+                <p className="text-xs text-red-200 font-medium mb-1">Error:</p>
+                <p className="text-xs text-red-300">{log.error}</p>
+              </div>
+            )}
+
+            {/* Success/Status */}
+            <div className="mt-2 flex items-center">
+              <span className={`text-xs ${log.success ? 'text-green-300' : 'text-red-300'}`}>
+                {log.success ? '✓ Success' : '✗ Failed'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

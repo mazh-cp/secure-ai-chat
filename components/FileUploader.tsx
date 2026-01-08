@@ -1,0 +1,202 @@
+'use client'
+
+import { useState, useRef, DragEvent, ChangeEvent } from 'react'
+import { UploadedFile } from '@/types/files'
+
+interface FileUploaderProps {
+  onFileUpload: (file: UploadedFile) => void
+  lakeraScanEnabled?: boolean
+  ragScanEnabled?: boolean
+}
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx']
+
+export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, ragScanEnabled = true }: FileUploaderProps) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const validateFile = (file: File): string | null => {
+    if (file.size > MAX_FILE_SIZE) {
+      return `File size exceeds 50 MB limit. Current size: ${(file.size / (1024 * 1024)).toFixed(2)} MB`
+    }
+
+    const extension = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      return `File type not supported. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`
+    }
+
+    return null
+  }
+
+  const readFileContent = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      
+      reader.onload = (e) => {
+        const result = e.target?.result
+        if (typeof result === 'string') {
+          resolve(result)
+        } else if (result instanceof ArrayBuffer) {
+          // For binary files like PDF, convert to base64
+          const bytes = new Uint8Array(result)
+          let binary = ''
+          bytes.forEach(byte => binary += String.fromCharCode(byte))
+          resolve(btoa(binary))
+        } else {
+          reject(new Error('Failed to read file'))
+        }
+      }
+      
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      
+      // Read as text for text files, as ArrayBuffer for binary
+      if (file.type.startsWith('text/') || file.type === 'application/json') {
+        reader.readAsText(file)
+      } else {
+        reader.readAsArrayBuffer(file)
+      }
+    })
+  }
+
+  const processFile = async (file: File) => {
+    setError(null)
+    setIsProcessing(true)
+
+    try {
+      const validationError = validateFile(file)
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+
+      const content = await readFileContent(file)
+
+      const uploadedFile: UploadedFile = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        content: content,
+        uploadedAt: new Date(),
+        scanStatus: 'pending',
+      }
+
+      onFileUpload(uploadedFile)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process file')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      await processFile(files[0])
+    }
+  }
+
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      await processFile(files[0])
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Drop Zone */}
+      <div
+        onClick={handleClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`
+          relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer
+          transition-all duration-300
+          ${isDragging 
+            ? 'glass-card border-brand-berry/50 scale-105' 
+            : 'glass border-brand-berry/30 hover:border-brand-berry/50 hover:scale-[1.02]'
+          }
+          ${isProcessing ? 'opacity-50 pointer-events-none' : ''}
+        `}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileSelect}
+          accept={ALLOWED_EXTENSIONS.join(',')}
+          className="hidden"
+        />
+
+        <div className="space-y-4">
+          {/* Upload Icon */}
+          <div className="mx-auto w-16 h-16 rounded-full glass flex items-center justify-center border-brand-berry/30">
+            {isProcessing ? (
+              <svg className="animate-spin h-8 w-8 text-brand-berry" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="h-8 w-8 text-brand-berry" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            )}
+          </div>
+
+          <div>
+            <p className="text-white font-medium">
+              {isProcessing ? 'Processing...' : 'Drop file here or click to upload'}
+            </p>
+            <p className="text-white/60 text-sm mt-1">
+              PDF, TXT, MD, JSON, CSV, DOCX up to 50 MB
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="glass-card rounded-2xl p-3 border-red-400/30">
+          <p className="text-red-200 text-sm">⚠️ {error}</p>
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="glass rounded-2xl p-3 border-white/20">
+        <p className="text-white/70 text-xs">
+          {ragScanEnabled && lakeraScanEnabled 
+            ? '🔒 Files are processed locally and automatically scanned by Lakera AI for RAG security threats on upload.'
+            : lakeraScanEnabled
+            ? '⚠️ RAG auto-scan is disabled. Files can be manually scanned using the Scan button.'
+            : '⚠️ Lakera scanning is disabled. Files will not be scanned for security threats.'
+          }
+        </p>
+      </div>
+    </div>
+  )
+}

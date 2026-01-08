@@ -1,0 +1,597 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 17, 24, 39;
+  --background-end-rgb: 31, 41, 55;
+  /* Earthy Brown Color Palette - https://colordrop.io/palette/75145 */
+  --wheat: 243, 229, 171; /* #f3e5ab - soft wheat */
+  --harvest-gold: 224, 197, 124; /* #e0c57c - harvest gold */
+  --whiskey: 209, 163, 92; /* #d1a35c - whiskey */
+  --copper: 184, 124, 60; /* #b87c3c - copper */
+  --paarl: 160, 92, 44; /* #a05c2c - paarl */
+  --tobacco-brown: 111, 76, 62; /* #6f4c3e - tobacco brown */
+  --congo-brown: 90, 62, 60; /* #5a3e3c - congo brown */
+  --thunder: 59, 45, 47; /* #3b2d2f - thunder */
+  /* Brand/Accent Colors - Default (Light Mode) */
+  --brand-berry: 184, 124, 60; /* #b87c3c - copper (light mode) */
+  --brand-berry-rgb: rgb(184, 124, 60);
+  --brand-berry-light: 224, 197, 124; /* #e0c57c - harvest-gold */
+  --brand-berry-dark: 160, 92, 44; /* #a05c2c - paarl */
+  /* Success/Secure Notice Design Tokens */
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --success-border: rgba(34, 197, 94, 0.3);
+  --success-text: #4ade80;
+  --radius-md: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --gap-2: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Dark Mode Background - Earthy Brown Theme */
+html.dark {
+  color-scheme: dark;
+  /* Brand/Accent Colors - Dark Mode */
+  --brand-berry: 186, 85, 211; /* #BA55D3 - MediumOrchid (dark mode accent) */
+  --brand-berry-rgb: rgb(186, 85, 211);
+  --brand-berry-light: 221, 160, 221; /* #DDA0DD - Plum (light variant for dark mode) */
+  --brand-berry-dark: 147, 112, 219; /* #9370DB - MediumPurple (dark variant for dark mode) */
+}
+
+html.dark body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(135deg, #3b2d2f 0%, #5a3e3c 25%, #6f4c3e 50%, #5a3e3c 75%, #3b2d2f 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  min-height: 100vh;
+}
+
+/* Light Mode Background - Earthy Brown Theme */
+html.light body {
+  color: rgb(59, 45, 47);
+  background: linear-gradient(135deg, #f3e5ab 0%, #e0c57c 25%, #d1a35c 50%, #e0c57c 75%, #f3e5ab 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  min-height: 100vh;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Bento Grid Layout System */
+@layer utilities {
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .bento-grid {
+      grid-template-columns: repeat(4, 1fr);
+      grid-auto-rows: minmax(200px, auto);
+    }
+  }
+
+  .bento-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .bento-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(var(--brand-berry), 0.3);
+  }
+
+  /* Bento Card Sizes */
+  .bento-span-1 {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+
+  .bento-span-2 {
+    grid-column: span 2;
+  }
+
+  .bento-span-3 {
+    grid-column: span 3;
+  }
+
+  .bento-span-4 {
+    grid-column: span 4;
+  }
+
+  .bento-row-span-1 {
+    grid-row: span 1;
+  }
+
+  .bento-row-span-2 {
+    grid-row: span 2;
+  }
+
+  .bento-row-span-3 {
+    grid-row: span 3;
+  }
+
+  @media (max-width: 768px) {
+    .bento-span-2,
+    .bento-span-3,
+    .bento-span-4 {
+      grid-column: span 1;
+    }
+  }
+
+  /* Glassmorphism Base Styles */
+  /* Dark Mode Glass */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(var(--brand-berry), 0.3);
+    box-shadow: 0 8px 32px 0 rgba(var(--brand-berry), 0.2);
+  }
+
+  html.light .glass {
+    background: rgba(243, 229, 171, 0.4);
+    border: 1px solid rgba(209, 163, 92, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(184, 124, 60, 0.15);
+  }
+
+  .glass-dark {
+    background: rgba(59, 45, 47, 0.3);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(var(--brand-berry), 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  html.light .glass-dark {
+    background: rgba(243, 229, 171, 0.3);
+    border: 1px solid rgba(209, 163, 92, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    border: 1px solid rgba(var(--brand-berry), 0.4);
+    box-shadow: 
+      0 8px 32px 0 rgba(var(--brand-berry), 0.25),
+      inset 0 1px 0 rgba(var(--brand-berry-light), 0.3);
+  }
+
+  html.light .glass-card {
+    background: rgba(243, 229, 171, 0.6);
+    border: 1px solid rgba(209, 163, 92, 0.5);
+    box-shadow: 
+      0 8px 32px 0 rgba(184, 124, 60, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .glass-button {
+    background: rgba(var(--brand-berry), 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(var(--brand-berry), 0.4);
+    box-shadow: 
+      0 4px 16px 0 rgba(var(--brand-berry), 0.2),
+      inset 0 1px 0 rgba(var(--brand-berry-light), 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html.light .glass-button {
+    background: rgba(209, 163, 92, 0.3);
+    border: 1px solid rgba(184, 124, 60, 0.5);
+    box-shadow: 
+      0 4px 16px 0 rgba(184, 124, 60, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .glass-button:hover {
+    background: rgba(var(--brand-berry), 0.3);
+    transform: translateY(-2px);
+    border-color: rgba(var(--brand-berry), 0.6);
+    box-shadow: 
+      0 8px 24px 0 rgba(var(--brand-berry), 0.3),
+      inset 0 1px 0 rgba(var(--brand-berry-light), 0.5);
+  }
+
+  html.light .glass-button:hover {
+    background: rgba(209, 163, 92, 0.4);
+    border-color: rgba(184, 124, 60, 0.7);
+    box-shadow: 
+      0 8px 24px 0 rgba(184, 124, 60, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(var(--brand-berry), 0.3);
+    box-shadow: 
+      0 4px 16px 0 rgba(var(--brand-berry), 0.1),
+      inset 0 1px 0 rgba(var(--brand-berry-light), 0.2);
+  }
+
+  html.light .glass-input {
+    background: rgba(243, 229, 171, 0.6);
+    border: 1px solid rgba(209, 163, 92, 0.4);
+    box-shadow: 
+      0 4px 16px 0 rgba(184, 124, 60, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(var(--brand-berry), 0.6);
+    box-shadow: 
+      0 4px 16px 0 rgba(var(--brand-berry), 0.2),
+      inset 0 1px 0 rgba(var(--brand-berry-light), 0.4),
+      0 0 0 3px rgba(var(--brand-berry), 0.2);
+  }
+
+  html.light .glass-input:focus {
+    background: rgba(243, 229, 171, 0.8);
+    border-color: rgba(184, 124, 60, 0.6);
+    box-shadow: 
+      0 4px 16px 0 rgba(184, 124, 60, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 0 0 3px rgba(184, 124, 60, 0.2);
+  }
+
+  .liquid-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-shimmer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(var(--brand-berry-light), 0.3),
+      transparent
+    );
+    animation: shimmer 3s infinite;
+  }
+
+  html.light .liquid-shimmer::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(209, 163, 92, 0.4),
+      transparent
+    );
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Theme-aware text colors */
+  .text-theme {
+    color: rgb(255, 255, 255);
+  }
+
+  html.light .text-theme {
+    color: rgb(59, 45, 47);
+  }
+
+  .text-theme-muted {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  html.light .text-theme-muted {
+    color: rgba(59, 45, 47, 0.7);
+  }
+
+  .text-theme-subtle {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  html.light .text-theme-subtle {
+    color: rgba(59, 45, 47, 0.5);
+  }
+
+  /* Override text-white in light mode for better readability */
+  html.light .text-white {
+    color: rgb(59, 45, 47) !important;
+  }
+
+  /* Override text-white with opacity variants in light mode */
+  html.light [class*="text-white/"] {
+    color: rgba(59, 45, 47, 0.7) !important;
+  }
+
+  html.light [class*="text-white/60"] {
+    color: rgba(59, 45, 47, 0.6) !important;
+  }
+
+  html.light [class*="text-white/70"] {
+    color: rgba(59, 45, 47, 0.7) !important;
+  }
+
+  html.light [class*="text-white/50"] {
+    color: rgba(59, 45, 47, 0.5) !important;
+  }
+
+  html.light [class*="text-white/40"] {
+    color: rgba(59, 45, 47, 0.4) !important;
+  }
+
+  /* Override dark/black text colors in dark mode for better readability */
+  html.dark .text-gray-900,
+  html.dark .text-black {
+    color: rgb(255, 255, 255) !important;
+  }
+
+  html.dark .text-gray-800 {
+    color: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  html.dark .text-gray-700 {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  html.dark .text-gray-600 {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+
+  html.dark .text-gray-500 {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  html.dark .text-gray-400 {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  html.dark .text-gray-300 {
+    color: rgba(255, 255, 255, 0.5) !important;
+  }
+
+  html.dark .text-slate-900,
+  html.dark .text-slate-800,
+  html.dark .text-slate-700,
+  html.dark .text-slate-600 {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  html.dark .text-zinc-900,
+  html.dark .text-zinc-800,
+  html.dark .text-zinc-700,
+  html.dark .text-zinc-600 {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  html.dark .text-neutral-900,
+  html.dark .text-neutral-800,
+  html.dark .text-neutral-700,
+  html.dark .text-neutral-600 {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  /* Ensure input placeholders are readable in light mode */
+  html.light .glass-input::placeholder {
+    color: rgba(59, 45, 47, 0.6) !important;
+  }
+
+  html.light input::placeholder,
+  html.light textarea::placeholder {
+    color: rgba(59, 45, 47, 0.6) !important;
+  }
+
+  /* Brand accent colors */
+  .text-brand-accent {
+    color: var(--brand-berry-rgb);
+  }
+
+  html.light .text-brand-accent {
+    color: rgb(160, 92, 44);
+  }
+
+  .border-brand-accent {
+    border-color: rgba(var(--brand-berry), 0.5);
+  }
+
+  html.light .border-brand-accent {
+    border-color: rgba(209, 163, 92, 0.5);
+  }
+
+  /* Override brand-berry color classes to use CSS variable in dark mode */
+  html.dark .text-brand-berry {
+    color: var(--brand-berry-rgb) !important;
+  }
+
+  html.dark .bg-brand-berry {
+    background-color: var(--brand-berry-rgb) !important;
+  }
+
+  html.dark .border-brand-berry {
+    border-color: var(--brand-berry-rgb) !important;
+  }
+
+  html.dark .ring-brand-berry {
+    --tw-ring-color: var(--brand-berry-rgb) !important;
+  }
+
+  /* Handle brand-berry opacity variants in dark mode */
+  html.dark [class*="bg-brand-berry/"],
+  html.dark [class*="border-brand-berry/"],
+  html.dark [class*="text-brand-berry/"] {
+    --tw-text-opacity: 1;
+    --tw-bg-opacity: 1;
+    --tw-border-opacity: 1;
+  }
+
+  /* Specific opacity variants */
+  html.dark .bg-brand-berry\/30 {
+    background-color: rgba(var(--brand-berry), 0.3) !important;
+  }
+
+  html.dark .bg-brand-berry\/50 {
+    background-color: rgba(var(--brand-berry), 0.5) !important;
+  }
+
+  html.dark .bg-brand-berry\/20 {
+    background-color: rgba(var(--brand-berry), 0.2) !important;
+  }
+
+  html.dark .border-brand-berry\/30 {
+    border-color: rgba(var(--brand-berry), 0.3) !important;
+  }
+
+  html.dark .border-brand-berry\/50 {
+    border-color: rgba(var(--brand-berry), 0.5) !important;
+  }
+
+  html.dark .ring-brand-berry\/30 {
+    --tw-ring-color: rgba(var(--brand-berry), 0.3) !important;
+  }
+
+  /* Floating animation */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Pulse glow - Earthy Brown */
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(var(--brand-berry-light), 0.4);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(var(--brand-berry-light), 0.6);
+    }
+  }
+
+  html.light .pulse-glow {
+    animation: pulseGlowLight 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlowLight {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(209, 163, 92, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(209, 163, 92, 0.6);
+    }
+  }
+
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+}
+
+/* Custom scrollbar with Earthy Brown effect */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(184, 124, 60, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: rgba(209, 163, 92, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(184, 124, 60, 0.4);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(209, 163, 92, 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(184, 124, 60, 0.6);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(209, 163, 92, 0.5);
+}
+
+/* Selection styling - Earthy Brown */
+::selection {
+  background: rgba(224, 197, 124, 0.3);
+  color: white;
+}
+
+html.light ::selection {
+  background: rgba(209, 163, 92, 0.3);
+  color: rgb(59, 45, 47);
+}
+
+::-moz-selection {
+  background: rgba(224, 197, 124, 0.3);
+  color: white;
+}
+
+html.light ::-moz-selection {
+  background: rgba(209, 163, 92, 0.3);
+  color: rgb(59, 45, 47);
+}
+
+/* Success/Secure Notice Block Styles */
+.notice-success {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success-text);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
