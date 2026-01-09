@@ -157,18 +157,189 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
             </div>
           </div>
 
-          {/* Scan Details (if flagged) */}
-          {file.scanStatus === 'flagged' && file.scanDetails && (
-            <div className="mt-3 p-3 glass-card rounded-xl border-red-400/30">
-              <p className="text-red-300 text-sm font-medium">Security Issues Detected:</p>
-              {file.scanDetails.categories && (
-                <ul className="mt-1 text-red-300 text-xs space-y-1">
-                  {Object.entries(file.scanDetails.categories)
-                    .filter(([, value]) => value)
-                    .map(([key]) => (
-                      <li key={key}>• {key.replace(/_/g, ' ')}</li>
-                    ))}
-                </ul>
+          {/* Scan Details (if flagged or has TE details) */}
+          {(file.scanStatus === 'flagged' || file.checkpointTeDetails) && (
+            <div className={`mt-3 p-3 glass-card rounded-xl ${
+              file.scanStatus === 'flagged' ? 'border-red-400/30' : 'border-blue-400/30'
+            }`}>
+              {/* Check Point TE Details */}
+              {file.checkpointTeDetails && (
+                <div className="space-y-2">
+                  <p className={`text-sm font-medium ${
+                    file.scanStatus === 'flagged' ? 'text-red-300' : 'text-blue-300'
+                  }`}>
+                    {file.scanStatus === 'flagged' ? '🛡️ Check Point TE Security Alert:' : '🛡️ Check Point TE Analysis:'}
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    {/* Verdict and Status */}
+                    {file.checkpointTeDetails.logFields.verdict && (
+                      <div>
+                        <span className="text-theme-subtle">Verdict:</span>{' '}
+                        <span className={`font-medium ${
+                          file.checkpointTeDetails.logFields.verdict === 'Malicious' ? 'text-red-400' :
+                          file.checkpointTeDetails.logFields.verdict === 'Suspicious' ? 'text-yellow-400' :
+                          'text-green-400'
+                        }`}>
+                          {file.checkpointTeDetails.logFields.verdict}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.status && (
+                      <div>
+                        <span className="text-theme-subtle">Status:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.status}</span>
+                      </div>
+                    )}
+                    
+                    {/* Severity and Confidence */}
+                    {file.checkpointTeDetails.logFields.severity && (
+                      <div>
+                        <span className="text-theme-subtle">Severity:</span>{' '}
+                        <span className={`font-medium ${
+                          file.checkpointTeDetails.logFields.severity === 'Critical' ? 'text-red-400' :
+                          file.checkpointTeDetails.logFields.severity === 'High' ? 'text-orange-400' :
+                          file.checkpointTeDetails.logFields.severity === 'Medium' ? 'text-yellow-400' :
+                          'text-blue-400'
+                        }`}>
+                          {file.checkpointTeDetails.logFields.severity}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.confidence_level && (
+                      <div>
+                        <span className="text-theme-subtle">Confidence:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.confidence_level}</span>
+                      </div>
+                    )}
+                    
+                    {/* Protection and Attack Info */}
+                    {file.checkpointTeDetails.logFields.protection_name && (
+                      <div>
+                        <span className="text-theme-subtle">Protection:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.protection_name}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.protection_type && (
+                      <div>
+                        <span className="text-theme-subtle">Type:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.protection_type}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.attack && (
+                      <div className="md:col-span-2">
+                        <span className="text-theme-subtle">Attack:</span>{' '}
+                        <span className="text-theme font-medium">{file.checkpointTeDetails.logFields.attack}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.attack_info && (
+                      <div className="md:col-span-2">
+                        <span className="text-theme-subtle">Attack Info:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.attack_info}</span>
+                      </div>
+                    )}
+                    
+                    {/* Action and Action Details */}
+                    {file.checkpointTeDetails.logFields.action && (
+                      <div>
+                        <span className="text-theme-subtle">Action:</span>{' '}
+                        <span className="text-theme font-medium capitalize">{file.checkpointTeDetails.logFields.action}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.action_details && (
+                      <div className="md:col-span-2">
+                        <span className="text-theme-subtle">Action Details:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.action_details}</span>
+                      </div>
+                    )}
+                    
+                    {/* Analyzed On and Determined By */}
+                    {file.checkpointTeDetails.logFields.analyzed_on && (
+                      <div>
+                        <span className="text-theme-subtle">Analyzed On:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.analyzed_on}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.te_verdict_determined_by && (
+                      <div className="md:col-span-2">
+                        <span className="text-theme-subtle">Determined By:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.te_verdict_determined_by}</span>
+                      </div>
+                    )}
+                    
+                    {/* Risk Scores */}
+                    {file.checkpointTeDetails.logFields.file_risk !== undefined && (
+                      <div>
+                        <span className="text-theme-subtle">File Risk:</span>{' '}
+                        <span className={`font-medium ${
+                          file.checkpointTeDetails.logFields.file_risk >= 7 ? 'text-red-400' :
+                          file.checkpointTeDetails.logFields.file_risk >= 4 ? 'text-yellow-400' :
+                          'text-green-400'
+                        }`}>
+                          {file.checkpointTeDetails.logFields.file_risk}/10
+                        </span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.confidence !== undefined && (
+                      <div>
+                        <span className="text-theme-subtle">Confidence Score:</span>{' '}
+                        <span className="text-theme">{Math.round((file.checkpointTeDetails.logFields.confidence || 0) * 100)}%</span>
+                      </div>
+                    )}
+                    
+                    {/* Triggered By and Vendor */}
+                    {file.checkpointTeDetails.logFields.triggered_by && (
+                      <div>
+                        <span className="text-theme-subtle">Triggered By:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.triggered_by}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.vendor_list && (
+                      <div>
+                        <span className="text-theme-subtle">Vendor:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.vendor_list}</span>
+                      </div>
+                    )}
+                    
+                    {/* Description and Reason */}
+                    {file.checkpointTeDetails.logFields.description && (
+                      <div className="md:col-span-2">
+                        <span className="text-theme-subtle">Description:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.description}</span>
+                      </div>
+                    )}
+                    
+                    {file.checkpointTeDetails.logFields.reason && (
+                      <div className="md:col-span-2">
+                        <span className="text-theme-subtle">Reason:</span>{' '}
+                        <span className="text-theme">{file.checkpointTeDetails.logFields.reason}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Legacy scan details (for Lakera or other scanners) */}
+              {file.scanDetails && file.scanDetails.categories && Object.keys(file.scanDetails.categories).length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <p className="text-theme-subtle text-xs font-medium mb-1">Additional Security Issues:</p>
+                  <ul className="text-theme-subtle text-xs space-y-1">
+                    {Object.entries(file.scanDetails.categories)
+                      .filter(([, value]) => value)
+                      .map(([key]) => (
+                        <li key={key}>• {key.replace(/_/g, ' ')}</li>
+                      ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}

@@ -193,12 +193,15 @@ The application uses environment variables for configuration. Copy `.env.example
   - Get it from: https://platform.lakera.ai/
 - `LAKERA_ENDPOINT` - Lakera API endpoint (defaults to `https://api.lakera.ai/v2/guard`)
 - `LAKERA_PROJECT_ID` - Your Lakera project ID (if using project-specific keys)
+- `CHECKPOINT_TE_API_KEY` - Your Check Point ThreatCloud / Threat Emulation API key (for file sandboxing)
+  - Can also be configured via Settings page (stored server-side)
+  - Get it from: https://te.checkpoint.com/
 - `NEXT_PUBLIC_APP_NAME` - Application name (defaults to "Secure AI Chat")
 - `NEXT_PUBLIC_APP_VERSION` - Application version (defaults to "0.1.0")
 - `PORT` - Server port (defaults to 3000)
 - `HOSTNAME` - Server hostname (defaults to "0.0.0.0")
 
-**Note:** API keys can also be configured through the Settings page in the application, where they are stored in localStorage. For production, consider using environment variables or a secure key management service.
+**Note:** API keys can also be configured through the Settings page in the application. Lakera and OpenAI keys are stored in localStorage (client-side), while Check Point TE API key is stored server-side for security. For production, consider using environment variables or a secure key management service.
 
 See `.env.example` for a complete list of available variables.
 
@@ -262,6 +265,26 @@ Secure-Ai-Chat/
 - `npm run smoke` - Run smoke tests (lint + build verification)
 
 ## Development
+
+### Release Gate
+
+Before deploying, run the Release Gate validation:
+
+```bash
+npm run release-gate
+```
+
+**What it checks**:
+- ✅ Clean install
+- ✅ TypeScript type checking
+- ✅ ESLint validation (including security rules)
+- ✅ Security: API key leakage prevention
+- ✅ Production build
+- ✅ Build output security scan
+
+**Exit Code**: `0` = PASS (ready for deployment), `1` = FAIL (do not deploy)
+
+See `RELEASE.md` for detailed documentation.
 
 ### Smoke Tests
 

@@ -7,7 +7,6 @@
  * @param message - The message to encrypt
  * @param _key - Encryption key (unused in placeholder implementation)
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function encryptMessage(message: string, _key: string): string {
   // TODO: Implement actual encryption (e.g., AES-256)
   // This is a placeholder
@@ -19,7 +18,6 @@ export function encryptMessage(message: string, _key: string): string {
  * @param encryptedMessage - The encrypted message to decrypt
  * @param _key - Decryption key (unused in placeholder implementation)
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function decryptMessage(encryptedMessage: string, _key: string): string {
   // TODO: Implement actual decryption
   // This is a placeholder

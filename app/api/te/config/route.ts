@@ -1,0 +1,139 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { setTeApiKey, isTeApiKeyConfiguredSync } from '@/lib/checkpoint-te'
+import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
+
+/**
+ * GET - Check if Check Point TE API key is configured
+ * Returns status without exposing the key
+ */
+export async function GET() {
+  try {
+    const configured = isTeApiKeyConfiguredSync()
+    
+    return NextResponse.json({
+      configured,
+      message: configured ? 'Check Point TE API key is configured' : 'Check Point TE API key is not configured',
+    })
+  } catch (error) {
+    console.error('Error checking TE API key status:', error)
+    return NextResponse.json(
+      { error: 'Failed to check API key status' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * POST - Set or update Check Point TE API key
+ * Body: { apiKey: string }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { apiKey } = body
+
+    if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+      return NextResponse.json(
+        { error: 'API key is required and must be a non-empty string' },
+        { status: 400 }
+      )
+    }
+
+    // Validate API key format
+    // Remove any existing prefix if user accidentally included it
+    let trimmedKey = apiKey.trim()
+    
+    // Remove TE_API_KEY_ prefix if user included it (we'll add it when making requests)
+    if (trimmedKey.startsWith('TE_API_KEY_')) {
+      trimmedKey = trimmedKey.substring('TE_API_KEY_'.length).trim()
+    }
+    
+    // Basic validation - Check Point TE keys are typically alphanumeric
+    if (trimmedKey.length < 10) {
+      return NextResponse.json(
+        { error: 'Invalid API key format. Key appears too short. Please verify your Check Point TE API key.' },
+        { status: 400 }
+      )
+    }
+    
+    // Additional validation: Check Point TE keys should not contain spaces (except at start/end which we trim)
+    if (trimmedKey.includes(' ')) {
+      return NextResponse.json(
+        { error: 'Invalid API key format. Key should not contain spaces. Please verify your Check Point TE API key.' },
+        { status: 400 }
+      )
+    }
+
+    // Store the key (persists to encrypted file)
+    await setTeApiKey(trimmedKey)
+
+    console.log('Check Point TE API key configured and saved successfully')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Check Point TE API key configured successfully',
+      configured: true,
+    })
+  } catch (error) {
+    console.error('Error setting TE API key:', error)
+    return NextResponse.json(
+      { error: 'Failed to set API key' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * DELETE - Remove Check Point TE API key
+ * Requires PIN verification if PIN is configured
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // Check if PIN is configured
+    const pinConfigured = await isPinConfigured()
+    
+    if (pinConfigured) {
+      // Require PIN verification
+      const body = await request.json().catch(() => ({}))
+      const { pin } = body
+
+      if (!pin || typeof pin !== 'string') {
+        return NextResponse.json(
+          { 
+            error: 'PIN verification required to remove API key',
+            requiresPin: true,
+          },
+          { status: 401 }
+        )
+      }
+
+      // Verify PIN
+      const isValid = await verifyPinCode(pin)
+      if (!isValid) {
+        return NextResponse.json(
+          { 
+            error: 'PIN is incorrect',
+            requiresPin: true,
+          },
+          { status: 401 }
+        )
+      }
+    }
+
+    // PIN verified (or not configured), proceed with removal
+    await setTeApiKey(null)
+    console.log('Check Point TE API key removed')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Check Point TE API key removed successfully',
+      configured: false,
+    })
+  } catch (error) {
+    console.error('Error removing TE API key:', error)
+    return NextResponse.json(
+      { error: 'Failed to remove API key' },
+      { status: 500 }
+    )
+  }
+}

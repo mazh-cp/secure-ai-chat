@@ -2,6 +2,101 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-01-XX
+
+### Added
+- **Check Point ThreatCloud / Threat Emulation (TE) Integration**
+  - Server-side only API key storage (encrypted at rest in `.secure-storage/checkpoint-te-key.enc`)
+  - File sandbox toggle via Check Point ThreatCloud TE
+  - Secure API key management in Settings UI with PIN protection
+  - File upload sandboxing with ThreatCloud TE proxy endpoints
+  - Polling-based query system with bounded timeouts (60s total, 30 attempts)
+  - Comprehensive threat detection with detailed log fields from Check Point R81 documentation
+
+- **PIN Verification System**
+  - 4-8 digit PIN for protecting sensitive API key operations
+  - PBKDF2 hashing with SHA-512 (100,000 iterations)
+  - PIN required for removing Check Point TE API key or clearing any API keys
+  - Secure storage in `.secure-storage/verification-pin.hash`
+
+- **System Logging**
+  - Server-side system logs for debugging and auditing
+  - System Logs section in Dashboard with filtering by level and service
+  - Detailed error logging for Check Point TE API failures
+  - Request IDs for tracking API interactions
+
+- **Security Hard Gates**
+  - ESLint rule preventing `checkpoint-te` imports in client components
+  - Automated security audit script (`scripts/check-security.sh`)
+  - Build output scan for API key leakage
+  - Release gate validation script (`scripts/release-gate.sh`)
+
+- **Release Gate Automation**
+  - Pre-deployment validation script with package manager detection
+  - Comprehensive validation (lint, type-check, build, security scan)
+  - Clear PASS/FAIL output with exit codes
+  - Release documentation (`RELEASE.md`)
+
+### Enhanced
+- **ThreatCloud Proxy Hardening**
+  - Request timeouts: 30s upload, 30s query, 60s polling
+  - Capped retries with exponential backoff for transient failures
+  - Response validation with schema checks
+  - Bounded polling with safe "unknown/pending" fallback
+  - User-friendly error messages (no stack traces to client)
+  - File size limits: 50 MB enforced on frontend and backend
+  - File type validation: `.pdf`, `.txt`, `.md`, `.json`, `.csv`, `.docx`
+
+- **Error Handling**
+  - Specific error messages for 400, 401, 403, 502, 504
+  - Troubleshooting tips for common errors
+  - Graceful degradation when ThreatCloud unavailable
+  - Fail-safe behavior (app works fully without Check Point TE configured)
+
+- **Stability & Performance**
+  - Non-blocking UI (all operations async)
+  - Resource-safe file handling (streams, memory-efficient)
+  - Parallel uploads handled independently
+  - Restart-safe configuration (persistent encrypted storage)
+  - Event-loop safety (no blocking operations)
+
+- **Backwards Compatibility**
+  - New settings fields optional with safe defaults
+  - Existing users continue to work without migrations
+  - No breaking changes to file upload flow
+  - Existing Lakera scanning continues to work
+
+### Security
+- **API Key Protection**
+  - Check Point TE API keys stored server-side only (never in client)
+  - Encrypted at rest using AES-256-CBC
+  - Environment variable support (`CHECKPOINT_TE_API_KEY`)
+  - API keys redacted in logs (only prefixes shown)
+  - No API keys in localStorage/sessionStorage/client bundle
+
+- **PIN Protection**
+  - All API key clearing operations require PIN (when configured)
+  - PIN protection for OpenAI, Lakera AI, Lakera Project ID, Lakera Endpoint, and Check Point TE keys
+  - Timing-safe PIN verification (prevents timing attacks)
+
+### Fixed
+- Hydration error in ThemeToggleButton (server/client render mismatch)
+- Form-data stream handling for Check Point TE uploads
+- API base URL corrected to `https://te-api.checkpoint.com/tecloud/api/v1/file`
+- Response validation for Check Point TE API responses
+- TypeScript type errors in system logging interfaces
+
+### Documentation
+- Added `RELEASE.md` with release gate documentation
+- Added `RELEASE_GATE_SUMMARY.md` with detailed validation summary
+- Added `POST_CHANGE_VALIDATION_REPORT.md` with comprehensive validation report
+- Added `FINAL_VALIDATION_CHECKLIST.md` with quick reference checklist
+- Updated `README.md` with Release Gate section
+
+---
+
+## [0.1.0] - 2024-XX-XX
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
