@@ -106,10 +106,18 @@ export default function Logo({ className = '', size = 'medium', asHeader = false
         {/* Text "CHECK POINT™" */}
         <div className="flex flex-col justify-center">
           <div className="flex items-baseline">
-            <span className={`${sizes.text} font-bold text-gray-900 dark:text-white tracking-tight leading-none`}>
+            <span 
+              className={`${sizes.text} font-bold tracking-tight leading-none`}
+              style={{ color: "var(--text)" }}
+            >
               CHECK POINT
             </span>
-            <span className="text-[10px] text-gray-900 dark:text-white leading-none ml-0.5 align-top">™</span>
+            <span 
+              className="text-[10px] leading-none ml-0.5 align-top"
+              style={{ color: "var(--text)" }}
+            >
+              ™
+            </span>
           </div>
         </div>
       </div>

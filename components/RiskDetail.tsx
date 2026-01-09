@@ -13,24 +13,38 @@ interface RiskDetailProps {
 }
 
 function getSeverityBadge(severity: OWASPRisk['severity']) {
+  // Use CSS variables with data-theme selectors to avoid hydration issues
+  // Background colors adapt via CSS, not JavaScript
   const badges = {
     critical: (
-      <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
+      <span 
+        className="px-3 py-1 rounded-full text-sm font-semibold severity-critical" 
+        style={{ color: "var(--chip-text)" }}
+      >
         🔴 Critical
       </span>
     ),
     high: (
-      <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
+      <span 
+        className="px-3 py-1 rounded-full text-sm font-semibold severity-high" 
+        style={{ color: "var(--chip-text)" }}
+      >
         🟠 High
       </span>
     ),
     medium: (
-      <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
+      <span 
+        className="px-3 py-1 rounded-full text-sm font-semibold severity-medium" 
+        style={{ color: "var(--chip-text)" }}
+      >
         🟡 Medium
       </span>
     ),
     low: (
-      <span className="px-3 py-1 rounded-full bg-brand-berry/20 text-brand-berry dark:bg-brand-berry/30 dark:text-brand-berry text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
+      <span 
+        className="px-3 py-1 rounded-full text-sm font-semibold severity-low" 
+        style={{ color: "var(--chip-text)" }}
+      >
         🔵 Low
       </span>
     ),

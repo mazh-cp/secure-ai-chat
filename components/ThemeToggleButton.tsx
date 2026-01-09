@@ -4,11 +4,29 @@ import { useEffect, useState } from "react";
 const KEY = "theme";
 
 export default function ThemeToggleButton() {
-  const [theme, setTheme] = useState<"day" | "dark">("dark");
+  // Initialize from data-theme attribute (set by ThemeScript) to avoid hydration mismatch
+  const [theme, setTheme] = useState<"day" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      const dataTheme = document.documentElement.getAttribute("data-theme");
+      if (dataTheme === "day" || dataTheme === "dark") {
+        return dataTheme;
+      }
+      // Fallback to localStorage if data-theme not set
+      const stored = (localStorage.getItem(KEY) as "day" | "dark" | null) ?? "dark";
+      return stored;
+    }
+    return "dark"; // SSR fallback
+  });
 
   useEffect(() => {
-    const stored = (localStorage.getItem(KEY) as "day" | "dark" | null) ?? "dark";
-    setTheme(stored);
+    // Sync with data-theme attribute (set by ThemeScript)
+    const dataTheme = document.documentElement.getAttribute("data-theme");
+    if (dataTheme === "day" || dataTheme === "dark") {
+      setTheme(dataTheme);
+    } else {
+      const stored = (localStorage.getItem(KEY) as "day" | "dark" | null) ?? "dark";
+      setTheme(stored);
+    }
   }, []);
 
   const toggle = () => {

@@ -677,3 +677,32 @@ html.light ::-moz-selection {
   --destructive-bg: #7F1D1D;
 }
 
+
+/* Severity badge colors - theme-aware via CSS variables */
+.severity-critical {
+  background-color: #FEE2E2;
+}
+:root[data-theme="dark"] .severity-critical {
+  background-color: rgba(239, 68, 68, 0.3);
+}
+
+.severity-high {
+  background-color: #FED7AA;
+}
+:root[data-theme="dark"] .severity-high {
+  background-color: rgba(249, 115, 22, 0.3);
+}
+
+.severity-medium {
+  background-color: #FEF3C7;
+}
+:root[data-theme="dark"] .severity-medium {
+  background-color: rgba(234, 179, 8, 0.3);
+}
+
+.severity-low {
+  background-color: rgba(142, 97, 240, 0.2);
+}
+:root[data-theme="dark"] .severity-low {
+  background-color: rgba(142, 97, 240, 0.3);
+}
