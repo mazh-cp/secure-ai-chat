@@ -37,7 +37,15 @@ nano .env.local
 # PORT=3000
 ```
 
-### Step 3: Build and Start
+### Step 3: Verify Installation (Smoke Tests)
+
+```bash
+# Run smoke tests to verify lint and build pass
+npm run smoke
+# Expected: [smoke] ✅ lint + build passed
+```
+
+### Step 4: Build and Start
 
 ```bash
 # Build for production
@@ -57,7 +65,7 @@ npm start
    - Network:      http://0.0.0.0:3000
 ```
 
-### Step 4: Verify App is Running
+### Step 5: Verify App is Running
 
 **In a new terminal window:**
 
@@ -75,7 +83,7 @@ curl http://localhost:3000/api/health
 # OR if accessing from another machine: http://YOUR_VM_IP:3000
 ```
 
-### Step 5: Verify Restart Behavior
+### Step 6: Verify Restart Behavior
 
 **Option A: Manual Process Restart Test**
 
@@ -196,7 +204,7 @@ pm2 start npm --name "secure-ai-chat" -- start
 pm2 restart secure-ai-chat
 ```
 
-### Step 6: Verify Theme Switching and Restart-Proof Behavior
+### Step 7: Verify Theme Switching and Restart-Proof Behavior
 
 ```bash
 # Access the app in browser
@@ -217,7 +225,7 @@ pm2 restart secure-ai-chat
 # 4. Check browser console - no hydration warnings
 ```
 
-### Step 7: Firewall Configuration (For External Access)
+### Step 8: Firewall Configuration (For External Access)
 
 ```bash
 # Allow port 3000 through UFW firewall

@@ -102,14 +102,20 @@ yarn install
 pnpm install
 ```
 
-3. **Set up environment variables:**
+3. **Run smoke tests (recommended after installation):**
+```bash
+npm run smoke
+# This verifies lint and build pass - catches restart issues early
+```
+
+4. **Set up environment variables:**
 ```bash
 cp .env.example .env.local
 ```
 
 Edit `.env.local` and add your API keys and configuration values. See `.env.example` for required variables.
 
-4. **Run the development server:**
+5. **Run the development server:**
 ```bash
 npm run dev
 # or
@@ -118,7 +124,7 @@ yarn dev
 pnpm dev
 ```
 
-5. **Open [http://localhost:3000](http://localhost:3000) in your browser.**
+6. **Open [http://localhost:3000](http://localhost:3000) in your browser.**
 
 ## Production Build
 
@@ -253,8 +259,30 @@ Secure-Ai-Chat/
 - `npm run check:ci` - Run type-check, lint, and format check (for CI/CD)
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
+- `npm run smoke` - Run smoke tests (lint + build verification)
 
 ## Development
+
+### Smoke Tests
+
+Before starting development or after pulling changes, run smoke tests to verify everything is working:
+
+```bash
+npm run smoke
+```
+
+This script:
+- Verifies Node.js and npm versions
+- Runs linting checks
+- Builds the production bundle
+- Catches restart issues and build problems early
+
+**When to run smoke tests:**
+- After `npm install` or dependency updates
+- Before committing changes
+- After pulling from git
+- Before deploying to production
+- When troubleshooting build issues
 
 ### Adding AI Integration
 
