@@ -30,6 +30,10 @@ export default function MessageInput({ onSendMessage, isLoading, disabled }: Mes
           onChange={(e) => setInput(e.target.value)}
           placeholder={disabled ? "Configure API key in Settings to start chatting..." : "Type your message securely..."}
           className="flex-1 glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-berry/30 disabled:opacity-50 transition-all"
+          style={{
+            background: "var(--input-bg, rgba(var(--bg-secondary), 0.15))",
+            borderColor: "var(--input-border, rgba(var(--border-default), 0.3))",
+          }}
           disabled={isDisabled}
         />
         <button

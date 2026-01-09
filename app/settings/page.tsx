@@ -1,18 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import dynamicImport from 'next/dynamic'
 import SettingsForm from '@/components/SettingsForm'
 import SecurityIndicator from '@/components/SecurityIndicator'
 import MCPToolsSetup from '@/components/MCPToolsSetup'
 
 // Force dynamic rendering to prevent static generation issues with ThemeProvider
 export const dynamic = 'force-dynamic'
-
-// Dynamically import ThemeToggle to prevent SSR issues
-const DynamicThemeToggle = dynamicImport(() => import('@/components/ThemeToggle'), {
-  ssr: false,
-})
 
 export default function SettingsPage() {
   const [isSecure, setIsSecure] = useState(true)
@@ -39,11 +33,6 @@ export default function SettingsPage() {
             <SecurityIndicator isSecure={isSecure} />
           </div>
         </div>
-      </div>
-
-      {/* Theme Toggle Card */}
-      <div className="bento-card bento-span-2 glass-card">
-        <DynamicThemeToggle />
       </div>
 
       {/* Settings Form Card */}

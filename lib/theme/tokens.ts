@@ -1,0 +1,36 @@
+export const themes = {
+  day: {
+    bg: "#F8F8F8",
+    surface: "#FFFFFF",
+    surfaceAlt: "#F0F0F0",
+    border: "#E8E8EA",
+    borderStrong: "#C0C6CD",
+    text: "#1C2435",
+    textMuted: "#6B7280",
+    textFaint: "#9AA0A8",
+    primary: "#8B5CF6",
+    primaryHover: "#A78BFA",
+    safe: "#22C55E",
+    flagged: "#EF4444",
+    cardShadow: "0 1px 2px rgba(16,24,40,0.06), 0 2px 8px rgba(16,24,40,0.06)",
+    chipText: "#1C2435",
+  },
+  dark: {
+    bg: "#0F172A",
+    surface: "#1E293B",
+    surfaceAlt: "#243447",
+    border: "#3B475A",
+    borderStrong: "#475569",
+    text: "#E5E7EB",
+    textMuted: "#94A3B8",
+    textFaint: "#64748B",
+    primary: "#8B5CF6",
+    primaryHover: "#A78BFA",
+    safe: "#22C55E",
+    flagged: "#EF4444",
+    cardShadow: "none",
+    chipText: "#E5E7EB",
+  },
+} as const;
+
+export type ThemeName = keyof typeof themes;

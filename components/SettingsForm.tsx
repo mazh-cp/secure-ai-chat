@@ -229,6 +229,10 @@ export default function SettingsForm() {
   }
 
   const inputClass = "w-full glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none font-mono text-sm transition-all"
+  const inputStyle = {
+    background: "var(--input-bg, rgba(var(--bg-secondary), 0.15))",
+    borderColor: "var(--input-border, rgba(var(--border-default), 0.3))",
+  }
   const labelClass = "block text-sm font-medium text-theme-muted mb-2"
 
   // Common input props for security
@@ -240,6 +244,7 @@ export default function SettingsForm() {
     onContextMenu: handleContextMenu,
     onChange: handleChange,
     className: inputClass,
+    style: inputStyle,
     autoComplete: 'off',
     autoCorrect: 'off',
     autoCapitalize: 'off',
@@ -372,6 +377,9 @@ export default function SettingsForm() {
               type="button"
               onClick={handleClearAll}
               className="glass-button text-theme-subtle hover:text-red-400 transition-colors text-sm px-4 py-2 rounded-xl"
+              style={{
+                backgroundColor: "var(--destructive-bg, transparent)",
+              }}
             >
               Clear All Keys
             </button>
@@ -386,6 +394,10 @@ export default function SettingsForm() {
                 type="submit"
                 disabled={isSaving}
                 className="glass-button text-theme px-6 py-2 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                style={{
+                  backgroundColor: "var(--primary)",
+                  color: "white",
+                }}
               >
                 {isSaving ? 'Saving...' : 'Save Keys'}
               </button>
@@ -408,6 +420,7 @@ export default function SettingsForm() {
                 onChange={(e) => setSettings(prev => ({ ...prev, pageHeading: e.target.value }))}
                 placeholder="Enter page heading"
                 className={inputClass}
+                style={inputStyle}
               />
               <p className="text-xs text-theme-subtle mt-1">
                 Custom heading text displayed on the main chat page
@@ -458,6 +471,9 @@ export default function SettingsForm() {
                         type="button"
                         onClick={handleClearLogo}
                         className="mt-2 px-3 py-1 text-xs glass-button text-theme-subtle hover:text-red-400 rounded-lg transition-colors"
+                        style={{
+                          backgroundColor: "var(--destructive-bg, transparent)",
+                        }}
                       >
                         Remove Logo
                       </button>

@@ -34,7 +34,14 @@ export default function Home() {
   return (
     <div className="bento-grid">
       {/* Header Card - Full Width */}
-      <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer">
+      <div 
+        className="bento-card bento-span-4 glass-card p-6 liquid-shimmer"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-theme drop-shadow-lg">Secure AI Chat</h1>
@@ -49,13 +56,27 @@ export default function Home() {
       </div>
 
       {/* Banner Card - Full Width (Mobile) */}
-      <div className="bento-card bento-span-4 md:hidden glass-card rounded-2xl overflow-hidden">
+      <div 
+        className="bento-card bento-span-4 md:hidden glass-card rounded-2xl overflow-hidden"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <ChatHeader />
       </div>
 
       {/* Lakera Toggles Card */}
       {hasApiKey && (
-        <div className="bento-card bento-span-2 md:bento-span-2 glass-card p-6">
+        <div 
+          className="bento-card bento-span-2 md:bento-span-2 glass-card p-6"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--border)",
+            boxShadow: "var(--card-shadow)",
+          }}
+        >
           <LakeraToggles
             onInputScanChange={() => {}}
             onOutputScanChange={() => {}}
@@ -65,7 +86,14 @@ export default function Home() {
       )}
 
       {/* Chat Interface Card - Takes remaining space */}
-      <div className={`bento-card ${hasApiKey ? 'bento-span-2' : 'bento-span-4'} bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col`}>
+      <div 
+        className={`bento-card ${hasApiKey ? 'bento-span-2' : 'bento-span-4'} bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col`}
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <ChatInterface />
       </div>
     </div>

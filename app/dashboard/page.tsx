@@ -50,7 +50,14 @@ export default function DashboardPage() {
   return (
     <div className="bento-grid">
       {/* Header Card */}
-      <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer">
+      <div 
+        className="bento-card bento-span-4 glass-card p-6 liquid-shimmer"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-theme drop-shadow-lg">Dashboard</h1>
@@ -62,7 +69,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards - Bento Grid */}
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">📊</div>
           <div className="text-3xl font-bold text-theme mb-1">{totalLogs}</div>
@@ -70,7 +84,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">💬</div>
           <div className="text-3xl font-bold text-theme mb-1">{chatLogs}</div>
@@ -78,7 +99,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">📁</div>
           <div className="text-3xl font-bold text-theme mb-1">{fileScanLogs}</div>
@@ -86,7 +114,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">🚫</div>
           <div className="text-3xl font-bold text-red-400 mb-1">{blockedCount}</div>
@@ -94,7 +129,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-brand-berry/30">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-brand-berry/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">✓</div>
           <div className="text-3xl font-bold text-brand-berry mb-1">{allowedCount}</div>
@@ -102,7 +144,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-brand-berry/30">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-brand-berry/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">🛡️</div>
           <div className="text-3xl font-bold text-brand-berry mb-1">{scannedCount}</div>
@@ -110,7 +159,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-yellow-400/30">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-yellow-400/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
           <div className="text-3xl font-bold text-yellow-400 mb-1">{flaggedCount}</div>
@@ -118,7 +174,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30">
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
           <div className="text-3xl font-bold text-red-400 mb-1">{errorLogs}</div>
@@ -127,7 +190,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters Card */}
-      <div className="bento-card bento-span-4 glass-card p-4">
+      <div 
+        className="bento-card bento-span-4 glass-card p-4"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center space-x-2 flex-wrap">
             <button
@@ -175,6 +245,9 @@ export default function DashboardPage() {
           <button
             onClick={handleClearLogs}
             className="px-4 py-2 glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all text-sm font-medium"
+            style={{
+              backgroundColor: "var(--destructive-bg, transparent)",
+            }}
           >
             Clear All Logs
           </button>
@@ -182,7 +255,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Logs Viewer Card - Full Width */}
-      <div className="bento-card bento-span-4 bento-row-span-2 glass-card overflow-hidden flex flex-col">
+      <div 
+        className="bento-card bento-span-4 bento-row-span-2 glass-card overflow-hidden flex flex-col"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
         <LogViewer logs={filteredLogs} />
       </div>
     </div>

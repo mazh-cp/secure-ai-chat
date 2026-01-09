@@ -196,17 +196,25 @@ pm2 start npm --name "secure-ai-chat" -- start
 pm2 restart secure-ai-chat
 ```
 
-### Step 6: Verify Theme Switching
+### Step 6: Verify Theme Switching and Restart-Proof Behavior
 
 ```bash
 # Access the app in browser
 # http://localhost:3000 (or your VM's public IP:3000)
 
-# Click the theme toggle button (usually in header/sidebar)
+# Click the theme toggle button (usually in header top-left)
 # Verify:
-# - Dark mode: Navy blue backgrounds with light text
-# - Light mode: Light gray/white backgrounds with dark text
-# - Theme persists after page refresh
+# - Dark mode: Navy blue backgrounds (#0F172A) with light text
+# - Light mode: Light gray/white backgrounds (#F8F9FB) with dark text
+# - Theme persists after page refresh (localStorage)
+# - Theme persists after server restart (no flash of wrong theme)
+# - No hydration mismatch errors in browser console
+
+# Test restart-proof behavior:
+# 1. Set theme to "Day" mode
+# 2. Restart the server (kill process and restart)
+# 3. Reload page - should show Day mode immediately (no flash)
+# 4. Check browser console - no hydration warnings
 ```
 
 ### Step 7: Firewall Configuration (For External Access)

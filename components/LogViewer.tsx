@@ -2,6 +2,7 @@
 
 import { LogEntry } from '@/types/logs'
 import { format } from 'date-fns'
+import { getCategoryColor } from '@/lib/theme/categoryColors'
 
 interface LogViewerProps {
   logs: LogEntry[]
@@ -9,11 +10,11 @@ interface LogViewerProps {
 
 function getActionBadge(action: LogEntry['action']) {
   const badges = {
-    request: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30">Request</span>,
-    allowed: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30">✓ Allowed</span>,
-    blocked: <span className="px-2 py-1 text-xs rounded-full glass text-red-300 border-red-400/50">🚫 Blocked</span>,
-    scanned: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30">Scanned</span>,
-    error: <span className="px-2 py-1 text-xs rounded-full glass text-yellow-300 border-yellow-400/30">Error</span>,
+    request: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30" style={{ color: "var(--chip-text)" }}>Request</span>,
+    allowed: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30" style={{ color: "var(--chip-text)" }}>✓ Allowed</span>,
+    blocked: <span className="px-2 py-1 text-xs rounded-full glass text-red-300 border-red-400/50" style={{ color: "var(--chip-text)" }}>🚫 Blocked</span>,
+    scanned: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30" style={{ color: "var(--chip-text)" }}>Scanned</span>,
+    error: <span className="px-2 py-1 text-xs rounded-full glass text-yellow-300 border-yellow-400/30" style={{ color: "var(--chip-text)" }}>Error</span>,
   }
   return badges[action] || badges.request
 }
@@ -51,6 +52,17 @@ export default function LogViewer({ logs }: LogViewerProps) {
                 ? 'border-green-400/30'
                 : 'border-brand-berry/20'
             }`}
+            style={{
+              background: "var(--surface)",
+              borderColor: "var(--border)",
+              boxShadow: "var(--card-shadow)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--surface-alt)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--surface)";
+            }}
           >
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
@@ -72,7 +84,7 @@ export default function LogViewer({ logs }: LogViewerProps) {
                 </div>
               </div>
               {log.userIP && (
-                <div className="text-xs text-theme-muted glass px-2 py-1 rounded-lg">
+                <div className="text-xs text-theme-muted glass px-2 py-1 rounded-lg" style={{ color: "var(--chip-text)" }}>
                   IP: {log.userIP}
                 </div>
               )}
@@ -152,14 +164,22 @@ export default function LogViewer({ logs }: LogViewerProps) {
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(log.lakeraDecision.categories)
                         .filter(([, flagged]) => flagged)
-                        .map(([category]) => (
-                          <span
-                            key={category}
-                            className="px-2 py-1 text-xs rounded-lg glass-card text-red-300 border-red-400/30 capitalize"
-                          >
-                            {category.replace(/_/g, ' ')}
-                          </span>
-                        ))}
+                        .map(([category]) => {
+                          const bgColor = getCategoryColor(category)
+                          return (
+                            <span
+                              key={category}
+                              className="px-2 py-1 text-xs rounded-lg capitalize"
+                              style={{
+                                backgroundColor: bgColor,
+                                color: "var(--chip-text)",
+                                border: `1px solid ${bgColor}80`,
+                              }}
+                            >
+                              {category.replace(/_/g, ' ')}
+                            </span>
+                          )
+                        })}
                     </div>
                   </div>
                 )}

@@ -34,37 +34,37 @@ function getScanStatusBadge(status: UploadedFile['scanStatus']) {
   switch (status) {
     case 'pending':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-theme-muted">
+        <span className="px-2 py-1 text-xs rounded-full glass text-theme-muted" style={{ color: "var(--chip-text)" }}>
           Pending Scan
         </span>
       )
     case 'scanning':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-button text-blue-300 animate-pulse">
+        <span className="px-2 py-1 text-xs rounded-full glass-button text-blue-300 animate-pulse" style={{ color: "var(--chip-text)" }}>
           Scanning...
         </span>
       )
     case 'safe':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-card text-green-300 border-green-400/30">
+        <span className="px-2 py-1 text-xs rounded-full glass-card text-green-300 border-green-400/30" style={{ color: "var(--chip-text)" }}>
           ✓ Safe
         </span>
       )
     case 'flagged':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-card text-red-300 border-red-400/50">
+        <span className="px-2 py-1 text-xs rounded-full glass-card text-red-300 border-red-400/50" style={{ color: "var(--chip-text)" }}>
           ⚠️ Flagged
         </span>
       )
     case 'error':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-card text-yellow-300 border-yellow-400/30">
+        <span className="px-2 py-1 text-xs rounded-full glass-card text-yellow-300 border-yellow-400/30" style={{ color: "var(--chip-text)" }}>
           ⚠️ Error
         </span>
       )
     case 'not_scanned':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-theme-subtle border-brand-berry/20">
+        <span className="px-2 py-1 text-xs rounded-full glass text-theme-subtle border-brand-berry/20" style={{ color: "var(--chip-text)" }}>
           Not Scanned
         </span>
       )
@@ -148,6 +148,9 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
               <button
                 onClick={() => onRemove(file.id)}
                 className="px-3 py-1 text-sm glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all"
+                style={{
+                  backgroundColor: "var(--destructive-bg, transparent)",
+                }}
               >
                 Remove
               </button>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import ThemeToggleButton from '@/components/ThemeToggleButton'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -176,16 +177,25 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : ''}`}>
         {/* Top bar */}
-        <header className="sticky top-0 z-20 glass-dark border-b border-palette-border-default/20">
+        <header 
+          className="sticky top-0 z-20 glass-dark border-b border-palette-border-default/20"
+          style={{
+            background: "var(--header, rgba(var(--bg-tertiary), 0.3))",
+            borderColor: "var(--border)",
+          }}
+        >
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="text-theme-muted hover:text-theme lg:hidden transition-colors"
-            >
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-3">
+              <ThemeToggleButton />
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="text-theme-muted hover:text-theme lg:hidden transition-colors"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
 
             <div className="flex-1"></div>
 

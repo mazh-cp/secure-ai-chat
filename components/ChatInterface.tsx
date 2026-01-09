@@ -262,7 +262,14 @@ export default function ChatInterface() {
     <div className="flex flex-col h-full">
       {/* API Key Warning */}
       {!hasApiKey && (
-        <div className="glass-card rounded-xl p-4 border-yellow-400/30 mb-4">
+        <div 
+          className="glass-card rounded-xl p-4 border-yellow-400/30 mb-4"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--border)",
+            boxShadow: "var(--card-shadow)",
+          }}
+        >
           <p className="text-sm text-theme">
             ⚠️ OpenAI API key not configured.{' '}
             <Link href="/settings" className="underline hover:text-brand-berry transition-colors">
@@ -275,7 +282,14 @@ export default function ChatInterface() {
 
       {/* Error Display */}
       {error && (
-        <div className="glass-card rounded-xl p-4 border-red-400/30 mb-4">
+        <div 
+          className="glass-card rounded-xl p-4 border-red-400/30 mb-4"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--border)",
+            boxShadow: "var(--card-shadow)",
+          }}
+        >
           <p className="text-sm text-theme">⚠️ {error}</p>
         </div>
       )}

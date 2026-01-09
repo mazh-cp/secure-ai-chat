@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { OWASPRisk } from '@/types/risks'
 import { LogEntry } from '@/types/logs'
 import { format } from 'date-fns'
+import { getCategoryColor } from '@/lib/theme/categoryColors'
 
 interface RiskDetailProps {
   risk: OWASPRisk
@@ -14,22 +15,22 @@ interface RiskDetailProps {
 function getSeverityBadge(severity: OWASPRisk['severity']) {
   const badges = {
     critical: (
-      <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-sm font-semibold">
+      <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
         🔴 Critical
       </span>
     ),
     high: (
-      <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-sm font-semibold">
+      <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
         🟠 High
       </span>
     ),
     medium: (
-      <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-sm font-semibold">
+      <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
         🟡 Medium
       </span>
     ),
     low: (
-      <span className="px-3 py-1 rounded-full bg-brand-berry/20 text-brand-berry dark:bg-brand-berry/30 dark:text-brand-berry text-sm font-semibold">
+      <span className="px-3 py-1 rounded-full bg-brand-berry/20 text-brand-berry dark:bg-brand-berry/30 dark:text-brand-berry text-sm font-semibold" style={{ color: "var(--chip-text)" }}>
         🔵 Low
       </span>
     ),
@@ -151,7 +152,9 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                               : log.action === 'allowed'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                               : 'glass-card text-theme-muted'
-                          }`}>
+                          }`}
+                          style={{ color: "var(--chip-text)" }}
+                          >
                             {log.action}
                           </span>
                         </div>
@@ -228,11 +231,11 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                               Lakera AI Decision
                             </span>
                             {log.lakeraDecision.flagged ? (
-                              <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">
+                              <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold" style={{ color: "var(--chip-text)" }}>
                                 Flagged
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-green-600 text-white text-xs font-semibold">
+                              <span className="px-2 py-0.5 rounded-full bg-green-600 text-white text-xs font-semibold" style={{ color: "var(--chip-text)" }}>
                                 Safe
                               </span>
                             )}
@@ -252,14 +255,22 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                               <div className="flex flex-wrap gap-1">
                                 {Object.entries(log.lakeraDecision.categories)
                                   .filter(([, flagged]) => flagged)
-                                  .map(([category]) => (
-                                    <span
-                                      key={category}
-                                      className="px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 text-xs capitalize"
-                                    >
-                                      {category.replace(/_/g, ' ')}
-                                    </span>
-                                  ))}
+                                  .map(([category]) => {
+                                    const bgColor = getCategoryColor(category)
+                                    return (
+                                      <span
+                                        key={category}
+                                        className="px-2 py-0.5 rounded text-xs capitalize"
+                                        style={{
+                                          backgroundColor: bgColor,
+                                          color: "var(--chip-text)",
+                                          border: `1px solid ${bgColor}80`,
+                                        }}
+                                      >
+                                        {category.replace(/_/g, ' ')}
+                                      </span>
+                                    )
+                                  })}
                               </div>
                             </div>
                           )}
