@@ -4,12 +4,17 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
+User=ubuntu
 WorkingDirectory=/opt/secure-ai-chat
 Environment="NODE_ENV=production"
 Environment="PORT=3000"
 Environment="HOSTNAME=0.0.0.0"
-ExecStart=/usr/bin/npm start
+
+# Ensure nvm-installed Node v25.2.1 is used
+# IMPORTANT: Update the path below to match your actual nvm Node installation path
+# Find it with: which node (after running: nvm use 25.2.1)
+# Example: /home/ubuntu/.nvm/versions/node/v25.2.1/bin/npm
+ExecStart=/home/ubuntu/.nvm/versions/node/v25.2.1/bin/npm start
 Restart=always
 RestartSec=5
 StandardOutput=journal

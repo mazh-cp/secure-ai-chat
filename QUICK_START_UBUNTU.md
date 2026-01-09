@@ -9,11 +9,19 @@
 git clone https://github.com/mazh-cp/secure-ai-chat.git
 cd secure-ai-chat
 
-# Install Node.js 20.x (if not already installed)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Install nvm (Node Version Manager)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
-# Verify Node.js version (should be 20.x)
+# Load nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+# Install and use Node.js v25.2.1
+nvm install 25.2.1
+nvm use 25.2.1
+nvm alias default 25.2.1
+
+# Verify Node.js version (must be v25.2.1)
 node --version
 npm --version
 
@@ -48,6 +56,9 @@ npm run smoke
 ### Step 4: Build and Start
 
 ```bash
+# Ensure Node.js v25.2.1 is active (uses .nvmrc)
+nvm use 25.2.1
+
 # Build for production
 npm run build
 

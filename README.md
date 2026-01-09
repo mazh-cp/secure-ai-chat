@@ -28,7 +28,7 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 
 ## Prerequisites
 
-- Node.js 18+ 
+- Node.js 25.2.1 (pinned via .nvmrc) 
 - npm, yarn, or pnpm
 
 ## Installation
@@ -55,7 +55,7 @@ bash scripts/install-ubuntu.sh
 
 This script will automatically:
 - Install system dependencies (curl, git, build tools)
-- Install Node.js 20.x
+- Install Node.js v25.2.1 via nvm
 - Clone the repository
 - Install all npm dependencies
 - Set up environment configuration

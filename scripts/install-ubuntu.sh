@@ -21,7 +21,7 @@ set -eo pipefail
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 REPO_DIR="${REPO_DIR:-secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
-NODE_VERSION="${NODE_VERSION:-20}"
+NODE_VERSION="${NODE_VERSION:-25.2.1}"
 APP_PORT="${PORT:-3000}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME}"
 
@@ -66,7 +66,7 @@ fi
 print_header "Secure AI Chat - Ubuntu Installation Script"
 echo "This script will:"
 echo "  1. Install system dependencies"
-echo "  2. Install Node.js ${NODE_VERSION}.x"
+echo "  2. Install Node.js ${NODE_VERSION} via nvm"
 echo "  3. Clone the repository"
 echo "  4. Install project dependencies"
 echo "  5. Set up environment configuration"
@@ -107,35 +107,42 @@ sudo apt-get install -y -qq \
 
 print_success "System packages installed"
 
-# Step 2: Install Node.js
-print_header "Step 2: Installing Node.js ${NODE_VERSION}.x"
+# Step 2: Install Node.js via nvm
+print_header "Step 2: Installing Node.js ${NODE_VERSION} via nvm"
 
-if command -v node &> /dev/null; then
-    CURRENT_NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$CURRENT_NODE_VERSION" -ge "$NODE_VERSION" ]; then
-        print_success "Node.js $(node -v) already installed"
-        NODE_INSTALLED=true
-    else
-        print_warning "Node.js version $CURRENT_NODE_VERSION is installed, but version ${NODE_VERSION}+ is required"
-        NODE_INSTALLED=false
-    fi
+# Install nvm if not already installed
+if [ ! -d "$HOME/.nvm" ]; then
+    print_info "Installing nvm..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash > /dev/null 2>&1
+    print_success "nvm installed"
 else
-    NODE_INSTALLED=false
+    print_info "nvm is already installed"
 fi
 
-if [ "$NODE_INSTALLED" = false ]; then
-    print_info "Installing Node.js ${NODE_VERSION}.x from NodeSource..."
-    
-    # Remove old NodeSource setup if exists
-    sudo rm -f /etc/apt/sources.list.d/nodesource.list
-    
-    # Add NodeSource repository
-    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | sudo -E bash - > /dev/null 2>&1
-    
-    # Install Node.js
-    sudo apt-get install -y -qq nodejs > /dev/null 2>&1
-    
-    print_success "Node.js $(node -v) installed"
+# Load nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Install and use Node.js v25.2.1
+if nvm list | grep -q "v${NODE_VERSION}"; then
+    print_info "Node.js v${NODE_VERSION} is already installed via nvm"
+    nvm use ${NODE_VERSION} > /dev/null 2>&1
+    nvm alias default ${NODE_VERSION} > /dev/null 2>&1
+else
+    print_info "Installing Node.js v${NODE_VERSION} via nvm..."
+    nvm install ${NODE_VERSION} > /dev/null 2>&1
+    nvm use ${NODE_VERSION} > /dev/null 2>&1
+    nvm alias default ${NODE_VERSION} > /dev/null 2>&1
+    print_success "Node.js v${NODE_VERSION} installed"
+fi
+
+# Verify Node.js version
+CURRENT_NODE=$(node -v)
+if [ "$CURRENT_NODE" = "v${NODE_VERSION}" ]; then
+    print_success "Node.js ${CURRENT_NODE} is active"
+else
+    print_error "Node.js version mismatch. Expected v${NODE_VERSION}, got ${CURRENT_NODE}"
+    exit 1
 fi
 
 # Verify npm is installed
@@ -174,6 +181,18 @@ else
 fi
 
 cd "$FULL_PATH"
+
+# Load nvm again after cd (in case it's a new shell context)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Use Node version from .nvmrc if it exists
+if [ -f ".nvmrc" ]; then
+    NODE_VERSION_FROM_NVMRC=$(cat .nvmrc | tr -d '[:space:]')
+    print_info "Using Node.js v${NODE_VERSION_FROM_NVMRC} from .nvmrc..."
+    nvm use ${NODE_VERSION_FROM_NVMRC} > /dev/null 2>&1 || nvm install ${NODE_VERSION_FROM_NVMRC} > /dev/null 2>&1
+    nvm use ${NODE_VERSION_FROM_NVMRC} > /dev/null 2>&1
+fi
 
 # Step 4: Install project dependencies
 print_header "Step 4: Installing Project Dependencies"
@@ -331,13 +350,19 @@ print_success "Start script created: start-app.sh"
 # Step 8: Verification
 print_header "Step 8: Verification"
 
-# Check Node.js version
-NODE_MAJOR=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-if [ "$NODE_MAJOR" -ge 18 ]; then
-    print_success "Node.js version: $(node -v) ✓"
+# Check Node.js version matches .nvmrc
+if [ -f ".nvmrc" ]; then
+    EXPECTED_NODE=$(cat .nvmrc | tr -d '[:space:]')
+    CURRENT_NODE=$(node -v | tr -d 'v')
+    if [ "$CURRENT_NODE" = "$EXPECTED_NODE" ]; then
+        print_success "Node.js version: $(node -v) ✓ (matches .nvmrc)"
+    else
+        print_error "Node.js version mismatch. Expected v${EXPECTED_NODE}, got v${CURRENT_NODE}"
+        print_info "Run: nvm use"
+        exit 1
+    fi
 else
-    print_error "Node.js version too old: $(node -v) (requires 18+)"
-    exit 1
+    print_warning ".nvmrc not found, skipping version check"
 fi
 
 # Check npm
