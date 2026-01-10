@@ -656,6 +656,8 @@ export default function FilesPage() {
         return
       }
 
+      // The API route will use server-side keys if available
+      // We don't need to send keys from client (server-side keys take priority)
       const response = await fetch('/api/scan', {
         method: 'POST',
         headers: {
@@ -664,7 +666,8 @@ export default function FilesPage() {
         body: JSON.stringify({
           fileContent: file.content,
           fileName: file.name,
-          apiKeys: keys,
+          // Send empty object - API route will use server-side keys automatically
+          apiKeys: {},
         }),
       })
 
