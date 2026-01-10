@@ -34,6 +34,15 @@ export default function SettingsForm() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
+  // Server-side API key status
+  const [serverStatus, setServerStatus] = useState<{
+    openAiKey?: boolean
+    lakeraAiKey?: boolean
+    lakeraProjectId?: boolean
+    lakeraEndpoint?: string
+    checkpointTeApiKey?: boolean
+  }>({})
+
   // Check Point TE API key state (server-side only)
   const [checkpointTeKey, setCheckpointTeKey] = useState<string>('')
   const [checkpointTeConfigured, setCheckpointTeConfigured] = useState<boolean>(false)
@@ -79,9 +88,13 @@ export default function SettingsForm() {
         }
       }
 
-      // Check Check Point TE API key status (server-side)
+      // Check server-side API key status and Check Point TE API key status
       // Use setTimeout to avoid blocking page load if endpoint is slow
       setTimeout(() => {
+        checkServerStatus().catch(err => {
+          // Silently handle - don't break page load
+          console.error('Server status check failed:', err)
+        })
         checkCheckpointTeStatus().catch(err => {
           // Silently handle - don't break page load
           console.error('Check Point TE status check failed:', err)
@@ -92,6 +105,29 @@ export default function SettingsForm() {
       }, 500)
     }
   }, [])
+
+  // Check server-side API key status (environment variables)
+  const checkServerStatus = async () => {
+    setIsCheckingServerStatus(true)
+    try {
+      const response = await fetch('/api/settings/status')
+      if (response.ok) {
+        const data = await response.json()
+        setServerStatus({
+          openAiKey: data.hasOpenAiKey || false,
+          lakeraAiKey: data.hasLakeraAiKey || false,
+          lakeraProjectId: data.hasLakeraProjectId || false,
+          lakeraEndpoint: data.status?.lakeraEndpoint?.value || 'https://api.lakera.ai/v2/guard',
+          checkpointTeApiKey: data.hasCheckpointTeApiKey || false,
+        })
+      }
+    } catch (error) {
+      // Silently handle - don't break page load
+      console.error('Failed to check server-side API key status:', error)
+    } finally {
+      setIsCheckingServerStatus(false)
+    }
+  }
 
   // Check Check Point TE API key configuration status
   const checkCheckpointTeStatus = async () => {
@@ -678,6 +714,16 @@ export default function SettingsForm() {
             <p className="text-xs text-theme-subtle mt-1">
               🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
             </p>
+            {serverStatus.lakeraAiKey && !keys.lakeraAiKey && (
+              <p className="text-xs text-green-400 mt-1">
+                ✓ Configured via environment variable (server-side)
+              </p>
+            )}
+            {!serverStatus.lakeraAiKey && !keys.lakeraAiKey && (
+              <p className="text-xs text-theme-muted mt-1">
+                Optional - Configure via Settings or LAKERA_AI_KEY environment variable
+              </p>
+            )}
           </div>
 
           {/* Lakera Endpoint */}
