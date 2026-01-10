@@ -1,7 +1,7 @@
 #!/bin/bash
 # One-Step Production Upgrade Script
 # Upgrades the Secure AI Chat application to the latest version from the release branch
-# Usage: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/unifi-theme-safe-final/scripts/upgrade-production.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/v1.0.5/scripts/upgrade-production.sh | bash
 # Or: bash scripts/upgrade-production.sh
 
 set -euo pipefail
@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Configuration (defaults)
 REPO_DIR="${REPO_DIR:-/home/adminuser/secure-ai-chat}"
-BRANCH="${BRANCH:-release/unifi-theme-safe-final}"
+BRANCH="${BRANCH:-release/v1.0.5}"
 SERVICE_USER="${SERVICE_USER:-adminuser}"
 SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
 BACKUP_DIR="${BACKUP_DIR:-$REPO_DIR/.backups}"
