@@ -735,9 +735,27 @@ export default function SettingsForm() {
       <form onSubmit={handleSubmit} className="space-y-6 p-6">
           {/* OpenAI Key */}
           <div>
-            <label htmlFor="openAiKey" className={labelClass}>
-              OpenAI Key
-              <span className="text-red-300 ml-1">*</span>
+            <label htmlFor="openAiKey" className={`${labelClass} flex items-center gap-2`}>
+              <span>OpenAI Key</span>
+              <span className="text-red-300">*</span>
+              {/* Status Dot */}
+              {serverStatus.openAiKey || keys.openAiKey ? (
+                <div 
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Configured and working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                  title="Not configured or not working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              )}
             </label>
             <div className="relative">
               <input
@@ -775,8 +793,26 @@ export default function SettingsForm() {
 
           {/* Lakera AI Key */}
           <div>
-            <label htmlFor="lakeraAiKey" className={labelClass}>
-              Lakera AI Key
+            <label htmlFor="lakeraAiKey" className={`${labelClass} flex items-center gap-2`}>
+              <span>Lakera AI Key</span>
+              {/* Status Dot */}
+              {serverStatus.lakeraAiKey || keys.lakeraAiKey ? (
+                <div 
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Configured and working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                  title="Not configured or not working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              )}
             </label>
             <div className="relative">
               <input
@@ -814,8 +850,16 @@ export default function SettingsForm() {
 
           {/* Lakera Endpoint */}
           <div>
-            <label htmlFor="lakeraEndpoint" className={labelClass}>
-              Lakera Endpoint
+            <label htmlFor="lakeraEndpoint" className={`${labelClass} flex items-center gap-2`}>
+              <span>Lakera Endpoint</span>
+              {/* Status Dot - Always green (endpoint is always valid, default or custom) */}
+              <div 
+                className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                title="Endpoint configured (using default or custom)"
+                style={{
+                  boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                }}
+              />
             </label>
             <div className="relative">
               <input
@@ -843,8 +887,26 @@ export default function SettingsForm() {
 
           {/* Lakera Project ID */}
           <div>
-            <label htmlFor="lakeraProjectId" className={labelClass}>
-              Lakera Project ID
+            <label htmlFor="lakeraProjectId" className={`${labelClass} flex items-center gap-2`}>
+              <span>Lakera Project ID</span>
+              {/* Status Dot */}
+              {serverStatus.lakeraProjectId || keys.lakeraProjectId ? (
+                <div 
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Configured and working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                  title="Not configured or not working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              )}
             </label>
             <div className="relative">
               <input
@@ -956,8 +1018,26 @@ export default function SettingsForm() {
 
           {/* Check Point ThreatCloud / Threat Emulation API Key */}
           <div className="pt-6 border-t border-palette-border-default/20 mt-8">
-            <label htmlFor="checkpointTeKey" className={labelClass}>
-              Check Point ThreatCloud / Threat Emulation (TE) API Key
+            <label htmlFor="checkpointTeKey" className={`${labelClass} flex items-center gap-2`}>
+              <span>Check Point ThreatCloud / Threat Emulation (TE) API Key</span>
+              {/* Status Dot */}
+              {checkpointTeConfigured ? (
+                <div 
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Configured and working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                  title="Not configured or not working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              )}
             </label>
             <div className="space-y-2">
               {/* Status Indicator */}

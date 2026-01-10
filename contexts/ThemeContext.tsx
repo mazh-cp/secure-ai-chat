@@ -1,31 +1,23 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { setTheme as setThemeFunction, getTheme, toggleTheme as toggleThemeFunction } from '@/lib/theme/setTheme'
 
 type Theme = 'light' | 'dark'
 
 interface ThemeContextType {
   theme: Theme
   toggleTheme: () => void
+  setTheme: (theme: Theme) => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Initialize theme from existing class on html element (set by inline script) or default to dark
-  const [theme, setTheme] = useState<Theme>(() => {
+  // Initialize theme from DOM (already set by bootstrap script)
+  const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
-      const htmlClass = document.documentElement.classList.contains('dark') ? 'dark' : 
-                       document.documentElement.classList.contains('light') ? 'light' : null
-      if (htmlClass) return htmlClass
-      
-      // Fallback to localStorage
-      const savedTheme = localStorage.getItem('theme') as Theme | null
-      if (savedTheme) return savedTheme
-      
-      // Final fallback to system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      return prefersDark ? 'dark' : 'light'
+      return getTheme()
     }
     return 'dark'
   })
@@ -33,49 +25,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-    // Read the theme that was already applied by the inline script
-    const htmlHasDark = document.documentElement.classList.contains('dark')
-    const htmlHasLight = document.documentElement.classList.contains('light')
-    const currentHtmlTheme = htmlHasDark ? 'dark' : (htmlHasLight ? 'light' : null)
     
-    // Sync React state with the theme class already on the HTML element
-    if (currentHtmlTheme && currentHtmlTheme !== theme) {
-      setTheme(currentHtmlTheme)
-    } else {
-      // If no theme class on HTML, check localStorage
-      const savedTheme = localStorage.getItem('theme') as Theme | null
-      if (savedTheme && savedTheme !== theme) {
-        setTheme(savedTheme)
-      } else if (!savedTheme && !currentHtmlTheme) {
-        // Check system preference if no saved theme and no HTML class
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        const systemTheme = prefersDark ? 'dark' : 'light'
-        if (systemTheme !== theme) {
-          setTheme(systemTheme)
-        }
-      }
+    // Read current theme from DOM (set by bootstrap script)
+    const currentTheme = getTheme()
+    if (currentTheme !== theme) {
+      setThemeState(currentTheme)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
-  useEffect(() => {
-    if (!mounted) return
-    
-    // Save theme to localStorage
-    localStorage.setItem('theme', theme)
-    
-    // Apply theme to document
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-      document.documentElement.classList.remove('light')
-    } else {
-      document.documentElement.classList.add('light')
-      document.documentElement.classList.remove('dark')
+    // Listen for theme changes (from other components or system preference)
+    const handleThemeChange = (e: CustomEvent<{ theme: Theme }>) => {
+      setThemeState(e.detail.theme)
     }
-  }, [theme, mounted])
+    
+    window.addEventListener('themechange', handleThemeChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('themechange', handleThemeChange as EventListener)
+    }
+  }, [theme])
 
+  // Set theme using production-ready function
+  const setTheme = (newTheme: Theme) => {
+    setThemeFunction(newTheme)
+    setThemeState(newTheme)
+  }
+
+  // Toggle theme using production-ready function
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
+    const newTheme = toggleThemeFunction()
+    setThemeState(newTheme)
   }
 
   // Prevent flash of unstyled content
@@ -84,7 +62,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -65,6 +65,18 @@ export default function LakeraToggles({
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-theme">Input Scan</span>
                 <span className="text-xs text-theme-subtle">(User messages)</span>
+                {/* Status Dot */}
+                <div 
+                  className={`h-2 w-2 rounded-full transition-all ${
+                    inputScan ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                  title={inputScan ? 'Enabled' : 'Disabled'}
+                  style={{
+                    boxShadow: inputScan 
+                      ? '0 0 8px rgba(34, 197, 94, 0.6)' 
+                      : '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -86,6 +98,18 @@ export default function LakeraToggles({
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-theme">Output Scan</span>
                 <span className="text-xs text-theme-subtle">(AI responses)</span>
+                {/* Status Dot */}
+                <div 
+                  className={`h-2 w-2 rounded-full transition-all ${
+                    outputScan ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                  title={outputScan ? 'Enabled' : 'Disabled'}
+                  style={{
+                    boxShadow: outputScan 
+                      ? '0 0 8px rgba(34, 197, 94, 0.6)' 
+                      : '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input

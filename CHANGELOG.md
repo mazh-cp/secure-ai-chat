@@ -7,15 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.4] - 2026-01-XX
 
-### Planned Enhancements
-- **Version 1.0.4 Development Branch**: Created release branch for upcoming enhancements
-- **Enhancement Planning**: See `V1.0.4_ENHANCEMENTS.md` for planned features and improvements
-
 ### Added
-- Release branch `release/v1.0.4` for development and testing
+- **UniFi-Style Day/Night Theme System**: Complete theme system with instant switching, no flash on load
+  - Light and dark themes with neutral-first palette and single accent color
+  - CSS variable-based design tokens for maintainability
+  - Theme toggle component with system preference support
+  - Bootstrap script prevents theme flash on initial load
+- **Status Dots Enhancement**: Visual status indicators for toggles and API key configuration
+  - Green dots for enabled/configured states
+  - Red dots for disabled/unconfigured states
+  - Subtle glow effects for better visibility
+- **Source Protection**: Enhanced security to prevent casual source code viewing
+  - Disabled right-click context menu
+  - Disabled keyboard shortcuts (F12, Ctrl+U, Ctrl+Shift+I, etc.)
+  - Disabled text selection (except form fields)
+  - Disabled image dragging
+- **Production Safety Audit**: Comprehensive pre-flight safety audit
+  - `docs/SAFETY_AUDIT.md` - Complete audit of runtime entrypoints and production paths
+  - `docs/HARDENING_CHANGES.md` - Documentation of all hardening changes
+  - Environment variable validation script (`scripts/validate-env.sh`)
+- **Environment Configuration**: 
+  - `.env.example` file for documentation
+  - `validate-env` npm script for startup checks
+- **Package Scripts**:
+  - Added `typecheck` alias for `type-check`
+  - Added `test` script (placeholder)
+  - Added `validate-env` script
 
 ### Changed
-- Version updated to 1.0.4 in package.json and UI
+- **Dockerfile**: Updated Node.js version from `20-alpine` to `25-alpine` to match package.json engines
+- **Theme System**: Complete refactor to use CSS variables (design tokens) instead of hard-coded colors
+- **Files Page**: Added status dots to Lakera Scan, RAG Auto Scan, and File Sandboxing toggles
+- **Settings Page**: Added status dots to API key configuration fields
+- **Layout**: Enhanced source protection integration
+
+### Security
+- ✅ Source protection component prevents casual code inspection
+- ✅ Error boundaries verified to not expose secrets
+- ✅ Security headers verified and production-ready
+- ✅ Docker, systemd, and Kubernetes configurations hardened
+- ✅ Environment variable validation (warns, doesn't fail)
+
+### Documentation
+- `docs/SAFETY_AUDIT.md` - Comprehensive production safety audit
+- `docs/HARDENING_CHANGES.md` - All hardening changes documented
+- `docs/THEME_SYSTEM.md` - Theme system architecture and usage guide
+- `.env.example` - Environment variable documentation
+
+### Deployment
+- ✅ All entrypoints verified (Next.js, Docker, systemd, Kubernetes)
+- ✅ Health check endpoint verified (`/api/health`)
+- ✅ Build process verified (TypeScript, ESLint, Next.js build)
+- ✅ All package scripts verified (lint, typecheck, test, build, start)
+- ✅ Backwards compatibility maintained (all changes are non-breaking)
 
 ---
 

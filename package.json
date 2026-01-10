@@ -19,7 +19,10 @@
     "check:node": "node -e \"const v=process.versions.node; if(v!=='25.2.1'){console.error('❌ Node 25.2.1 required. Current:', v); process.exit(1)} else {console.log('✅ Node OK:', v)}\"",
     "pre-push": "npm run check:node && npm run lint && npm run build",
     "smoke": "bash scripts/smoke.sh",
-    "release-gate": "bash scripts/release-gate.sh"
+    "release-gate": "bash scripts/release-gate.sh",
+    "validate-env": "bash scripts/validate-env.sh",
+    "test": "echo 'No tests configured. Run npm run smoke for smoke tests.'",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@types/form-data": "^2.2.1",

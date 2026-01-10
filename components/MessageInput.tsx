@@ -31,8 +31,9 @@ export default function MessageInput({ onSendMessage, isLoading, disabled }: Mes
           placeholder={disabled ? "Configure API key in Settings to start chatting..." : "Type your message securely..."}
           className="flex-1 glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-berry/30 disabled:opacity-50 transition-all"
           style={{
-            background: "var(--input-bg, rgba(var(--bg-secondary), 0.15))",
-            borderColor: "var(--input-border, rgba(var(--border-default), 0.3))",
+            background: "rgb(var(--input-bg))",
+            borderColor: "rgb(var(--input-border))",
+            color: "rgb(var(--input-text))",
           }}
           disabled={isDisabled}
         />
@@ -44,7 +45,7 @@ export default function MessageInput({ onSendMessage, isLoading, disabled }: Mes
           Send
         </button>
       </div>
-      <p className="text-xs text-brand-berry/80 mt-2">
+      <p className="text-xs text-accent mt-2" style={{ opacity: 0.8 }}>
         🔒 Messages are processed securely
       </p>
     </form>

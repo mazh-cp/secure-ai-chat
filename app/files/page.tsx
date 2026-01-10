@@ -837,7 +837,21 @@ export default function FilesPage() {
             {/* Lakera Scan Toggle */}
             <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-theme">Lakera Scan</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-theme">Lakera Scan</span>
+                  {/* Status Dot */}
+                  <div 
+                    className={`h-2 w-2 rounded-full transition-all ${
+                      lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                    title={lakeraScanEnabled ? 'Enabled' : 'Disabled'}
+                    style={{
+                      boxShadow: lakeraScanEnabled 
+                        ? '0 0 8px rgba(34, 197, 94, 0.6)' 
+                        : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    }}
+                  />
+                </div>
                 <span className="text-xs text-theme-subtle mt-1">Enable manual file scanning</span>
               </div>
               <div className="flex items-center space-x-3">
@@ -864,7 +878,21 @@ export default function FilesPage() {
             {/* RAG Scan Toggle */}
             <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-theme">RAG Auto-Scan</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-theme">RAG Auto-Scan</span>
+                  {/* Status Dot */}
+                  <div 
+                    className={`h-2 w-2 rounded-full transition-all ${
+                      ragScanEnabled && lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                    title={ragScanEnabled && lakeraScanEnabled ? 'Enabled' : 'Disabled'}
+                    style={{
+                      boxShadow: ragScanEnabled && lakeraScanEnabled
+                        ? '0 0 8px rgba(34, 197, 94, 0.6)' 
+                        : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    }}
+                  />
+                </div>
                 <span className="text-xs text-theme-subtle mt-1">Automatically scan files on upload</span>
               </div>
               <div className="flex items-center space-x-3">
@@ -887,7 +915,21 @@ export default function FilesPage() {
             {/* Check Point TE Sandboxing Toggle */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-theme">File Sandboxing (Check Point TE)</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-theme">File Sandboxing (Check Point TE)</span>
+                  {/* Status Dot */}
+                  <div 
+                    className={`h-2 w-2 rounded-full transition-all ${
+                      checkpointTeSandboxEnabled && checkpointTeConfigured ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                    title={checkpointTeSandboxEnabled && checkpointTeConfigured ? 'Enabled' : 'Disabled'}
+                    style={{
+                      boxShadow: checkpointTeSandboxEnabled && checkpointTeConfigured
+                        ? '0 0 8px rgba(34, 197, 94, 0.6)' 
+                        : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    }}
+                  />
+                </div>
                 <span className="text-xs text-theme-subtle mt-1">
                   {checkpointTeConfigured 
                     ? 'Sandbox files with Check Point Threat Emulation' 

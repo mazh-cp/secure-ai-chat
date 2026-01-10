@@ -5,29 +5,36 @@ module.exports = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  darkMode: ['selector', '[data-theme="dark"]'],
+  darkMode: ['selector', '[data-theme="dark"]'], // Use data-theme attribute (not class)
   theme: {
     extend: {
       colors: {
-        // New Color Palette - Uses CSS variables that change with theme
+        // UniFi-Style Color Palette - Uses CSS variables that change with theme
         'palette': {
-          'bg-primary': 'rgb(var(--bg-primary))',
-          'bg-secondary': 'rgb(var(--bg-secondary))',
-          'bg-tertiary': 'rgb(var(--bg-tertiary))',
-          'accent-primary': 'rgb(var(--accent-primary))', // Shared in both modes
-          'accent-secondary': 'rgb(var(--accent-secondary))', // Shared in both modes
-          'text-primary': 'rgb(var(--text-primary))',
-          'text-secondary': 'rgb(var(--text-secondary))',
-          'border-default': 'rgb(var(--border-default))',
+          'bg': 'rgb(var(--bg))',
+          'surface-1': 'rgb(var(--surface-1))',
+          'surface-2': 'rgb(var(--surface-2))',
+          'accent': 'rgb(var(--accent))', // UniFi blue
+          'text-1': 'rgb(var(--text-1))',
+          'text-2': 'rgb(var(--text-2))',
+          'border': 'rgb(var(--border))',
         },
-        // Legacy compatibility - mapped to new palette
-        'brand-berry': 'rgb(142, 97, 240)', // Maps to accent-primary
-        'berry-light': 'rgb(142, 97, 240)', // Maps to accent-primary
-        'berry-dark': 'rgb(78, 69, 146)', // Maps to accent-secondary
-        // Success/Secure notice colors
-        'success-bg': 'rgba(34, 197, 94, 0.1)',
-        'success-border': 'rgba(34, 197, 94, 0.3)',
-        'success-text': '#4ade80',
+        // Legacy compatibility - mapped to UniFi tokens
+        'brand-berry': 'rgb(var(--accent))', // Maps to UniFi accent
+        'berry-light': 'rgb(var(--accent))',
+        'berry-dark': 'rgb(var(--accent-hover))',
+        // Legacy mappings for backwards compatibility
+        'bg-primary': 'rgb(var(--bg-primary))',
+        'bg-secondary': 'rgb(var(--bg-secondary))',
+        'bg-tertiary': 'rgb(var(--bg-tertiary))',
+        'accent-primary': 'rgb(var(--accent-primary))',
+        'text-primary': 'rgb(var(--text-primary))',
+        'text-secondary': 'rgb(var(--text-secondary))',
+        'border-default': 'rgb(var(--border))',
+        // Success/Secure notice colors - use CSS variables
+        'success-bg': 'rgba(var(--success), 0.1)',
+        'success-border': 'rgba(var(--success), 0.3)',
+        'success-text': 'rgb(var(--success))',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

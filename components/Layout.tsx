@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import ThemeToggleButton from '@/components/ThemeToggleButton'
+import ThemeToggle from '@/components/ThemeToggle'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -180,15 +180,15 @@ export default function Layout({ children }: LayoutProps) {
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : ''}`}>
         {/* Top bar */}
         <header 
-          className="sticky top-0 z-20 glass-dark border-b border-palette-border-default/20"
+          className="sticky top-0 z-20 glass-dark border-b"
           style={{
-            background: "var(--header, rgba(var(--bg-tertiary), 0.3))",
-            borderColor: "var(--border)",
+            background: "rgb(var(--header))",
+            borderColor: "rgb(var(--border))",
           }}
         >
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <ThemeToggleButton />
+              <ThemeToggle />
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="text-theme-muted hover:text-theme lg:hidden transition-colors"

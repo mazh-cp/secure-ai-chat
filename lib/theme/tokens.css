@@ -1,0 +1,209 @@
+/**
+ * UniFi-Style Theme Tokens
+ * 
+ * Design Philosophy:
+ * - Neutral-first color palette with low saturation
+ * - Single accent blue for interactive elements
+ * - Subtle shadows; rely on spacing and borders for structure
+ * - Avoid pure black/white; use near-black surfaces and off-white text
+ * 
+ * WCAG AA Compliance:
+ * - Normal text: ≥4.5:1 contrast ratio
+ * - UI components/borders: ≥3:1 contrast ratio
+ * - Focus rings: Always visible
+ */
+
+/* ============================================
+   SHARED TOKENS (same for both themes)
+   ============================================ */
+:root {
+  /* Semantic States */
+  --success: 34, 197, 94; /* #22C55E - Green */
+  --warning: 249, 115, 22; /* #F97316 - Orange */
+  --danger: 239, 68, 68; /* #EF4444 - Red */
+  
+  /* Spacing & Structure */
+  --radius: 0.5rem; /* Default border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  /* Shadows (subtle, UniFi-style) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* Border */
+  --border-width: 1px;
+  
+  /* Transition for theme switching */
+  --theme-transition-ms: 100ms;
+  
+  /* Default to dark theme */
+  color-scheme: dark;
+}
+
+/* ============================================
+   LIGHT THEME (Day Mode)
+   ============================================ */
+:root[data-theme="light"] {
+  color-scheme: light;
+  
+  /* Backgrounds - Neutral, low saturation */
+  --bg: 245, 247, 250; /* #F5F7FA - Light gray */
+  --surface-1: 255, 255, 255; /* #FFFFFF - White */
+  --surface-2: 240, 242, 245; /* #F0F2F5 - Light gray surface */
+  
+  /* Text - Dark on light */
+  --text-1: 31, 41, 51; /* #1F2933 - Primary text */
+  --text-2: 95, 108, 123; /* #5F6C7B - Secondary text */
+  
+  /* Borders - Subtle */
+  --border: 225, 229, 234; /* #E1E5EA - Light border */
+  
+  /* Accent - UniFi Blue (primary interactive) */
+  --accent: 0, 111, 255; /* #006FFF - UniFi blue */
+  --accent-hover: 0, 95, 230; /* Slightly darker for hover */
+  --accent-active: 0, 79, 200; /* Darker for active state */
+  
+  /* Focus Ring */
+  --focus: 0, 111, 255; /* #006FFF - Same as accent */
+  --focus-opacity: 0.3;
+  
+  /* Interactive States */
+  --hover: 248, 250, 252; /* #F8FAFC - Very light hover */
+  --active: 240, 242, 245; /* #F0F2F5 - Active state */
+  
+  /* Shadows (lighter for light mode) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* Input Fields */
+  --input-bg: 255, 255, 255; /* #FFFFFF */
+  --input-border: 225, 229, 234; /* #E1E5EA */
+  --input-border-focus: 0, 111, 255; /* #006FFF */
+  --input-text: 31, 41, 51; /* #1F2933 */
+  --input-placeholder: 149, 162, 179; /* #95A2B3 - Muted */
+  
+  /* Disabled States */
+  --disabled-bg: 240, 242, 245; /* #F0F2F5 */
+  --disabled-text: 149, 162, 179; /* #95A2B3 */
+  --disabled-border: 225, 229, 234; /* #E1E5EA */
+  
+  /* Code Blocks */
+  --code-bg: 240, 242, 245; /* #F0F2F5 */
+  --code-text: 31, 41, 51; /* #1F2933 */
+  --code-border: 225, 229, 234; /* #E1E5EA */
+}
+
+/* ============================================
+   DARK THEME (Night Mode)
+   ============================================ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  
+  /* Backgrounds - Near-black, low saturation */
+  --bg: 14, 17, 22; /* #0E1116 - Near-black */
+  --surface-1: 21, 26, 33; /* #151A21 - Dark gray */
+  --surface-2: 27, 34, 48; /* #1B2230 - Slightly lighter */
+  
+  /* Text - Light on dark */
+  --text-1: 230, 234, 240; /* #E6EAF0 - Off-white primary */
+  --text-2: 170, 179, 194; /* #AAB3C2 - Gray secondary */
+  
+  /* Borders - Subtle dark */
+  --border: 35, 43, 54; /* #232B36 - Dark border */
+  
+  /* Accent - Brighter blue for dark mode */
+  --accent: 59, 130, 246; /* #3B82F6 - Brighter blue */
+  --accent-hover: 96, 165, 250; /* #60A5FA - Lighter hover */
+  --accent-active: 37, 99, 235; /* #2563EB - Slightly darker active */
+  
+  /* Focus Ring */
+  --focus: 96, 165, 250; /* #60A5FA - Brighter for dark mode */
+  --focus-opacity: 0.4;
+  
+  /* Interactive States */
+  --hover: 27, 34, 48; /* #1B2230 - Lighter hover */
+  --active: 35, 43, 54; /* #232B36 - Active state */
+  
+  /* Shadows (darker for dark mode) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+  
+  /* Input Fields */
+  --input-bg: 21, 26, 33; /* #151A21 */
+  --input-border: 35, 43, 54; /* #232B36 */
+  --input-border-focus: 59, 130, 246; /* #3B82F6 */
+  --input-text: 230, 234, 240; /* #E6EAF0 */
+  --input-placeholder: 120, 133, 150; /* #788596 - Darker muted */
+  
+  /* Disabled States */
+  --disabled-bg: 21, 26, 33; /* #151A21 */
+  --disabled-text: 99, 112, 129; /* #637081 */
+  --disabled-border: 35, 43, 54; /* #232B36 */
+  
+  /* Code Blocks */
+  --code-bg: 21, 26, 33; /* #151A21 */
+  --code-text: 230, 234, 240; /* #E6EAF0 */
+  --code-border: 35, 43, 54; /* #232B36 */
+}
+
+/* ============================================
+   LEGACY COMPATIBILITY
+   (Map old variable names to new ones)
+   ============================================ */
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  /* Background mappings */
+  --bg-primary: var(--bg);
+  --bg-secondary: var(--surface-1);
+  --bg-tertiary: var(--surface-2);
+  
+  /* Text mappings */
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-2);
+  
+  /* Surface mappings */
+  --surface: var(--surface-1);
+  --surface-alt: var(--surface-2);
+  --header: var(--surface-1);
+  
+  /* Accent mappings (for backwards compatibility) */
+  --accent-primary: var(--accent);
+  --primary: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --primary-active: var(--accent-active);
+  
+  /* Border mappings */
+  --border-default: var(--border);
+  
+  /* Status color mappings */
+  --safe: var(--success);
+  --flagged: var(--danger);
+  
+  /* Input mappings */
+  --input-text: var(--text-1);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --theme-transition-ms: 0ms;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

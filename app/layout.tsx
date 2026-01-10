@@ -3,8 +3,8 @@ import './globals.css'
 import Layout from '@/components/Layout'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import ThemeInit from '@/components/ThemeInit'
-import ThemeScript from '@/components/ThemeScript'
+import ThemeBootstrap from '@/components/ThemeBootstrap'
+import SourceProtection from '@/components/SourceProtection'
 
 export const metadata: Metadata = {
   title: 'Secure AI Chat - Powered by Lakera AI',
@@ -28,10 +28,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
-        <ThemeScript />
+        {/* Theme bootstrap script MUST be first to prevent flash */}
+        <ThemeBootstrap />
+        {/* Meta tag for browser color-scheme support */}
+        <meta name="color-scheme" content="light dark" />
       </head>
       <body className="h-full antialiased">
-        <ThemeInit />
+        <SourceProtection />
         <ErrorBoundary>
           <ThemeProvider>
             <Layout>

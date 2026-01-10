@@ -1,4 +1,5 @@
-FROM node:20-alpine AS base
+# Use Node 25.x (25.2.1 not available as Alpine tag, use latest 25.x)
+FROM node:25-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
