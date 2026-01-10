@@ -35,6 +35,19 @@ fi
 
 cd "$REPO_DIR"
 
+# Fix ownership and permissions before git operations
+CURRENT_USER=$(whoami)
+SERVICE_USER=$(stat -c '%U' "$REPO_DIR" 2>/dev/null || echo "$CURRENT_USER")
+SERVICE_GROUP=$(stat -c '%G' "$REPO_DIR" 2>/dev/null || echo "$SERVICE_USER")
+
+if [ "$CURRENT_USER" != "$SERVICE_USER" ] && [ "$CURRENT_USER" = "root" ]; then
+    echo "Fixing ownership to ${SERVICE_USER}:${SERVICE_GROUP}..."
+    chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR" 2>/dev/null || true
+fi
+
+# Ensure write permissions on .git directory
+chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || true
+
 # Detect package manager
 PACKAGE_MANAGER="npm"
 if [ -f "package-lock.json" ]; then
@@ -71,6 +84,12 @@ echo -e "${BLUE}Step 2: Fetch latest changes${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
+# Ensure we can write to .git directory
+chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || true
+
+# Stash any local changes
+git stash 2>/dev/null || true
+
 git fetch origin
 echo -e "${GREEN}✅ Fetched latest changes from origin${NC}"
 echo ""
@@ -90,8 +109,12 @@ fi
 
 # Pull latest changes
 git pull origin "$BRANCH" || {
-    echo -e "${RED}❌ Failed to pull latest changes${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️  Pull failed, trying to reset to origin/${BRANCH}...${NC}"
+    git fetch origin
+    git reset --hard origin/"$BRANCH" || {
+        echo -e "${RED}❌ Failed to update repository${NC}"
+        exit 1
+    }
 }
 
 NEW_COMMIT=$(git rev-parse HEAD)
