@@ -685,6 +685,16 @@ export default function SettingsForm() {
             <p className="text-xs text-theme-subtle mt-1">
               🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
             </p>
+            {serverStatus.openAiKey && !keys.openAiKey && (
+              <p className="text-xs text-green-400 mt-1">
+                ✓ Configured via environment variable (server-side)
+              </p>
+            )}
+            {!serverStatus.openAiKey && !keys.openAiKey && (
+              <p className="text-xs text-yellow-400 mt-1">
+                ⚠ Not configured - Please set API key or configure OPENAI_API_KEY environment variable
+              </p>
+            )}
           </div>
 
           {/* Lakera AI Key */}
