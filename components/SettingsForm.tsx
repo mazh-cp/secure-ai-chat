@@ -912,7 +912,7 @@ export default function SettingsForm() {
             </label>
             <div className="relative">
               <input
-                type="password"
+                type="text"
                 id="lakeraProjectId"
                 name="lakeraProjectId"
                 value={keys.lakeraProjectId}
