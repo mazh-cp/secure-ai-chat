@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
+import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
 
 interface LakeraResponse {
   flagged: boolean
@@ -451,6 +452,42 @@ export async function POST(request: NextRequest) {
 
     const userIP = getUserIP(request)
 
+    const logData = {
+      userIP,
+      type: 'file_scan',
+      action: flagged ? 'blocked' : 'scanned',
+      source: 'file_upload',
+      requestDetails: {
+        fileName,
+        fileType: fileName?.split('.').pop() || 'unknown',
+        fileSize: fileContent.length,
+        threatLevel: flagged ? threatLevel : undefined,
+        detectedPatterns: preScan.detected ? preScan.patterns : undefined,
+      },
+      lakeraDecision: {
+        scanned: true,
+        flagged,
+        categories,
+        scores,
+        message: flagged
+          ? `Security threats detected (${threatLevel})`
+          : 'File content appears safe',
+      },
+      success: true,
+      timestamp: new Date().toISOString(),
+    }
+
+    // Send telemetry to Lakera Platform (fire and forget, non-blocking)
+    if (apiKeys.lakeraAiKey) {
+      sendLakeraTelemetryFromLog(
+        logData,
+        apiKeys.lakeraAiKey,
+        apiKeys.lakeraProjectId
+      ).catch((error) => {
+        console.error('Failed to send Lakera telemetry (non-blocking):', error)
+      })
+    }
+
     return NextResponse.json({
       flagged,
       message: flagged
@@ -463,29 +500,7 @@ export async function POST(request: NextRequest) {
           : undefined,
         threatLevel,
       },
-      logData: {
-        userIP,
-        type: 'file_scan',
-        action: flagged ? 'blocked' : 'scanned',
-        source: 'file_upload',
-        requestDetails: {
-          fileName,
-          fileType: fileName?.split('.').pop() || 'unknown',
-          fileSize: fileContent.length,
-          threatLevel: flagged ? threatLevel : undefined,
-          detectedPatterns: preScan.detected ? preScan.patterns : undefined,
-        },
-        lakeraDecision: {
-          scanned: true,
-          flagged,
-          categories,
-          scores,
-          message: flagged
-            ? `Security threats detected (${threatLevel})`
-            : 'File content appears safe',
-        },
-        success: true,
-      },
+      logData,
     })
   } catch (error) {
     console.error('Scan API error:', error)

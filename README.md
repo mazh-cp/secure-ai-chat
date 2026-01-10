@@ -193,6 +193,8 @@ The application uses environment variables for configuration. Copy `.env.example
   - Get it from: https://platform.lakera.ai/
 - `LAKERA_ENDPOINT` - Lakera API endpoint (defaults to `https://api.lakera.ai/v2/guard`)
 - `LAKERA_PROJECT_ID` - Your Lakera project ID (if using project-specific keys)
+- `LAKERA_TELEMETRY_ENABLED` - Enable/disable sending logs to Platform.lakera.ai (default: `true`)
+- `LAKERA_TELEMETRY_ENDPOINT` - Custom telemetry endpoint (default: `https://api.lakera.ai/v2/telemetry`)
 - `CHECKPOINT_TE_API_KEY` - Your Check Point ThreatCloud / Threat Emulation API key (for file sandboxing)
   - Can also be configured via Settings page (stored server-side)
   - Get it from: https://te.checkpoint.com/
