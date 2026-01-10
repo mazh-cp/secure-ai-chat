@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-01-XX
+
+### Planned Enhancements
+- **Version 1.0.4 Development Branch**: Created release branch for upcoming enhancements
+- **Enhancement Planning**: See `V1.0.4_ENHANCEMENTS.md` for planned features and improvements
+
+### Added
+- Release branch `release/v1.0.4` for development and testing
+
+### Changed
+- Version updated to 1.0.4 in package.json and UI
+
+---
+
 ## [1.0.3] - 2026-01-XX
 
 ### Added
