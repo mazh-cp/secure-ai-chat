@@ -54,10 +54,10 @@ export default function DashboardPage() {
         }
       }
     } else {
-      if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
-        clearLogs()
-        setLogs([])
-        setRefreshKey(prev => prev + 1)
+    if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+      clearLogs()
+      setLogs([])
+      setRefreshKey(prev => prev + 1)
       }
     }
   }
@@ -340,7 +340,7 @@ export default function DashboardPage() {
         {filter === 'system' ? (
           <SystemLogViewer logs={systemLogs} />
         ) : (
-          <LogViewer logs={filteredLogs} />
+        <LogViewer logs={filteredLogs} />
         )}
       </div>
     </div>

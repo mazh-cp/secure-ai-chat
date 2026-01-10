@@ -324,7 +324,7 @@ export default function ChatInterface() {
       )}
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden rounded-xl border-2 p-4 mb-4" style={{ borderColor: "rgb(var(--border))", background: "rgba(var(--surface-2), 0.5)" }}>
         <MessageList messages={messages} isLoading={isLoading} />
         <div ref={messagesEndRef} />
       </div>

@@ -809,7 +809,7 @@ export default function FilesPage() {
   return (
     <div className="bento-grid">
       {/* Header Card */}
-      <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer">
+      <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-theme drop-shadow-lg">File Upload & RAG</h1>
@@ -824,7 +824,7 @@ export default function FilesPage() {
       </div>
 
       {/* Upload Section Card */}
-      <div className="bento-card bento-span-2 glass-card p-6">
+      <div className="bento-card bento-span-2 glass-card p-6 border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-theme">Upload Files</h2>
         </div>
@@ -965,7 +965,7 @@ export default function FilesPage() {
       </div>
 
       {/* Files List Section Card */}
-      <div className="bento-card bento-span-2 bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col">
+      <div className="bento-card bento-span-2 bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <h2 className="text-lg font-semibold text-theme mb-4">
           Uploaded Files ({files.length})
         </h2>
@@ -979,7 +979,7 @@ export default function FilesPage() {
       </div>
 
       {/* Info Section Card */}
-      <div className="bento-card bento-span-2 glass-card p-4 border-brand-berry/30">
+      <div className="bento-card bento-span-2 glass-card p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <h3 className="text-brand-berry font-medium mb-2">📁 Supported Features</h3>
         <ul className="text-sm text-theme-muted space-y-1">
           <li>• Maximum file size: 50 MB</li>

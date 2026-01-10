@@ -60,11 +60,11 @@ export default function Home() {
     <div className="bento-grid">
       {/* Header Card - Full Width */}
       <div 
-        className="bento-card bento-span-4 glass-card p-6 liquid-shimmer"
+        className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: "rgb(var(--surface-1))",
+          borderColor: "rgb(var(--border))",
+          boxShadow: "var(--shadow-md)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -95,11 +95,11 @@ export default function Home() {
       {/* Lakera Toggles Card */}
       {hasApiKey && (
         <div 
-          className="bento-card bento-span-2 md:bento-span-2 glass-card p-6"
+          className="bento-card bento-span-2 md:bento-span-2 glass-card p-6 border-2"
           style={{
-            background: "var(--surface)",
-            borderColor: "var(--border)",
-            boxShadow: "var(--card-shadow)",
+            background: "rgb(var(--surface-1))",
+            borderColor: "rgb(var(--border))",
+            boxShadow: "var(--shadow-md)",
           }}
         >
           <LakeraToggles
@@ -112,11 +112,11 @@ export default function Home() {
 
       {/* Chat Interface Card - Takes remaining space */}
       <div 
-        className={`bento-card ${hasApiKey ? 'bento-span-2' : 'bento-span-4'} bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col`}
+        className={`bento-card ${hasApiKey ? 'bento-span-2' : 'bento-span-4'} bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col border-2`}
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: "rgb(var(--surface-1))",
+          borderColor: "rgb(var(--border))",
+          boxShadow: "var(--shadow-md)",
         }}
       >
         <ChatInterface />

@@ -333,12 +333,12 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
                 <div className="mt-2 pt-2 border-t border-white/10">
                   <p className="text-theme-subtle text-xs font-medium mb-1">Additional Security Issues:</p>
                   <ul className="text-theme-subtle text-xs space-y-1">
-                    {Object.entries(file.scanDetails.categories)
-                      .filter(([, value]) => value)
-                      .map(([key]) => (
-                        <li key={key}>• {key.replace(/_/g, ' ')}</li>
-                      ))}
-                  </ul>
+                  {Object.entries(file.scanDetails.categories)
+                    .filter(([, value]) => value)
+                    .map(([key]) => (
+                      <li key={key}>• {key.replace(/_/g, ' ')}</li>
+                    ))}
+                </ul>
                 </div>
               )}
             </div>

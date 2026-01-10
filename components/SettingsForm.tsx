@@ -707,10 +707,12 @@ export default function SettingsForm() {
     }
   }
 
-  const inputClass = "w-full glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none font-mono text-sm transition-all"
+  const inputClass = "w-full glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none font-mono text-sm transition-all border-2"
   const inputStyle = {
-    background: "var(--input-bg, rgba(var(--bg-secondary), 0.15))",
-    borderColor: "var(--input-border, rgba(var(--border-default), 0.3))",
+    background: "rgb(var(--surface-1))",
+    borderColor: "rgb(var(--border))",
+    borderWidth: '2px',
+    borderStyle: 'solid',
   }
   const labelClass = "block text-sm font-medium text-theme-muted mb-2"
 

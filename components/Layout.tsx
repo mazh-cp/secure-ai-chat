@@ -103,7 +103,7 @@ export default function Layout({ children }: LayoutProps) {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } w-64`}
       >
-        <div className="h-full glass-dark rounded-r-3xl border-r border-palette-border-default/20 p-6 flex flex-col">
+        <div className="h-full glass-dark rounded-r-3xl border-r-2 p-6 flex flex-col" style={{ borderColor: "rgb(var(--border))" }}>
           {/* Header Section */}
           <div className="flex h-16 items-center justify-between border-b border-palette-border-default/20 pb-4 mb-6">
             {logoData ? (

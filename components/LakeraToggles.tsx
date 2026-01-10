@@ -55,7 +55,7 @@ export default function LakeraToggles({
   }
 
   return (
-    <div className="glass-card rounded-2xl p-4">
+    <div className="glass-card rounded-2xl p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <h3 className="text-sm font-semibold text-theme mb-3">🛡️ Lakera AI Protection</h3>
