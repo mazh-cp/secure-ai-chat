@@ -72,17 +72,65 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 if [ -d "$REPO_DIR" ]; then
-    echo "Repository already exists, updating..."
+    echo "Repository already exists, fixing permissions and updating..."
+    
+    # Fix ownership and permissions if needed
+    CURRENT_USER=$(whoami)
+    if [ "$CURRENT_USER" != "$SERVICE_USER" ]; then
+        echo "Fixing ownership to ${SERVICE_USER}:${SERVICE_GROUP}..."
+        sudo chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR" 2>/dev/null || true
+    else
+        chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR" 2>/dev/null || true
+    fi
+    
+    # Ensure write permissions on .git directory
+    chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || sudo chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || true
+    
     cd "$REPO_DIR"
+    
+    # Stash any local changes if present
+    git stash 2>/dev/null || true
+    
+    # Fetch and update
     git fetch origin
-    git checkout ${BRANCH}
-    git pull origin ${BRANCH}
+    git checkout ${BRANCH} 2>/dev/null || git checkout -b ${BRANCH} origin/${BRANCH}
+    git pull origin ${BRANCH} || {
+        echo -e "${YELLOW}⚠️  Pull failed, trying to reset to origin/${BRANCH}...${NC}"
+        git fetch origin
+        git reset --hard origin/${BRANCH}
+    }
 else
     echo "Cloning repository..."
     mkdir -p "$(dirname "$REPO_DIR")"
-    git clone -b ${BRANCH} ${REPO_URL} ${REPO_DIR}
+    
+    # Ensure parent directory is owned by the service user
+    PARENT_DIR="$(dirname "$REPO_DIR")"
+    CURRENT_USER=$(whoami)
+    if [ "$CURRENT_USER" != "$SERVICE_USER" ]; then
+        sudo chown ${SERVICE_USER}:${SERVICE_GROUP} "$PARENT_DIR" 2>/dev/null || true
+    fi
+    
+    # Clone as the service user
+    if [ "$CURRENT_USER" != "$SERVICE_USER" ]; then
+        sudo -u ${SERVICE_USER} git clone -b ${BRANCH} ${REPO_URL} ${REPO_DIR}
+    else
+        git clone -b ${BRANCH} ${REPO_URL} ${REPO_DIR}
+    fi
+    
     cd "$REPO_DIR"
 fi
+
+# Ensure proper ownership after clone/update
+CURRENT_USER=$(whoami)
+if [ "$CURRENT_USER" != "$SERVICE_USER" ]; then
+    sudo chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR"
+else
+    chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR"
+fi
+
+# Ensure proper permissions
+chmod -R 755 "$REPO_DIR"
+chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || sudo chmod -R u+w "$REPO_DIR/.git" 2>/dev/null || true
 
 echo -e "${GREEN}✅ Repository cloned/updated to ${BRANCH}${NC}"
 echo ""
@@ -94,11 +142,24 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Set Node.js version for this session
-source "$HOME/.nvm/nvm.sh" 2>/dev/null || true
-export PATH="$HOME/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH"
+# Source nvm for the service user
+if [ -f "/home/${SERVICE_USER}/.nvm/nvm.sh" ]; then
+    source "/home/${SERVICE_USER}/.nvm/nvm.sh" 2>/dev/null || true
+    export PATH="/home/${SERVICE_USER}/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH"
+elif [ -f "$HOME/.nvm/nvm.sh" ]; then
+    source "$HOME/.nvm/nvm.sh" 2>/dev/null || true
+    export PATH="$HOME/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH"
+fi
 
 cd "$REPO_DIR"
-npm ci
+
+# Install dependencies as the service user
+CURRENT_USER=$(whoami)
+if [ "$CURRENT_USER" != "$SERVICE_USER" ]; then
+    sudo -u ${SERVICE_USER} npm ci
+else
+    npm ci
+fi
 
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 echo ""
@@ -142,7 +203,14 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 cd "$REPO_DIR"
-npm run build
+
+# Build as the service user
+CURRENT_USER=$(whoami)
+if [ "$CURRENT_USER" != "$SERVICE_USER" ]; then
+    sudo -u ${SERVICE_USER} npm run build
+else
+    npm run build
+fi
 
 echo -e "${GREEN}✅ Application built successfully${NC}"
 echo ""
