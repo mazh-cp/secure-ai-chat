@@ -93,9 +93,9 @@ elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
 fi
 echo ""
 
-# 4. Security: API Key Leakage Check
+# 4. Security: API Key Leakage Check (Comprehensive)
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}4. SECURITY: API KEY LEAKAGE CHECK${NC}"
+echo -e "${BLUE}4. SECURITY: COMPREHENSIVE API KEY LEAKAGE CHECK${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 run_check "Security Audit: No API Keys in Client Components" "bash scripts/check-security.sh"

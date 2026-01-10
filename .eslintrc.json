@@ -11,12 +11,20 @@
           {
             "name": "@/lib/checkpoint-te",
             "message": "❌ SECURITY: checkpoint-te.ts must NOT be imported in client components. API keys are server-side only. Use API routes instead."
+          },
+          {
+            "name": "@/lib/api-keys-storage",
+            "message": "❌ SECURITY: api-keys-storage.ts must NOT be imported in client components. API keys are server-side only. Use API routes instead."
           }
         ],
         "patterns": [
           {
             "group": ["**/lib/checkpoint-te"],
             "message": "❌ SECURITY: checkpoint-te.ts must NOT be imported in client components. API keys are server-side only. Use API routes instead."
+          },
+          {
+            "group": ["**/lib/api-keys-storage"],
+            "message": "❌ SECURITY: api-keys-storage.ts must NOT be imported in client components. API keys are server-side only. Use API routes instead."
           }
         ]
       }
