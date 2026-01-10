@@ -1,0 +1,21 @@
+[
+  {
+    "id": "1767994419596-ghrdis0vf",
+    "timestamp": "2026-01-09T21:33:39.596Z",
+    "level": "error",
+    "service": "checkpoint_te",
+    "message": "Upload exception: An error occurred during file upload to Check Point TE",
+    "details": {
+      "endpoint": "https://te.checkpoint.com/tecloud/api/v1/file/upload",
+      "method": "POST",
+      "statusCode": 500,
+      "error": "An error occurred during file upload to Check Point TE",
+      "stackTrace": "TypeError: formDataStream is not async iterable\n    at POST (webpack-internal:///(rsc)/./app/api/te/upload/route.ts:156:35)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:57228\n    at async eT.execute (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:46851)\n    at async eT.handle (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:58760)\n    at async doRender (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:1366:42)\n    at async cacheEntry.responseCache.get.routeKind (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:1588:28)\n    at async DevServer.renderToResponseWithComponentsImpl (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:1496:28)\n    at async DevServer.renderPageComponent (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:1924:24)\n    at async DevServer.renderToResponseImpl (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:1962:32)\n    at async DevServer.pipeImpl (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:922:25)\n    at async NextNodeServer.handleCatchallRenderRequest (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/next-server.js:272:17)\n    at async DevServer.handleRequestImpl (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/base-server.js:818:17)\n    at async /Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/dev/next-dev-server.js:339:20\n    at async Span.traceAsyncFn (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/trace/trace.js:154:20)\n    at async DevServer.handleRequest (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/dev/next-dev-server.js:336:24)\n    at async invokeRender (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/lib/router-server.js:179:21)\n    at async handleRequest (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/lib/router-server.js:359:24)\n    at async requestHandlerImpl (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/lib/router-server.js:383:13)\n    at async Server.requestListener (/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat/node_modules/next/dist/server/lib/start-server.js:141:13)",
+      "duration": 2
+    },
+    "metadata": {
+      "requestId": "1767994419592-22utf9bz4",
+      "errorType": "TypeError"
+    }
+  }
+]

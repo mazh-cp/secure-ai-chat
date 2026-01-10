@@ -60,10 +60,3 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
-
-# Secure storage (API keys and sensitive data)
-/.secure-storage/
-/.secure-storage/**
-!.secure-storage/.gitkeep
-# System logs may contain sensitive error information
-/.secure-storage/system-logs.json
