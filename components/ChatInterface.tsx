@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
+import ModelSelector from './ModelSelector'
 import { Message } from '@/types/chat'
 import { addLog } from '@/lib/logging'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
@@ -29,6 +30,7 @@ export default function ChatInterface() {
   const [apiKeys, setApiKeys] = useState<ApiKeys | null>(null)
   const [inputScanEnabled, setInputScanEnabled] = useState(true)
   const [outputScanEnabled, setOutputScanEnabled] = useState(true)
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini') // Default model
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load API keys from server-side storage (fallback to localStorage for backward compatibility)
@@ -83,8 +85,21 @@ export default function ChatInterface() {
           console.error('Failed to load toggle states:', e)
         }
       }
+
+      // Load selected model from localStorage
+      const modelStored = localStorage.getItem('selectedModel')
+      if (modelStored) {
+        setSelectedModel(modelStored)
+      }
     }
   }, [])
+
+  // Save selected model to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && selectedModel) {
+      localStorage.setItem('selectedModel', selectedModel)
+    }
+  }, [selectedModel])
 
   // Listen for changes to toggle states
   useEffect(() => {
@@ -155,6 +170,7 @@ export default function ChatInterface() {
         body: JSON.stringify({
           messages: chatMessages,
           apiKeys: apiKeys,
+          model: selectedModel, // Include selected model
           scanOptions: {
             scanInput: inputScanEnabled && !!apiKeys.lakeraAiKey,
             scanOutput: outputScanEnabled && !!apiKeys.lakeraAiKey,
@@ -320,6 +336,17 @@ export default function ChatInterface() {
           }}
         >
           <p className="text-sm text-theme">⚠️ {error}</p>
+        </div>
+      )}
+
+      {/* Model Selector */}
+      {hasApiKey && (
+        <div className="mb-4 flex justify-end">
+          <ModelSelector 
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            apiKey={apiKeys?.openAiKey || null}
+          />
         </div>
       )}
 

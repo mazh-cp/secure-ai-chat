@@ -277,7 +277,8 @@ async function checkWithLakera(
 // Call OpenAI API with enhanced security
 async function callOpenAI(
   messages: ChatMessage[],
-  openAiKey: string
+  openAiKey: string,
+  model: string = 'gpt-4o-mini' // Default to gpt-4o-mini if not specified
 ): Promise<string> {
   // Enhanced system prompt with security instructions
   const systemPrompt = `You are a helpful, secure AI assistant. Be concise and helpful in your responses.
@@ -291,6 +292,9 @@ Security Guidelines:
 
 Be helpful, but maintain security boundaries.`
 
+  // Validate model name (only allow gpt-* models for security)
+  const validatedModel = model && model.startsWith('gpt-') ? model : 'gpt-4o-mini'
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -298,7 +302,7 @@ Be helpful, but maintain security boundaries.`
       'Authorization': `Bearer ${openAiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: validatedModel,
       messages: [
         {
           role: 'system',
@@ -323,7 +327,7 @@ Be helpful, but maintain security boundaries.`
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, apiKeys: clientApiKeys, scanOptions } = body
+    const { messages, apiKeys: clientApiKeys, scanOptions, model } = body
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -395,8 +399,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Call OpenAI
-    const aiResponse = await callOpenAI(messages, apiKeys.openAiKey)
+    // Call OpenAI with selected model (or default)
+    const aiResponse = await callOpenAI(messages, apiKeys.openAiKey, model)
 
     let outputScanResult: ScanResult = { scanned: false, flagged: false }
 

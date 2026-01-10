@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2025-01-10
+
+### Added
+- **OpenAI Model Selector**: Users can now select different OpenAI models from a dropdown list on the Chat page
+  - Model dropdown displays available GPT models based on configured API key
+  - Dynamic model list fetched from OpenAI API
+  - Model preference persisted in localStorage
+  - Model names formatted for readability (e.g., "GPT-4o Mini", "GPT-4o")
+  - Models sorted with newest first
+  - Secure validation (only gpt-* models allowed)
+  - Default model: `gpt-4o-mini`
+- **New API Route**: `/api/models` - Fetches available OpenAI models
+- **New Component**: `ModelSelector` - Dropdown component for model selection
+
+### Changed
+- **Chat API**: Enhanced to accept and use selected model parameter
+- **ChatInterface**: Integrated ModelSelector component above chat messages
+
+### Fixed
+- **Settings Page - Save Keys Button**: Fixed button not visible in light mode
+  - Changed from invalid `var(--primary)` to `rgb(var(--accent))` for proper theme support
+  - Button now clearly visible in both light and dark modes
+- **Settings Page - Lakera Project ID**: Made Project ID field visible (text input instead of password)
+  - Added helpful message about policy verification
+  - Current Project ID displayed when configured
+
+### Technical
+- Updated version to 1.0.5
+- All new features styled with UniFi theme tokens
+- Maintained backward compatibility
+
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
