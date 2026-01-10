@@ -930,8 +930,13 @@ export default function SettingsForm() {
               )}
             </div>
             <p className="text-xs text-theme-subtle mt-1">
-              🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
+              📋 Visible for verification - Ensure correct policy is established from Lakera Platform
             </p>
+            {keys.lakeraProjectId && (
+              <p className="text-xs text-theme-muted mt-1">
+                ℹ️ Current Project ID: <span className="font-mono font-semibold">{keys.lakeraProjectId}</span>
+              </p>
+            )}
           </div>
 
           {/* Verification PIN Section */}
