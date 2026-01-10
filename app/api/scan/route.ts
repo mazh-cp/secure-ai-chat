@@ -96,7 +96,7 @@ function detectCommonInjectionPatterns(content: string): {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fileContent, fileName, apiKeys } = body
+    const { fileContent, fileName, apiKeys: clientApiKeys } = body
 
     if (!fileContent) {
       return NextResponse.json(
@@ -105,7 +105,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!apiKeys?.lakeraAiKey) {
+    // Get API keys from server-side storage (priority) or client (fallback for backward compatibility)
+    const { getApiKeys } = await import('@/lib/api-keys-storage')
+    const serverKeys = await getApiKeys()
+    
+    // Use server-side keys if available (allows site to work from any browser/device)
+    // Fall back to client keys only if server-side keys are not configured (backward compatibility)
+    const apiKeys = {
+      lakeraAiKey: serverKeys.lakeraAiKey || clientApiKeys?.lakeraAiKey || null,
+      lakeraProjectId: serverKeys.lakeraProjectId || clientApiKeys?.lakeraProjectId || null,
+      lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+    }
+
+    if (!apiKeys.lakeraAiKey) {
       return NextResponse.json(
         { error: 'Lakera API key is not configured. Please add it in Settings.' },
         { status: 400 }

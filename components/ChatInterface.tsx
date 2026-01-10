@@ -31,19 +31,48 @@ export default function ChatInterface() {
   const [outputScanEnabled, setOutputScanEnabled] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load API keys from localStorage
+  // Load API keys from server-side storage (fallback to localStorage for backward compatibility)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('apiKeys')
-      if (stored) {
-        try {
-          setApiKeys(JSON.parse(stored))
-        } catch (e) {
-          console.error('Failed to load API keys:', e)
+    const loadApiKeys = async () => {
+      try {
+        // Try to get keys from server-side storage first
+        const response = await fetch('/api/keys/retrieve').catch(() => null)
+        if (response?.ok) {
+          const data = await response.json()
+          if (data.keys) {
+            // Use server-side keys if available
+            setApiKeys({
+              openAiKey: data.keys.openAiKey || '',
+              lakeraAiKey: data.keys.lakeraAiKey || '',
+              lakeraEndpoint: data.keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+              lakeraProjectId: data.keys.lakeraProjectId || '',
+            })
+            return
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load API keys from server:', error)
+      }
+      
+      // Fallback to localStorage for backward compatibility
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('apiKeys')
+        if (stored) {
+          try {
+            setApiKeys(JSON.parse(stored))
+          } catch (e) {
+            console.error('Failed to load API keys:', e)
+          }
         }
       }
-
-      // Load toggle states from localStorage
+    }
+    
+    loadApiKeys()
+  }, [])
+  
+  // Load toggle states from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
       const toggleStored = localStorage.getItem('lakeraToggles')
       if (toggleStored) {
         try {

@@ -607,10 +607,23 @@ export default function FilesPage() {
     ))
 
     try {
-      const apiKeys = localStorage.getItem('apiKeys')
-      const keys = apiKeys ? JSON.parse(apiKeys) : {}
+      // Check if Lakera API key is configured (server-side)
+      // The API route will use server-side keys if available
+      // We just need to verify it's configured
+      const keysResponse = await fetch('/api/keys').catch(() => null)
+      let lakeraConfigured = false
+      
+      if (keysResponse?.ok) {
+        const keysData = await keysResponse.json()
+        lakeraConfigured = keysData.configured?.lakeraAiKey || false
+      } else {
+        // Fallback: check localStorage for backward compatibility
+        const apiKeys = localStorage.getItem('apiKeys')
+        const keys = apiKeys ? JSON.parse(apiKeys) : {}
+        lakeraConfigured = !!keys.lakeraAiKey
+      }
 
-      if (!keys.lakeraAiKey) {
+      if (!lakeraConfigured) {
         setFiles(prev => prev.map(f => 
           f.id === fileId ? { ...f, scanStatus: 'error' as const, scanResult: 'Lakera API key not configured. Please add it in Settings.' } : f
         ))

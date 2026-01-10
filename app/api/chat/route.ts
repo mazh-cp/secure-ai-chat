@@ -323,7 +323,7 @@ Be helpful, but maintain security boundaries.`
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, apiKeys, scanOptions } = body
+    const { messages, apiKeys: clientApiKeys, scanOptions } = body
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -332,7 +332,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!apiKeys?.openAiKey) {
+    // Get API keys from server-side storage (priority) or client (fallback for backward compatibility)
+    const { getApiKeys } = await import('@/lib/api-keys-storage')
+    const serverKeys = await getApiKeys()
+    
+    // Use server-side keys if available (allows site to work from any browser/device)
+    // Fall back to client keys only if server-side keys are not configured (backward compatibility)
+    const apiKeys = {
+      openAiKey: serverKeys.openAiKey || clientApiKeys?.openAiKey || null,
+      lakeraAiKey: serverKeys.lakeraAiKey || clientApiKeys?.lakeraAiKey || null,
+      lakeraProjectId: serverKeys.lakeraProjectId || clientApiKeys?.lakeraProjectId || null,
+      lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+    }
+
+    if (!apiKeys.openAiKey) {
       return NextResponse.json(
         { error: 'OpenAI API key is not configured. Please add it in Settings.' },
         { status: 400 }

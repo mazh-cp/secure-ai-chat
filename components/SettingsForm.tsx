@@ -59,18 +59,60 @@ export default function SettingsForm() {
   const [keyToClear, setKeyToClear] = useState<keyof ApiKeys | null>(null)
   const [isManagingPin, setIsManagingPin] = useState<boolean>(false)
 
-  // Load keys and settings from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
+  // Load keys from server-side storage and check status
+  const loadApiKeys = async () => {
+    let statusData: { configured?: { openAiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
+    let statusResponse: Response | null = null
+    
+    try {
+      // Check server-side status first
+      statusResponse = await fetch('/api/keys').catch(() => null)
+      if (statusResponse?.ok) {
+        statusData = await statusResponse.json()
+        // Update server status
+        setServerStatus({
+          openAiKey: statusData?.configured?.openAiKey || false,
+          lakeraAiKey: statusData?.configured?.lakeraAiKey || false,
+          lakeraProjectId: statusData?.configured?.lakeraProjectId || false,
+          lakeraEndpoint: statusData?.configured?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+          checkpointTeApiKey: false, // Handled separately
+        })
+      }
+      
+      // Try to load from localStorage for backward compatibility (migration)
       const stored = localStorage.getItem('apiKeys')
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
-          setKeys(prev => ({ ...prev, ...parsed }))
+          // Only set if server-side doesn't have it (migration)
+          if (!statusResponse?.ok || !statusData?.configured?.openAiKey) {
+            setKeys(prev => ({ ...prev, ...parsed }))
+          }
         } catch (error) {
           console.error('Failed to load stored keys:', error)
         }
       }
+    } catch (error) {
+      console.error('Failed to load API keys:', error)
+      // Fallback to localStorage for backward compatibility
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('apiKeys')
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            setKeys(prev => ({ ...prev, ...parsed }))
+          } catch (parseError) {
+            console.error('Failed to parse stored keys:', parseError)
+          }
+        }
+      }
+    }
+  }
+
+  // Load keys and settings on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      loadApiKeys()
       
       const storedSettings = localStorage.getItem('appSettings')
       if (storedSettings) {
@@ -106,26 +148,40 @@ export default function SettingsForm() {
     }
   }, [])
 
-  // Check server-side API key status (environment variables)
+  // Check server-side API key status (environment variables and storage)
   const checkServerStatus = async () => {
-    setIsCheckingServerStatus(true)
     try {
-      const response = await fetch('/api/settings/status')
-      if (response.ok) {
-        const data = await response.json()
-        setServerStatus({
-          openAiKey: data.hasOpenAiKey || false,
-          lakeraAiKey: data.hasLakeraAiKey || false,
-          lakeraProjectId: data.hasLakeraProjectId || false,
-          lakeraEndpoint: data.status?.lakeraEndpoint?.value || 'https://api.lakera.ai/v2/guard',
-          checkpointTeApiKey: data.hasCheckpointTeApiKey || false,
-        })
+      // Check both status endpoints
+      const [statusResponse, keysResponse] = await Promise.all([
+        fetch('/api/settings/status').catch(() => null),
+        fetch('/api/keys').catch(() => null),
+      ])
+      
+      if (statusResponse?.ok) {
+        const statusData = await statusResponse.json()
+        setServerStatus(prev => ({
+          ...prev,
+          openAiKey: statusData.hasOpenAiKey || false,
+          lakeraAiKey: statusData.hasLakeraAiKey || false,
+          lakeraProjectId: statusData.hasLakeraProjectId || false,
+          lakeraEndpoint: statusData.status?.lakeraEndpoint?.value || 'https://api.lakera.ai/v2/guard',
+          checkpointTeApiKey: statusData.hasCheckpointTeApiKey || false,
+        }))
+      }
+      
+      if (keysResponse?.ok) {
+        const keysData = await keysResponse.json()
+        setServerStatus(prev => ({
+          ...prev,
+          openAiKey: keysData.configured?.openAiKey || prev.openAiKey,
+          lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
+          lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
+          lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+        }))
       }
     } catch (error) {
       // Silently handle - don't break page load
       console.error('Failed to check server-side API key status:', error)
-    } finally {
-      setIsCheckingServerStatus(false)
     }
   }
 
@@ -295,6 +351,8 @@ export default function SettingsForm() {
 
   // Handle PIN dialog confirmation
   const handlePinDialogConfirm = async () => {
+    // PIN verification is handled by the API endpoint
+    // We just need to make the request with the PIN
     if (!pinForVerification.trim()) {
       alert('Please enter your PIN')
       return
@@ -317,7 +375,7 @@ export default function SettingsForm() {
                pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
       // Clear individual key
       if (keyToClear) {
-        performClearKey(keyToClear)
+        await performClearKey(keyToClear)
       }
     }
 
@@ -387,13 +445,31 @@ export default function SettingsForm() {
     setSaveStatus('idle')
 
     try {
+      // Save API keys to server-side storage (encrypted)
+      const response = await fetch('/api/keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keys }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to save API keys')
+      }
+
+      // Save app settings to localStorage (not sensitive)
       if (typeof window !== 'undefined') {
-        localStorage.setItem('apiKeys', JSON.stringify(keys))
         localStorage.setItem('appSettings', JSON.stringify(settings))
+        // Clear API keys from localStorage (now stored server-side)
+        localStorage.removeItem('apiKeys')
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 3000)
         // Trigger custom event to update header
         window.dispatchEvent(new CustomEvent('settingsUpdated'))
+        // Refresh server status
+        await checkServerStatus()
       }
     } catch (error) {
       console.error('Failed to save keys:', error)
@@ -405,7 +481,7 @@ export default function SettingsForm() {
   }
 
   // Handle clearing individual API keys (requires PIN if configured)
-  const handleClear = (fieldName: keyof ApiKeys) => {
+  const handleClear = async (fieldName: keyof ApiKeys) => {
     // If PIN is configured, require PIN verification
     if (pinConfigured) {
       setKeyToClear(fieldName)
