@@ -12,9 +12,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO_DIR="${REPO_DIR:-/opt/secure-ai-chat}"
+REPO_DIR="${REPO_DIR:-/home/adminuser/secure-ai-chat}"
 SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
-BRANCH="${BRANCH:-release/v1.0.1}"
+BRANCH="${BRANCH:-release/v1.0.2}"
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║        Secure AI Chat - Production Upgrade Script            ║${NC}"

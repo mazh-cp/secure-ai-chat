@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 SERVICE_NAME="secure-ai-chat"
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║       Secure AI Chat v1.0.1 - Deployment Verification       ║${NC}"
+echo -e "${BLUE}║       Secure AI Chat v1.0.2 - Deployment Verification       ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -122,8 +122,10 @@ echo -e "${BLUE}7. GIT COMMIT HASH${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-if [ -d "/opt/secure-ai-chat" ]; then
-    cd /opt/secure-ai-chat
+REPO_DIR="${REPO_DIR:-/home/adminuser/secure-ai-chat}"
+
+if [ -d "$REPO_DIR" ]; then
+    cd "$REPO_DIR"
     COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
     COMMIT_MSG=$(git log --oneline -1 2>/dev/null || echo "unknown")
     BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
@@ -146,7 +148,7 @@ echo -e "${GREEN}║              ✅ DEPLOYMENT VERIFICATION COMPLETE          
 echo -e "${GREEN}║                                                               ║${NC}"
 echo -e "${GREEN}║  Application is running and ready for use                     ║${NC}"
 echo -e "${GREEN}║  Service: ${SERVICE_NAME}                                      ║${NC}"
-echo -e "${GREEN}║  Version: 1.0.1                                               ║${NC}"
+echo -e "${GREEN}║  Version: 1.0.2                                               ║${NC}"
 echo -e "${GREEN}║  URL: http://localhost:3000                                   ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
