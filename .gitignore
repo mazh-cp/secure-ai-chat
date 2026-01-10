@@ -60,3 +60,6 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Secure storage (encrypted files, PIN hashes, system logs)
+.secure-storage/

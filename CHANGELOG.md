@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.2] - 2026-01-XX
+
+### Added
+- **Lakera Telemetry Integration**
+  - Automatic log export to Platform.lakera.ai for analytics and monitoring
+  - Support for S3 log export (Enterprise feature via Platform.lakera.ai Settings)
+  - Custom API telemetry endpoint for real-time analytics
+  - Non-blocking telemetry that doesn't affect main application flow
+  - Configurable via `LAKERA_TELEMETRY_ENABLED` and `LAKERA_TELEMETRY_ENDPOINT` environment variables
+
+- **Production Upgrade Script**
+  - Single-command upgrade script (`upgrade.sh`) for production systems
+  - Automatic dependency updates, build, and service restart
+  - Environment variable configuration support
+  - Rollback capability with commit hash tracking
+
+- **Deployment Verification Script**
+  - Post-deployment verification script (`verify-deployment.sh`)
+  - Comprehensive health checks and service status validation
+  - Git commit hash verification
+
+- **Documentation**
+  - `LAKERA_TELEMETRY.md` - Technical API reference for Lakera telemetry
+  - `LAKERA_LOGS_SETUP.md` - Complete setup guide for S3 export and API telemetry
+  - `UPGRADE.md` - Production upgrade documentation
+  - `V1.0.2_RELEASE_NOTES.md` - Release notes
+
+### Enhanced
+- **Release Gate Automation**
+  - Improved security scan to only check for actual API key patterns (not variable names)
+  - Better error handling and validation
+
+- **Lakera Integration**
+  - Telemetry automatically sent after each scan (chat input/output, file uploads)
+  - Uses Lakera API key and Project ID from Settings
+  - Privacy-preserving (only metadata, not full content)
+
+### Fixed
+- TypeScript errors in LogViewer and SystemLogViewer (unknown type handling)
+- ESLint disable comments (removed invalid rule references)
+- Build output security scan false positives (variable names vs actual API keys)
+
+### Documentation
+- Updated `README.md` with Lakera telemetry configuration options
+- Added upgrade instructions and verification steps
+- Enhanced release workflow documentation
+
+---
+
 ## [1.0.1] - 2026-01-XX
 
 ### Added
