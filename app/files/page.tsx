@@ -631,8 +631,24 @@ export default function FilesPage() {
         return
       }
 
+      // Get keys for endpoint validation
+      let endpoint = 'https://api.lakera.ai/v2/guard'
+      
+      // Try to get endpoint from server-side or localStorage
+      if (keysResponse?.ok) {
+        const keysData = await keysResponse.json()
+        endpoint = keysData.configured?.lakeraEndpoint || keysData.source?.lakeraEndpoint === 'storage' ? 
+          (await fetch('/api/keys/retrieve').then(r => r.json()).then(d => d.keys?.lakeraEndpoint || endpoint).catch(() => endpoint)) :
+          endpoint
+      } else {
+        // Fallback: check localStorage
+        const apiKeys = localStorage.getItem('apiKeys')
+        const localKeys = apiKeys ? JSON.parse(apiKeys) : {}
+        endpoint = localKeys.lakeraEndpoint || endpoint
+      }
+      
       // Validate endpoint
-      if (!keys.lakeraEndpoint || !keys.lakeraEndpoint.startsWith('http')) {
+      if (!endpoint || !endpoint.startsWith('http')) {
         setFiles(prev => prev.map(f => 
           f.id === fileId ? { ...f, scanStatus: 'error' as const, scanResult: 'Invalid Lakera endpoint. Please check Settings.' } : f
         ))
