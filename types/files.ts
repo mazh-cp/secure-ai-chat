@@ -1,3 +1,5 @@
+import { CheckPointTELogFields } from './checkpoint-te'
+
 export interface UploadedFile {
   id: string
   name: string
@@ -10,6 +12,12 @@ export interface UploadedFile {
   scanDetails?: {
     categories?: Record<string, boolean>
     score?: number
+  }
+  // Check Point TE specific details
+  checkpointTeDetails?: {
+    logFields: CheckPointTELogFields
+    verdict: 'safe' | 'malicious' | 'pending' | 'unknown'
+    status: string
   }
 }
 

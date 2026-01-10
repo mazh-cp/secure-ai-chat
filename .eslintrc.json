@@ -1,4 +1,33 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript", "prettier"]
+  "extends": [
+    "next/core-web-vitals",
+    "eslint-config-prettier"
+  ],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@/lib/checkpoint-te",
+            "message": "❌ SECURITY: checkpoint-te.ts must NOT be imported in client components. API keys are server-side only. Use API routes instead."
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["**/lib/checkpoint-te"],
+            "message": "❌ SECURITY: checkpoint-te.ts must NOT be imported in client components. API keys are server-side only. Use API routes instead."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["app/api/**/*.ts", "lib/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }
-

@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -18,17 +18,21 @@
     "check:ci": "npm run type-check && npm run lint && npm run format:check",
     "check:node": "node -e \"const v=process.versions.node; if(v!=='25.2.1'){console.error('❌ Node 25.2.1 required. Current:', v); process.exit(1)} else {console.log('✅ Node OK:', v)}\"",
     "pre-push": "npm run check:node && npm run lint && npm run build",
-    "smoke": "bash scripts/smoke.sh"
+    "smoke": "bash scripts/smoke.sh",
+    "release-gate": "bash scripts/release-gate.sh"
   },
   "dependencies": {
+    "@types/form-data": "^2.2.1",
     "@types/node": "^20.8.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "date-fns": "^2.30.0",
+    "form-data": "^4.0.5",
     "next": "^14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "undici": "^7.18.2"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.7.0",

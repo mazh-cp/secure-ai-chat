@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import LogViewer from '@/components/LogViewer'
+import SystemLogViewer from '@/components/SystemLogViewer'
 import { LogEntry } from '@/types/logs'
 import { getLogs, clearLogs } from '@/lib/logging'
+import { SystemLogEntry } from '@/lib/system-logging'
 
 export default function DashboardPage() {
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [filter, setFilter] = useState<'all' | 'chat' | 'file_scan' | 'error'>('all')
+  const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([])
+  const [filter, setFilter] = useState<'all' | 'chat' | 'file_scan' | 'error' | 'system'>('all')
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -21,21 +24,48 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [refreshKey])
 
-  const loadLogs = () => {
+  const loadLogs = async () => {
     const allLogs = getLogs()
     setLogs(allLogs)
+    
+    // Load system logs
+    try {
+      const response = await fetch('/api/logs/system?limit=100')
+      if (response.ok) {
+        const data = await response.json()
+        setSystemLogs(data.logs || [])
+      }
+    } catch (error) {
+      console.error('Failed to load system logs:', error)
+    }
   }
 
-  const handleClearLogs = () => {
-    if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
-      clearLogs()
-      setLogs([])
-      setRefreshKey(prev => prev + 1)
+  const handleClearLogs = async () => {
+    if (filter === 'system') {
+      if (confirm('Are you sure you want to clear all system logs? This action cannot be undone.')) {
+        try {
+          const response = await fetch('/api/logs/system', { method: 'DELETE' })
+          if (response.ok) {
+            setSystemLogs([])
+            setRefreshKey(prev => prev + 1)
+          }
+        } catch (error) {
+          console.error('Failed to clear system logs:', error)
+        }
+      }
+    } else {
+      if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+        clearLogs()
+        setLogs([])
+        setRefreshKey(prev => prev + 1)
+      }
     }
   }
 
   const filteredLogs = filter === 'all' 
     ? logs 
+    : filter === 'system'
+    ? [] // System logs are handled separately
     : logs.filter(log => log.type === filter)
 
   const totalLogs = logs.length
@@ -46,6 +76,10 @@ export default function DashboardPage() {
   const allowedCount = logs.filter(log => log.action === 'allowed').length
   const scannedCount = logs.filter(log => log.lakeraDecision?.scanned).length
   const flaggedCount = logs.filter(log => log.lakeraDecision?.flagged).length
+  
+  // System logs stats
+  const systemErrorLogs = systemLogs.filter(log => log.level === 'error').length
+  const checkpointTeErrors = systemLogs.filter(log => log.service === 'checkpoint_te' && log.level === 'error').length
 
   return (
     <div className="bento-grid">
@@ -62,7 +96,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold text-theme drop-shadow-lg">Dashboard</h1>
             <p className="mt-2 text-sm text-theme-muted">
-              Monitor all user requests, IP addresses, and Lakera AI security decisions
+              Monitor all user requests, IP addresses, security decisions, and system-level events
             </p>
           </div>
         </div>
@@ -185,7 +219,37 @@ export default function DashboardPage() {
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
           <div className="text-3xl font-bold text-red-400 mb-1">{errorLogs}</div>
-          <div className="text-xs text-theme-subtle text-center">Errors</div>
+          <div className="text-xs text-theme-subtle text-center">Application Errors</div>
+        </div>
+      </div>
+
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-blue-400/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-4xl mb-2">⚙️</div>
+          <div className="text-3xl font-bold text-blue-400 mb-1">{systemErrorLogs}</div>
+          <div className="text-xs text-theme-subtle text-center">System Errors</div>
+        </div>
+      </div>
+
+      <div 
+        className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-orange-400/30"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          boxShadow: "var(--card-shadow)",
+        }}
+      >
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-4xl mb-2">🛡️</div>
+          <div className="text-3xl font-bold text-orange-400 mb-1">{checkpointTeErrors}</div>
+          <div className="text-xs text-theme-subtle text-center">Check Point TE Errors</div>
         </div>
       </div>
 
@@ -240,6 +304,16 @@ export default function DashboardPage() {
             >
               Errors
             </button>
+            <button
+              onClick={() => setFilter('system')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                filter === 'system'
+                  ? 'glass-button text-blue-400 scale-105'
+                  : 'glass text-theme-muted hover:text-blue-400 hover:scale-105'
+              }`}
+            >
+              ⚙️ System ({systemLogs.filter(l => l.level === 'error').length} errors)
+            </button>
           </div>
 
           <button
@@ -263,7 +337,11 @@ export default function DashboardPage() {
           boxShadow: "var(--card-shadow)",
         }}
       >
-        <LogViewer logs={filteredLogs} />
+        {filter === 'system' ? (
+          <SystemLogViewer logs={systemLogs} />
+        ) : (
+          <LogViewer logs={filteredLogs} />
+        )}
       </div>
     </div>
   )

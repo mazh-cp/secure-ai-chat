@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
+import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -426,20 +427,55 @@ export async function POST(request: NextRequest) {
     // Get user IP for logging
     const userIP = getUserIP(request)
 
+    const logData = {
+      userIP,
+      type: 'chat',
+      source: 'chat',
+      requestDetails: {
+        message: latestUserMessage?.content,
+      },
+      inputDecision: inputScanResult.scanned ? inputScanResult : undefined,
+      outputDecision: outputScanResult.scanned ? outputScanResult : undefined,
+      timestamp: new Date().toISOString(),
+    }
+
+    // Send telemetry to Lakera Platform for input scan (if scanned)
+    if (apiKeys.lakeraAiKey && inputScanResult.scanned) {
+      const inputLogData = {
+        ...logData,
+        action: inputScanResult.flagged ? 'blocked' : 'allowed',
+        lakeraDecision: inputScanResult,
+      }
+      sendLakeraTelemetryFromLog(
+        inputLogData as any,
+        apiKeys.lakeraAiKey,
+        apiKeys.lakeraProjectId
+      ).catch((error) => {
+        console.error('Failed to send Lakera telemetry for input scan (non-blocking):', error)
+      })
+    }
+
+    // Send telemetry to Lakera Platform for output scan (if scanned)
+    if (apiKeys.lakeraAiKey && outputScanResult.scanned) {
+      const outputLogData = {
+        ...logData,
+        action: outputScanResult.flagged ? 'blocked' : 'allowed',
+        lakeraDecision: outputScanResult,
+      }
+      sendLakeraTelemetryFromLog(
+        outputLogData as any,
+        apiKeys.lakeraAiKey,
+        apiKeys.lakeraProjectId
+      ).catch((error) => {
+        console.error('Failed to send Lakera telemetry for output scan (non-blocking):', error)
+      })
+    }
+
     return NextResponse.json({ 
       content: aiResponse,
       inputScanResult,
       outputScanResult,
-      logData: {
-        userIP,
-        type: 'chat',
-        source: 'chat',
-        requestDetails: {
-          message: latestUserMessage?.content,
-        },
-        inputDecision: inputScanResult.scanned ? inputScanResult : undefined,
-        outputDecision: outputScanResult.scanned ? outputScanResult : undefined,
-      },
+      logData,
     })
   } catch (error) {
     console.error('Chat API error:', error)

@@ -9,12 +9,15 @@ interface LogViewerProps {
 }
 
 function getActionBadge(action: LogEntry['action']) {
-  const badges = {
+  const badges: Record<string, JSX.Element> = {
     request: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30" style={{ color: "var(--chip-text)" }}>Request</span>,
     allowed: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30" style={{ color: "var(--chip-text)" }}>✓ Allowed</span>,
     blocked: <span className="px-2 py-1 text-xs rounded-full glass text-red-300 border-red-400/50" style={{ color: "var(--chip-text)" }}>🚫 Blocked</span>,
     scanned: <span className="px-2 py-1 text-xs rounded-full glass text-brand-berry border-brand-berry/30" style={{ color: "var(--chip-text)" }}>Scanned</span>,
     error: <span className="px-2 py-1 text-xs rounded-full glass text-yellow-300 border-yellow-400/30" style={{ color: "var(--chip-text)" }}>Error</span>,
+    api_failure: <span className="px-2 py-1 text-xs rounded-full glass text-red-300 border-red-400/50" style={{ color: "var(--chip-text)" }}>API Failure</span>,
+    api_success: <span className="px-2 py-1 text-xs rounded-full glass text-green-300 border-green-400/30" style={{ color: "var(--chip-text)" }}>API Success</span>,
+    configuration: <span className="px-2 py-1 text-xs rounded-full glass text-blue-300 border-blue-400/30" style={{ color: "var(--chip-text)" }}>Configuration</span>,
   }
   return badges[action] || badges.request
 }
@@ -24,6 +27,7 @@ function getTypeIcon(type: LogEntry['type']) {
     chat: '💬',
     file_scan: '📁',
     error: '⚠️',
+    system: '⚙️',
   }
   return icons[type] || '📝'
 }
@@ -191,6 +195,60 @@ export default function LogViewer({ logs }: LogViewerProps) {
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* System Details */}
+            {log.systemDetails && (
+              <div className="mt-3 p-3 glass-card rounded-xl border-blue-400/30">
+                <p className="text-xs text-blue-300 font-medium mb-2">System Details:</p>
+                <div className="space-y-1 text-xs text-theme-muted">
+                  {log.systemDetails.service && (
+                    <div><span className="font-medium">Service:</span> {log.systemDetails.service}</div>
+                  )}
+                  {log.systemDetails.endpoint && (
+                    <div><span className="font-medium">Endpoint:</span> {log.systemDetails.endpoint}</div>
+                  )}
+                  {log.systemDetails.method && (
+                    <div><span className="font-medium">Method:</span> {log.systemDetails.method}</div>
+                  )}
+                  {log.systemDetails.statusCode && (
+                    <div><span className="font-medium">Status:</span> <span className={log.systemDetails.statusCode >= 400 ? 'text-red-300' : 'text-green-300'}>{log.systemDetails.statusCode}</span></div>
+                  )}
+                  {log.systemDetails.duration !== undefined && (
+                    <div><span className="font-medium">Duration:</span> {log.systemDetails.duration}ms</div>
+                  )}
+                  {(() => {
+                    if (!('error' in log.systemDetails) || !log.systemDetails.error) return null
+                    const errorStr = typeof log.systemDetails.error === 'string' 
+                      ? log.systemDetails.error 
+                      : String(log.systemDetails.error)
+                    return (
+                      <div className="mt-2 p-2 glass rounded border-red-400/30">
+                        <span className="font-medium text-red-300">Error:</span>
+                        <p className="text-red-300 mt-1 break-words">{errorStr}</p>
+                      </div>
+                    )
+                  })()}
+                  {log.systemDetails.stackTrace && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-theme-subtle cursor-pointer hover:text-theme">Stack Trace</summary>
+                      <pre className="mt-1 p-2 glass rounded text-xs overflow-auto max-h-40 text-red-300 font-mono">
+                        {log.systemDetails.stackTrace.substring(0, 1000)}
+                      </pre>
+                    </details>
+                  )}
+                  {log.systemDetails.responseBody && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-theme-subtle cursor-pointer hover:text-theme">Response Body</summary>
+                      <pre className="mt-1 p-2 glass rounded text-xs overflow-auto max-h-40 text-theme-muted font-mono">
+                        {typeof log.systemDetails.responseBody === 'string' 
+                          ? log.systemDetails.responseBody.substring(0, 1000)
+                          : JSON.stringify(log.systemDetails.responseBody, null, 2).substring(0, 1000)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
               </div>
             )}
 

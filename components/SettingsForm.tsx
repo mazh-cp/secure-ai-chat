@@ -34,6 +34,22 @@ export default function SettingsForm() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
+  // Check Point TE API key state (server-side only)
+  const [checkpointTeKey, setCheckpointTeKey] = useState<string>('')
+  const [checkpointTeConfigured, setCheckpointTeConfigured] = useState<boolean>(false)
+  const [isCheckingTeStatus, setIsCheckingTeStatus] = useState<boolean>(false)
+  const [isSavingTeKey, setIsSavingTeKey] = useState<boolean>(false)
+
+  // PIN verification state
+  const [pinConfigured, setPinConfigured] = useState<boolean>(false)
+  const [pin, setPin] = useState<string>('')
+  const [currentPin, setCurrentPin] = useState<string>('')
+  const [pinForVerification, setPinForVerification] = useState<string>('')
+  const [showPinDialog, setShowPinDialog] = useState<boolean>(false)
+  const [pinDialogAction, setPinDialogAction] = useState<'remove-te-key' | 'clear-all' | 'clear-openai' | 'clear-lakera-ai' | 'clear-lakera-project-id' | 'clear-lakera-endpoint' | null>(null)
+  const [keyToClear, setKeyToClear] = useState<keyof ApiKeys | null>(null)
+  const [isManagingPin, setIsManagingPin] = useState<boolean>(false)
+
   // Load keys and settings from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -62,8 +78,218 @@ export default function SettingsForm() {
           console.error('Failed to load stored settings:', error)
         }
       }
+
+      // Check Check Point TE API key status (server-side)
+      // Use setTimeout to avoid blocking page load if endpoint is slow
+      setTimeout(() => {
+        checkCheckpointTeStatus().catch(err => {
+          // Silently handle - don't break page load
+          console.error('Check Point TE status check failed:', err)
+        })
+        checkPinStatus().catch(err => {
+          console.error('PIN status check failed:', err)
+        })
+      }, 500)
     }
   }, [])
+
+  // Check Check Point TE API key configuration status
+  const checkCheckpointTeStatus = async () => {
+    setIsCheckingTeStatus(true)
+    try {
+      const response = await fetch('/api/te/config')
+      if (response.ok) {
+        const data = await response.json()
+        setCheckpointTeConfigured(data.configured || false)
+      } else {
+        // If endpoint returns error, assume not configured
+        setCheckpointTeConfigured(false)
+      }
+    } catch (error) {
+      // Silently handle errors - service may not be ready yet
+      // Don't break the UI if status check fails
+      console.error('Failed to check Check Point TE status:', error)
+      setCheckpointTeConfigured(false)
+    } finally {
+      setIsCheckingTeStatus(false)
+    }
+  }
+
+  // Handle Check Point TE API key paste (server-side storage)
+  const handleCheckpointTeKeyPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pastedText = e.clipboardData.getData('text').trim()
+    if (pastedText) {
+      setCheckpointTeKey(pastedText)
+    }
+  }
+
+  // Save Check Point TE API key (server-side)
+  const handleSaveCheckpointTeKey = async () => {
+    if (!checkpointTeKey.trim()) {
+      return
+    }
+
+    setIsSavingTeKey(true)
+    try {
+      const response = await fetch('/api/te/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiKey: checkpointTeKey }),
+      })
+
+      if (response.ok) {
+        setCheckpointTeConfigured(true)
+        setCheckpointTeKey('') // Clear input after successful save
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      } else {
+        const error = await response.json()
+        setSaveStatus('error')
+        console.error('Failed to save Check Point TE key:', error)
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error saving Check Point TE key:', error)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      setIsSavingTeKey(false)
+    }
+  }
+
+  // Check PIN configuration status
+  const checkPinStatus = async () => {
+    try {
+      const response = await fetch('/api/pin')
+      if (response.ok) {
+        const data = await response.json()
+        setPinConfigured(data.configured || false)
+      }
+    } catch (error) {
+      console.error('Failed to check PIN status:', error)
+    }
+  }
+
+  // Verify PIN for protected actions
+  const verifyPinForAction = async (pinValue: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/pin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'verify', pin: pinValue }),
+      })
+
+      if (response.ok) {
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Error verifying PIN:', error)
+      return false
+    }
+  }
+
+  // Remove Check Point TE API key (with PIN verification if configured)
+  const handleRemoveCheckpointTeKey = async () => {
+    if (!confirm('Are you sure you want to remove the Check Point TE API key?')) {
+      return
+    }
+
+    // If PIN is configured, require PIN verification
+    if (pinConfigured) {
+      setPinDialogAction('remove-te-key')
+      setShowPinDialog(true)
+      setPinForVerification('')
+      return
+    }
+
+    // No PIN configured, proceed with removal
+    await performRemoveCheckpointTeKey()
+  }
+
+  // Perform the actual removal after PIN verification
+  const performRemoveCheckpointTeKey = async () => {
+    setIsSavingTeKey(true)
+    try {
+      const requestBody: { pin?: string } = {}
+      
+      // Include PIN if configured
+      if (pinConfigured && pinForVerification) {
+        requestBody.pin = pinForVerification
+      }
+
+      const response = await fetch('/api/te/config', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.ok) {
+        setCheckpointTeConfigured(false)
+        setCheckpointTeKey('')
+        setSaveStatus('success')
+        setShowPinDialog(false)
+        setPinForVerification('')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      } else {
+        const errorData = await response.json()
+        if (errorData.requiresPin) {
+          // PIN required but not provided or incorrect
+          alert(errorData.error || 'PIN verification failed')
+        } else {
+          setSaveStatus('error')
+        }
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error removing Check Point TE key:', error)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      setIsSavingTeKey(false)
+    }
+  }
+
+  // Handle PIN dialog confirmation
+  const handlePinDialogConfirm = async () => {
+    if (!pinForVerification.trim()) {
+      alert('Please enter your PIN')
+      return
+    }
+
+    // Verify PIN first
+    const isValid = await verifyPinForAction(pinForVerification)
+    if (!isValid) {
+      alert('PIN is incorrect. Please try again.')
+      setPinForVerification('')
+      return
+    }
+
+    // PIN verified, perform the action
+    if (pinDialogAction === 'remove-te-key') {
+      await performRemoveCheckpointTeKey()
+    } else if (pinDialogAction === 'clear-all') {
+      await performClearAll()
+    } else if (pinDialogAction === 'clear-openai' || pinDialogAction === 'clear-lakera-ai' || 
+               pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
+      // Clear individual key
+      if (keyToClear) {
+        performClearKey(keyToClear)
+      }
+    }
+
+    setShowPinDialog(false)
+    setPinForVerification('')
+    setPinDialogAction(null)
+    setKeyToClear(null)
+  }
 
   // Prevent typing - block all keyboard input except paste shortcut
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -142,25 +368,166 @@ export default function SettingsForm() {
     }
   }
 
+  // Handle clearing individual API keys (requires PIN if configured)
   const handleClear = (fieldName: keyof ApiKeys) => {
+    // If PIN is configured, require PIN verification
+    if (pinConfigured) {
+      setKeyToClear(fieldName)
+      // Set appropriate dialog action based on field name
+      if (fieldName === 'openAiKey') {
+        setPinDialogAction('clear-openai')
+      } else if (fieldName === 'lakeraAiKey') {
+        setPinDialogAction('clear-lakera-ai')
+      } else if (fieldName === 'lakeraProjectId') {
+        setPinDialogAction('clear-lakera-project-id')
+      } else if (fieldName === 'lakeraEndpoint') {
+        setPinDialogAction('clear-lakera-endpoint')
+      }
+      setShowPinDialog(true)
+      setPinForVerification('')
+      return
+    }
+
+    // No PIN configured, proceed with clearing
+    performClearKey(fieldName)
+  }
+
+  // Perform the actual key clearing after PIN verification
+  const performClearKey = (fieldName: keyof ApiKeys) => {
     if (fieldName === 'lakeraEndpoint') {
       setKeys(prev => ({ ...prev, [fieldName]: 'https://api.lakera.ai/v2/guard' }))
     } else {
       setKeys(prev => ({ ...prev, [fieldName]: '' }))
     }
+    setSaveStatus('success')
+    setTimeout(() => setSaveStatus('idle'), 3000)
   }
 
   const handleClearAll = () => {
     if (confirm('Are you sure you want to clear all API keys? This action cannot be undone.')) {
-      setKeys({
-        openAiKey: '',
-        lakeraAiKey: '',
-        lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
-        lakeraProjectId: '',
-      })
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('apiKeys')
+      // Always require PIN verification if PIN is configured
+      if (pinConfigured) {
+        setPinDialogAction('clear-all')
+        setShowPinDialog(true)
+        setPinForVerification('')
+        return
       }
+
+      // No PIN configured, proceed with clearing
+      performClearAll()
+    }
+  }
+
+  // Perform the actual clear all after PIN verification
+  const performClearAll = () => {
+    setKeys({
+      openAiKey: '',
+      lakeraAiKey: '',
+      lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
+      lakeraProjectId: '',
+    })
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('apiKeys')
+    }
+    setSaveStatus('success')
+    setTimeout(() => setSaveStatus('idle'), 3000)
+  }
+
+  // Handle PIN setup/update
+  const handleSetPin = async () => {
+    if (!pin.trim()) {
+      alert('Please enter a PIN (4-8 digits)')
+      return
+    }
+
+    if (!/^\d{4,8}$/.test(pin.trim())) {
+      alert('PIN must be 4-8 digits')
+      return
+    }
+
+    setIsManagingPin(true)
+    try {
+      const requestBody: { action: string; pin: string; currentPin?: string } = {
+        action: 'set',
+        pin: pin.trim(),
+      }
+
+      // If PIN already exists, require current PIN for update
+      if (pinConfigured && currentPin.trim()) {
+        requestBody.currentPin = currentPin.trim()
+      }
+
+      const response = await fetch('/api/pin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.ok) {
+        setPinConfigured(true)
+        setPin('')
+        setCurrentPin('')
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+        alert(pinConfigured ? 'PIN updated successfully' : 'PIN configured successfully')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to set PIN')
+        setSaveStatus('error')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error setting PIN:', error)
+      alert('Failed to set PIN')
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      setIsManagingPin(false)
+    }
+  }
+
+  // Handle PIN removal
+  const handleRemovePin = async () => {
+    if (!confirm('Are you sure you want to remove the verification PIN? This will disable PIN protection for API key removal.')) {
+      return
+    }
+
+    const pinToVerify = prompt('Enter your current PIN to remove it:')
+    if (!pinToVerify) {
+      return
+    }
+
+    setIsManagingPin(true)
+    try {
+      const response = await fetch('/api/pin', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pin: pinToVerify }),
+      })
+
+      if (response.ok) {
+        setPinConfigured(false)
+        setCurrentPin('')
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+        alert('PIN removed successfully')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to remove PIN')
+        setSaveStatus('error')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error removing PIN:', error)
+      alert('Failed to remove PIN')
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      setIsManagingPin(false)
     }
   }
 
@@ -371,6 +738,183 @@ export default function SettingsForm() {
             </p>
           </div>
 
+          {/* Verification PIN Section */}
+          <div className="pt-6 border-t border-palette-border-default/20 mt-8">
+            <h3 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
+              <span>🔐</span>
+              Verification PIN
+            </h3>
+            <p className="text-sm text-theme-subtle mb-4">
+              Set up a PIN code to protect against unauthorized API key removal. PIN must be 4-8 digits.
+            </p>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`text-xs font-medium ${pinConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
+                  {pinConfigured ? '✓ PIN Configured' : '⚠ PIN Not configured'}
+                </span>
+              </div>
+              
+              {pinConfigured && (
+                <div>
+                  <label htmlFor="currentPin" className="block text-xs font-medium text-theme-muted mb-1">
+                    Current PIN (required to update)
+                  </label>
+                  <input
+                    type="password"
+                    id="currentPin"
+                    value={currentPin}
+                    onChange={(e) => setCurrentPin(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="Enter current PIN"
+                    className={inputClass}
+                    style={inputStyle}
+                    maxLength={8}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                  />
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="pin" className="block text-xs font-medium text-theme-muted mb-1">
+                  {pinConfigured ? 'New PIN' : 'Set PIN'}
+                </label>
+                <input
+                  type="password"
+                  id="pin"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder={pinConfigured ? "Enter new PIN (4-8 digits)" : "Enter PIN (4-8 digits)"}
+                  className={inputClass}
+                  style={inputStyle}
+                  maxLength={8}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSetPin}
+                  disabled={isManagingPin || !pin.trim() || (pinConfigured && !currentPin.trim())}
+                  className="px-4 py-2 glass-button text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isManagingPin ? 'Setting...' : pinConfigured ? 'Update PIN' : 'Set PIN'}
+                </button>
+                {pinConfigured && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePin}
+                    disabled={isManagingPin}
+                    className="px-4 py-2 glass-button text-red-400 hover:text-red-300 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Remove PIN
+                  </button>
+                )}
+              </div>
+              
+              <p className="text-xs text-theme-subtle mt-2">
+                {pinConfigured 
+                  ? '✓ PIN protection is active. PIN verification required to remove API keys.'
+                  : '⚠ No PIN protection. API keys can be removed without verification.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Check Point ThreatCloud / Threat Emulation API Key */}
+          <div className="pt-6 border-t border-palette-border-default/20 mt-8">
+            <label htmlFor="checkpointTeKey" className={labelClass}>
+              Check Point ThreatCloud / Threat Emulation (TE) API Key
+            </label>
+            <div className="space-y-2">
+              {/* Status Indicator */}
+              <div className="flex items-center space-x-2 mb-2">
+                {isCheckingTeStatus ? (
+                  <span className="text-xs text-theme-subtle">Checking status...</span>
+                ) : (
+                  <>
+                    <span className={`text-xs font-medium ${checkpointTeConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {checkpointTeConfigured ? '✓ Configured' : '⚠ Not configured'}
+                    </span>
+                    {checkpointTeConfigured && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCheckpointTeKey}
+                        disabled={isSavingTeKey}
+                        className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Input Field */}
+              <div className="relative">
+                <input
+                  type="password"
+                  id="checkpointTeKey"
+                  name="checkpointTeKey"
+                  value={checkpointTeKey}
+                  placeholder={checkpointTeConfigured ? "Enter new key to replace (Ctrl/Cmd + V)" : "Paste your Check Point TE API key here (Ctrl/Cmd + V)"}
+                  onKeyDown={handleKeyDown}
+                  onCopy={handleCopy}
+                  onCut={handleCut}
+                  onContextMenu={handleContextMenu}
+                  onPaste={handleCheckpointTeKeyPaste}
+                  onChange={handleChange}
+                  className={inputClass}
+                  style={inputStyle}
+                  disabled={isSavingTeKey}
+                />
+                {checkpointTeKey && (
+                  <button
+                    type="button"
+                    onClick={() => setCheckpointTeKey('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              
+              {/* Save Button */}
+              {checkpointTeKey && (
+                <button
+                  type="button"
+                  onClick={handleSaveCheckpointTeKey}
+                  disabled={isSavingTeKey || !checkpointTeKey.trim()}
+                  className="glass-button text-theme px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  style={{
+                    backgroundColor: "var(--primary)",
+                    color: "white",
+                  }}
+                >
+                  {isSavingTeKey ? 'Saving...' : checkpointTeConfigured ? 'Update Key' : 'Save Key'}
+                </button>
+              )}
+
+              <p className="text-xs text-theme-subtle mt-1">
+                <span className="block mb-1">
+                  {checkpointTeConfigured 
+                    ? '✅ Check Point TE API key is configured (stored server-side, encrypted)'
+                    : '⚠️ Check Point TE API key is not configured'}
+                </span>
+                <span className="block mt-2 text-xs opacity-75">
+                  🔒 Server-side storage - Key is stored securely on the server and never exposed to the browser. Paste only (Ctrl/Cmd + V).
+                </span>
+                <span className="block mt-2 text-xs opacity-75 border-l-2 border-yellow-500/50 pl-2">
+                  <strong>Important:</strong> Enter only the API key value (without the &quot;TE_API_KEY_&quot; prefix). 
+                  If you get an &quot;access denied&quot; (403) error, check: 1) API key has file upload permissions, 
+                  2) Your server IP is allowed in Check Point Management API settings (SmartConsole → Management API → Advanced Settings), 
+                  3) API subscription/plan limits.
+                </span>
+              </p>
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-4 border-t border-palette-border-default/20">
             <button
@@ -486,6 +1030,91 @@ export default function SettingsForm() {
               </p>
             </div>
           </div>
+
+          {/* PIN Verification Dialog */}
+          {showPinDialog && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => {
+              setShowPinDialog(false)
+              setPinForVerification('')
+              setPinDialogAction(null)
+              setKeyToClear(null)
+            }}>
+              <div className="glass-card p-6 rounded-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-theme mb-4">PIN Verification Required</h3>
+                <p className="text-sm text-theme-subtle mb-4">
+                  {pinDialogAction === 'remove-te-key' 
+                    ? 'Please enter your PIN to remove the Check Point TE API key.'
+                    : pinDialogAction === 'clear-all'
+                    ? 'Please enter your PIN to clear all API keys.'
+                    : pinDialogAction === 'clear-openai'
+                    ? 'Please enter your PIN to clear the OpenAI API key.'
+                    : pinDialogAction === 'clear-lakera-ai'
+                    ? 'Please enter your PIN to clear the Lakera AI key.'
+                    : pinDialogAction === 'clear-lakera-project-id'
+                    ? 'Please enter your PIN to clear the Lakera Project ID.'
+                    : pinDialogAction === 'clear-lakera-endpoint'
+                    ? 'Please enter your PIN to reset the Lakera Endpoint.'
+                    : 'Please enter your PIN to perform this action.'}
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="pinForVerification" className="block text-sm font-medium text-theme-muted mb-2">
+                      Enter PIN
+                    </label>
+                    <input
+                      type="password"
+                      id="pinForVerification"
+                      value={pinForVerification}
+                      onChange={(e) => setPinForVerification(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="Enter your PIN (4-8 digits)"
+                      className={inputClass}
+                      style={inputStyle}
+                      maxLength={8}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handlePinDialogConfirm()
+                        } else if (e.key === 'Escape') {
+                          setShowPinDialog(false)
+                          setPinForVerification('')
+                          setPinDialogAction(null)
+                          setKeyToClear(null)
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPinDialog(false)
+                        setPinForVerification('')
+                        setPinDialogAction(null)
+                        setKeyToClear(null)
+                      }}
+                      className="px-4 py-2 glass-button text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePinDialogConfirm}
+                      disabled={!pinForVerification.trim() || isSavingTeKey}
+                      className="px-4 py-2 glass-button text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      style={{
+                        backgroundColor: "var(--primary)",
+                        color: "white",
+                      }}
+                    >
+                      {isSavingTeKey ? 'Verifying...' : 'Verify & Continue'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Security Notice */}
           <div className="mt-6 p-4 glass-card border-yellow-400/30 rounded-xl">
