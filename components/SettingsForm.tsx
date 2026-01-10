@@ -1156,9 +1156,9 @@ export default function SettingsForm() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="glass-button text-theme px-6 py-2 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="glass-button px-6 py-2 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 style={{
-                  backgroundColor: "var(--primary)",
+                  backgroundColor: "rgb(var(--accent))",
                   color: "white",
                 }}
               >
