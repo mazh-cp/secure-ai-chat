@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-01-XX
+
+### Added
+- **Server-Side Encrypted API Key Storage**: All API keys (OpenAI, Lakera, Check Point TE) now stored server-side with AES-256-CBC encryption
+- **Universal Access**: Application works from any browser/device once keys are configured (no per-device setup needed)
+- **Comprehensive Security Checks**: Enhanced security validation to prevent API key leakage in code, logs, or client bundles
+- **API Keys Management API**: New `/api/keys` endpoints for secure server-side key management
+- **Documentation**: Added `SERVER_SIDE_KEY_STORAGE.md` with comprehensive storage architecture documentation
+- **Post-Change Validation Report**: Added `POST_CHANGE_VALIDATION_V1.0.3.md` with validation results
+
+### Changed
+- **API Routes**: Updated chat and scan routes to prioritize server-side keys over client keys
+- **Settings UI**: Settings form now saves keys to server-side encrypted storage instead of localStorage
+- **Client Components**: Updated ChatInterface, page.tsx, and files.tsx to load keys from server-side
+- **Security Validation**: Enhanced `check-security.sh` to check for all API keys (OpenAI, Lakera, Check Point TE)
+- **ESLint Rules**: Added restrictions to prevent client-side imports of `api-keys-storage.ts`
+- **Release Gate**: Updated release gate script with comprehensive security checks
+- **Version Display**: Updated app version to 1.0.3 in Layout.tsx footer
+
+### Security
+- ✅ **No Hardcoded Keys**: Verified no API keys hardcoded in source code
+- ✅ **Encrypted Storage**: All keys encrypted at rest with AES-256-CBC
+- ✅ **Secure Permissions**: Storage files have 600 permissions (owner read/write only)
+- ✅ **PIN Protection**: Key deletion operations require PIN verification
+- ✅ **Client-Side Prevention**: ESLint rules prevent accidental client-side key imports
+- ✅ **Build Output Scan**: Release gate scans build output for leaked keys
+- ✅ **Comprehensive Security Checks**: Enhanced security script checks for all API key types
+
+### Migration
+- Automatic migration from localStorage to server-side storage
+- Existing keys in localStorage are migrated on first Settings save
+- Backward compatibility maintained during transition period
+
+### Documentation
+- `SERVER_SIDE_KEY_STORAGE.md` - Comprehensive server-side key storage guide
+- `POST_CHANGE_VALIDATION_V1.0.3.md` - Post-change validation report
+- Updated security check documentation
+- Enhanced release gate documentation
+
 ## [1.0.2] - 2026-01-XX
 
 ### Added

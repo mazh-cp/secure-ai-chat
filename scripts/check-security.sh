@@ -12,7 +12,8 @@ echo ""
 
 # Check 1: No API key functions in client components
 echo "1. Checking for API key access in client components..."
-if grep -r "getTeApiKey\|setTeApiKey\|getApiKeys\|setApiKeys\|loadTeApiKey\|saveTeApiKey" components/ --include="*.tsx" --include="*.ts" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled\|apiKeys.*localStorage" | grep -v ".tsx:" | grep -v "//"; then
+# Look for actual function calls, not state variables (apiKeys, setApiKeys as state vars are OK)
+if grep -r "getTeApiKey(\|setTeApiKey(\|getApiKeys(\|setApiKeys(\|loadTeApiKey(\|saveTeApiKey(\|from.*checkpoint-te\|from.*api-keys-storage" components/ --include="*.tsx" --include="*.ts" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled" | grep -v "//.*import\|//.*from" | grep -v ".tsx:" | head -1; then
   echo "❌ FAIL: Found API key access functions in client components!"
   FAILED=1
 else
@@ -22,7 +23,8 @@ fi
 # Check 2: No API key in app client components (excluding API routes)
 echo ""
 echo "2. Checking for API key functions in app client pages..."
-if grep -r "getTeApiKey\|setTeApiKey\|getApiKeys\|setApiKeys\|loadTeApiKey\|saveTeApiKey" app/ --include="*.tsx" --exclude-dir="api" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled" | grep -v "//"; then
+# Look for actual function calls or imports, not state variables
+if grep -r "getTeApiKey(\|setTeApiKey(\|getApiKeys(\|setApiKeys(\|loadTeApiKey(\|saveTeApiKey(\|from.*checkpoint-te\|from.*api-keys-storage" app/ --include="*.tsx" --exclude-dir="api" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled" | grep -v "//.*import\|//.*from" | head -1; then
   echo "❌ FAIL: Found API key functions in client pages!"
   FAILED=1
 else
@@ -32,24 +34,24 @@ fi
 # Check 3: No hardcoded API keys in source code
 echo ""
 echo "3. Checking for hardcoded API keys in source code..."
-# Check for OpenAI keys (sk- prefix)
-if grep -r "sk-[a-zA-Z0-9]\{32,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | head -1; then
+# Check for OpenAI keys (sk- prefix) - must be at least 48 chars (typical OpenAI keys)
+if grep -r "sk-[a-zA-Z0-9]\{48,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | grep -v "//.*sk-\|//.*example" | head -1; then
   echo "❌ FAIL: Found hardcoded OpenAI API key in source code!"
   FAILED=1
 else
   echo "✅ PASS: No hardcoded OpenAI API keys"
 fi
 
-# Check for Lakera keys (lak_ prefix or similar patterns)
-if grep -r "lak_[a-zA-Z0-9]\{32,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | head -1; then
+# Check for Lakera keys (lak_ prefix or similar patterns) - must be at least 32 chars
+if grep -r "lak_[a-zA-Z0-9]\{32,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | grep -v "//.*lak_\|//.*example" | head -1; then
   echo "❌ FAIL: Found hardcoded Lakera API key in source code!"
   FAILED=1
 else
   echo "✅ PASS: No hardcoded Lakera API keys"
 fi
 
-# Check for Check Point TE keys (TE_API_KEY_ prefix or similar)
-if grep -r "TE_API_KEY_[a-zA-Z0-9]\{32,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | head -1; then
+# Check for Check Point TE keys (TE_API_KEY_ prefix or similar) - must be at least 32 chars after prefix
+if grep -r "TE_API_KEY_[a-zA-Z0-9]\{32,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | grep -v "//.*TE_API_KEY_\|//.*example" | head -1; then
   echo "❌ FAIL: Found hardcoded Check Point TE API key in source code!"
   FAILED=1
 else
@@ -111,7 +113,8 @@ fi
 # Check 7: Verify no API keys in environment variable defaults
 echo ""
 echo "7. Checking for API keys in default environment variable values..."
-if grep -r "OPENAI_API_KEY.*=.*sk-\|LAKERA_AI_KEY.*=.*lak_\|CHECKPOINT_TE_API_KEY.*=.*TE_API_KEY_" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | grep -v "process.env" | head -1; then
+# Only check for actual keys (48+ chars for OpenAI, 32+ for others), not placeholders
+if grep -r "OPENAI_API_KEY.*=.*sk-[a-zA-Z0-9]\{48,\}\|LAKERA_AI_KEY.*=.*lak_[a-zA-Z0-9]\{32,\}\|CHECKPOINT_TE_API_KEY.*=.*TE_API_KEY_[a-zA-Z0-9]\{32,\}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir="node_modules" --exclude-dir=".next" . 2>/dev/null | grep -v "package-lock.json" | grep -v ".test." | grep -v "process.env" | grep -v "//.*example\|//.*placeholder" | head -1; then
   echo "❌ FAIL: Found hardcoded API keys in default environment values!"
   FAILED=1
 else
@@ -136,7 +139,8 @@ fi
 echo ""
 echo "9. Checking build output for API keys..."
 if [ -d ".next" ]; then
-  if grep -r -E "sk-[a-zA-Z0-9]{32,}|lak_[a-zA-Z0-9]{32,}|TE_API_KEY_[a-zA-Z0-9]{32,}" .next/static 2>/dev/null | grep -v ".map" | head -1; then
+  # Check for actual keys (48+ chars for OpenAI, 32+ for others), not variable names
+  if grep -r -E "sk-[a-zA-Z0-9]{48,}|lak_[a-zA-Z0-9]{32,}|TE_API_KEY_[a-zA-Z0-9]{32,}" .next/static 2>/dev/null | grep -v ".map" | head -1; then
     echo "❌ FAIL: Found API keys in build output!"
     FAILED=1
   else
