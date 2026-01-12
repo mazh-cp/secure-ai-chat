@@ -1,11 +1,11 @@
 #!/bin/bash
-# Production Server Update Script for Secure AI Chat
-# Updates the application on production server with latest changes from GitHub
+# Production Server Upgrade Script for Secure AI Chat v1.0.7
+# Upgrades the application on production server to version 1.0.7
 #
 # Usage:
-#   sudo bash update-production.sh
+#   sudo bash upgrade-production-v1.0.7.sh
 #   Or with custom options:
-#   REPO_DIR=/custom/path BRANCH=release/v1.0.2 sudo bash update-production.sh
+#   REPO_DIR=/custom/path BRANCH=main sudo bash upgrade-production-v1.0.7.sh
 
 set -euo pipefail
 
@@ -21,15 +21,17 @@ REPO_DIR="${REPO_DIR:-/home/adminuser/secure-ai-chat}"
 SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
 REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
+VERSION="1.0.7"
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║      Secure AI Chat - Production Server Update Script       ║${NC}"
+echo -e "${BLUE}║   Secure AI Chat - Production Upgrade Script v${VERSION}        ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo "  Repository: $REPO_DIR"
 echo "  Branch: $BRANCH"
 echo "  Service: $SERVICE_NAME"
+echo "  Target Version: $VERSION"
 echo ""
 
 # Check if running as root or with sudo
@@ -68,16 +70,27 @@ echo ""
 # Backup current commit
 CURRENT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+CURRENT_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version":\s*"([^"]+)".*/\1/' || echo "unknown")
 
 echo "Current branch: $CURRENT_BRANCH"
-echo "Current commit: $CURRENT_COMMIT"
+echo "Current commit: ${CURRENT_COMMIT:0:8}"
+echo "Current version: $CURRENT_VERSION"
 echo "Target branch: $BRANCH"
+echo "Target version: $VERSION"
+echo ""
 
 # Backup .env file if it exists
 if [ -f ".env" ]; then
     BACKUP_FILE=".env.backup.$(date +%Y%m%d_%H%M%S)"
     cp .env "$BACKUP_FILE"
     echo -e "${GREEN}✅ Environment file backed up to: $BACKUP_FILE${NC}"
+fi
+
+# Backup .secure-storage directory (API keys)
+if [ -d ".secure-storage" ]; then
+    BACKUP_DIR=".secure-storage.backup.$(date +%Y%m%d_%H%M%S)"
+    cp -r .secure-storage "$BACKUP_DIR"
+    echo -e "${GREEN}✅ Secure storage backed up to: $BACKUP_DIR${NC}"
 fi
 
 echo ""
@@ -122,7 +135,7 @@ echo ""
 
 # Step 4: Checkout and pull branch
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}Step 4: Update to latest version${NC}"
+echo -e "${BLUE}Step 4: Update to version ${VERSION}${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
@@ -135,8 +148,15 @@ fi
 # Pull latest changes
 if git pull origin "$BRANCH"; then
     NEW_COMMIT=$(git rev-parse HEAD)
+    NEW_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version":\s*"([^"]+)".*/\1/' || echo "unknown")
     echo -e "${GREEN}✅ Updated to latest version${NC}"
-    echo "New commit: $NEW_COMMIT"
+    echo "New commit: ${NEW_COMMIT:0:8}"
+    echo "New version: $NEW_VERSION"
+    
+    if [ "$NEW_VERSION" != "$VERSION" ]; then
+        echo -e "${YELLOW}⚠️  Warning: Package version ($NEW_VERSION) doesn't match target ($VERSION)${NC}"
+        echo "  This is normal if the version was already updated in the repository"
+    fi
 else
     echo -e "${YELLOW}⚠️  Pull failed, trying reset to origin/${BRANCH}...${NC}"
     git fetch origin
@@ -145,8 +165,10 @@ else
         exit 1
     }
     NEW_COMMIT=$(git rev-parse HEAD)
+    NEW_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version":\s*"([^"]+)".*/\1/' || echo "unknown")
     echo -e "${GREEN}✅ Updated to latest version (via reset)${NC}"
-    echo "New commit: $NEW_COMMIT"
+    echo "New commit: ${NEW_COMMIT:0:8}"
+    echo "New version: $NEW_VERSION"
 fi
 echo ""
 
@@ -211,6 +233,12 @@ echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Step 6: Build application${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Clear Next.js cache to avoid webpack chunk errors
+echo "Clearing Next.js build cache..."
+rm -rf .next
+echo -e "${GREEN}✅ Build cache cleared${NC}"
 echo ""
 
 if [ "$PACKAGE_MANAGER" = "npm" ]; then
@@ -318,34 +346,60 @@ HEALTH_URL="http://localhost:3000/api/health"
 if curl -s "$HEALTH_URL" > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Health endpoint responding${NC}"
     curl -s "$HEALTH_URL" | head -1
+    echo ""
 else
     echo -e "${YELLOW}⚠️  Health endpoint not responding yet (may take a few seconds)${NC}"
 fi
-echo ""
+
+# Version check
+VERSION_URL="http://localhost:3000/api/version"
+if curl -s "$VERSION_URL" > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Version endpoint responding${NC}"
+    curl -s "$VERSION_URL" | head -1
+    echo ""
+fi
 
 # Summary
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}UPDATE SUMMARY${NC}"
+echo -e "${BLUE}UPGRADE SUMMARY${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║                  ✅ UPDATE COMPLETE                          ║${NC}"
+echo -e "${GREEN}║              ✅ UPGRADE TO v${VERSION} COMPLETE                  ║${NC}"
 echo -e "${GREEN}║                                                               ║${NC}"
-echo -e "${GREEN}║  Previous commit: ${CURRENT_COMMIT:0:8}                                    ║${NC}"
-echo -e "${GREEN}║  New commit:      ${NEW_COMMIT:0:8}                                    ║${NC}"
-echo -e "${GREEN}║  Branch:          $BRANCH                           ║${NC}"
-echo -e "${GREEN}║  Service:         $SERVICE_NAME                                      ║${NC}"
+echo -e "${GREEN}║  Previous version: $CURRENT_VERSION${NC}"
+echo -e "${GREEN}║  New version:      $NEW_VERSION${NC}"
+echo -e "${GREEN}║  Previous commit:  ${CURRENT_COMMIT:0:8}                                    ║${NC}"
+echo -e "${GREEN}║  New commit:       ${NEW_COMMIT:0:8}                                    ║${NC}"
+echo -e "${GREEN}║  Branch:            $BRANCH                           ║${NC}"
+echo -e "${GREEN}║  Service:           $SERVICE_NAME                                      ║${NC}"
 echo -e "${GREEN}║                                                               ║${NC}"
-echo -e "${GREEN}║  Application updated and restarted successfully.               ║${NC}"
+echo -e "${GREEN}║  Application upgraded and restarted successfully.             ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-if [ -f "$BACKUP_FILE" ]; then
-    echo "Backup file: $BACKUP_FILE"
-fi
-
+echo -e "${BLUE}What's New in v${VERSION}:${NC}"
+echo "  ✨ Release Notes page accessible from Settings and navigation"
+echo "  ✨ RAG (Retrieval Augmented Generation) for chat file access"
+echo "  🐛 Fixed file scanning JSON parsing error for large files"
+echo "  🐛 Fixed navigation sidebar visibility on desktop"
+echo "  🐛 Fixed Checkpoint TE status synchronization"
+echo "  🐛 Fixed webpack chunk errors"
+echo "  ⚡ Enhanced key deletion with proper cache invalidation"
+echo "  ⚡ Improved error handling and status synchronization"
+echo "  📦 Updated all packages to latest patch/minor versions"
 echo ""
+
+if [ -f "$BACKUP_FILE" ]; then
+    echo "Backup files:"
+    echo "  - Environment: $BACKUP_FILE"
+fi
+if [ -d "$BACKUP_DIR" ]; then
+    echo "  - Secure storage: $BACKUP_DIR"
+fi
+echo ""
+
 echo "Service status:"
 if [ "$USE_SUDO" = "sudo" ]; then
     sudo systemctl status "$SERVICE_NAME" --no-pager -l | head -10
@@ -358,4 +412,9 @@ echo -e "${BLUE}Useful commands:${NC}"
 echo "  sudo systemctl status $SERVICE_NAME"
 echo "  sudo systemctl restart $SERVICE_NAME"
 echo "  sudo journalctl -u $SERVICE_NAME -f"
+echo ""
+
+echo -e "${BLUE}Access Release Notes:${NC}"
+echo "  http://your-server-ip:3000/release-notes"
+echo "  Or navigate from Settings page"
 echo ""
