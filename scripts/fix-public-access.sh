@@ -25,13 +25,25 @@ echo -e "${BLUE}║        Public Access Diagnostic & Fix Script                
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Step 1: Check service status
+# Step 1: Check if service exists
 echo -e "${CYAN}Step 1: Checking Service Status${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-if sudo systemctl is-active --quiet ${SERVICE_NAME}; then
+if [ ! -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+    echo -e "${RED}❌ Service file does not exist${NC}"
+    echo "   Creating systemd service..."
+    if [ -f "${REPO_DIR}/scripts/create-systemd-service.sh" ]; then
+        sudo bash "${REPO_DIR}/scripts/create-systemd-service.sh"
+    else
+        echo -e "${YELLOW}⚠️  create-systemd-service.sh not found${NC}"
+        echo "   Please run: sudo bash scripts/create-systemd-service.sh"
+        echo "   Or download: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/create-systemd-service.sh | sudo bash"
+        exit 1
+    fi
+    echo ""
+elif sudo systemctl is-active --quiet ${SERVICE_NAME}; then
     echo -e "${GREEN}✅ Service is running${NC}"
 else
-    echo -e "${RED}❌ Service is not running${NC}"
+    echo -e "${YELLOW}⚠️  Service exists but is not running${NC}"
     echo "   Starting service..."
     sudo systemctl start ${SERVICE_NAME}
     sleep 3
