@@ -218,10 +218,35 @@ else
     echo "New commit: ${NEW_COMMIT:0:8}"
 fi
 
+# Step 5: Fix Permissions Before Install
+echo ""
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${CYAN}Step 5a: Fix Permissions${NC}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Fix ownership of entire repository before npm operations
+if [ "$USE_SUDO" = "sudo" ]; then
+    echo "Setting ownership to $SERVICE_USER:$SERVICE_GROUP..."
+    sudo chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR" 2>/dev/null || {
+        echo -e "${YELLOW}⚠️  Could not set ownership (may need manual fix)${NC}"
+    }
+    
+    # Ensure write permissions on key files
+    sudo chmod -R u+w "$REPO_DIR" 2>/dev/null || true
+    sudo chmod 644 package.json 2>/dev/null || true
+    sudo chmod 644 package-lock.json 2>/dev/null || true
+    
+    echo -e "${GREEN}✅ Permissions fixed${NC}"
+else
+    echo -e "${YELLOW}⚠️  Not running as root, skipping permission fixes${NC}"
+    echo "   You may need to run: sudo chown -R $SERVICE_USER:$SERVICE_GROUP $REPO_DIR"
+fi
+
 # Step 5: Install dependencies
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}Step 5: Install Dependencies${NC}"
+echo -e "${CYAN}Step 5b: Install Dependencies${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
@@ -236,16 +261,25 @@ fi
 NODE_VERSION=$(node --version 2>/dev/null || echo "unknown")
 echo "Node.js version: $NODE_VERSION"
 
-# Install dependencies
-echo "Installing dependencies (this may take a few minutes)..."
+# Ensure we're running as the service user for npm operations
 if [ "$USE_SUDO" = "sudo" ] && [ "$SERVICE_USER" != "$USER" ]; then
-    sudo -u ${SERVICE_USER} npm install --production=false || {
+    echo "Installing dependencies as $SERVICE_USER (this may take a few minutes)..."
+    # Use sudo -u to run as service user, and ensure HOME is set
+    sudo -u ${SERVICE_USER} env HOME="/home/${SERVICE_USER}" npm install --production=false || {
         echo -e "${RED}❌ Failed to install dependencies${NC}"
-        exit 1
+        echo -e "${YELLOW}⚠️  Trying to fix permissions and retry...${NC}"
+        sudo chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR"
+        sudo chmod -R u+w "$REPO_DIR"
+        sudo -u ${SERVICE_USER} env HOME="/home/${SERVICE_USER}" npm install --production=false || {
+            echo -e "${RED}❌ Failed to install dependencies after permission fix${NC}"
+            exit 1
+        }
     }
 else
+    echo "Installing dependencies (this may take a few minutes)..."
     npm install --production=false || {
         echo -e "${RED}❌ Failed to install dependencies${NC}"
+        echo -e "${YELLOW}⚠️  This may be a permissions issue. Try running with sudo.${NC}"
         exit 1
     }
 fi
@@ -320,10 +354,10 @@ if [ -f "$BACKUP_DIR/.env.local" ]; then
     echo -e "${GREEN}✅ Local environment file restored${NC}"
 fi
 
-# Step 8: Fix permissions
+# Step 8: Fix permissions (final)
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}Step 8: Fix Permissions${NC}"
+echo -e "${CYAN}Step 8: Fix Permissions (Final)${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
@@ -331,12 +365,24 @@ if [ "$USE_SUDO" = "sudo" ]; then
     echo "Setting ownership to $SERVICE_USER:$SERVICE_GROUP..."
     sudo chown -R ${SERVICE_USER}:${SERVICE_GROUP} "$REPO_DIR" 2>/dev/null || true
     
+    # Ensure all files are writable by owner
+    sudo chmod -R u+w "$REPO_DIR" 2>/dev/null || true
+    
+    # Fix specific file permissions
+    sudo chmod 644 package.json 2>/dev/null || true
+    sudo chmod 644 package-lock.json 2>/dev/null || true
+    
     echo "Setting secure storage permissions..."
     sudo chmod -R 700 .secure-storage 2>/dev/null || true
     sudo chmod -R 600 .secure-storage/* 2>/dev/null || true
     
     echo "Setting storage permissions..."
     sudo chmod -R 755 .storage 2>/dev/null || true
+    
+    # Fix node_modules ownership (if exists)
+    if [ -d "node_modules" ]; then
+        sudo chown -R ${SERVICE_USER}:${SERVICE_GROUP} node_modules 2>/dev/null || true
+    fi
     
     echo -e "${GREEN}✅ Permissions fixed${NC}"
 else
