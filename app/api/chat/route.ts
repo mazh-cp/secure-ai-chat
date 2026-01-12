@@ -450,9 +450,22 @@ export async function POST(request: NextRequest) {
       lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
     }
 
-    if (!apiKeys.openAiKey) {
+    // Validate API key is not a placeholder
+    if (!apiKeys.openAiKey || 
+        apiKeys.openAiKey.includes('your_ope') || 
+        apiKeys.openAiKey.includes('your-api-key') ||
+        apiKeys.openAiKey.length < 20) {
       return NextResponse.json(
-        { error: 'OpenAI API key is not configured. Please add it in Settings.' },
+        { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
+        { status: 400 }
+      )
+    }
+    
+    // Additional validation: OpenAI keys should start with 'sk-'
+    if (!apiKeys.openAiKey.startsWith('sk-')) {
+      console.error('Invalid OpenAI API key format detected:', apiKeys.openAiKey.substring(0, 10) + '...')
+      return NextResponse.json(
+        { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
         { status: 400 }
       )
     }
