@@ -245,6 +245,40 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     }
     
     // Always save at least the endpoint, even if no other keys
+    // But only write if we have at least one key to save (or endpoint)
+    if (Object.keys(keysToSave).length === 0 && !keysToSave.lakeraEndpoint) {
+      console.warn('No keys to save - all may be set via environment variables or empty')
+      // Still update cache with existing keys
+      const envKeys: StoredApiKeys = {}
+      if (process.env.OPENAI_API_KEY) {
+        const envKey = process.env.OPENAI_API_KEY.trim()
+        if (envKey && !envKey.includes('your_ope') && envKey.length >= 20) {
+          envKeys.openAiKey = envKey
+        }
+      }
+      if (process.env.LAKERA_AI_KEY) {
+        const envKey = process.env.LAKERA_AI_KEY.trim()
+        if (envKey && !envKey.includes('your') && envKey.length >= 20) {
+          envKeys.lakeraAiKey = envKey
+        }
+      }
+      if (process.env.LAKERA_PROJECT_ID) {
+        const envKey = process.env.LAKERA_PROJECT_ID.trim()
+        if (envKey && !envKey.includes('your') && envKey.length >= 5) {
+          envKeys.lakeraProjectId = envKey
+        }
+      }
+      if (process.env.LAKERA_ENDPOINT) {
+        const envKey = process.env.LAKERA_ENDPOINT.trim()
+        if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+          envKeys.lakeraEndpoint = envKey
+        }
+      }
+      cachedKeys = { ...existingKeys, ...envKeys }
+      keysLoaded = true
+      return
+    }
+    
     const encryptedKeys = encryptKeys(keysToSave)
     
     // Ensure directory exists and has correct permissions
@@ -253,7 +287,12 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     // Write with restrictive permissions (owner read/write only)
     await fs.writeFile(KEYS_FILE_PATH, encryptedKeys, { mode: 0o600, flag: 'w' })
     
-    console.log('Keys saved successfully. Keys to save:', Object.keys(keysToSave))
+    console.log('Keys saved successfully. Keys saved:', {
+      openAiKey: !!keysToSave.openAiKey,
+      lakeraAiKey: !!keysToSave.lakeraAiKey,
+      lakeraProjectId: !!keysToSave.lakeraProjectId,
+      lakeraEndpoint: !!keysToSave.lakeraEndpoint,
+    })
     // Update cache with merged keys (env vars take priority)
     const envKeys: StoredApiKeys = {}
     if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
