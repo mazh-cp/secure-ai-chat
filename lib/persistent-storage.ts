@@ -62,8 +62,34 @@ async function loadMetadata(): Promise<FilesMetadata> {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return { files: {} }
     }
+    
+    // If JSON parsing fails (corrupted file), backup and create new
+    if (error instanceof SyntaxError) {
+      console.error('Metadata file is corrupted (JSON parse error), backing up and resetting:', error)
+      try {
+        const backupPath = `${METADATA_FILE}.backup.${Date.now()}`
+        await fs.copyFile(METADATA_FILE, backupPath)
+        console.log(`Corrupted metadata backed up to: ${backupPath}`)
+        // Create new empty metadata file
+        await fs.writeFile(METADATA_FILE, JSON.stringify({ files: {} }, null, 2), 'utf-8')
+        return { files: {} }
+      } catch (backupError) {
+        console.error('Failed to backup corrupted metadata file:', backupError)
+        // Try to delete corrupted file and create new one
+        try {
+          await fs.unlink(METADATA_FILE)
+          await fs.writeFile(METADATA_FILE, JSON.stringify({ files: {} }, null, 2), 'utf-8')
+          return { files: {} }
+        } catch {
+          // If all else fails, return empty metadata
+          return { files: {} }
+        }
+      }
+    }
+    
     console.error('Failed to load metadata:', error)
-    throw error
+    // Return empty metadata instead of throwing to prevent app crashes
+    return { files: {} }
   }
 }
 
