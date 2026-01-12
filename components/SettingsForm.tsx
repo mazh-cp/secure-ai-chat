@@ -233,19 +233,28 @@ export default function SettingsForm() {
       })
 
       if (response.ok) {
-        setCheckpointTeConfigured(true)
-        setCheckpointTeKey('') // Clear input after successful save
+        const data = await response.json()
+        // Clear input after successful save
+        setCheckpointTeKey('')
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 3000)
+        
+        // Re-check the status from server to ensure UI reflects actual state
+        // This is important when replacing an old key with a new one
+        await checkCheckpointTeStatus()
       } else {
         const error = await response.json()
         setSaveStatus('error')
         console.error('Failed to save Check Point TE key:', error)
+        // Re-check status in case key was partially saved or removed
+        await checkCheckpointTeStatus()
         setTimeout(() => setSaveStatus('idle'), 3000)
       }
     } catch (error) {
       console.error('Error saving Check Point TE key:', error)
       setSaveStatus('error')
+      // Re-check status to ensure UI is accurate
+      await checkCheckpointTeStatus()
       setTimeout(() => setSaveStatus('idle'), 3000)
     } finally {
       setIsSavingTeKey(false)
@@ -324,11 +333,15 @@ export default function SettingsForm() {
       })
 
       if (response.ok) {
-        setCheckpointTeConfigured(false)
+        const data = await response.json()
+        // Update state based on server response
+        setCheckpointTeConfigured(data.configured || false)
         setCheckpointTeKey('')
         setSaveStatus('success')
         setShowPinDialog(false)
         setPinForVerification('')
+        // Re-check status to ensure UI is accurate
+        await checkCheckpointTeStatus()
         setTimeout(() => setSaveStatus('idle'), 3000)
       } else {
         const errorData = await response.json()
