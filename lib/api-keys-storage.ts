@@ -187,36 +187,73 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     // Merge with existing keys (don't overwrite env vars)
     const existingKeys = await loadApiKeys()
     
-    // Don't save keys that are set via environment variables
+    // Build keys to save - merge new keys with existing, but don't overwrite env vars
     const keysToSave: StoredApiKeys = {}
     
-    if (keys.openAiKey && !process.env.OPENAI_API_KEY) {
-      keysToSave.openAiKey = keys.openAiKey
+    // Handle OpenAI key
+    if (keys.openAiKey !== undefined) {
+      // New key provided
+      if (keys.openAiKey && keys.openAiKey.trim() && !process.env.OPENAI_API_KEY) {
+        keysToSave.openAiKey = keys.openAiKey.trim()
+      } else if (!keys.openAiKey && existingKeys.openAiKey && !process.env.OPENAI_API_KEY) {
+        // Empty string provided but existing key exists - keep existing
+        keysToSave.openAiKey = existingKeys.openAiKey
+      }
+      // If new key is empty and no existing key, don't save (will be null)
     } else if (existingKeys.openAiKey && !process.env.OPENAI_API_KEY) {
+      // No new key provided, keep existing
       keysToSave.openAiKey = existingKeys.openAiKey
     }
     
-    if (keys.lakeraAiKey && !process.env.LAKERA_AI_KEY) {
-      keysToSave.lakeraAiKey = keys.lakeraAiKey
+    // Handle Lakera AI key
+    if (keys.lakeraAiKey !== undefined) {
+      if (keys.lakeraAiKey && keys.lakeraAiKey.trim() && !process.env.LAKERA_AI_KEY) {
+        keysToSave.lakeraAiKey = keys.lakeraAiKey.trim()
+      } else if (!keys.lakeraAiKey && existingKeys.lakeraAiKey && !process.env.LAKERA_AI_KEY) {
+        keysToSave.lakeraAiKey = existingKeys.lakeraAiKey
+      }
     } else if (existingKeys.lakeraAiKey && !process.env.LAKERA_AI_KEY) {
       keysToSave.lakeraAiKey = existingKeys.lakeraAiKey
     }
     
-    if (keys.lakeraProjectId && !process.env.LAKERA_PROJECT_ID) {
-      keysToSave.lakeraProjectId = keys.lakeraProjectId
+    // Handle Lakera Project ID
+    if (keys.lakeraProjectId !== undefined) {
+      if (keys.lakeraProjectId && keys.lakeraProjectId.trim() && !process.env.LAKERA_PROJECT_ID) {
+        keysToSave.lakeraProjectId = keys.lakeraProjectId.trim()
+      } else if (!keys.lakeraProjectId && existingKeys.lakeraProjectId && !process.env.LAKERA_PROJECT_ID) {
+        keysToSave.lakeraProjectId = existingKeys.lakeraProjectId
+      }
     } else if (existingKeys.lakeraProjectId && !process.env.LAKERA_PROJECT_ID) {
       keysToSave.lakeraProjectId = existingKeys.lakeraProjectId
     }
     
-    if (keys.lakeraEndpoint && !process.env.LAKERA_ENDPOINT) {
-      keysToSave.lakeraEndpoint = keys.lakeraEndpoint
+    // Handle Lakera Endpoint
+    if (keys.lakeraEndpoint !== undefined) {
+      if (keys.lakeraEndpoint && keys.lakeraEndpoint.trim() && !process.env.LAKERA_ENDPOINT) {
+        keysToSave.lakeraEndpoint = keys.lakeraEndpoint.trim()
+      } else if (!keys.lakeraEndpoint && existingKeys.lakeraEndpoint && !process.env.LAKERA_ENDPOINT) {
+        keysToSave.lakeraEndpoint = existingKeys.lakeraEndpoint
+      } else if (!keys.lakeraEndpoint) {
+        // Default endpoint
+        keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
+      }
     } else if (existingKeys.lakeraEndpoint && !process.env.LAKERA_ENDPOINT) {
       keysToSave.lakeraEndpoint = existingKeys.lakeraEndpoint
+    } else {
+      // Default endpoint if nothing exists
+      keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
     }
     
+    // Always save at least the endpoint, even if no other keys
     const encryptedKeys = encryptKeys(keysToSave)
+    
+    // Ensure directory exists and has correct permissions
+    await ensureStorageDir()
+    
     // Write with restrictive permissions (owner read/write only)
     await fs.writeFile(KEYS_FILE_PATH, encryptedKeys, { mode: 0o600, flag: 'w' })
+    
+    console.log('Keys saved successfully. Keys to save:', Object.keys(keysToSave))
     // Update cache with merged keys (env vars take priority)
     const envKeys: StoredApiKeys = {}
     if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()

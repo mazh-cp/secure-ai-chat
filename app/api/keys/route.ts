@@ -61,18 +61,31 @@ export async function POST(request: NextRequest) {
     // Validate and prepare keys to save
     const keysToSave: StoredApiKeys = {}
     
+    console.log('Received keys to save:', {
+      openAiKey: keys.openAiKey ? `${keys.openAiKey.substring(0, 10)}...` : 'empty',
+      lakeraAiKey: keys.lakeraAiKey ? `${keys.lakeraAiKey.substring(0, 10)}...` : 'empty',
+      lakeraProjectId: keys.lakeraProjectId || 'empty',
+    })
+    
     if (keys.openAiKey !== undefined) {
       if (keys.openAiKey && typeof keys.openAiKey === 'string' && keys.openAiKey.trim()) {
         const trimmedKey = keys.openAiKey.trim()
         // Validate OpenAI key format (should start with sk-)
         if (trimmedKey.startsWith('sk-') && trimmedKey.length >= 20) {
           keysToSave.openAiKey = trimmedKey
+          console.log('OpenAI key validated and will be saved')
         } else {
+          console.error('Invalid OpenAI key format:', {
+            startsWithSk: trimmedKey.startsWith('sk-'),
+            length: trimmedKey.length,
+          })
           return NextResponse.json(
-            { error: 'Invalid OpenAI API key format. Key should start with "sk-"' },
+            { error: 'Invalid OpenAI API key format. Key should start with "sk-" and be at least 20 characters' },
             { status: 400 }
           )
         }
+      } else if (!keys.openAiKey || !keys.openAiKey.trim()) {
+        console.log('OpenAI key is empty, will not save')
       }
     }
     
@@ -81,6 +94,7 @@ export async function POST(request: NextRequest) {
         const trimmedKey = keys.lakeraAiKey.trim()
         if (trimmedKey.length >= 20) {
           keysToSave.lakeraAiKey = trimmedKey
+          console.log('Lakera AI key validated and will be saved')
         } else {
           return NextResponse.json(
             { error: 'Invalid Lakera AI key format' },
@@ -95,6 +109,7 @@ export async function POST(request: NextRequest) {
         const trimmedId = keys.lakeraProjectId.trim()
         if (trimmedId.length >= 5) {
           keysToSave.lakeraProjectId = trimmedId
+          console.log('Lakera Project ID validated and will be saved')
         } else {
           return NextResponse.json(
             { error: 'Invalid Lakera Project ID format' },
@@ -123,9 +138,28 @@ export async function POST(request: NextRequest) {
 
     // Get existing keys and merge
     const existingKeys = await getApiKeys()
+    console.log('Existing keys before save:', {
+      openAiKey: !!existingKeys.openAiKey,
+      lakeraAiKey: !!existingKeys.lakeraAiKey,
+      lakeraProjectId: !!existingKeys.lakeraProjectId,
+    })
     
     // Save keys (will only save non-env-vars)
-    await setApiKeys({ ...existingKeys, ...keysToSave })
+    // Merge: new keys override existing, but keep existing if new is not provided
+    const mergedKeys: StoredApiKeys = { ...existingKeys }
+    if (keysToSave.openAiKey !== undefined) mergedKeys.openAiKey = keysToSave.openAiKey
+    if (keysToSave.lakeraAiKey !== undefined) mergedKeys.lakeraAiKey = keysToSave.lakeraAiKey
+    if (keysToSave.lakeraProjectId !== undefined) mergedKeys.lakeraProjectId = keysToSave.lakeraProjectId
+    if (keysToSave.lakeraEndpoint !== undefined) mergedKeys.lakeraEndpoint = keysToSave.lakeraEndpoint
+    
+    console.log('Merged keys to save:', {
+      openAiKey: !!mergedKeys.openAiKey,
+      lakeraAiKey: !!mergedKeys.lakeraAiKey,
+      lakeraProjectId: !!mergedKeys.lakeraProjectId,
+      lakeraEndpoint: !!mergedKeys.lakeraEndpoint,
+    })
+    
+    await setApiKeys(mergedKeys)
     
     // Verify keys were saved
     const savedKeys = await getApiKeys()
@@ -133,6 +167,7 @@ export async function POST(request: NextRequest) {
       openAiKey: !!savedKeys.openAiKey,
       lakeraAiKey: !!savedKeys.lakeraAiKey,
       lakeraProjectId: !!savedKeys.lakeraProjectId,
+      lakeraEndpoint: !!savedKeys.lakeraEndpoint,
     })
 
     console.log('API keys configured and saved successfully')
