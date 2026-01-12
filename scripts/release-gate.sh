@@ -1,187 +1,217 @@
-#!/bin/bash
-# Release Gate Script - Pre-deployment validation
-# Ensures code correctness, security, stability, and backwards compatibility
-# Exit codes: 0 = PASS, 1 = FAIL
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# =========================
+# Release Gate (Strict) + Repo Update Helpers
+# Target release branch: release/v1.0.5
+# =========================
 
-FAILED=0
+PASS=true
+say() { printf "\n==> %s\n" "$*"; }
+fail() { echo "❌ FAIL: $*"; PASS=false; }
+ok() { echo "✅ PASS: $*"; }
 
-# Print header
-echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║           RELEASE GATE - PRE-DEPLOYMENT VALIDATION           ║${NC}"
-echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
-echo ""
+# Show failing line on error (still honors PASS/FAIL blocks)
+trap 'echo "❌ ERROR at line $LINENO"; exit 2' ERR
 
-# Detect package manager from lockfiles
-PACKAGE_MANAGER="npm"
-if [ -f "package-lock.json" ]; then
-    PACKAGE_MANAGER="npm"
-elif [ -f "yarn.lock" ]; then
-    PACKAGE_MANAGER="yarn"
-elif [ -f "pnpm-lock.yaml" ]; then
-    PACKAGE_MANAGER="pnpm"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+say "Release Gate starting in: $ROOT"
+
+# --- Enhancement 1: repo sanity / informative context ---
+if ! command -v git >/dev/null 2>&1; then
+  echo "❌ FAIL: git not found"
+  exit 2
+fi
+if [[ ! -f package.json ]]; then
+  echo "❌ FAIL: package.json not found in repo root"
+  exit 2
 fi
 
-echo -e "${BLUE}📦 Package Manager: ${PACKAGE_MANAGER}${NC}"
-echo ""
-
-# Function to run check and track failures
-run_check() {
-    local name="$1"
-    local command="$2"
-    
-    echo -e "${YELLOW}⏳ Running: ${name}...${NC}"
-    if eval "$command" > /tmp/release-gate-${name// /-}.log 2>&1; then
-        echo -e "${GREEN}✅ PASS: ${name}${NC}"
-        return 0
-    else
-        echo -e "${RED}❌ FAIL: ${name}${NC}"
-        echo -e "${RED}   See log: /tmp/release-gate-${name// /-}.log${NC}"
-        cat /tmp/release-gate-${name// /-}.log | tail -10
-        FAILED=1
-        return 1
-    fi
-}
-
-# 1. Clean Install
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}1. CLEAN INSTALL${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-    run_check "Clean Install" "rm -rf node_modules package-lock.json .next && npm install"
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-    run_check "Clean Install" "rm -rf node_modules yarn.lock .next && yarn install"
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-    run_check "Clean Install" "rm -rf node_modules pnpm-lock.yaml .next && pnpm install"
+# --- Enhancement 2: enforce clean working tree (strict) ---
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "❌ FAIL: Working tree is not clean. Commit/stash changes before release."
+  exit 2
 fi
-echo ""
+ok "Working tree clean"
 
-# 2. Type Check
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}2. TYPE CHECK${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-    run_check "TypeScript Type Check" "npm run type-check"
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-    run_check "TypeScript Type Check" "yarn type-check"
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-    run_check "TypeScript Type Check" "pnpm type-check"
-fi
-echo ""
-
-# 3. Lint
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}3. LINT${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-    run_check "ESLint" "npm run lint"
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-    run_check "ESLint" "yarn lint"
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-    run_check "ESLint" "pnpm lint"
-fi
-echo ""
-
-# 4. Security: API Key Leakage Check (Comprehensive)
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}4. SECURITY: COMPREHENSIVE API KEY LEAKAGE CHECK${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-run_check "Security Audit: No API Keys in Client Components" "bash scripts/check-security.sh"
-echo ""
-
-# 5. Security: Build Output Check
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}5. SECURITY: BUILD OUTPUT CHECK${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-# First build, then check
-if [ "$PACKAGE_MANAGER" = "npm" ]; then
-    if npm run build > /tmp/release-gate-build.log 2>&1; then
-        echo -e "${GREEN}✅ PASS: Build successful${NC}"
-        
-        # Check for API keys in build output (look for actual key patterns, not variable/function names)
-        # Check for actual API key patterns: TE_API_KEY_ followed by a long string (40+ chars), or CHECKPOINT_TE_API_KEY env var pattern
-        if grep -r "TE_API_KEY_[A-Za-z0-9]\{40,\}\|CHECKPOINT_TE_API_KEY=[A-Za-z0-9]\{40,\}" .next/static 2>/dev/null | grep -v ".map"; then
-            echo -e "${RED}❌ FAIL: Actual API keys found in build output!${NC}"
-            grep -r "TE_API_KEY_[A-Za-z0-9]\{40,\}\|CHECKPOINT_TE_API_KEY=[A-Za-z0-9]\{40,\}" .next/static 2>/dev/null | grep -v ".map" | head -5
-            FAILED=1
-        else
-            echo -e "${GREEN}✅ PASS: No actual API keys in build output (variable/function names are safe)${NC}"
-        fi
-    else
-        echo -e "${RED}❌ FAIL: Build failed${NC}"
-        cat /tmp/release-gate-build.log | tail -20
-        FAILED=1
-    fi
-elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
-    if yarn build > /tmp/release-gate-build.log 2>&1; then
-        echo -e "${GREEN}✅ PASS: Build successful${NC}"
-        
-        if grep -r "TE_API_KEY\|CHECKPOINT_TE_API_KEY\|getTeApiKey\|setTeApiKey" .next/static 2>/dev/null | grep -v ".map" | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled"; then
-            echo -e "${RED}❌ FAIL: API keys found in build output!${NC}"
-            grep -r "TE_API_KEY\|CHECKPOINT_TE_API_KEY\|getTeApiKey\|setTeApiKey" .next/static 2>/dev/null | grep -v ".map" | head -5
-            FAILED=1
-        else
-            echo -e "${GREEN}✅ PASS: No API keys in build output${NC}"
-        fi
-    else
-        echo -e "${RED}❌ FAIL: Build failed${NC}"
-        cat /tmp/release-gate-build.log | tail -20
-        FAILED=1
-    fi
-elif [ "$PACKAGE_MANAGER" = "pnpm" ]; then
-    if pnpm build > /tmp/release-gate-build.log 2>&1; then
-        echo -e "${GREEN}✅ PASS: Build successful${NC}"
-        
-        if grep -r "TE_API_KEY\|CHECKPOINT_TE_API_KEY\|getTeApiKey\|setTeApiKey" .next/static 2>/dev/null | grep -v ".map" | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled"; then
-            echo -e "${RED}❌ FAIL: API keys found in build output!${NC}"
-            grep -r "TE_API_KEY\|CHECKPOINT_TE_API_KEY\|getTeApiKey\|setTeApiKey" .next/static 2>/dev/null | grep -v ".map" | head -5
-            FAILED=1
-        else
-            echo -e "${GREEN}✅ PASS: No API keys in build output${NC}"
-        fi
-    else
-        echo -e "${RED}❌ FAIL: Build failed${NC}"
-        cat /tmp/release-gate-build.log | tail -20
-        FAILED=1
-    fi
-fi
-echo ""
-
-# 6. Summary
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}RELEASE GATE SUMMARY${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-if [ $FAILED -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║                    ✅ RELEASE GATE: PASS                      ║${NC}"
-    echo -e "${GREEN}║                                                               ║${NC}"
-    echo -e "${GREEN}║  All checks passed. Ready for deployment.                    ║${NC}"
-    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    exit 0
+# --- Enhancement 3: detect package manager from lockfiles (unchanged behavior) ---
+PM=""
+INSTALL_CMD=""
+RUN_CMD=""
+if [[ -f pnpm-lock.yaml ]]; then
+  PM="pnpm"
+  INSTALL_CMD="pnpm install --frozen-lockfile"
+  RUN_CMD="pnpm"
+elif [[ -f yarn.lock ]]; then
+  PM="yarn"
+  INSTALL_CMD="yarn install --immutable || yarn install --frozen-lockfile"
+  RUN_CMD="yarn"
+elif [[ -f package-lock.json ]]; then
+  PM="npm"
+  INSTALL_CMD="npm ci"
+  RUN_CMD="npm"
 else
-    echo ""
-    echo -e "${RED}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║                    ❌ RELEASE GATE: FAIL                      ║${NC}"
-    echo -e "${RED}║                                                               ║${NC}"
-    echo -e "${RED}║  One or more checks failed. Do not deploy.                   ║${NC}"
-    echo -e "${RED}║  Review the errors above and fix before proceeding.          ║${NC}"
-    echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    exit 1
+  echo "❌ FAIL: No lockfile found (pnpm-lock.yaml/yarn.lock/package-lock.json)."
+  exit 2
+fi
+ok "Detected package manager: ${PM}"
+
+# --- Enhancement 4: ensure Node exists + print versions ---
+if ! command -v node >/dev/null 2>&1; then
+  echo "❌ FAIL: node not found"
+  exit 2
+fi
+ok "Node: $(node -v) | PM: ${PM}"
+
+# --- Enhancement 5: hard set release version + branch naming ---
+TARGET_VERSION="1.0.5"
+TARGET_BRANCH="release/v${TARGET_VERSION}"
+
+# Update package.json version (only if needed) without blocking older npm
+say "Set version -> ${TARGET_VERSION}"
+CURRENT_VERSION="$(node -p "require('./package.json').version")"
+if [[ "$CURRENT_VERSION" != "$TARGET_VERSION" ]]; then
+  # npm version updates package.json + creates a git tag by default; avoid that.
+  # We'll edit package.json directly to keep behavior predictable.
+  node -e "
+    const fs = require('fs');
+    const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    p.version = '${TARGET_VERSION}';
+    fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+  "
+  ok "package.json version updated ${CURRENT_VERSION} -> ${TARGET_VERSION}"
+else
+  ok "package.json already at ${TARGET_VERSION}"
+fi
+
+# --- Enhancement 6: update repo base branch then create/refresh release branch ---
+say "Sync base branch and create ${TARGET_BRANCH}"
+BASE_BRANCH="${BASE_BRANCH:-main}"
+
+git fetch --all --prune
+
+# Ensure base exists locally
+if git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}"; then
+  git checkout "${BASE_BRANCH}"
+else
+  # Try to create it from origin if missing locally
+  git checkout -b "${BASE_BRANCH}" "origin/${BASE_BRANCH}"
+fi
+
+git pull --ff-only origin "${BASE_BRANCH}"
+ok "Base branch synced: ${BASE_BRANCH}"
+
+# Create/update release branch off base
+git checkout -B "${TARGET_BRANCH}" "${BASE_BRANCH}"
+ok "On branch: ${TARGET_BRANCH}"
+
+# Commit version bump if it changed
+if [[ -n "$(git status --porcelain)" ]]; then
+  git add package.json
+  git commit -m "chore(release): bump version to ${TARGET_VERSION}"
+  ok "Committed version bump"
+else
+  ok "No version bump commit needed"
+fi
+
+# Push release branch (updates GitHub branch with latest code)
+say "Push to GitHub: ${TARGET_BRANCH}"
+git push -u origin "${TARGET_BRANCH}"
+ok "GitHub updated"
+
+# =========================
+# Release Gate checks
+# =========================
+
+# Clean install
+say "Clean install"
+if bash -lc "$INSTALL_CMD"; then ok "Install"; else fail "Install"; fi
+
+# Lint
+say "Lint"
+if node -e "process.exit(require('./package.json').scripts?.lint?0:1)" 2>/dev/null; then
+  if bash -lc "$RUN_CMD run lint"; then ok "Lint"; else fail "Lint"; fi
+else
+  echo "ℹ️  No lint script found; treating as FAIL (strict gate)."
+  fail "Lint script missing"
+fi
+
+# Typecheck
+say "Typecheck"
+if node -e "process.exit(require('./package.json').scripts?.typecheck?0:1)" 2>/dev/null; then
+  if bash -lc "$RUN_CMD run typecheck"; then ok "Typecheck"; else fail "Typecheck"; fi
+else
+  echo "ℹ️  No typecheck script found; treating as FAIL (strict gate)."
+  fail "Typecheck script missing"
+fi
+
+# Tests (strict: if tests exist, must pass; if absent, PASS with note)
+say "Tests"
+if node -e "process.exit(require('./package.json').scripts?.test?0:1)" 2>/dev/null; then
+  if bash -lc "$RUN_CMD run test"; then ok "Tests"; else fail "Tests"; fi
+else
+  echo "ℹ️  No test script found; PASS (no tests present)."
+  ok "Tests (not present)"
+fi
+
+# Build
+say "Build"
+if node -e "process.exit(require('./package.json').scripts?.build?0:1)" 2>/dev/null; then
+  if bash -lc "$RUN_CMD run build"; then ok "Build"; else fail "Build"; fi
+else
+  echo "ℹ️  No build script found; treating as FAIL (strict gate)."
+  fail "Build script missing"
+fi
+
+# Secret leakage scan (repo + client bundle/output)
+say "Secret scan"
+if command -v gitleaks >/dev/null 2>&1; then
+  if gitleaks detect --source . --no-git --redact --exit-code 1; then
+    ok "Gitleaks repo scan"
+  else
+    fail "Gitleaks repo scan"
+  fi
+
+  OUT_DIR=""
+  for d in .next dist build out; do
+    if [[ -d "$d" ]]; then OUT_DIR="$d"; break; fi
+  done
+
+  if [[ -n "$OUT_DIR" ]]; then
+    say "Secret scan output dir: $OUT_DIR"
+    if gitleaks detect --source "$OUT_DIR" --no-git --redact --exit-code 1; then
+      ok "Gitleaks output scan"
+    else
+      fail "Gitleaks output scan"
+    fi
+  else
+    echo "ℹ️  No build output dir found (.next/dist/build/out). Skipping output scan."
+    ok "Output scan (not applicable)"
+  fi
+else
+  echo "❌ gitleaks not found. Install gitleaks to pass the release gate."
+  fail "Secret scan tool missing (gitleaks)"
+fi
+
+# --- Enhancement 7: quick dependency vuln scan if tool exists (non-breaking) ---
+say "Dependency audit (best-effort)"
+if [[ "$PM" == "npm" ]]; then
+  if npm audit --audit-level=high; then ok "npm audit"; else fail "npm audit"; fi
+elif [[ "$PM" == "yarn" ]]; then
+  echo "ℹ️  yarn audit varies by version; skipping by default."
+  ok "yarn audit (skipped)"
+elif [[ "$PM" == "pnpm" ]]; then
+  if pnpm audit --audit-level high; then ok "pnpm audit"; else fail "pnpm audit"; fi
+fi
+
+# Final result
+say "Release Gate result"
+if [[ "$PASS" == "true" ]]; then
+  echo "✅✅✅ RELEASE GATE: PASS"
+  exit 0
+else
+  echo "❌❌❌ RELEASE GATE: FAIL"
+  exit 1
 fi

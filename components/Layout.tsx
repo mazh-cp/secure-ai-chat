@@ -161,7 +161,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="text-xs text-theme-subtle">
               <p className="font-semibold text-theme-muted">Secure AI Chat</p>
               <p className="mt-1">Powered by Lakera AI</p>
-              <p className="mt-1 text-theme-subtle/80">App version 1.0.4</p>
+              <p className="mt-1 text-theme-subtle/80">App version 1.0.5</p>
               <p className="mt-1 text-theme-subtle/70">© 2026 All rights reserved</p>
             </div>
           </div>

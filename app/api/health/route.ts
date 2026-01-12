@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server'
+import { initializeCacheCleanup } from '@/lib/cache-cleanup'
+
+// Initialize cache cleanup service on first health check (singleton pattern)
+let cleanupInitialized = false
+
+function ensureCleanupInitialized() {
+  if (!cleanupInitialized) {
+    initializeCacheCleanup()
+    cleanupInitialized = true
+  }
+}
 
 /**
  * General health check endpoint
  * Returns 200 OK if the service is running
  * Used by service managers (Docker, systemd, Kubernetes) for health checks
+ * Also initializes the cache cleanup service (24-hour file cleanup)
  */
 export async function GET() {
   try {
+    // Initialize cache cleanup service on first health check
+    ensureCleanupInitialized()
+
     // Basic health check - service is running
     return NextResponse.json(
       {
         status: 'ok',
         timestamp: new Date().toISOString(),
         service: 'secure-ai-chat',
+        cacheCleanup: 'initialized',
       },
       { status: 200 }
     )

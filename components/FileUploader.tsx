@@ -10,12 +10,16 @@ interface FileUploaderProps {
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const MAX_FILES = 5 // Maximum number of files that can be uploaded simultaneously
 const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx']
 
 export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, ragScanEnabled = true }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set())
+  const [processedCount, setProcessedCount] = useState(0)
+  const [totalFiles, setTotalFiles] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validateFile = (file: File): string | null => {
@@ -61,14 +65,15 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
     })
   }
 
-  const processFile = async (file: File) => {
-    setError(null)
-    setIsProcessing(true)
-
+  const processFile = async (file: File, fileIndex: number, total: number): Promise<void> => {
+    const fileId = `${file.name}-${fileIndex}`
+    
     try {
+      setProcessingFiles(prev => new Set(prev).add(fileId))
+      
       const validationError = validateFile(file)
       if (validationError) {
-        setError(validationError)
+        setError(prev => prev ? `${prev}\n${file.name}: ${validationError}` : `${file.name}: ${validationError}`)
         return
       }
 
@@ -85,11 +90,46 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
       }
 
       onFileUpload(uploadedFile)
+      setProcessedCount(prev => prev + 1)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process file')
+      const errorMsg = err instanceof Error ? err.message : 'Failed to process file'
+      setError(prev => prev ? `${prev}\n${file.name}: ${errorMsg}` : `${file.name}: ${errorMsg}`)
     } finally {
-      setIsProcessing(false)
+      setProcessingFiles(prev => {
+        const next = new Set(prev)
+        next.delete(fileId)
+        return next
+      })
     }
+  }
+
+  const processMultipleFiles = async (files: File[]) => {
+    setError(null)
+    setIsProcessing(true)
+    setProcessedCount(0)
+    setTotalFiles(files.length)
+    setProcessingFiles(new Set())
+
+    // Validate file count
+    if (files.length > MAX_FILES) {
+      setError(`Maximum ${MAX_FILES} files allowed. You selected ${files.length} files.`)
+      setIsProcessing(false)
+      return
+    }
+
+    // Process files sequentially to avoid overwhelming the system
+    for (let i = 0; i < files.length; i++) {
+      await processFile(files[i], i, files.length)
+    }
+
+    setIsProcessing(false)
+    setProcessingFiles(new Set())
+    
+    // Reset after a short delay
+    setTimeout(() => {
+      setProcessedCount(0)
+      setTotalFiles(0)
+    }, 2000)
   }
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -108,14 +148,14 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
 
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0) {
-      await processFile(files[0])
+      await processMultipleFiles(files)
     }
   }
 
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
-      await processFile(files[0])
+      await processMultipleFiles(Array.from(files))
     }
     // Reset input
     if (fileInputRef.current) {
@@ -150,6 +190,7 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
           type="file"
           onChange={handleFileSelect}
           accept={ALLOWED_EXTENSIONS.join(',')}
+          multiple
           className="hidden"
         />
 
@@ -170,11 +211,24 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
 
           <div>
             <p className="text-theme font-medium">
-              {isProcessing ? 'Processing...' : 'Drop file here or click to upload'}
+              {isProcessing 
+                ? `Processing ${processedCount}/${totalFiles} files...` 
+                : 'Drop files here or click to upload'}
             </p>
             <p className="text-theme-muted text-sm mt-1">
-              PDF, TXT, MD, JSON, CSV, DOCX up to 50 MB
+              PDF, TXT, MD, JSON, CSV, DOCX up to 50 MB each
             </p>
+            <p className="text-theme-subtle text-xs mt-1">
+              You can upload up to {MAX_FILES} files at once
+            </p>
+            {isProcessing && totalFiles > 0 && (
+              <div className="mt-3 w-full bg-white/10 rounded-full h-2">
+                <div 
+                  className="bg-brand-berry h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(processedCount / totalFiles) * 100}%` }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

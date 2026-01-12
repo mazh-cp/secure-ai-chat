@@ -63,3 +63,6 @@ Thumbs.db
 
 # Secure storage (encrypted files, PIN hashes, system logs)
 .secure-storage/
+
+# Persistent file storage (uploaded files and metadata)
+.storage/

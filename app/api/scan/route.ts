@@ -15,15 +15,8 @@ interface LakeraResponse {
   error?: string
 }
 
-interface LakeraRequestBody {
-  messages: Array<{ role: string; content: string }>
-  context?: {
-    type?: string
-    fileName?: string
-    fileType?: string
-    isBinary?: boolean
-  }
-}
+// Removed custom LakeraRequestBody interface - now using inline type
+// that matches official Lakera Guard API v2 specification
 
 // Pre-scan validation for common prompt injection patterns in files
 function detectCommonInjectionPatterns(content: string): {
@@ -219,40 +212,56 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Enhanced request with file context
-    const requestBody: LakeraRequestBody = {
+    // Get user IP for metadata
+    const userIP = getUserIP(request)
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+    // Request body compliant with official Lakera Guard API v2 spec
+    // Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
+    const requestBody: {
+      messages: Array<{ role: string; content: string }>
+      project_id?: string
+      payload?: boolean
+      breakdown?: boolean
+      metadata?: {
+        user_id?: string
+        session_id?: string
+        ip_address?: string
+        internal_request_id?: string
+      }
+    } = {
       messages: [
         {
           role: 'user',
           content: contentToScan,
         },
       ],
-      context: {
-        type: 'file_upload',
-        fileName: fileName || 'unnamed',
-        fileType: fileName?.split('.').pop() || 'unknown',
-        isBinary: isBase64,
+      // ✅ FIX: project_id in request body (not header)
+      project_id: apiKeys.lakeraProjectId?.trim() || undefined,
+      // ✅ ENHANCEMENT: Optional parameters for enhanced responses
+      payload: true,      // Get PII/profanity matches with locations
+      breakdown: true,    // Get detector breakdown
+      // ✅ FIX: Use official metadata structure instead of custom context
+      metadata: {
+        ip_address: userIP,
+        internal_request_id: requestId,
       },
     }
 
-    // Prepare headers
+    // Prepare headers - only Authorization, no project ID header
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKeys.lakeraAiKey.trim()}`,
     }
 
-    // Add project ID as header if provided
-    if (apiKeys.lakeraProjectId && apiKeys.lakeraProjectId.trim()) {
-      headers['X-Lakera-Project'] = apiKeys.lakeraProjectId.trim()
-    }
-
-    console.log('Scanning with Lakera:', {
+    console.log('Scanning with Lakera (API v2 compliant):', {
       endpoint: lakeraEndpoint,
       contentLength: contentToScan.length,
-      hasProjectId: !!apiKeys.lakeraProjectId,
+      projectId: apiKeys.lakeraProjectId ? 'configured' : 'not configured',
       fileType: isBase64 ? 'binary' : 'text',
       preScanDetected: preScan.detected,
       preScanPatterns: preScan.patterns,
+      requestId,
     })
 
     const response = await fetch(lakeraEndpoint, {
@@ -461,8 +470,6 @@ export async function POST(request: NextRequest) {
         threatLevel = 'medium'
       }
     }
-
-    const userIP = getUserIP(request)
 
     const logData = {
       userIP,

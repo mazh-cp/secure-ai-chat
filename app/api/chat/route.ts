@@ -90,12 +90,19 @@ function detectCommonInjectionPatterns(content: string): {
 }
 
 // Enhanced Lakera scanning with comprehensive threat detection
+// Compliant with official Lakera Guard API v2 specification
 async function checkWithLakera(
   message: string,
   lakeraKey: string,
   lakeraEndpoint: string,
   lakeraProjectId: string,
-  context?: 'input' | 'output'
+  context?: 'input' | 'output',
+  metadata?: {
+    user_id?: string
+    session_id?: string
+    ip_address?: string
+    internal_request_id?: string
+  }
 ): Promise<ScanResult> {
   if (!lakeraKey) {
     return { scanned: false, flagged: false }
@@ -123,19 +130,25 @@ async function checkWithLakera(
   }
 
   try {
+    // Headers - only Authorization, no project ID header
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${lakeraKey}`,
     }
 
-    if (lakeraProjectId) {
-      headers['X-Lakera-Project'] = lakeraProjectId
-    }
-
-    // Enhanced request with context information
+    // Request body compliant with official Lakera Guard API v2 spec
+    // Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
     const requestBody: {
       messages: Array<{ role: string; content: string }>
-      context?: { type: string; timestamp: string }
+      project_id?: string
+      payload?: boolean
+      breakdown?: boolean
+      metadata?: {
+        user_id?: string
+        session_id?: string
+        ip_address?: string
+        internal_request_id?: string
+      }
     } = {
       messages: [
         {
@@ -143,13 +156,20 @@ async function checkWithLakera(
           content: message,
         },
       ],
+      // ✅ FIX: project_id in request body (not header)
+      project_id: lakeraProjectId || undefined,
+      // ✅ ENHANCEMENT: Optional parameters for enhanced responses
+      payload: true,      // Get PII/profanity matches with locations
+      breakdown: true,    // Get detector breakdown
     }
 
-    // Add context metadata if available
-    if (context) {
-      requestBody.context = {
-        type: context,
-        timestamp: new Date().toISOString(),
+    // ✅ FIX: Use official metadata structure instead of custom context
+    if (metadata) {
+      requestBody.metadata = {
+        user_id: metadata.user_id,
+        session_id: metadata.session_id,
+        ip_address: metadata.ip_address,
+        internal_request_id: metadata.internal_request_id,
       }
     }
 
@@ -361,6 +381,10 @@ export async function POST(request: NextRequest) {
       .filter((m: ChatMessage) => m.role === 'user')
       .pop()
 
+    // Get user IP for metadata
+    const userIP = getUserIP(request)
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
     let inputScanResult: ScanResult = { scanned: false, flagged: false }
 
     // Check input with Lakera if enabled and configured
@@ -370,12 +394,15 @@ export async function POST(request: NextRequest) {
         apiKeys.lakeraAiKey,
         apiKeys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
         apiKeys.lakeraProjectId,
-        'input'
+        'input',
+        {
+          ip_address: userIP,
+          internal_request_id: requestId,
+        }
       )
 
       // If input is flagged, block it immediately
       if (inputScanResult.flagged) {
-        const userIP = getUserIP(request)
         return NextResponse.json(
           { 
             error: inputScanResult.message || 'Message blocked by security filter',
@@ -411,12 +438,15 @@ export async function POST(request: NextRequest) {
         apiKeys.lakeraAiKey,
         apiKeys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
         apiKeys.lakeraProjectId,
-        'output'
+        'output',
+        {
+          ip_address: userIP,
+          internal_request_id: `${requestId}-output`,
+        }
       )
 
       // If output is flagged, block it
       if (outputScanResult.flagged) {
-        const userIP = getUserIP(request)
         return NextResponse.json(
           { 
             error: 'AI response blocked by security filter',
@@ -440,9 +470,6 @@ export async function POST(request: NextRequest) {
         )
       }
     }
-
-    // Get user IP for logging
-    const userIP = getUserIP(request)
 
     const logData = {
       userIP,

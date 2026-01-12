@@ -22,16 +22,25 @@ export default function FilesPage() {
     if (typeof window !== 'undefined') {
       setIsSecure(window.location.protocol === 'https:' || window.location.hostname === 'localhost')
       
-      // Load files from localStorage
-      const stored = localStorage.getItem('uploadedFiles')
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setFiles(parsed)
-        } catch (e) {
-          console.error('Failed to load files:', e)
+      // Load files from server (persistent storage)
+      loadFilesFromServer().catch(err => {
+        console.error('Failed to load files from server:', err)
+        // Fallback to localStorage if server load fails
+        const stored = localStorage.getItem('uploadedFiles')
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            // Convert date strings back to Date objects
+            const filesWithDates = parsed.map((f: UploadedFile) => ({
+              ...f,
+              uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
+            }))
+            setFiles(filesWithDates)
+          } catch (e) {
+            console.error('Failed to load files from localStorage:', e)
+          }
         }
-      }
+      })
 
       // Load Lakera scan toggle state from localStorage
       const scanToggle = localStorage.getItem('lakeraFileScanEnabled')
@@ -65,6 +74,62 @@ export default function FilesPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load files from server
+  const loadFilesFromServer = async () => {
+    try {
+      const response = await fetch('/api/files/list')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.files) {
+          // Convert date strings back to Date objects
+          const filesWithDates = data.files.map((f: UploadedFile) => ({
+            ...f,
+            uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
+          }))
+          setFiles(filesWithDates)
+          // Also update localStorage as cache
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('uploadedFiles', JSON.stringify(filesWithDates))
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load files from server:', error)
+      throw error
+    }
+  }
+
+  // Update file metadata on server
+  const updateFileMetadataOnServer = async (file: UploadedFile) => {
+    try {
+      const response = await fetch('/api/files/store', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileId: file.id,
+          fileName: file.name,
+          fileContent: file.content,
+          fileType: file.type,
+          fileSize: file.size,
+          scanStatus: file.scanStatus,
+          scanResult: file.scanResult,
+          scanDetails: file.scanDetails,
+          checkpointTeDetails: file.checkpointTeDetails,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to update file metadata on server:', errorData.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('Error updating file metadata on server:', error)
+      // Don't throw - this is a background operation
+    }
+  }
 
   // Check Check Point TE API key configuration status
   const checkCheckpointTeStatus = async () => {
@@ -133,6 +198,33 @@ export default function FilesPage() {
     // Add file with pending status first
     setFiles(prev => [...prev, newFile])
 
+    // Save file to server (persistent storage)
+    try {
+      const response = await fetch('/api/files/store', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileId: newFile.id,
+          fileName: newFile.name,
+          fileContent: newFile.content,
+          fileType: newFile.type,
+          fileSize: newFile.size,
+          scanStatus: newFile.scanStatus,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to store file on server:', errorData.error || 'Unknown error')
+        // Continue with local storage even if server storage fails
+      }
+    } catch (error) {
+      console.error('Error storing file on server:', error)
+      // Continue with local storage even if server storage fails
+    }
+
     // If Check Point TE sandboxing is enabled, process it first
     if (checkpointTeSandboxEnabled && checkpointTeConfigured) {
       setTimeout(() => {
@@ -146,6 +238,25 @@ export default function FilesPage() {
       setFiles(prev => prev.map(f => 
         f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f
       ))
+      // Update server metadata
+      try {
+        await fetch('/api/files/store', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileId: newFile.id,
+            fileName: newFile.name,
+            fileContent: newFile.content,
+            fileType: newFile.type,
+            fileSize: newFile.size,
+            scanStatus: 'not_scanned',
+          }),
+        })
+      } catch (error) {
+        console.error('Error updating file metadata on server:', error)
+      }
       return
     }
     
@@ -156,8 +267,25 @@ export default function FilesPage() {
     }, 300)
   }
 
-  const handleFileRemove = (fileId: string) => {
+  const handleFileRemove = async (fileId: string) => {
+    // Remove from local state
     setFiles(prev => prev.filter(f => f.id !== fileId))
+
+    // Delete from server
+    try {
+      const response = await fetch(`/api/files/delete?fileId=${encodeURIComponent(fileId)}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to delete file from server:', errorData.error || 'Unknown error')
+        // Continue even if server deletion fails
+      }
+    } catch (error) {
+      console.error('Error deleting file from server:', error)
+      // Continue even if server deletion fails
+    }
   }
 
   // Handle Check Point TE sandboxing
@@ -379,19 +507,27 @@ export default function FilesPage() {
         // Timeout or unknown - treat as safe but log
         scanResultMessage = 'Check Point TE analysis completed but verdict is unclear. File allowed.'
         
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? { 
-            ...f, 
-            scanStatus: 'safe' as const,
-            scanResult: scanResultMessage,
-            scanDetails: { categories: {}, score: 0 },
-            checkpointTeDetails: {
-              logFields: teLogFields,
-              verdict: teVerdict,
-              status: teStatus,
-            },
-          } : f
-        ))
+        setFiles(prev => prev.map(f => {
+          if (f.id === fileId) {
+            const updatedFile = {
+              ...f, 
+              scanStatus: 'safe' as const,
+              scanResult: scanResultMessage,
+              scanDetails: { categories: {}, score: 0 },
+              checkpointTeDetails: {
+                logFields: teLogFields,
+                verdict: teVerdict,
+                status: teStatus,
+              },
+            }
+            // Update server metadata asynchronously
+            updateFileMetadataOnServer(updatedFile).catch(err => 
+              console.error('Failed to update file metadata:', err)
+            )
+            return updatedFile
+          }
+          return f
+        }))
         
         addLog({
           type: 'file_scan',
@@ -440,22 +576,30 @@ export default function FilesPage() {
           scanResultMessage += `\n${details.join('\n')}`
         }
         
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? { 
-            ...f, 
-            scanStatus: 'flagged' as const,
-            scanResult: scanResultMessage,
-            scanDetails: { 
-              categories: { malicious: true, checkpoint_te: true }, 
-              score: teLogFields.file_risk ? teLogFields.file_risk / 10 : 1.0 
-            },
-            checkpointTeDetails: {
-              logFields: teLogFields,
-              verdict: teVerdict,
-              status: teStatus,
-            },
-          } : f
-        ))
+        setFiles(prev => prev.map(f => {
+          if (f.id === fileId) {
+            const updatedFile = {
+              ...f, 
+              scanStatus: 'flagged' as const,
+              scanResult: scanResultMessage,
+              scanDetails: { 
+                categories: { malicious: true, checkpoint_te: true }, 
+                score: teLogFields.file_risk ? teLogFields.file_risk / 10 : 1.0 
+              },
+              checkpointTeDetails: {
+                logFields: teLogFields,
+                verdict: teVerdict,
+                status: teStatus,
+              },
+            }
+            // Update server metadata asynchronously
+            updateFileMetadataOnServer(updatedFile).catch(err => 
+              console.error('Failed to update file metadata:', err)
+            )
+            return updatedFile
+          }
+          return f
+        }))
         
         addLog({
           type: 'file_scan',
@@ -496,22 +640,30 @@ export default function FilesPage() {
           scanResultMessage += `\n${details.join('\n')}`
         }
         
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? { 
-            ...f, 
-            scanStatus: 'safe' as const,
-            scanResult: scanResultMessage,
-            scanDetails: { 
-              categories: { safe: true, checkpoint_te: true }, 
-              score: 0 
-            },
-            checkpointTeDetails: {
-              logFields: teLogFields,
-              verdict: teVerdict,
-              status: teStatus,
-            },
-          } : f
-        ))
+        setFiles(prev => prev.map(f => {
+          if (f.id === fileId) {
+            const updatedFile = {
+              ...f, 
+              scanStatus: 'safe' as const,
+              scanResult: scanResultMessage,
+              scanDetails: { 
+                categories: { safe: true, checkpoint_te: true }, 
+                score: 0 
+              },
+              checkpointTeDetails: {
+                logFields: teLogFields,
+                verdict: teVerdict,
+                status: teStatus,
+              },
+            }
+            // Update server metadata asynchronously
+            updateFileMetadataOnServer(updatedFile).catch(err => 
+              console.error('Failed to update file metadata:', err)
+            )
+            return updatedFile
+          }
+          return f
+        }))
         
         addLog({
           type: 'file_scan',
@@ -564,13 +716,21 @@ export default function FilesPage() {
       
       console.error('Check Point TE sandboxing error:', error)
       
-      setFiles(prev => prev.map(f => 
-        f.id === fileId ? { 
-          ...f, 
-          scanStatus: 'error' as const, 
-          scanResult: message,
-        } : f
-      ))
+      setFiles(prev => prev.map(f => {
+        if (f.id === fileId) {
+          const updatedFile = { 
+            ...f, 
+            scanStatus: 'error' as const, 
+            scanResult: message,
+          }
+          // Update server metadata asynchronously
+          updateFileMetadataOnServer(updatedFile).catch(err => 
+            console.error('Failed to update file metadata:', err)
+          )
+          return updatedFile
+        }
+        return f
+      }))
       
       addLog({
         type: 'error',
@@ -755,14 +915,22 @@ export default function FilesPage() {
         })
       }
 
-      setFiles(prev => prev.map(f => 
-        f.id === fileId ? { 
-          ...f, 
-          scanStatus: data.flagged ? 'flagged' as const : 'safe' as const,
-          scanResult: data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
-          scanDetails: data.details
-        } : f
-      ))
+      setFiles(prev => prev.map(f => {
+        if (f.id === fileId) {
+          const updatedFile = {
+            ...f, 
+            scanStatus: data.flagged ? 'flagged' as const : 'safe' as const,
+            scanResult: data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
+            scanDetails: data.details
+          }
+          // Update server metadata asynchronously
+          updateFileMetadataOnServer(updatedFile).catch(err => 
+            console.error('Failed to update file metadata:', err)
+          )
+          return updatedFile
+        }
+        return f
+      }))
     } catch (error) {
       let message = 'Scan failed. Please check your API configuration.'
       
@@ -798,9 +966,17 @@ export default function FilesPage() {
         associatedRisks: ['llm03'], // Supply Chain risk for errors
       })
 
-      setFiles(prev => prev.map(f => 
-        f.id === fileId ? { ...f, scanStatus: 'error' as const, scanResult: message } : f
-      ))
+      setFiles(prev => prev.map(f => {
+        if (f.id === fileId) {
+          const updatedFile = { ...f, scanStatus: 'error' as const, scanResult: message }
+          // Update server metadata asynchronously
+          updateFileMetadataOnServer(updatedFile).catch(err => 
+            console.error('Failed to update file metadata:', err)
+          )
+          return updatedFile
+        }
+        return f
+      }))
     } finally {
       setIsScanning(false)
     }
@@ -982,10 +1158,11 @@ export default function FilesPage() {
       <div className="bento-card bento-span-2 glass-card p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <h3 className="text-brand-berry font-medium mb-2">📁 Supported Features</h3>
         <ul className="text-sm text-theme-muted space-y-1">
-          <li>• Maximum file size: 50 MB</li>
+          <li>• Upload up to 5 files simultaneously</li>
+          <li>• Maximum file size: 50 MB per file</li>
           <li>• Supported formats: PDF, TXT, MD, JSON, CSV, DOCX</li>
           <li>• Lakera AI security scanning for uploaded content</li>
-          <li>• Files stored locally in your browser</li>
+          <li>• Files stored persistently on server</li>
         </ul>
       </div>
     </div>
