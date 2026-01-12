@@ -146,20 +146,18 @@ export async function POST(request: NextRequest) {
     
     // Save keys (will only save non-env-vars)
     // Merge: new keys override existing, but keep existing if new is not provided
-    const mergedKeys: StoredApiKeys = { ...existingKeys }
-    if (keysToSave.openAiKey !== undefined) mergedKeys.openAiKey = keysToSave.openAiKey
-    if (keysToSave.lakeraAiKey !== undefined) mergedKeys.lakeraAiKey = keysToSave.lakeraAiKey
-    if (keysToSave.lakeraProjectId !== undefined) mergedKeys.lakeraProjectId = keysToSave.lakeraProjectId
-    if (keysToSave.lakeraEndpoint !== undefined) mergedKeys.lakeraEndpoint = keysToSave.lakeraEndpoint
-    
-    console.log('Merged keys to save:', {
-      openAiKey: !!mergedKeys.openAiKey,
-      lakeraAiKey: !!mergedKeys.lakeraAiKey,
-      lakeraProjectId: !!mergedKeys.lakeraProjectId,
-      lakeraEndpoint: !!mergedKeys.lakeraEndpoint,
+    // BUT: Only merge keys that were explicitly provided in the request
+    // We pass keysToSave directly to setApiKeys, which will merge with existing internally
+    console.log('Keys to save (validated):', {
+      openAiKey: !!keysToSave.openAiKey,
+      lakeraAiKey: !!keysToSave.lakeraAiKey,
+      lakeraProjectId: !!keysToSave.lakeraProjectId,
+      lakeraEndpoint: !!keysToSave.lakeraEndpoint,
     })
     
-    await setApiKeys(mergedKeys)
+    // setApiKeys will merge with existing keys internally
+    // We pass only the keys that were validated and should be saved
+    await setApiKeys(keysToSave)
     
     // Verify keys were saved
     const savedKeys = await getApiKeys()
