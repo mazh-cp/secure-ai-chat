@@ -65,7 +65,7 @@ echo -e "${CYAN}Step 2: Install Node.js ${NODE_VERSION}${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Install nvm if not installed
+# Install nvm for current user (root or adminuser)
 if [ ! -d "$HOME/.nvm" ]; then
     echo "Installing NVM..."
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash > /dev/null 2>&1
@@ -96,6 +96,33 @@ NODE_VER=$(node -v)
 NPM_VER=$(npm -v)
 echo -e "${GREEN}✅ Node.js ${NODE_VER} installed${NC}"
 echo -e "${GREEN}✅ npm ${NPM_VER} installed${NC}"
+
+# Ensure nvm is installed for service user
+echo ""
+echo "Setting up nvm for ${SERVICE_USER}..."
+if [ ! -d "/home/${SERVICE_USER}/.nvm" ]; then
+    echo "Installing NVM for ${SERVICE_USER}..."
+    sudo -u ${SERVICE_USER} bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash' > /dev/null 2>&1
+    echo -e "${GREEN}✅ NVM installed for ${SERVICE_USER}${NC}"
+else
+    echo -e "${GREEN}✅ NVM already installed for ${SERVICE_USER}${NC}"
+fi
+
+# Install Node.js for service user
+echo "Installing Node.js ${NODE_VERSION} for ${SERVICE_USER}..."
+sudo -u ${SERVICE_USER} bash -c "
+    export NVM_DIR=\"/home/${SERVICE_USER}/.nvm\"
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+    if ! nvm list | grep -q \"v${NODE_VERSION}\"; then
+        nvm install ${NODE_VERSION} > /dev/null 2>&1
+    fi
+    nvm use ${NODE_VERSION} > /dev/null 2>&1
+    nvm alias default ${NODE_VERSION} > /dev/null 2>&1
+    node -v
+    npm -v
+" > /dev/null 2>&1
+
+echo -e "${GREEN}✅ Node.js ${NODE_VERSION} configured for ${SERVICE_USER}${NC}"
 echo ""
 
 # Step 3: Clone repository
@@ -147,20 +174,30 @@ echo ""
 
 cd "$REPO_DIR"
 
-# Get npm path for service user
-NPM_PATH=$(sudo -u ${SERVICE_USER} bash -c "source ~/.nvm/nvm.sh 2>/dev/null && nvm use ${NODE_VERSION} > /dev/null 2>&1 && which npm" 2>/dev/null || echo "")
+# Verify npm is available for service user
+echo "Verifying npm for ${SERVICE_USER}..."
+NPM_CHECK=$(sudo -u ${SERVICE_USER} bash -c "
+    export NVM_DIR=\"/home/${SERVICE_USER}/.nvm\"
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\" 2>/dev/null
+    nvm use ${NODE_VERSION} > /dev/null 2>&1
+    which npm 2>/dev/null || echo 'NOT_FOUND'
+" 2>/dev/null || echo "NOT_FOUND")
 
-if [ -z "$NPM_PATH" ]; then
-    # Try alternative method
-    NPM_PATH="/home/${SERVICE_USER}/.nvm/versions/node/v${NODE_VERSION}/bin/npm"
-    if [ ! -f "$NPM_PATH" ]; then
-        echo -e "${RED}❌ npm not found. Please ensure Node.js ${NODE_VERSION} is installed for ${SERVICE_USER}${NC}"
-        echo "   Try running: sudo -u ${SERVICE_USER} bash -c 'source ~/.nvm/nvm.sh && nvm install ${NODE_VERSION}'"
+if [ "$NPM_CHECK" = "NOT_FOUND" ] || [ -z "$NPM_CHECK" ]; then
+    echo -e "${YELLOW}⚠️  npm not found in PATH, installing Node.js for ${SERVICE_USER}...${NC}"
+    sudo -u ${SERVICE_USER} bash -c "
+        export NVM_DIR=\"/home/${SERVICE_USER}/.nvm\"
+        [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
+        nvm install ${NODE_VERSION}
+        nvm use ${NODE_VERSION}
+        nvm alias default ${NODE_VERSION}
+    " || {
+        echo -e "${RED}❌ Failed to install Node.js for ${SERVICE_USER}${NC}"
         exit 1
-    fi
+    }
+    echo -e "${GREEN}✅ Node.js installed for ${SERVICE_USER}${NC}"
 fi
 
-echo "Using npm: $NPM_PATH"
 echo "Installing dependencies (this may take a few minutes)..."
 
 # Install dependencies with proper nvm loading
@@ -168,7 +205,7 @@ sudo -u ${SERVICE_USER} bash -c "
     export NVM_DIR=\"/home/${SERVICE_USER}/.nvm\"
     [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
     cd \"$REPO_DIR\"
-    nvm use ${NODE_VERSION} > /dev/null 2>&1
+    nvm use ${NODE_VERSION}
     npm ci --production=false
 " || {
     echo -e "${YELLOW}⚠️  npm ci failed, trying npm install...${NC}"
@@ -178,14 +215,15 @@ sudo -u ${SERVICE_USER} bash -c "
         export NVM_DIR=\"/home/${SERVICE_USER}/.nvm\"
         [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\"
         cd \"$REPO_DIR\"
-        nvm use ${NODE_VERSION} > /dev/null 2>&1
+        nvm use ${NODE_VERSION}
         npm install --production=false
     " || {
         echo -e "${RED}❌ Failed to install dependencies${NC}"
         echo ""
         echo "Troubleshooting:"
-        echo "  1. Check if Node.js is installed: sudo -u ${SERVICE_USER} bash -c 'source ~/.nvm/nvm.sh && node -v'"
-        echo "  2. Install Node.js if missing: sudo -u ${SERVICE_USER} bash -c 'source ~/.nvm/nvm.sh && nvm install ${NODE_VERSION}'"
+        echo "  1. Check nvm installation: ls -la /home/${SERVICE_USER}/.nvm"
+        echo "  2. Check Node.js: sudo -u ${SERVICE_USER} bash -c 'source ~/.nvm/nvm.sh && node -v'"
+        echo "  3. Reinstall Node.js: sudo -u ${SERVICE_USER} bash -c 'source ~/.nvm/nvm.sh && nvm install ${NODE_VERSION}'"
         exit 1
     }
 }
