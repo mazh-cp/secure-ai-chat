@@ -108,19 +108,43 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
   const envKeys: StoredApiKeys = {}
   
   if (process.env.OPENAI_API_KEY) {
-    envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
+    const envKey = process.env.OPENAI_API_KEY.trim()
+    // Validate it's not a placeholder
+    if (envKey && !envKey.includes('your_ope') && !envKey.includes('your-api-key') && envKey.length >= 20) {
+      envKeys.openAiKey = envKey
+    } else {
+      console.warn('OPENAI_API_KEY environment variable contains placeholder or invalid value, ignoring')
+    }
   }
   
   if (process.env.LAKERA_AI_KEY) {
-    envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
+    const envKey = process.env.LAKERA_AI_KEY.trim()
+    // Validate it's not a placeholder
+    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 20) {
+      envKeys.lakeraAiKey = envKey
+    } else {
+      console.warn('LAKERA_AI_KEY environment variable contains placeholder or invalid value, ignoring')
+    }
   }
   
   if (process.env.LAKERA_PROJECT_ID) {
-    envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
+    const envKey = process.env.LAKERA_PROJECT_ID.trim()
+    // Validate it's not a placeholder
+    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 5) {
+      envKeys.lakeraProjectId = envKey
+    } else {
+      console.warn('LAKERA_PROJECT_ID environment variable contains placeholder or invalid value, ignoring')
+    }
   }
   
   if (process.env.LAKERA_ENDPOINT) {
-    envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
+    const envKey = process.env.LAKERA_ENDPOINT.trim()
+    // Validate it's a valid URL
+    if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+      envKeys.lakeraEndpoint = envKey
+    } else {
+      console.warn('LAKERA_ENDPOINT environment variable contains invalid value, ignoring')
+    }
   }
   
   // If any env vars are set, merge them with file storage (env vars take priority)
@@ -316,19 +340,35 @@ export function getApiKeysSync(): StoredApiKeys {
   const envKeys: StoredApiKeys = {}
   
   if (process.env.OPENAI_API_KEY) {
-    envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
+    const envKey = process.env.OPENAI_API_KEY.trim()
+    // Validate it's not a placeholder
+    if (envKey && !envKey.includes('your_ope') && !envKey.includes('your-api-key') && envKey.length >= 20) {
+      envKeys.openAiKey = envKey
+    }
   }
   
   if (process.env.LAKERA_AI_KEY) {
-    envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
+    const envKey = process.env.LAKERA_AI_KEY.trim()
+    // Validate it's not a placeholder
+    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 20) {
+      envKeys.lakeraAiKey = envKey
+    }
   }
   
   if (process.env.LAKERA_PROJECT_ID) {
-    envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
+    const envKey = process.env.LAKERA_PROJECT_ID.trim()
+    // Validate it's not a placeholder
+    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 5) {
+      envKeys.lakeraProjectId = envKey
+    }
   }
   
   if (process.env.LAKERA_ENDPOINT) {
-    envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
+    const envKey = process.env.LAKERA_ENDPOINT.trim()
+    // Validate it's a valid URL
+    if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+      envKeys.lakeraEndpoint = envKey
+    }
   }
   
   return envKeys
