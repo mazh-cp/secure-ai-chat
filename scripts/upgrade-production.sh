@@ -164,6 +164,19 @@ build_application() {
     
     cd "$REPO_DIR"
     
+    # CRITICAL: Ensure .secure-storage directory exists and is preserved
+    # This directory contains encrypted API keys that must survive upgrades
+    if [ ! -d ".secure-storage" ]; then
+        print_info "Creating .secure-storage directory for API keys..."
+        mkdir -p .secure-storage
+        chmod 700 .secure-storage
+    else
+        print_info "Verifying .secure-storage directory permissions..."
+        chmod 700 .secure-storage 2>/dev/null || true
+        # Ensure files in .secure-storage have correct permissions
+        find .secure-storage -type f -exec chmod 600 {} \; 2>/dev/null || true
+    fi
+    
     # Validate environment
     print_info "Validating environment..."
     npm run validate-env 2>/dev/null || print_warning "Environment validation had warnings (non-blocking)"
@@ -207,6 +220,19 @@ restart_service() {
 # Verify deployment
 verify_deployment() {
     print_header "Verifying Deployment"
+    
+    # CRITICAL: Verify API keys are preserved after upgrade
+    print_info "Verifying API keys persistence..."
+    if [ -d ".secure-storage" ]; then
+        KEY_COUNT=$(find .secure-storage -type f \( -name "*.enc" -o -name "*.hash" \) 2>/dev/null | wc -l)
+        if [ "$KEY_COUNT" -gt 0 ]; then
+            print_success "API keys preserved: Found $KEY_COUNT encrypted file(s) in .secure-storage/"
+        else
+            print_warning "No API keys found in .secure-storage/ (this is normal if no keys are configured)"
+        fi
+    else
+        print_warning ".secure-storage/ directory not found (will be created on first key save)"
+    fi
     
     # Wait for server to be ready
     print_info "Waiting for server to be ready..."
