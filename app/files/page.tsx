@@ -797,7 +797,9 @@ export default function FilesPage() {
       // Try to get endpoint from server-side or localStorage
       if (keysResponse?.ok) {
         const keysData = await keysResponse.json()
-        endpoint = keysData.configured?.lakeraEndpoint || keysData.source?.lakeraEndpoint === 'storage' ? 
+        // Fix: Correct operator precedence - check if endpoint is configured OR source is storage
+        const shouldFetchEndpoint = keysData.configured?.lakeraEndpoint || keysData.source?.lakeraEndpoint === 'storage'
+        endpoint = shouldFetchEndpoint ? 
           (await fetch('/api/keys/retrieve').then(r => r.json()).then(d => d.keys?.lakeraEndpoint || endpoint).catch(() => endpoint)) :
           endpoint
       } else {

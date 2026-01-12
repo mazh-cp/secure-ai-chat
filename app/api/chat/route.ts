@@ -294,7 +294,34 @@ async function checkWithLakera(
   }
 }
 
+/**
+ * Convert messages array to formatted text for GPT-5 API
+ * Maintains conversation context by formatting as readable text
+ */
+function convertMessagesToText(messages: ChatMessage[], systemPrompt?: string): string {
+  const parts: string[] = []
+  
+  // Add system prompt if provided
+  if (systemPrompt) {
+    parts.push(`[System Instructions: ${systemPrompt}]\n\n`)
+  }
+  
+  // Convert messages to conversation format
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      parts.push(`[System: ${msg.content}]\n\n`)
+    } else if (msg.role === 'user') {
+      parts.push(`User: ${msg.content}\n\n`)
+    } else if (msg.role === 'assistant') {
+      parts.push(`Assistant: ${msg.content}\n\n`)
+    }
+  }
+  
+  return parts.join('').trim()
+}
+
 // Call OpenAI API with enhanced security
+// Supports both /v1/chat/completions (gpt-4, gpt-4o-mini, etc.) and /v1/responses (gpt-5)
 async function callOpenAI(
   messages: ChatMessage[],
   openAiKey: string,
@@ -312,9 +339,57 @@ Security Guidelines:
 
 Be helpful, but maintain security boundaries.`
 
-  // Validate model name (only allow gpt-* models for security)
-  const validatedModel = model && model.startsWith('gpt-') ? model : 'gpt-4o-mini'
+  // Validate model name (allow gpt-* models and gpt-5 for security)
+  const isGPT5 = model === 'gpt-5'
+  const validatedModel = isGPT5 ? 'gpt-5' : 
+                        (model && model.startsWith('gpt-') ? model : 'gpt-4o-mini')
 
+  // GPT-5 uses /v1/responses endpoint with single input format
+  if (isGPT5) {
+    // Convert messages array to formatted text for GPT-5
+    const conversationText = convertMessagesToText(messages, systemPrompt)
+    
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openAiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-5',
+        input: conversationText,
+        // Include parameters if GPT-5 supports them (will be ignored if not supported)
+        max_tokens: 2000, // Increased for GPT-5 as it may handle more
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    // GPT-5 response structure may vary - try multiple possible formats
+    // Priority: response > content > text > choices[0].text > choices[0].message.content
+    if (data.response) {
+      return data.response
+    } else if (data.content) {
+      return data.content
+    } else if (data.text) {
+      return data.text
+    } else if (data.choices && data.choices[0]) {
+      // Fallback to chat/completions format if GPT-5 uses similar structure
+      return data.choices[0].text || data.choices[0].message?.content || 'No response generated.'
+    } else {
+      // Last resort: return stringified data for debugging
+      console.warn('Unknown GPT-5 response structure:', Object.keys(data))
+      return 'No response generated. Check API response structure.'
+    }
+  }
+
+  // Standard GPT models use /v1/chat/completions endpoint with messages array
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {

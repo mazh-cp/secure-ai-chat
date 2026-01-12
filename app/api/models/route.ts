@@ -82,6 +82,19 @@ export async function GET(request: NextRequest) {
           owned_by: model.owned_by,
         }))
 
+      // Add gpt-5 to the list if it's not already there (GPT-5 may not appear in /v1/models endpoint)
+      // Check if gpt-5 is already in the list
+      const hasGPT5 = chatModels.some(model => model.id === 'gpt-5')
+      if (!hasGPT5) {
+        // Add gpt-5 at the beginning (newest first)
+        chatModels.unshift({
+          id: 'gpt-5',
+          name: 'GPT-5',
+          created: Date.now(), // Use current timestamp as placeholder
+          owned_by: 'openai',
+        })
+      }
+
       return NextResponse.json({ models: chatModels })
     } catch (fetchError: unknown) {
       clearTimeout(timeoutId)
@@ -115,6 +128,11 @@ export async function GET(request: NextRequest) {
  * - gpt-4-turbo -> GPT-4 Turbo
  */
 function formatModelName(modelId: string): string {
+  // Special case for gpt-5
+  if (modelId === 'gpt-5') {
+    return 'GPT-5'
+  }
+  
   // Remove 'gpt-' prefix and format
   let name = modelId.replace(/^gpt-/, '')
   

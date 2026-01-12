@@ -388,7 +388,7 @@ export default function SettingsForm() {
                pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
       // Clear individual key
       if (keyToClear) {
-        await performClearKey(keyToClear)
+        performClearKey(keyToClear)
       }
     }
 
