@@ -143,6 +143,7 @@ async function saveTeApiKey(key: string | null): Promise<void> {
       // Write with restrictive permissions (owner read/write only)
       await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
       teApiKey = key
+      keyLoaded = true
     } else {
       // Remove key file if key is null
       try {
@@ -153,10 +154,15 @@ async function saveTeApiKey(key: string | null): Promise<void> {
           throw unlinkError
         }
       }
+      // Clear in-memory cache
       teApiKey = null
+      keyLoaded = true // Mark as loaded so we know it's intentionally null
     }
   } catch (error) {
     console.error('Error saving TE API key:', error)
+    // Invalidate cache on error
+    teApiKey = null
+    keyLoaded = false
     throw error
   }
 }
@@ -243,9 +249,12 @@ export function getTeApiKeySync(): string | null {
 
 /**
  * Set the Check Point TE API key (persists to disk)
+ * Clears cache to ensure fresh data on next access
  */
 export async function setTeApiKey(key: string | null): Promise<void> {
   await saveTeApiKey(key)
+  // Cache is already updated in saveTeApiKey, but ensure it's marked as loaded
+  // This ensures that getTeApiKey() will return the correct value (null if deleted)
 }
 
 /**

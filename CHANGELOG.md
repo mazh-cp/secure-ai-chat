@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.7] - 2026-01-12
+
+### Added
+- **Release Notes Page**: New dedicated page for viewing version history and changelog
+  - Accessible from Settings page and navigation sidebar
+  - Displays version history with categorized changes (Added, Fixed, Improved, Security)
+  - Shows current application version
+  - Beautiful UI with version badges and type indicators
+- **RAG (Retrieval Augmented Generation)**: Chat can now access and answer questions about uploaded files
+  - Automatic file content retrieval based on user queries
+  - Supports CSV, JSON, and text files
+  - Smart content matching and excerpt generation for large files
+  - Controlled by "RAG Scan" toggle on Files page
+- **Security Verification Script**: Automated script to verify key security (`npm run verify-security`)
+  - Checks .gitignore configuration
+  - Verifies no keys in git repository
+  - Validates file permissions
+  - Scans for hardcoded API keys
+
+### Fixed
+- **File Scanning Error**: Fixed "Failed to execute 'json' on 'Response'" error for large files
+  - Response cloning to avoid stream consumption issues
+  - Better error handling for files with 500+ individuals
+- **Navigation Issue**: Fixed sidebar navigation - sidebar now always visible on desktop
+  - Desktop users can always access navigation links
+  - Mobile users can toggle sidebar with hamburger menu
+  - Auto-close sidebar on mobile after navigation
+- **Checkpoint TE Status**: Fixed status not updating after key save
+  - Added 200ms delay before status refresh
+  - Periodic status checking in Files page (every 5 seconds)
+  - Automatic toggle enable when key is configured
+- **Webpack Chunk Errors**: Fixed "Cannot find module" errors
+  - Proper cache clearing and rebuild process
+  - Fresh dev server startup
+
+### Improved
+- **Key Deletion**: Enhanced with proper server-side cache invalidation
+- **Status Synchronization**: Better sync between Settings and Files pages
+- **System Prompt**: Updated to allow data queries from uploaded files
+- **Error Handling**: Enhanced error messages and recovery
+- **Documentation**: Comprehensive security and upgrade documentation
+
+### Security
+- **Key Security Verification**: Confirmed all API keys excluded from git
+- **Persistence Verification**: Confirmed keys persist across restarts and upgrades
+- **File Permissions**: Verified correct permissions (700/600) on storage files
+
+## [1.0.6] - 2026-01-12
+
+### Added
+- Checkpoint TE (Threat Emulation) integration
+- Server-side API key storage with encryption
+- PIN verification for sensitive operations
+
+### Fixed
+- Form-data stream handling in Checkpoint TE upload
+- Key deletion with proper cache invalidation
+
 ## [1.0.5] - 2025-01-10
 
 ### Added

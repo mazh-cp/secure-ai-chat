@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import SecurityIndicator from '@/components/SecurityIndicator'
 import FileUploader from '@/components/FileUploader'
 import FileList from '@/components/FileList'
@@ -17,6 +17,69 @@ export default function FilesPage() {
   const [ragScanEnabled, setRagScanEnabled] = useState(true)
   const [checkpointTeSandboxEnabled, setCheckpointTeSandboxEnabled] = useState(false)
   const [checkpointTeConfigured, setCheckpointTeConfigured] = useState<boolean>(false)
+
+  // Load files from server
+  const loadFilesFromServer = useCallback(async () => {
+    try {
+      const response = await fetch('/api/files/list')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.files) {
+          // Convert date strings back to Date objects
+          const filesWithDates = data.files.map((f: UploadedFile) => ({
+            ...f,
+            uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
+          }))
+          setFiles(filesWithDates)
+          // Also update localStorage as cache
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('uploadedFiles', JSON.stringify(filesWithDates))
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load files from server:', error)
+      throw error
+    }
+  }, [])
+
+  // Check Check Point TE API key configuration status
+  const checkCheckpointTeStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/te/config')
+      if (response.ok) {
+        const data = await response.json()
+        setCheckpointTeConfigured(data.configured || false)
+        // If API key not configured but toggle is enabled, disable it
+        setCheckpointTeSandboxEnabled((prev) => {
+          if (!data.configured && prev) {
+            return false
+          }
+          return prev
+        })
+      } else {
+        // If endpoint returns error, assume not configured
+        setCheckpointTeConfigured(false)
+        setCheckpointTeSandboxEnabled((prev) => {
+          if (prev) {
+            return false
+          }
+          return prev
+        })
+      }
+    } catch (error) {
+      // Silently handle errors - service may not be ready yet
+      // Don't break the UI if status check fails
+      console.error('Failed to check Check Point TE status:', error)
+      setCheckpointTeConfigured(false)
+      setCheckpointTeSandboxEnabled((prev) => {
+        if (prev) {
+          return false
+        }
+        return prev
+      })
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -65,40 +128,27 @@ export default function FilesPage() {
 
       // Check if Check Point TE API key is configured
       // Use setTimeout to avoid blocking page load if endpoint is slow
-      setTimeout(() => {
+      // Also check periodically to catch updates from Settings page
+      const checkStatus = () => {
         checkCheckpointTeStatus().catch(err => {
           // Silently handle - don't break page load
           console.error('Check Point TE status check failed:', err)
         })
-      }, 500)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Load files from server
-  const loadFilesFromServer = async () => {
-    try {
-      const response = await fetch('/api/files/list')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.files) {
-          // Convert date strings back to Date objects
-          const filesWithDates = data.files.map((f: UploadedFile) => ({
-            ...f,
-            uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
-          }))
-          setFiles(filesWithDates)
-          // Also update localStorage as cache
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('uploadedFiles', JSON.stringify(filesWithDates))
-          }
-        }
       }
-    } catch (error) {
-      console.error('Failed to load files from server:', error)
-      throw error
+      
+      // Initial check
+      const initialTimeout = setTimeout(checkStatus, 500)
+      
+      // Periodic check every 5 seconds to catch updates from Settings page
+      const statusInterval = setInterval(checkStatus, 5000)
+      
+      // Cleanup interval and timeout on unmount
+      return () => {
+        clearTimeout(initialTimeout)
+        clearInterval(statusInterval)
+      }
     }
-  }
+  }, [loadFilesFromServer, checkCheckpointTeStatus])
 
   // Update file metadata on server
   const updateFileMetadataOnServer = async (file: UploadedFile) => {
@@ -131,35 +181,6 @@ export default function FilesPage() {
     }
   }
 
-  // Check Check Point TE API key configuration status
-  const checkCheckpointTeStatus = async () => {
-    try {
-      const response = await fetch('/api/te/config')
-      if (response.ok) {
-        const data = await response.json()
-        setCheckpointTeConfigured(data.configured || false)
-        // If API key not configured but toggle is enabled, disable it
-        if (!data.configured && checkpointTeSandboxEnabled) {
-          setCheckpointTeSandboxEnabled(false)
-        }
-      } else {
-        // If endpoint returns error, assume not configured
-        setCheckpointTeConfigured(false)
-        if (checkpointTeSandboxEnabled) {
-          setCheckpointTeSandboxEnabled(false)
-        }
-      }
-    } catch (error) {
-      // Silently handle errors - service may not be ready yet
-      // Don't break the UI if status check fails
-      console.error('Failed to check Check Point TE status:', error)
-      setCheckpointTeConfigured(false)
-      if (checkpointTeSandboxEnabled) {
-        setCheckpointTeSandboxEnabled(false)
-      }
-    }
-  }
-
   // Save toggle states to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -184,8 +205,7 @@ export default function FilesPage() {
     if (checkpointTeSandboxEnabled && !checkpointTeConfigured) {
       checkCheckpointTeStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkpointTeSandboxEnabled, checkpointTeConfigured])
+  }, [checkpointTeSandboxEnabled, checkpointTeConfigured, checkCheckpointTeStatus])
 
   // Save files to localStorage whenever they change
   useEffect(() => {
@@ -841,15 +861,25 @@ export default function FilesPage() {
         logData?: unknown
       }
       
-      // Try to parse as JSON first
+      // Clone response before reading to avoid "body stream already read" error
+      // This is especially important for large files (500+ individuals)
+      const responseClone = response.clone()
       const contentType = response.headers.get('content-type')
       const isJson = contentType && contentType.includes('application/json')
       
       if (isJson) {
         try {
-          data = await response.json()
+          // Read from cloned response to avoid stream consumption issues
+          data = await responseClone.json()
         } catch (parseError) {
-          throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+          // If clone fails, try original response
+          try {
+            data = await response.json()
+          } catch (fallbackError) {
+            // If both fail, try reading as text for better error message
+            const text = await response.text()
+            throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}. Response: ${text.substring(0, 500)}`)
+          }
         }
       } else {
         // If not JSON, read as text

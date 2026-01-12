@@ -174,6 +174,12 @@ For production environments, consider:
 - Solution: Use correct Node.js version: `nvm use 25.2.1` (if using nvm)
 - Solution: Clear cache and rebuild: `rm -rf .next node_modules && npm ci && npm run build`
 
+**Issue: Deprecated package warnings during npm install**
+- If you see `npm warn deprecated eslint@8.57.1` - This is **expected and safe to ignore**
+- ESLint 8.x is required for Next.js 14 compatibility
+- All other deprecated packages have been resolved via npm overrides
+- See [DEPRECATED_PACKAGES_FIX.md](./DEPRECATED_PACKAGES_FIX.md) for complete details
+
 **Issue: Port already in use**
 - Solution: Change PORT in .env.local: `PORT=3001`
 - Or: Kill the process using the port: `sudo lsof -ti:3000 | xargs kill -9`

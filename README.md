@@ -17,6 +17,9 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 - 🔄 **Production Ready**: Auto-restart policies, health checks, error boundaries
 - 🐳 **Docker Support**: Complete Docker and Docker Compose configuration
 - ☸️ **Kubernetes Ready**: Deployment manifests with liveness/readiness probes
+- 📋 **Release Notes**: Dedicated page for version history and changelog
+- 🔍 **RAG (Retrieval Augmented Generation)**: Chat can access and answer questions about uploaded files
+- 🛡️ **File Scanning**: Lakera AI and Checkpoint TE integration for file security
 
 ## Tech Stack
 
@@ -345,6 +348,18 @@ Update the encryption functions in `lib/security.ts` with your preferred encrypt
 **Error: ESLint errors**
 - Run `npm run lint` to see linting issues
 - Run `npm run format` to auto-fix formatting issues
+
+### Deprecated Package Warnings
+
+**npm warn deprecated eslint@8.57.1**
+- This warning is **expected and safe to ignore**
+- ESLint 8.x is required for Next.js 14 compatibility
+- All other deprecated packages (inflight, rimraf@3, glob@7, @humanwhocodes) have been resolved via npm overrides
+- See [DEPRECATED_PACKAGES_FIX.md](./DEPRECATED_PACKAGES_FIX.md) for details
+
+**Other deprecated warnings during installation**
+- If you see warnings for inflight, rimraf@3, glob@7, or @humanwhocodes packages, ensure `package-lock.json` is up-to-date
+- Run `npm ci` for production deployments to use exact versions from lock file
 
 ### Runtime Errors
 

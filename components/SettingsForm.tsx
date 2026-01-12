@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, FormEvent, KeyboardEvent, ClipboardEvent } from 'react'
+import Link from 'next/link'
 
 interface ApiKeys {
   openAiKey: string
@@ -241,7 +242,12 @@ export default function SettingsForm() {
         
         // Re-check the status from server to ensure UI reflects actual state
         // This is important when replacing an old key with a new one
+        // Add a small delay to ensure the server has processed the save
+        await new Promise(resolve => setTimeout(resolve, 200))
         await checkCheckpointTeStatus()
+        
+        // Also update server status to ensure consistency
+        await checkServerStatus()
       } else {
         const error = await response.json()
         setSaveStatus('error')
@@ -340,7 +346,14 @@ export default function SettingsForm() {
         setSaveStatus('success')
         setShowPinDialog(false)
         setPinForVerification('')
-        // Re-check status to ensure UI is accurate
+        
+        // Clear any client-side cache
+        if (typeof window !== 'undefined') {
+          // Clear any cached API keys from localStorage
+          localStorage.removeItem('apiKeys')
+        }
+        
+        // Re-check status to ensure UI is accurate and sync with server
         await checkCheckpointTeStatus()
         setTimeout(() => setSaveStatus('idle'), 3000)
       } else {
@@ -388,7 +401,7 @@ export default function SettingsForm() {
                pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
       // Clear individual key
       if (keyToClear) {
-        performClearKey(keyToClear)
+        await performClearKey(keyToClear)
       }
     }
 
@@ -518,14 +531,69 @@ export default function SettingsForm() {
   }
 
   // Perform the actual key clearing after PIN verification
-  const performClearKey = (fieldName: keyof ApiKeys) => {
-    if (fieldName === 'lakeraEndpoint') {
-      setKeys(prev => ({ ...prev, [fieldName]: 'https://api.lakera.ai/v2/guard' }))
-    } else {
-      setKeys(prev => ({ ...prev, [fieldName]: '' }))
+  const performClearKey = async (fieldName: keyof ApiKeys) => {
+    setIsSaving(true)
+    try {
+      // Map field names to server-side key names
+      const serverKeyMap: Record<keyof ApiKeys, string> = {
+        openAiKey: 'openAiKey',
+        lakeraAiKey: 'lakeraAiKey',
+        lakeraProjectId: 'lakeraProjectId',
+        lakeraEndpoint: 'lakeraEndpoint',
+      }
+      
+      const serverKeyName = serverKeyMap[fieldName]
+      
+      // Call server API to delete the key
+      const requestBody: { pin?: string } = {}
+      if (pinConfigured && pinForVerification) {
+        requestBody.pin = pinForVerification
+      }
+      
+      const response = await fetch(`/api/keys?key=${encodeURIComponent(serverKeyName)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.ok) {
+        // Clear client-side state
+        if (fieldName === 'lakeraEndpoint') {
+          setKeys(prev => ({ ...prev, [fieldName]: 'https://api.lakera.ai/v2/guard' }))
+        } else {
+          setKeys(prev => ({ ...prev, [fieldName]: '' }))
+        }
+        
+        // Clear localStorage cache
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('apiKeys')
+        }
+        
+        // Refresh server status to ensure UI is accurate
+        await checkServerStatus()
+        
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData.requiresPin) {
+          alert(errorData.error || 'PIN verification failed')
+        } else {
+          setSaveStatus('error')
+          alert(errorData.error || 'Failed to delete API key')
+        }
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error clearing API key:', error)
+      setSaveStatus('error')
+      alert('Failed to delete API key. Please try again.')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      setIsSaving(false)
     }
-    setSaveStatus('success')
-    setTimeout(() => setSaveStatus('idle'), 3000)
   }
 
   const handleClearAll = () => {
@@ -544,18 +612,60 @@ export default function SettingsForm() {
   }
 
   // Perform the actual clear all after PIN verification
-  const performClearAll = () => {
-    setKeys({
-      openAiKey: '',
-      lakeraAiKey: '',
-      lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
-      lakeraProjectId: '',
-    })
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('apiKeys')
+  const performClearAll = async () => {
+    setIsSaving(true)
+    try {
+      // Call server API to delete all keys
+      const requestBody: { pin?: string } = {}
+      if (pinConfigured && pinForVerification) {
+        requestBody.pin = pinForVerification
+      }
+      
+      const response = await fetch('/api/keys?all=true', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.ok) {
+        // Clear client-side state
+        setKeys({
+          openAiKey: '',
+          lakeraAiKey: '',
+          lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
+          lakeraProjectId: '',
+        })
+        
+        // Clear localStorage cache
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('apiKeys')
+        }
+        
+        // Refresh server status to ensure UI is accurate
+        await checkServerStatus()
+        
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData.requiresPin) {
+          alert(errorData.error || 'PIN verification failed')
+        } else {
+          setSaveStatus('error')
+          alert(errorData.error || 'Failed to delete all API keys')
+        }
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
+    } catch (error) {
+      console.error('Error clearing all API keys:', error)
+      setSaveStatus('error')
+      alert('Failed to delete all API keys. Please try again.')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      setIsSaving(false)
     }
-    setSaveStatus('success')
-    setTimeout(() => setSaveStatus('idle'), 3000)
   }
 
   // Handle PIN setup/update
@@ -1236,6 +1346,7 @@ export default function SettingsForm() {
                       <p className="text-xs text-theme-subtle mb-2">Logo Preview:</p>
                       <div className="relative w-full h-32 bg-palette-bg-tertiary/10 rounded-lg overflow-hidden flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {/* Using img instead of Next.js Image because logoPreview is a dynamic base64/data URL */}
                         <img
                           src={logoPreview || settings.logoData}
                           alt="Logo preview"
@@ -1347,6 +1458,28 @@ export default function SettingsForm() {
               </div>
             </div>
           )}
+
+          {/* Release Notes Section */}
+          <div className="pt-6 border-t border-palette-border-default/20">
+            <h3 className="text-lg font-semibold text-theme mb-4">Release Notes</h3>
+            <div className="glass-card p-4 rounded-xl">
+              <p className="text-sm text-theme-muted mb-4">
+                View the latest updates, bug fixes, and new features in the application.
+              </p>
+              <Link
+                href="/release-notes"
+                className="inline-flex items-center gap-2 glass-button px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-[1.02]"
+                style={{
+                  backgroundColor: "rgb(var(--accent))",
+                  color: "white",
+                }}
+              >
+                <span>📋</span>
+                <span>View Release Notes</span>
+                <span>→</span>
+              </Link>
+            </div>
+          </div>
 
           {/* Security Notice */}
           <div className="mt-6 p-4 glass-card border-yellow-400/30 rounded-xl">

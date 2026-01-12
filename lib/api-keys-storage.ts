@@ -211,7 +211,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
 
 /**
  * Delete a specific API key or all keys
- * Invalidates cache after deletion
+ * Invalidates cache after deletion to ensure fresh data
  */
 export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> {
   try {
@@ -231,20 +231,28 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
       return
     }
     
+    // Delete the key from existing keys
     delete existingKeys[keyName]
     await saveApiKeys(existingKeys)
-    // Invalidate cache to force reload on next access
+    
+    // Force cache invalidation to ensure fresh data on next access
     cachedKeys = null
     keysLoaded = false
+    
+    // Reload to update cache with deleted key removed
+    await loadApiKeys()
   } catch (error) {
     console.error('Error deleting API key:', error)
+    // Invalidate cache on error
+    cachedKeys = null
+    keysLoaded = false
     throw error
   }
 }
 
 /**
  * Delete all API keys
- * Invalidates cache after deletion
+ * Invalidates cache after deletion to ensure fresh data
  */
 export async function deleteAllApiKeys(): Promise<void> {
   try {
@@ -267,11 +275,18 @@ export async function deleteAllApiKeys(): Promise<void> {
     }
     
     await saveApiKeys(keysToDelete)
-    // Invalidate cache to force reload on next access
+    
+    // Force cache invalidation to ensure fresh data on next access
     cachedKeys = null
     keysLoaded = false
+    
+    // Reload to update cache with all keys deleted
+    await loadApiKeys()
   } catch (error) {
     console.error('Error deleting all API keys:', error)
+    // Invalidate cache on error
+    cachedKeys = null
+    keysLoaded = false
     throw error
   }
 }

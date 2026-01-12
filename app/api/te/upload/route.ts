@@ -172,15 +172,22 @@ export async function POST(request: NextRequest) {
 
     // form-data package creates a stream that needs special handling with fetch
     // Convert the form-data stream to a buffer using proper stream handling
-    const { Readable } = await import('stream')
-    type ReadableStream = InstanceType<typeof Readable>
-    const formDataStream = teFormData as unknown as ReadableStream
+    // Type assertion: form-data implements a Readable-like stream interface
+    const formDataStream = teFormData as unknown as {
+      on(event: 'data', listener: (chunk: Buffer | string) => void): void
+      on(event: 'end', listener: () => void): void
+      on(event: 'error', listener: (error: Error) => void): void
+      resume(): void
+      readableEnded?: boolean
+      readableFlowing?: boolean | null
+    }
     
-    // Collect chunks from the stream using event-based approach (more reliable than async iteration)
+    // Collect chunks from the stream using event-based approach
     const chunks: Buffer[] = []
     const formDataBuffer = await new Promise<Buffer>((resolve, reject) => {
+      // Set up event listeners
       formDataStream.on('data', (chunk: Buffer | string) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'binary'))
       })
       
       formDataStream.on('end', () => {
@@ -190,6 +197,17 @@ export async function POST(request: NextRequest) {
       formDataStream.on('error', (error: Error) => {
         reject(error)
       })
+      
+      // Handle case where stream might already be ended
+      if ((formDataStream as { readableEnded?: boolean }).readableEnded) {
+        resolve(Buffer.concat(chunks))
+        return
+      }
+      
+      // If stream is paused, resume it
+      if ((formDataStream as { readableFlowing?: boolean | null }).readableFlowing === false) {
+        formDataStream.resume()
+      }
     })
 
     console.log('FormData buffer size:', formDataBuffer.length, 'bytes', { requestId })

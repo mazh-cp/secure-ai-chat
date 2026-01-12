@@ -15,6 +15,7 @@ const navigation = [
   { name: 'Risk Map', href: '/risk-map', icon: '🛡️' },
   { name: 'Files', href: '/files', icon: '📁' },
   { name: 'Settings', href: '/settings', icon: '⚙️' },
+  { name: 'Release Notes', href: '/release-notes', icon: '📋' },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -118,7 +119,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 z-40 h-screen transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } w-64`}
       >
         <div className="h-full glass-dark rounded-r-3xl border-r-2 p-6 flex flex-col" style={{ borderColor: "rgb(var(--border))" }}>
@@ -127,6 +128,7 @@ export default function Layout({ children }: LayoutProps) {
             {logoData ? (
               <div className="flex items-center flex-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* Using img instead of Next.js Image because logoData is a dynamic base64/data URL from localStorage */}
                 <img
                   src={logoData}
                   alt="Site Logo"
@@ -155,6 +157,12 @@ export default function Layout({ children }: LayoutProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => {
+                    // Close sidebar on mobile after navigation
+                    if (window.innerWidth < 1024) {
+                      setSidebarOpen(false)
+                    }
+                  }}
                   className={`
                     flex items-center space-x-3 rounded-xl px-4 py-3 text-sm font-medium
                     transition-all duration-300 relative overflow-hidden
@@ -207,14 +215,15 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="text-theme-muted hover:text-theme lg:hidden transition-colors"
-              >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-theme-muted hover:text-theme lg:hidden transition-colors z-50 relative"
+              aria-label="Toggle sidebar"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             </div>
 
             <div className="flex-1"></div>

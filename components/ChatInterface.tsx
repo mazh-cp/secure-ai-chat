@@ -162,6 +162,11 @@ export default function ChatInterface() {
         content: m.content,
       }))
 
+      // Check if RAG is enabled (from localStorage or default to true)
+      const ragEnabled = typeof window !== 'undefined' ? 
+        (localStorage.getItem('lakeraRagScanEnabled') !== null ? 
+          JSON.parse(localStorage.getItem('lakeraRagScanEnabled') || 'true') : true) : true
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -175,6 +180,7 @@ export default function ChatInterface() {
             scanInput: inputScanEnabled && !!apiKeys.lakeraAiKey,
             scanOutput: outputScanEnabled && !!apiKeys.lakeraAiKey,
           },
+          enableRAG: ragEnabled, // Enable RAG to access uploaded files
         }),
       })
 
