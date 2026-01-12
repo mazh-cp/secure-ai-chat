@@ -58,39 +58,82 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate keys
+    // Validate and prepare keys to save
     const keysToSave: StoredApiKeys = {}
     
     if (keys.openAiKey !== undefined) {
       if (keys.openAiKey && typeof keys.openAiKey === 'string' && keys.openAiKey.trim()) {
-        keysToSave.openAiKey = keys.openAiKey.trim()
+        const trimmedKey = keys.openAiKey.trim()
+        // Validate OpenAI key format (should start with sk-)
+        if (trimmedKey.startsWith('sk-') && trimmedKey.length >= 20) {
+          keysToSave.openAiKey = trimmedKey
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid OpenAI API key format. Key should start with "sk-"' },
+            { status: 400 }
+          )
+        }
       }
     }
     
     if (keys.lakeraAiKey !== undefined) {
       if (keys.lakeraAiKey && typeof keys.lakeraAiKey === 'string' && keys.lakeraAiKey.trim()) {
-        keysToSave.lakeraAiKey = keys.lakeraAiKey.trim()
+        const trimmedKey = keys.lakeraAiKey.trim()
+        if (trimmedKey.length >= 20) {
+          keysToSave.lakeraAiKey = trimmedKey
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Lakera AI key format' },
+            { status: 400 }
+          )
+        }
       }
     }
     
     if (keys.lakeraProjectId !== undefined) {
       if (keys.lakeraProjectId && typeof keys.lakeraProjectId === 'string' && keys.lakeraProjectId.trim()) {
-        keysToSave.lakeraProjectId = keys.lakeraProjectId.trim()
+        const trimmedId = keys.lakeraProjectId.trim()
+        if (trimmedId.length >= 5) {
+          keysToSave.lakeraProjectId = trimmedId
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Lakera Project ID format' },
+            { status: 400 }
+          )
+        }
       }
     }
     
     if (keys.lakeraEndpoint !== undefined) {
       if (keys.lakeraEndpoint && typeof keys.lakeraEndpoint === 'string' && keys.lakeraEndpoint.trim()) {
-        keysToSave.lakeraEndpoint = keys.lakeraEndpoint.trim()
+        const trimmedEndpoint = keys.lakeraEndpoint.trim()
+        if (trimmedEndpoint.startsWith('http://') || trimmedEndpoint.startsWith('https://')) {
+          keysToSave.lakeraEndpoint = trimmedEndpoint
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Lakera endpoint format. Must be a valid URL' },
+            { status: 400 }
+          )
+        }
       } else if (!keys.lakeraEndpoint) {
         // Allow empty string to reset to default
         keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
       }
     }
 
-    // Save keys (will only save non-env-vars)
+    // Get existing keys and merge
     const existingKeys = await getApiKeys()
+    
+    // Save keys (will only save non-env-vars)
     await setApiKeys({ ...existingKeys, ...keysToSave })
+    
+    // Verify keys were saved
+    const savedKeys = await getApiKeys()
+    console.log('Keys saved. Verification:', {
+      openAiKey: !!savedKeys.openAiKey,
+      lakeraAiKey: !!savedKeys.lakeraAiKey,
+      lakeraProjectId: !!savedKeys.lakeraProjectId,
+    })
 
     console.log('API keys configured and saved successfully')
 
