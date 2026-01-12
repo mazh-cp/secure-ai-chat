@@ -194,13 +194,40 @@ if [ -f ".nvmrc" ]; then
     nvm use ${NODE_VERSION_FROM_NVMRC} > /dev/null 2>&1
 fi
 
+# Step 4: Fix Permissions Before Install
+print_header "Step 4a: Fixing Permissions"
+
+# Ensure proper ownership and permissions before npm operations
+CURRENT_USER=$(whoami)
+if [ "$CURRENT_USER" != "root" ]; then
+    print_info "Setting ownership and permissions..."
+    sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+    sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
+    sudo chmod 644 "$FULL_PATH/package.json" 2>/dev/null || true
+    sudo chmod 644 "$FULL_PATH/package-lock.json" 2>/dev/null || true
+    print_success "Permissions fixed"
+else
+    print_warning "Running as root - permissions may need manual adjustment"
+fi
+
 # Step 4: Install project dependencies
-print_header "Step 4: Installing Project Dependencies"
+print_header "Step 4b: Installing Project Dependencies"
 
 print_info "Installing npm dependencies (this may take a few minutes)..."
-npm ci --silent
-
-print_success "Dependencies installed"
+if npm ci --silent 2>&1; then
+    print_success "Dependencies installed"
+else
+    print_warning "npm ci failed, trying npm install..."
+    # Fix permissions and retry
+    sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+    sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
+    if npm install --silent 2>&1; then
+        print_success "Dependencies installed"
+    else
+        print_error "Failed to install dependencies"
+        exit 1
+    fi
+fi
 
 # Step 5: Set up environment configuration
 print_header "Step 5: Environment Configuration"
