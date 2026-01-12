@@ -14,15 +14,17 @@ export async function GET(request: NextRequest) {
     // Get API keys (from environment variables or encrypted storage)
     const keys = await getApiKeys()
     
-    // Return keys (only used server-side, never sent to client)
+    // Return keys status (don't expose actual keys for security)
+    // For client-side checks, we return a placeholder 'configured' value if key exists
     return NextResponse.json({
       keys: {
-        openAiKey: keys.openAiKey || null,
-        lakeraAiKey: keys.lakeraAiKey || null,
-        lakeraProjectId: keys.lakeraProjectId || null,
+        // Return placeholder 'configured' instead of null to indicate key is set
+        openAiKey: keys.openAiKey ? 'configured' : null,
+        lakeraAiKey: keys.lakeraAiKey ? 'configured' : null,
+        lakeraProjectId: keys.lakeraProjectId ? 'configured' : null,
         lakeraEndpoint: keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
       },
-      // Don't expose actual keys in response
+      // Also return configured status for easier checking
       configured: {
         openAiKey: !!keys.openAiKey,
         lakeraAiKey: !!keys.lakeraAiKey,

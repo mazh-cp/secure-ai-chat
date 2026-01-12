@@ -41,13 +41,15 @@ export default function ChatInterface() {
         const response = await fetch('/api/keys/retrieve').catch(() => null)
         if (response?.ok) {
           const data = await response.json()
-          if (data.keys) {
-            // Use server-side keys if available
+          // Check if keys are configured (server returns null for actual keys for security)
+          if (data.configured?.openAiKey || data.keys?.openAiKey) {
+            // Use server-side keys - set a placeholder to indicate keys are configured
+            // The actual key is stored server-side and used by API routes
             setApiKeys({
-              openAiKey: data.keys.openAiKey || '',
-              lakeraAiKey: data.keys.lakeraAiKey || '',
-              lakeraEndpoint: data.keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
-              lakeraProjectId: data.keys.lakeraProjectId || '',
+              openAiKey: data.keys?.openAiKey || 'configured', // Use 'configured' as placeholder
+              lakeraAiKey: data.keys?.lakeraAiKey || '',
+              lakeraEndpoint: data.keys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+              lakeraProjectId: data.keys?.lakeraProjectId || '',
             })
             return
           }
@@ -70,6 +72,11 @@ export default function ChatInterface() {
     }
     
     loadApiKeys()
+    
+    // Periodically check for key updates (every 5 seconds)
+    const interval = setInterval(loadApiKeys, 5000)
+    
+    return () => clearInterval(interval)
   }, [])
   
   // Load toggle states from localStorage
@@ -139,8 +146,8 @@ export default function ChatInterface() {
 
     setError(null)
 
-    // Check if API key is configured
-    if (!apiKeys?.openAiKey) {
+    // Check if API key is configured (either has actual key or 'configured' placeholder)
+    if (!apiKeys?.openAiKey || apiKeys.openAiKey === '') {
       setError('OpenAI API key is not configured. Please go to Settings to add your API key.')
       return
     }
@@ -307,7 +314,8 @@ export default function ChatInterface() {
     }
   }
 
-  const hasApiKey = apiKeys?.openAiKey
+  // Check if API key is configured (either has actual key or 'configured' placeholder)
+  const hasApiKey = apiKeys?.openAiKey && apiKeys.openAiKey !== ''
 
   return (
     <div className="flex flex-col h-full">
