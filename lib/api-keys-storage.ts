@@ -155,16 +155,40 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
     try {
       const encryptedData = await fs.readFile(KEYS_FILE_PATH, 'utf8')
       if (encryptedData.trim()) {
-        const fileKeys = decryptKeys(encryptedData.trim())
-        // Merge: env vars take priority
-        cachedKeys = { ...fileKeys, ...envKeys }
-        keysLoaded = true
-        return cachedKeys
+        try {
+          const fileKeys = decryptKeys(encryptedData.trim())
+          console.log('Loaded keys from file storage:', {
+            openAiKey: !!fileKeys.openAiKey,
+            lakeraAiKey: !!fileKeys.lakeraAiKey,
+            lakeraProjectId: !!fileKeys.lakeraProjectId,
+            lakeraEndpoint: !!fileKeys.lakeraEndpoint,
+          })
+          // Merge: env vars take priority
+          cachedKeys = { ...fileKeys, ...envKeys }
+          keysLoaded = true
+          console.log('Final merged keys after file load:', {
+            openAiKey: !!cachedKeys.openAiKey,
+            lakeraAiKey: !!cachedKeys.lakeraAiKey,
+            lakeraProjectId: !!cachedKeys.lakeraProjectId,
+            lakeraEndpoint: !!cachedKeys.lakeraEndpoint,
+          })
+          return cachedKeys
+        } catch (decryptError) {
+          console.error('Error decrypting API keys file:', decryptError)
+          // If decryption fails, the file might be corrupted - return empty
+          cachedKeys = envKeys
+          keysLoaded = true
+          return cachedKeys
+        }
+      } else {
+        console.log('Keys file exists but is empty')
       }
     } catch (fileError: unknown) {
       // File doesn't exist or can't be read - that's okay, key is just not configured
       if ((fileError as { code?: string }).code !== 'ENOENT') {
         console.error('Error reading API keys file:', fileError)
+      } else {
+        console.log('Keys file does not exist yet')
       }
     }
   } catch (error) {
