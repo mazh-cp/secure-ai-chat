@@ -20,24 +20,28 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch available models when API key is available
+  // Fetch available models - API key is retrieved server-side
   useEffect(() => {
-    if (!apiKey) {
-      setModels([])
-      setError(null)
-      return
-    }
-
     const fetchModels = async () => {
       setIsLoading(true)
       setError(null)
 
       try {
+        // The /api/models endpoint gets the API key from server-side storage
+        // So we don't need to pass the key from the client
         const response = await fetch('/api/models')
         
         if (!response.ok) {
           const data = await response.json().catch(() => ({}))
-          throw new Error(data.error || 'Failed to fetch models')
+          const errorMsg = data.error || 'Failed to fetch models'
+          
+          // If API key is not configured, show a helpful message
+          if (errorMsg.includes('API key') || response.status === 400) {
+            setError('OpenAI API key not configured. Please configure it in Settings.')
+          } else {
+            throw new Error(errorMsg)
+          }
+          return
         }
 
         const data = await response.json()
@@ -57,15 +61,9 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
     }
 
     fetchModels()
-  }, [apiKey, selectedModel, onModelChange])
+  }, [selectedModel, onModelChange])
 
-  if (!apiKey) {
-    return (
-      <div className="text-xs text-theme-subtle">
-        Configure API key to select model
-      </div>
-    )
-  }
+  // Note: We no longer check apiKey prop since the API endpoint gets it from server-side storage
 
   if (isLoading) {
     return (

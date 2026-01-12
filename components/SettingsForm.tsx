@@ -249,9 +249,11 @@ export default function SettingsForm() {
         // Also update server status to ensure consistency
         await checkServerStatus()
       } else {
-        const error = await response.json()
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || 'Failed to save Check Point TE API key'
         setSaveStatus('error')
-        console.error('Failed to save Check Point TE key:', error)
+        console.error('Failed to save Check Point TE key:', errorMessage, errorData)
+        alert(errorMessage)
         // Re-check status in case key was partially saved or removed
         await checkCheckpointTeStatus()
         setTimeout(() => setSaveStatus('idle'), 3000)

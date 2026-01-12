@@ -351,7 +351,7 @@ export default function ChatInterface() {
           <ModelSelector 
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
-            apiKey={apiKeys?.openAiKey || null}
+            apiKey={null}
           />
         </div>
       )}
