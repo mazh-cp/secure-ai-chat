@@ -342,9 +342,11 @@ User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
 WorkingDirectory=${REPO_DIR}
 Environment=NODE_ENV=production
+Environment=HOSTNAME=0.0.0.0
+Environment=PORT=3000
 Environment=PATH=${NODE_PATH%/*}:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=${REPO_DIR}/.env
-# Use npm start to handle Next.js server
+# Use npm start with explicit HOSTNAME to ensure public access
 ExecStart=${NPM_PATH} start
 Restart=always
 RestartSec=5
@@ -355,7 +357,7 @@ SyslogIdentifier=secure-ai-chat
 # Security
 NoNewPrivileges=true
 PrivateTmp=true
-ReadWritePaths=${REPO_DIR}/.secure-storage ${REPO_DIR}/.next
+ReadWritePaths=${REPO_DIR}/.secure-storage ${REPO_DIR}/.next ${REPO_DIR}/.storage
 
 [Install]
 WantedBy=multi-user.target
@@ -387,16 +389,85 @@ else
 fi
 echo ""
 
-# Step 10: Verification
+# Step 10: Configure Firewall
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}Step 10: Verification${NC}"
+echo -e "${BLUE}Step 10: Configure Firewall${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-sleep 3
+# Check if UFW is installed
+if command -v ufw &> /dev/null; then
+    echo "Configuring UFW firewall..."
+    
+    # Allow SSH
+    if sudo ufw status | grep -q "22/tcp"; then
+        echo -e "${GREEN}✅ SSH (port 22) already allowed${NC}"
+    else
+        sudo ufw allow 22/tcp > /dev/null 2>&1
+        echo -e "${GREEN}✅ SSH (port 22) allowed${NC}"
+    fi
+    
+    # Allow application port
+    if sudo ufw status | grep -q "3000/tcp"; then
+        echo -e "${GREEN}✅ Port 3000/tcp already allowed${NC}"
+    else
+        sudo ufw allow 3000/tcp > /dev/null 2>&1
+        echo -e "${GREEN}✅ Port 3000/tcp allowed${NC}"
+    fi
+    
+    # Enable UFW if not enabled
+    if ! sudo ufw status | grep -q "Status: active"; then
+        echo "y" | sudo ufw --force enable > /dev/null 2>&1
+        echo -e "${GREEN}✅ UFW enabled${NC}"
+    else
+        sudo ufw reload > /dev/null 2>&1
+        echo -e "${GREEN}✅ UFW rules reloaded${NC}"
+    fi
+    
+    echo ""
+    echo "Current UFW status:"
+    sudo ufw status numbered | head -5
+    echo ""
+else
+    echo -e "${YELLOW}⚠️  UFW not installed, skipping firewall configuration${NC}"
+    echo "   You may need to configure firewall manually or via cloud provider"
+    echo ""
+fi
+
+# Step 11: Verification
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}Step 11: Verification${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+sleep 5
 
 echo "Service status:"
 sudo systemctl status ${SERVICE_NAME} --no-pager -l | head -15
+echo ""
+
+# Check if service is listening on 0.0.0.0
+echo "Checking network binding:"
+if command -v ss &> /dev/null; then
+    LISTEN_CHECK=$(sudo ss -tlnp 2>/dev/null | grep ":3000" || echo "")
+    if echo "$LISTEN_CHECK" | grep -q "0.0.0.0:3000"; then
+        echo -e "${GREEN}✅ Application is listening on 0.0.0.0:3000 (public access enabled)${NC}"
+        echo "   $LISTEN_CHECK"
+    elif echo "$LISTEN_CHECK" | grep -q "127.0.0.1:3000"; then
+        echo -e "${RED}❌ Application is only listening on 127.0.0.1:3000 (localhost only)${NC}"
+        echo "   $LISTEN_CHECK"
+        echo -e "${YELLOW}⚠️  This means it's not accessible from public IP${NC}"
+        echo "   Fix: Restart service and check HOSTNAME environment variable"
+    elif [ -z "$LISTEN_CHECK" ]; then
+        echo -e "${YELLOW}⚠️  Application not listening on port 3000 yet${NC}"
+        echo "   Service may still be starting..."
+    else
+        echo -e "${YELLOW}⚠️  Unexpected binding:${NC}"
+        echo "   $LISTEN_CHECK"
+    fi
+else
+    echo -e "${YELLOW}⚠️  'ss' command not available, skipping network check${NC}"
+fi
 echo ""
 
 # Health check
@@ -420,6 +491,13 @@ if curl -s -f http://localhost:3000/api/version > /dev/null 2>&1; then
 else
     echo -e "${YELLOW}⚠️  Version endpoint not responding yet${NC}"
 fi
+echo ""
+
+# Get public IP
+echo "Network information:"
+PUBLIC_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "unknown")
+echo "   Local IP: $PUBLIC_IP"
+echo "   Access URL: http://$PUBLIC_IP:3000"
 echo ""
 
 # Check critical pages
