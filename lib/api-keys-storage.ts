@@ -193,15 +193,25 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     const encryptedKeys = encryptKeys(keysToSave)
     // Write with restrictive permissions (owner read/write only)
     await fs.writeFile(KEYS_FILE_PATH, encryptedKeys, { mode: 0o600, flag: 'w' })
-    cachedKeys = { ...existingKeys, ...keys }
+    // Update cache with merged keys (env vars take priority)
+    const envKeys: StoredApiKeys = {}
+    if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
+    if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
+    if (process.env.LAKERA_PROJECT_ID) envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
+    if (process.env.LAKERA_ENDPOINT) envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
+    cachedKeys = { ...keysToSave, ...envKeys }
   } catch (error) {
     console.error('Error saving API keys:', error)
+    // Invalidate cache on error
+    cachedKeys = null
+    keysLoaded = false
     throw error
   }
 }
 
 /**
  * Delete a specific API key or all keys
+ * Invalidates cache after deletion
  */
 export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> {
   try {
@@ -223,7 +233,9 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
     
     delete existingKeys[keyName]
     await saveApiKeys(existingKeys)
-    cachedKeys = existingKeys
+    // Invalidate cache to force reload on next access
+    cachedKeys = null
+    keysLoaded = false
   } catch (error) {
     console.error('Error deleting API key:', error)
     throw error
@@ -232,6 +244,7 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
 
 /**
  * Delete all API keys
+ * Invalidates cache after deletion
  */
 export async function deleteAllApiKeys(): Promise<void> {
   try {
@@ -254,7 +267,9 @@ export async function deleteAllApiKeys(): Promise<void> {
     }
     
     await saveApiKeys(keysToDelete)
-    cachedKeys = {}
+    // Invalidate cache to force reload on next access
+    cachedKeys = null
+    keysLoaded = false
   } catch (error) {
     console.error('Error deleting all API keys:', error)
     throw error
@@ -306,9 +321,13 @@ export function getApiKeysSync(): StoredApiKeys {
 
 /**
  * Set API keys (persists to encrypted file)
+ * Invalidates cache to ensure fresh data
  */
 export async function setApiKeys(keys: StoredApiKeys): Promise<void> {
   await saveApiKeys(keys)
+  // Invalidate cache to force reload on next access
+  cachedKeys = null
+  keysLoaded = false
 }
 
 /**
