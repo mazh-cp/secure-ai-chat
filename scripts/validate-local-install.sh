@@ -46,7 +46,7 @@ echo -e "${CYAN}Version Check${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-PACKAGE_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version":\s*"([^"]+)".*/\1/' || echo "unknown")
+PACKAGE_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || echo "unknown")
 echo -e "${BLUE}Package Version:${NC} $PACKAGE_VERSION"
 
 if [ "$PACKAGE_VERSION" = "1.0.7" ]; then
