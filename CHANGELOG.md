@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.8] - 2026-01-13
+
+### Added
+- **Ubuntu VM Installation Script** (`scripts/install_ubuntu_public.sh`): Single-step installation script for fresh Ubuntu VM deployments
+  - Installs system dependencies, Node.js LTS 20.x, clones repository
+  - Auto-detects free port starting from 3000 (avoids EADDRINUSE errors)
+  - Creates dedicated user (`secureai`) and installs under `/opt/secure-ai-chat`
+  - Configures systemd service for auto-start and management
+  - Sets up nginx reverse proxy on port 80
+  - Configures UFW firewall (SSH + Nginx)
+  - Performs smoke checks after installation
+  - Idempotent: safe to re-run for updates/repairs
+- **Safe Remote Upgrade Script** (`scripts/upgrade_remote.sh`): Safely upgrades remote installations to latest version
+  - Automatically backs up all settings before upgrade (`.env.local`, `.secure-storage/`, `.storage/`)
+  - Preserves all configurations during upgrade
+  - Verifies upgrade success with version and health checks
+  - Rollback capability via backup
+- **Cleanup/Reset Script** (`scripts/cleanup_reset_vm.sh`): Safely removes application, services, and nginx configuration
+- **Git Repository Fix Script** (`scripts/fix_git_repo.sh`): Fixes corrupted or missing `.git` repository in installation directory
+- **CLI Script to Set API Keys** (`scripts/set-api-keys.sh`): Set API keys via command line
+  - Supports all keys: OpenAI, Lakera AI, Lakera Project ID, Lakera Endpoint, Check Point TE
+  - Interactive mode for easy key entry
+  - Works with local and remote servers
+  - Uses existing API endpoints (no application changes)
+- **Installation Documentation** (`docs/INSTALL_UBUNTU_VM.md`): Comprehensive guide for Ubuntu VM installation
+- **Upgrade Documentation** (`docs/UPGRADE_REMOTE.md`): Safe remote upgrade process
+- **API Endpoints Documentation** (`docs/API_ENDPOINTS_FOR_SECURITY.md`): Recommended API endpoints for security configuration
+- **CLI API Keys Documentation** (`docs/CLI_API_KEYS.md`): CLI usage guide
+- **Merge Safety Reports**: Detailed verification and risk assessment reports
+
+### Fixed
+- **Git Repository Issues**: Fixed "fatal: not a git repository" errors on remote installations
+- **Upgrade Process**: Fixed 404 errors when downloading upgrade scripts from wrong branch
+- **Port Conflicts**: Auto-detection of free ports prevents EADDRINUSE errors
+
+### Improved
+- **README.md**: Added "Quick Install (Ubuntu VM)" and "Reset/Cleanup" sections
+- **Port Auto-Detection**: Installation script automatically finds free port starting from 3000
+- **Idempotent Installation**: Installation script can be safely re-run
+- **Documentation**: Comprehensive guides for installation, upgrade, and CLI usage
+
 ## [1.0.7] - 2026-01-12
 
 ### Added

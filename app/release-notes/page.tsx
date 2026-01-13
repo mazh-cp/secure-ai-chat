@@ -17,6 +17,59 @@ interface ReleaseNote {
 
 const releaseNotes: ReleaseNote[] = [
   {
+    version: '1.0.8',
+    date: '2026-01-13',
+    type: 'minor',
+    changes: {
+      added: [
+        'Ubuntu VM Installation Script - Single-step installation for production deployments',
+        'Safe Remote Upgrade Script - Preserves all settings during upgrades',
+        'CLI Script to Set API Keys - Set keys via command line (no web UI required)',
+        'Git Repository Fix Script - Repairs corrupted git repositories',
+        'Cleanup/Reset Script - Safely removes application and services',
+        'Complete installation and upgrade documentation',
+        'API endpoints documentation for security configuration',
+      ],
+      fixed: [
+        'Fixed "fatal: not a git repository" errors on remote installations',
+        'Fixed 404 errors when downloading upgrade scripts',
+        'Fixed port conflicts with auto-detection of free ports',
+      ],
+      improved: [
+        'README.md - Added Quick Install and Reset/Cleanup sections',
+        'Port auto-detection prevents EADDRINUSE errors',
+        'Idempotent installation (safe to re-run)',
+        'Comprehensive documentation for production deployment',
+      ],
+    },
+  },
+  {
+    version: '1.0.7',
+    date: '2026-01-12',
+    type: 'minor',
+    changes: {
+      added: [
+        'Release Notes Page - Dedicated page for viewing version history',
+        'RAG (Retrieval Augmented Generation) - Chat can access uploaded files',
+        'GPT-5.x Support - Full support with automatic API migration',
+        'Release Gate System - Comprehensive pre-deployment validation',
+        'Security Verification Script - Automated key security checks',
+      ],
+      fixed: [
+        'Fixed file scanning errors for large files',
+        'Fixed navigation issue - sidebar always visible on desktop',
+        'Fixed Checkpoint TE status not updating after key save',
+        'Fixed webpack chunk errors',
+      ],
+      improved: [
+        'Enhanced error handling and recovery',
+        'Better status synchronization between pages',
+        'Improved file upload stability',
+        'Enhanced logging security with key redaction',
+      ],
+    },
+  },
+  {
     version: '1.0.6',
     date: '2026-01-12',
     type: 'minor',
@@ -82,7 +135,7 @@ const releaseNotes: ReleaseNote[] = [
 ]
 
 export default function ReleaseNotesPage() {
-  const [appVersion, setAppVersion] = useState<string>('1.0.6')
+  const [appVersion, setAppVersion] = useState<string>('1.0.8')
 
   useEffect(() => {
     const loadVersion = async () => {
@@ -90,7 +143,7 @@ export default function ReleaseNotesPage() {
         const response = await fetch('/api/version')
         if (response.ok) {
           const data = await response.json()
-          setAppVersion(data.version || '1.0.6')
+          setAppVersion(data.version || '1.0.8')
         }
       } catch (error) {
         console.error('Failed to load version:', error)
