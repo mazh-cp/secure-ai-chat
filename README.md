@@ -79,6 +79,22 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 
 See [docs/INSTALL_UBUNTU_VM.md](docs/INSTALL_UBUNTU_VM.md) for more details.
 
+### Upgrade Remote Installation
+
+To safely upgrade your remote installation to the latest version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
+```
+
+This script automatically:
+- Backs up all settings and API keys
+- Pulls latest code
+- Preserves all configurations
+- Rebuilds and restarts the service
+
+See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instructions.
+
 ### Single-Step Installation (Ubuntu/Debian)
 
 ⚠️ **Important**: Before using the remote installation script, ensure the repository is pushed to GitHub first:
