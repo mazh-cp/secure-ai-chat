@@ -195,6 +195,62 @@ export default function LogViewer({ logs }: LogViewerProps) {
                     </p>
                   </div>
                 )}
+
+                {/* Payload Data - Detected Threats with Locations */}
+                {log.lakeraDecision.payload && log.lakeraDecision.payload.length > 0 && (
+                  <div className="mt-3 p-2 glass-card rounded-lg border-yellow-400/30">
+                    <p className="text-xs text-yellow-300 font-medium mb-2">Detected Threats ({log.lakeraDecision.payload.length}):</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {log.lakeraDecision.payload.map((item, idx) => (
+                        <div key={idx} className="text-xs bg-yellow-900/10 p-2 rounded border border-yellow-400/20">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <span className="font-medium text-yellow-200">{item.detector_type}</span>
+                            <span className="text-theme-subtle">Pos: {item.start}-{item.end}</span>
+                          </div>
+                          <div className="mt-1 text-theme-muted italic text-xs">
+                            &quot;{item.text.length > 80 ? item.text.substring(0, 80) + '...' : item.text}&quot;
+                          </div>
+                          {item.labels && item.labels.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {item.labels.map((label, labelIdx) => (
+                                <span key={labelIdx} className="px-1.5 py-0.5 bg-yellow-800/20 rounded text-xs text-yellow-200">
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Breakdown Data - Detector Results */}
+                {log.lakeraDecision.breakdown && log.lakeraDecision.breakdown.length > 0 && (
+                  <div className="mt-3 p-2 glass-card rounded-lg border-blue-400/30">
+                    <p className="text-xs text-blue-300 font-medium mb-2">
+                      Detector Breakdown ({log.lakeraDecision.breakdown.filter(d => d.detected).length}/{log.lakeraDecision.breakdown.length} detected):
+                    </p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {log.lakeraDecision.breakdown.map((detector, idx) => (
+                        <div key={idx} className={`text-xs p-1.5 rounded flex items-center justify-between ${
+                          detector.detected ? 'bg-red-900/20 border border-red-400/30' : 'bg-green-900/10 border border-green-400/20'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <span className={detector.detected ? 'text-red-300' : 'text-green-300'}>
+                              {detector.detected ? '⚠️' : '✓'}
+                            </span>
+                            <span className="font-medium text-theme">{detector.detector_type}</span>
+                            <span className="text-theme-subtle text-xs">({detector.detector_id})</span>
+                          </div>
+                          {detector.detected && (
+                            <span className="text-xs text-red-300 font-medium">DETECTED</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -269,6 +325,150 @@ export default function LogViewer({ logs }: LogViewerProps) {
           </div>
         ))}
       </div>
+
+      {/* API Errors & Key Failures Section */}
+      {logs.filter(log => 
+        log.action === 'api_failure' || 
+        log.action === 'error' || 
+        (log.systemDetails?.statusCode && log.systemDetails.statusCode >= 400) ||
+        (log.error && (log.error.includes('API key') || log.error.includes('401') || log.error.includes('403')))
+      ).length > 0 && (
+        <div className="mt-6 p-4 glass-card rounded-xl border-red-400/50">
+          <div className="flex items-center space-x-2 mb-4">
+            <span className="text-2xl">⚠️</span>
+            <h2 className="text-lg font-semibold text-red-300">API Errors & Key Failures</h2>
+            <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-300 border border-red-400/50">
+              {logs.filter(log => 
+                log.action === 'api_failure' || 
+                log.action === 'error' || 
+                (log.systemDetails?.statusCode && log.systemDetails.statusCode >= 400) ||
+                (log.error && (log.error.includes('API key') || log.error.includes('401') || log.error.includes('403')))
+              ).length}
+            </span>
+          </div>
+          
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {logs
+              .filter(log => 
+                log.action === 'api_failure' || 
+                log.action === 'error' || 
+                (log.systemDetails?.statusCode && log.systemDetails.statusCode >= 400) ||
+                (log.error && (log.error.includes('API key') || log.error.includes('401') || log.error.includes('403')))
+              )
+              .map((log) => (
+                <div
+                  key={log.id}
+                  className="p-4 rounded-lg glass-card border-red-400/30"
+                >
+                  {/* Error Header */}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg">
+                        {log.systemDetails?.statusCode === 401 || log.error?.includes('401') ? '🔑' : 
+                         log.systemDetails?.statusCode === 403 || log.error?.includes('403') ? '🚫' : 
+                         '❌'}
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-semibold text-red-300">
+                          {log.systemDetails?.service ? `${log.systemDetails.service.toUpperCase()} API Error` : 'API Error'}
+                        </h3>
+                        <p className="text-xs text-theme-subtle">
+                          {format(log.timestamp, 'MMM dd, yyyy HH:mm:ss')}
+                        </p>
+                      </div>
+                    </div>
+                    {log.systemDetails?.statusCode && (
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        log.systemDetails.statusCode === 401 ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-400/50' :
+                        log.systemDetails.statusCode === 403 ? 'bg-red-500/20 text-red-300 border border-red-400/50' :
+                        'bg-red-500/20 text-red-300 border border-red-400/50'
+                      }`}>
+                        {log.systemDetails.statusCode}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Full Error Message */}
+                  <div className="mt-2 p-3 bg-red-900/20 rounded border border-red-400/30">
+                    <p className="text-xs font-medium text-red-200 mb-1">Full Error:</p>
+                    <p className="text-xs text-red-100 break-words whitespace-pre-wrap">
+                      {log.error || 
+                       (log.systemDetails?.responseBody ? 
+                         (typeof log.systemDetails.responseBody === 'string' ? log.systemDetails.responseBody : JSON.stringify(log.systemDetails.responseBody, null, 2)) : 
+                         'No error message available')}
+                    </p>
+                  </div>
+
+                  {/* Key Failure Details */}
+                  {(log.systemDetails?.statusCode === 401 || log.error?.includes('API key') || log.error?.includes('401')) && (
+                    <div className="mt-2 p-2 bg-yellow-900/20 rounded border border-yellow-400/30">
+                      <p className="text-xs font-medium text-yellow-200 mb-1">🔑 Key Failure Detected:</p>
+                      <ul className="text-xs text-yellow-100 space-y-1 ml-4">
+                        <li>• API key may be invalid or expired</li>
+                        <li>• Check key format and permissions in Settings</li>
+                        <li>• Verify key is active in provider dashboard</li>
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* System Details */}
+                  {log.systemDetails && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-theme-subtle cursor-pointer hover:text-theme">
+                        System Details
+                      </summary>
+                      <div className="mt-2 p-2 glass rounded text-xs space-y-1">
+                        {log.systemDetails.endpoint && (
+                          <div><span className="font-medium">Endpoint:</span> {log.systemDetails.endpoint}</div>
+                        )}
+                        {log.systemDetails.method && (
+                          <div><span className="font-medium">Method:</span> {log.systemDetails.method}</div>
+                        )}
+                        {log.systemDetails.requestId && (
+                          <div><span className="font-medium">Request ID:</span> {log.systemDetails.requestId}</div>
+                        )}
+                        {log.systemDetails.duration !== undefined && (
+                          <div><span className="font-medium">Duration:</span> {log.systemDetails.duration}ms</div>
+                        )}
+                        {log.systemDetails.responseBody && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-theme-subtle cursor-pointer">Response Body</summary>
+                            <pre className="mt-1 p-2 glass rounded text-xs overflow-auto max-h-40 text-theme-muted font-mono">
+                              {typeof log.systemDetails.responseBody === 'string' 
+                                ? log.systemDetails.responseBody.substring(0, 2000)
+                                : JSON.stringify(log.systemDetails.responseBody, null, 2).substring(0, 2000)}
+                            </pre>
+                          </details>
+                        )}
+                        {log.systemDetails.stackTrace && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-theme-subtle cursor-pointer">Stack Trace</summary>
+                            <pre className="mt-1 p-2 glass rounded text-xs overflow-auto max-h-40 text-red-300 font-mono">
+                              {log.systemDetails.stackTrace.substring(0, 2000)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    </details>
+                  )}
+
+                  {/* Request Details */}
+                  {log.requestDetails && (
+                    <div className="mt-2 p-2 glass rounded text-xs">
+                      <p className="font-medium text-theme-subtle mb-1">Request:</p>
+                      {log.requestDetails.fileName && (
+                        <div>File: {log.requestDetails.fileName}</div>
+                      )}
+                      {log.requestDetails.message && (
+                        <div>Message: {log.requestDetails.message.substring(0, 100)}...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
