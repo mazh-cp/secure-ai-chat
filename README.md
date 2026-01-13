@@ -31,10 +31,53 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 
 ## Prerequisites
 
-- Node.js 25.2.1 (pinned via .nvmrc) 
+- Node.js 25.2.1 (pinned via .nvmrc) for development
 - npm, yarn, or pnpm
+- **Note**: For production server installs on Ubuntu VM, use Node.js LTS 20.x (installed automatically by the install script)
 
 ## Installation
+
+### Quick Install (Ubuntu VM)
+
+For a fresh Ubuntu VM installation with nginx reverse proxy:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
+```
+
+**What it does:**
+- Installs system dependencies (curl, git, build tools, nginx)
+- Creates dedicated user (`secureai`)
+- Installs Node.js LTS 20.x via nvm
+- Clones repository to `/opt/secure-ai-chat`
+- Installs dependencies and builds application
+- Configures systemd service for auto-start
+- Configures nginx reverse proxy on port 80
+- Auto-detects free port starting from 3000 (avoids EADDRINUSE)
+- Configures UFW firewall (SSH + Nginx)
+
+**Post-installation:**
+1. Add API keys: `sudo nano /opt/secure-ai-chat/.env.local`
+2. Restart service: `sudo systemctl restart secure-ai-chat`
+3. Access: `http://YOUR_VM_IP`
+
+For detailed installation guide, see [docs/INSTALL_UBUNTU_VM.md](docs/INSTALL_UBUNTU_VM.md).
+
+### Reset/Cleanup
+
+To completely remove the installation:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/cleanup_reset_vm.sh | bash
+```
+
+Or to also remove the user:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/cleanup_reset_vm.sh | bash -s -- --remove-user
+```
+
+See [docs/INSTALL_UBUNTU_VM.md](docs/INSTALL_UBUNTU_VM.md) for more details.
 
 ### Single-Step Installation (Ubuntu/Debian)
 
