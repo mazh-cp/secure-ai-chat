@@ -82,17 +82,25 @@ export async function GET(request: NextRequest) {
           owned_by: model.owned_by,
         }))
 
-      // Add gpt-5 to the list if it's not already there (GPT-5 may not appear in /v1/models endpoint)
-      // Check if gpt-5 is already in the list
-      const hasGPT5 = chatModels.some(model => model.id === 'gpt-5')
-      if (!hasGPT5) {
-        // Add gpt-5 at the beginning (newest first)
-        chatModels.unshift({
-          id: 'gpt-5',
-          name: 'GPT-5',
-          created: Date.now(), // Use current timestamp as placeholder
-          owned_by: 'openai',
-        })
+      // Add GPT-5.x models to the list if they're not already there
+      // GPT-5.x models may not appear in /v1/models endpoint but are available via Responses API
+      const gpt5Models = [
+        { id: 'gpt-5.2', name: 'GPT-5.2' },
+        { id: 'gpt-5.1', name: 'GPT-5.1' },
+        { id: 'gpt-5', name: 'GPT-5' },
+      ]
+      
+      for (const gpt5Model of gpt5Models) {
+        const hasModel = chatModels.some(model => model.id === gpt5Model.id)
+        if (!hasModel) {
+          // Add at the beginning (newest first)
+          chatModels.unshift({
+            id: gpt5Model.id,
+            name: gpt5Model.name,
+            created: Date.now(), // Use current timestamp as placeholder
+            owned_by: 'openai',
+          })
+        }
       }
 
       return NextResponse.json({ models: chatModels })
@@ -128,10 +136,10 @@ export async function GET(request: NextRequest) {
  * - gpt-4-turbo -> GPT-4 Turbo
  */
 function formatModelName(modelId: string): string {
-  // Special case for gpt-5
-  if (modelId === 'gpt-5') {
-    return 'GPT-5'
-  }
+  // Special cases for GPT-5.x models
+  if (modelId === 'gpt-5.2') return 'GPT-5.2'
+  if (modelId === 'gpt-5.1') return 'GPT-5.1'
+  if (modelId === 'gpt-5') return 'GPT-5'
   
   // Remove 'gpt-' prefix and format
   let name = modelId.replace(/^gpt-/, '')

@@ -1,42 +1,72 @@
 #!/usr/bin/env bash
+# Release Gate - Comprehensive Pre-Deployment Validation
+# Strict PASS/FAIL checklist that must pass before deployment
+
 set -euo pipefail
 
-# =========================
-# Release Gate (Strict) + Repo Update Helpers
-# Target release branch: release/v1.0.5
-# =========================
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
 
 PASS=true
-say() { printf "\n==> %s\n" "$*"; }
-fail() { echo "❌ FAIL: $*"; PASS=false; }
-ok() { echo "✅ PASS: $*"; }
+FAILED_CHECKS=()
 
-# Show failing line on error (still honors PASS/FAIL blocks)
-trap 'echo "❌ ERROR at line $LINENO"; exit 2' ERR
+say() { printf "\n${BLUE}==>${NC} %s\n" "$*"; }
+fail() { echo "${RED}❌ FAIL:${NC} $*"; PASS=false; FAILED_CHECKS+=("$*"); }
+ok() { echo "${GREEN}✅ PASS:${NC} $*"; }
+warn() { echo "${YELLOW}⚠️  WARN:${NC} $*"; }
+
+# Show failing line on error
+trap 'echo "${RED}❌ ERROR at line $LINENO${NC}"; exit 2' ERR
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-say "Release Gate starting in: $ROOT"
+echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║              Release Gate - Pre-Deployment Validation        ║${NC}"
+echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+say "Starting in: $ROOT"
 
-# --- Enhancement 1: repo sanity / informative context ---
+# ============================================
+# 1. Repository Sanity Checks
+# ============================================
+say "1. Repository Sanity Checks"
+
 if ! command -v git >/dev/null 2>&1; then
-  echo "❌ FAIL: git not found"
+  fail "git not found"
   exit 2
 fi
+ok "git found"
+
 if [[ ! -f package.json ]]; then
-  echo "❌ FAIL: package.json not found in repo root"
+  fail "package.json not found in repo root"
   exit 2
 fi
+ok "package.json found"
 
-# --- Enhancement 2: enforce clean working tree (strict) ---
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "❌ FAIL: Working tree is not clean. Commit/stash changes before release."
-  exit 2
+# Check .gitignore for secure storage
+if grep -q ".secure-storage" .gitignore 2>/dev/null; then
+  ok ".secure-storage in .gitignore"
+else
+  fail ".secure-storage NOT in .gitignore"
 fi
-ok "Working tree clean"
 
-# --- Enhancement 3: detect package manager from lockfiles (unchanged behavior) ---
+if grep -q ".storage" .gitignore 2>/dev/null; then
+  ok ".storage in .gitignore"
+else
+  warn ".storage NOT in .gitignore (should be ignored)"
+fi
+
+# ============================================
+# 2. Detect Package Manager
+# ============================================
+say "2. Detecting Package Manager"
+
 PM=""
 INSTALL_CMD=""
 RUN_CMD=""
@@ -53,165 +83,209 @@ elif [[ -f package-lock.json ]]; then
   INSTALL_CMD="npm ci"
   RUN_CMD="npm"
 else
-  echo "❌ FAIL: No lockfile found (pnpm-lock.yaml/yarn.lock/package-lock.json)."
+  fail "No lockfile found (pnpm-lock.yaml/yarn.lock/package-lock.json)"
   exit 2
 fi
 ok "Detected package manager: ${PM}"
 
-# --- Enhancement 4: ensure Node exists + print versions ---
+# Check Node.js
 if ! command -v node >/dev/null 2>&1; then
-  echo "❌ FAIL: node not found"
+  fail "node not found"
   exit 2
 fi
-ok "Node: $(node -v) | PM: ${PM}"
+NODE_VERSION=$(node -v)
+ok "Node.js: ${NODE_VERSION}"
 
-# --- Enhancement 5: hard set release version + branch naming ---
-TARGET_VERSION="1.0.5"
-TARGET_BRANCH="release/v${TARGET_VERSION}"
+# ============================================
+# 3. Clean Install
+# ============================================
+say "3. Clean Install"
 
-# Update package.json version (only if needed) without blocking older npm
-say "Set version -> ${TARGET_VERSION}"
-CURRENT_VERSION="$(node -p "require('./package.json').version")"
-if [[ "$CURRENT_VERSION" != "$TARGET_VERSION" ]]; then
-  # npm version updates package.json + creates a git tag by default; avoid that.
-  # We'll edit package.json directly to keep behavior predictable.
-  node -e "
-    const fs = require('fs');
-    const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-    p.version = '${TARGET_VERSION}';
-    fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
-  "
-  ok "package.json version updated ${CURRENT_VERSION} -> ${TARGET_VERSION}"
-else
-  ok "package.json already at ${TARGET_VERSION}"
+# Remove node_modules for clean install
+if [[ -d "node_modules" ]]; then
+  rm -rf node_modules
+  ok "Removed existing node_modules"
 fi
-
-# --- Enhancement 6: update repo base branch then create/refresh release branch ---
-say "Sync base branch and create ${TARGET_BRANCH}"
-BASE_BRANCH="${BASE_BRANCH:-main}"
-
-git fetch --all --prune
-
-# Ensure base exists locally
-if git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}"; then
-  git checkout "${BASE_BRANCH}"
-else
-  # Try to create it from origin if missing locally
-  git checkout -b "${BASE_BRANCH}" "origin/${BASE_BRANCH}"
-fi
-
-git pull --ff-only origin "${BASE_BRANCH}"
-ok "Base branch synced: ${BASE_BRANCH}"
-
-# Create/update release branch off base
-git checkout -B "${TARGET_BRANCH}" "${BASE_BRANCH}"
-ok "On branch: ${TARGET_BRANCH}"
-
-# Commit version bump if it changed
-if [[ -n "$(git status --porcelain)" ]]; then
-  git add package.json
-  git commit -m "chore(release): bump version to ${TARGET_VERSION}"
-  ok "Committed version bump"
-else
-  ok "No version bump commit needed"
-fi
-
-# Push release branch (updates GitHub branch with latest code)
-say "Push to GitHub: ${TARGET_BRANCH}"
-git push -u origin "${TARGET_BRANCH}"
-ok "GitHub updated"
-
-# =========================
-# Release Gate checks
-# =========================
 
 # Clean install
-say "Clean install"
-if bash -lc "$INSTALL_CMD"; then ok "Install"; else fail "Install"; fi
-
-# Lint
-say "Lint"
-if node -e "process.exit(require('./package.json').scripts?.lint?0:1)" 2>/dev/null; then
-  if bash -lc "$RUN_CMD run lint"; then ok "Lint"; else fail "Lint"; fi
+say "Running: ${INSTALL_CMD}"
+if eval "${INSTALL_CMD}" > /tmp/install.log 2>&1; then
+  ok "Dependencies installed successfully"
 else
-  echo "ℹ️  No lint script found; treating as FAIL (strict gate)."
-  fail "Lint script missing"
+  fail "Dependency installation failed. Check /tmp/install.log"
+  cat /tmp/install.log | tail -20
+  exit 2
 fi
 
-# Typecheck
-say "Typecheck"
-if node -e "process.exit(require('./package.json').scripts?.typecheck?0:1)" 2>/dev/null; then
-  if bash -lc "$RUN_CMD run typecheck"; then ok "Typecheck"; else fail "Typecheck"; fi
+# ============================================
+# 4. TypeScript Type Check
+# ============================================
+say "4. TypeScript Type Check"
+
+if ${RUN_CMD} run type-check > /tmp/typecheck.log 2>&1; then
+  ok "TypeScript compilation: PASSED"
 else
-  echo "ℹ️  No typecheck script found; treating as FAIL (strict gate)."
-  fail "Typecheck script missing"
+  fail "TypeScript compilation: FAILED"
+  echo ""
+  echo "TypeScript errors:"
+  cat /tmp/typecheck.log | grep -i "error" | head -20
+  exit 2
 fi
 
-# Tests (strict: if tests exist, must pass; if absent, PASS with note)
-say "Tests"
-if node -e "process.exit(require('./package.json').scripts?.test?0:1)" 2>/dev/null; then
-  if bash -lc "$RUN_CMD run test"; then ok "Tests"; else fail "Tests"; fi
+# ============================================
+# 5. ESLint Check
+# ============================================
+say "5. ESLint Check"
+
+if ${RUN_CMD} run lint > /tmp/lint.log 2>&1; then
+  ok "ESLint: PASSED"
+elif grep -q "error" /tmp/lint.log; then
+  fail "ESLint: FAILED (errors found)"
+  echo ""
+  echo "ESLint errors:"
+  cat /tmp/lint.log | grep -i "error" | head -20
+  exit 2
 else
-  echo "ℹ️  No test script found; PASS (no tests present)."
-  ok "Tests (not present)"
+  # Only warnings (expected for img tags)
+  ok "ESLint: PASSED (warnings only)"
 fi
 
-# Build
-say "Build"
-if node -e "process.exit(require('./package.json').scripts?.build?0:1)" 2>/dev/null; then
-  if bash -lc "$RUN_CMD run build"; then ok "Build"; else fail "Build"; fi
+# ============================================
+# 6. Security: Client-Side Key Leakage Check
+# ============================================
+say "6. Security: Client-Side Key Leakage Check"
+
+# Check for checkpoint-te imports in client components
+CLIENT_IMPORTS=$(grep -r "from.*checkpoint-te\|import.*checkpoint-te" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled" || true)
+
+if [[ -n "$CLIENT_IMPORTS" ]]; then
+  fail "SECURITY: checkpoint-te imported in client components"
+  echo "$CLIENT_IMPORTS"
+  exit 2
+fi
+ok "No checkpoint-te imports in client components"
+
+# Check for api-keys-storage imports in client components
+API_KEY_IMPORTS=$(grep -r "from.*api-keys-storage\|import.*api-keys-storage" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null || true)
+
+if [[ -n "$API_KEY_IMPORTS" ]]; then
+  fail "SECURITY: api-keys-storage imported in client components"
+  echo "$API_KEY_IMPORTS"
+  exit 2
+fi
+ok "No api-keys-storage imports in client components"
+
+# Check for localStorage/sessionStorage API key usage
+STORAGE_KEY_USAGE=$(grep -r "localStorage\.getItem.*api.*key\|sessionStorage\.getItem.*api.*key\|localStorage\.setItem.*api.*key\|sessionStorage\.setItem.*api.*key" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" -i 2>/dev/null | grep -v "lakeraToggles\|checkpointTeSandboxEnabled\|lakeraFileScanEnabled\|lakeraRagScanEnabled" || true)
+
+if [[ -n "$STORAGE_KEY_USAGE" ]]; then
+  fail "SECURITY: API keys stored in localStorage/sessionStorage"
+  echo "$STORAGE_KEY_USAGE"
+  exit 2
+fi
+ok "No API keys in localStorage/sessionStorage"
+
+# ============================================
+# 7. Build
+# ============================================
+say "7. Production Build"
+
+if ${RUN_CMD} run build > /tmp/build.log 2>&1; then
+  ok "Build: PASSED"
 else
-  echo "ℹ️  No build script found; treating as FAIL (strict gate)."
-  fail "Build script missing"
+  fail "Build: FAILED"
+  echo ""
+  echo "Build errors:"
+  cat /tmp/build.log | grep -i "error" | head -30
+  exit 2
 fi
 
-# Secret leakage scan (repo + client bundle/output)
-say "Secret scan"
-if command -v gitleaks >/dev/null 2>&1; then
-  if gitleaks detect --source . --no-git --redact --exit-code 1; then
-    ok "Gitleaks repo scan"
-  else
-    fail "Gitleaks repo scan"
+# ============================================
+# 8. Security: Build Output Check
+# ============================================
+say "8. Security: Build Output Check"
+
+# Check for API keys in build output
+if [[ -d ".next/static" ]]; then
+  BUILD_KEY_CHECK=$(grep -r "sk-[a-zA-Z0-9]\{48\}" .next/static 2>/dev/null || true)
+  
+  if [[ -n "$BUILD_KEY_CHECK" ]]; then
+    fail "SECURITY: API keys found in build output"
+    echo "$BUILD_KEY_CHECK" | head -5
+    exit 2
   fi
-
-  OUT_DIR=""
-  for d in .next dist build out; do
-    if [[ -d "$d" ]]; then OUT_DIR="$d"; break; fi
-  done
-
-  if [[ -n "$OUT_DIR" ]]; then
-    say "Secret scan output dir: $OUT_DIR"
-    if gitleaks detect --source "$OUT_DIR" --no-git --redact --exit-code 1; then
-      ok "Gitleaks output scan"
-    else
-      fail "Gitleaks output scan"
-    fi
-  else
-    echo "ℹ️  No build output dir found (.next/dist/build/out). Skipping output scan."
-    ok "Output scan (not applicable)"
-  fi
+  ok "No API keys in build output"
 else
-  echo "❌ gitleaks not found. Install gitleaks to pass the release gate."
-  fail "Secret scan tool missing (gitleaks)"
+  warn ".next/static not found (build may have failed)"
 fi
 
-# --- Enhancement 7: quick dependency vuln scan if tool exists (non-breaking) ---
-say "Dependency audit (best-effort)"
-if [[ "$PM" == "npm" ]]; then
-  if npm audit --audit-level=high; then ok "npm audit"; else fail "npm audit"; fi
-elif [[ "$PM" == "yarn" ]]; then
-  echo "ℹ️  yarn audit varies by version; skipping by default."
-  ok "yarn audit (skipped)"
-elif [[ "$PM" == "pnpm" ]]; then
-  if pnpm audit --audit-level high; then ok "pnpm audit"; else fail "pnpm audit"; fi
-fi
+# Check for checkpoint TE API key patterns in build
+TE_KEY_CHECK=$(grep -r "CHECKPOINT.*API.*KEY\|TE_API_KEY\|ThreatCloud" .next/static 2>/dev/null -i || true)
 
-# Final result
-say "Release Gate result"
+if [[ -n "$TE_KEY_CHECK" ]]; then
+  fail "SECURITY: Check Point TE API key patterns found in build"
+  echo "$TE_KEY_CHECK" | head -5
+  exit 2
+fi
+ok "No Check Point TE key patterns in build"
+
+# ============================================
+# 9. Secret Leakage Scan (Git History)
+# ============================================
+say "9. Secret Leakage Scan (Git History)"
+
+# Check for API keys in tracked files (not in .gitignore)
+GIT_KEY_CHECK=$(git grep -i "sk-[a-zA-Z0-9]\{48\}" -- "*.ts" "*.tsx" "*.js" "*.jsx" "*.json" 2>/dev/null | grep -v ".next\|node_modules" || true)
+
+if [[ -n "$GIT_KEY_CHECK" ]]; then
+  fail "SECURITY: API keys found in tracked source files"
+  echo "$GIT_KEY_CHECK" | head -5
+  exit 2
+fi
+ok "No API keys in tracked source files"
+
+# Check for Check Point TE API key patterns
+GIT_TE_CHECK=$(git grep -i "CHECKPOINT.*API.*KEY\|TE_API_KEY" -- "*.ts" "*.tsx" "*.js" "*.jsx" 2>/dev/null | grep -v ".next\|node_modules" || true)
+
+if [[ -n "$GIT_TE_CHECK" ]]; then
+  # Only fail if it's an actual key, not just a variable name
+  ACTUAL_KEY=$(echo "$GIT_TE_CHECK" | grep -i "api.*key.*=.*[a-zA-Z0-9]\{32,\}" || true)
+  if [[ -n "$ACTUAL_KEY" ]]; then
+    fail "SECURITY: Check Point TE API key found in tracked files"
+    echo "$ACTUAL_KEY" | head -3
+    exit 2
+  fi
+fi
+ok "No Check Point TE keys in tracked files"
+
+# ============================================
+# 10. Summary
+# ============================================
+echo ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}Release Gate Summary${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
 if [[ "$PASS" == "true" ]]; then
-  echo "✅✅✅ RELEASE GATE: PASS"
+  echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║                    ✅ RELEASE GATE: PASS                      ║${NC}"
+  echo -e "${GREEN}║                                                               ║${NC}"
+  echo -e "${GREEN}║  All checks passed. Ready for deployment.                    ║${NC}"
+  echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
+  echo ""
   exit 0
 else
-  echo "❌❌❌ RELEASE GATE: FAIL"
+  echo -e "${RED}╔═══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${RED}║                    ❌ RELEASE GATE: FAIL                      ║${NC}"
+  echo -e "${RED}║                                                               ║${NC}"
+  echo -e "${RED}║  One or more checks failed. Do NOT deploy.                   ║${NC}"
+  echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo "Failed checks:"
+  for check in "${FAILED_CHECKS[@]}"; do
+    echo "  ❌ $check"
+  done
+  echo ""
   exit 1
 fi

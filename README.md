@@ -271,25 +271,28 @@ Secure-Ai-Chat/
 
 ## Development
 
-### Release Gate
+### Release Gate (STRICT - Must Pass)
 
-Before deploying, run the Release Gate validation:
+Before deploying, **MUST** run the Release Gate validation:
 
 ```bash
 npm run release-gate
 ```
 
-**What it checks**:
-- ✅ Clean install
-- ✅ TypeScript type checking
-- ✅ ESLint validation (including security rules)
-- ✅ Security: API key leakage prevention
-- ✅ Production build
-- ✅ Build output security scan
+**What it checks** (ALL must pass):
+- ✅ Clean install (fresh dependencies)
+- ✅ TypeScript type checking (no errors)
+- ✅ ESLint validation (no errors, warnings OK)
+- ✅ Security: Client-side key leakage prevention
+- ✅ Security: Build output scan (no keys in bundle)
+- ✅ Security: Git history scan (no keys in tracked files)
+- ✅ Production build (must succeed)
 
-**Exit Code**: `0` = PASS (ready for deployment), `1` = FAIL (do not deploy)
+**Exit Code**: `0` = ✅ PASS (ready for deployment), `1` = ❌ FAIL (do NOT deploy)
 
-See `RELEASE.md` for detailed documentation.
+**If FAIL**: Fix all errors and re-run until all checks pass.
+
+See `RELEASE.md` for detailed documentation and Release Gate checklist.
 
 ### Smoke Tests
 

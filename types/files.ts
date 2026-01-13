@@ -12,6 +12,7 @@ export interface UploadedFile {
   scanDetails?: {
     categories?: Record<string, boolean>
     score?: number
+    threatLevel?: 'low' | 'medium' | 'high' | 'critical'
   }
   // Check Point TE specific details
   checkpointTeDetails?: {

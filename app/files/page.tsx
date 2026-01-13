@@ -215,10 +215,16 @@ export default function FilesPage() {
   }, [files])
 
   const handleFileUpload = async (newFile: UploadedFile) => {
+    // SECURITY PIPELINE: Enforce proper scan order
+    // 1. File upload
+    // 2. Malware scan (Check Point TE) - if enabled
+    // 3. Content scan (Lakera) - if enabled
+    // 4. Only then allow RAG/embedding
+    
     // Add file with pending status first
     setFiles(prev => [...prev, newFile])
 
-    // Save file to server (persistent storage)
+    // Save file to server (persistent storage) with pending status
     try {
       const response = await fetch('/api/files/store', {
         method: 'POST',
@@ -231,7 +237,7 @@ export default function FilesPage() {
           fileContent: newFile.content,
           fileType: newFile.type,
           fileSize: newFile.size,
-          scanStatus: newFile.scanStatus,
+          scanStatus: 'pending', // Start as pending until security scans complete
         }),
       })
 
@@ -245,7 +251,8 @@ export default function FilesPage() {
       // Continue with local storage even if server storage fails
     }
 
-    // If Check Point TE sandboxing is enabled, process it first
+    // STEP 1: Check Point TE Malware Scan (if enabled)
+    // This must complete before content scanning or RAG
     if (checkpointTeSandboxEnabled && checkpointTeConfigured) {
       setTimeout(() => {
         handleCheckpointTeSandbox(newFile.id)
@@ -253,38 +260,39 @@ export default function FilesPage() {
       return // Don't proceed with other scans until TE completes
     }
 
-    // If RAG scan is disabled, mark file as not scanned
-    if (!ragScanEnabled || !lakeraScanEnabled) {
-      setFiles(prev => prev.map(f => 
-        f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f
-      ))
-      // Update server metadata
-      try {
-        await fetch('/api/files/store', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileId: newFile.id,
-            fileName: newFile.name,
-            fileContent: newFile.content,
-            fileType: newFile.type,
-            fileSize: newFile.size,
-            scanStatus: 'not_scanned',
-          }),
-        })
-      } catch (error) {
-        console.error('Error updating file metadata on server:', error)
-      }
+    // STEP 2: Lakera Content Scan (if enabled)
+    // Only proceed if TE is disabled or completed successfully
+    if (lakeraScanEnabled) {
+      setTimeout(() => {
+        handleFileScan(newFile.id)
+      }, 300)
       return
     }
-    
-    // If RAG scan is enabled, auto-scan for RAG
-    // Use setTimeout to ensure state is updated before scanning
-    setTimeout(() => {
-      handleFileScan(newFile.id)
-    }, 300)
+
+    // If both scans are disabled, mark as not_scanned
+    // Files without security scans cannot be used in RAG
+    setFiles(prev => prev.map(f => 
+      f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f
+    ))
+    // Update server metadata
+    try {
+      await fetch('/api/files/store', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileId: newFile.id,
+          fileName: newFile.name,
+          fileContent: newFile.content,
+          fileType: newFile.type,
+          fileSize: newFile.size,
+          scanStatus: 'not_scanned',
+        }),
+      })
+    } catch (error) {
+      console.error('Error updating file metadata on server:', error)
+    }
   }
 
   const handleFileRemove = async (fileId: string) => {
@@ -857,7 +865,7 @@ export default function FilesPage() {
         flagged: boolean
         message?: string
         error?: string
-        details?: { categories?: Record<string, boolean>; score?: number; threatLevel?: string }
+        details?: { categories?: Record<string, boolean>; score?: number; threatLevel?: 'low' | 'medium' | 'high' | 'critical' }
         logData?: unknown
       }
       
@@ -949,11 +957,15 @@ export default function FilesPage() {
 
       setFiles(prev => prev.map(f => {
         if (f.id === fileId) {
-          const updatedFile = {
+          const updatedFile: UploadedFile = {
             ...f, 
             scanStatus: data.flagged ? 'flagged' as const : 'safe' as const,
             scanResult: data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
-            scanDetails: data.details
+            scanDetails: data.details ? {
+              categories: data.details.categories,
+              score: data.details.score,
+              threatLevel: data.details.threatLevel,
+            } : undefined,
           }
           // Update server metadata asynchronously
           updateFileMetadataOnServer(updatedFile).catch(err => 

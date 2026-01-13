@@ -24,6 +24,7 @@ export interface StoredFileMetadata {
   scanDetails?: {
     categories?: Record<string, boolean>
     score?: number
+    threatLevel?: 'low' | 'medium' | 'high' | 'critical'
   }
   checkpointTeDetails?: {
     logFields: Record<string, unknown>

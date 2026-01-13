@@ -117,9 +117,20 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
       return
     }
 
-    // Process files sequentially to avoid overwhelming the system
+    // STABILITY: Process files sequentially to avoid overwhelming the system
+    // This prevents memory bloat, event-loop blocking, and race conditions
+    // Each file is processed one at a time with proper error isolation
     for (let i = 0; i < files.length; i++) {
-      await processFile(files[i], i, files.length)
+      try {
+        await processFile(files[i], i, files.length)
+        // Small delay between files to prevent overwhelming the event loop
+        if (i < files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      } catch (err) {
+        // Error already handled in processFile, continue with next file
+        console.error(`Failed to process file ${i + 1}/${files.length}:`, err)
+      }
     }
 
     setIsProcessing(false)

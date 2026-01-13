@@ -15,11 +15,29 @@ All notable changes to this project will be documented in this file.
   - Supports CSV, JSON, and text files
   - Smart content matching and excerpt generation for large files
   - Controlled by "RAG Scan" toggle on Files page
+- **GPT-5.x Support**: Full support for GPT-5.x models with automatic API migration
+  - Model-agnostic adapter (`lib/aiAdapter.ts`) for unified LLM calls
+  - Automatic API selection (Responses API for GPT-5.x, Chat Completions for GPT-4)
+  - Message normalization (messages[] to single input for GPT-5.x)
+  - Token parameter conversion (`max_tokens` to `max_completion_tokens`)
+  - Runtime auto-fallback (GPT-5.2 → GPT-5.1 → GPT-4o)
+- **Release Gate System**: Comprehensive pre-deployment validation
+  - Strict PASS/FAIL checklist for all deployments
+  - Automated release gate script (`npm run release-gate`)
+  - Single copy/paste release command pack
+  - Security scans (client-side key leakage, build output, git history)
+  - Complete command documentation in RELEASE.md
 - **Security Verification Script**: Automated script to verify key security (`npm run verify-security`)
   - Checks .gitignore configuration
   - Verifies no keys in git repository
   - Validates file permissions
   - Scans for hardcoded API keys
+- **Installation Validation Script**: Comprehensive installation validation (`scripts/validate-installation.sh`)
+  - Build & type check validation
+  - Key storage configuration verification
+  - Persistent storage validation
+  - Application server status checks
+  - API key storage & retrieval verification
 
 ### Fixed
 - **File Scanning Error**: Fixed "Failed to execute 'json' on 'Response'" error for large files
@@ -36,6 +54,8 @@ All notable changes to this project will be documented in this file.
 - **Webpack Chunk Errors**: Fixed "Cannot find module" errors
   - Proper cache clearing and rebuild process
   - Fresh dev server startup
+- **TypeScript Errors**: All type errors resolved
+- **ESLint Errors**: All critical errors fixed (only expected warnings remain)
 
 ### Improved
 - **Key Deletion**: Enhanced with proper server-side cache invalidation
@@ -43,11 +63,29 @@ All notable changes to this project will be documented in this file.
 - **System Prompt**: Updated to allow data queries from uploaded files
 - **Error Handling**: Enhanced error messages and recovery
 - **Documentation**: Comprehensive security and upgrade documentation
+- **File Upload Stability**: Enhanced concurrency control with error isolation
+  - Sequential file processing to prevent event loop blocking
+  - 100ms delay between files to prevent overwhelming system
+  - Proper error isolation (one failure doesn't block others)
+- **Logging Security**: Authorization header and API key redaction in system logs
+  - Automatic redaction of Authorization headers (first 30 chars only)
+  - API key pattern redaction in request/response bodies
+  - Header redaction for any header containing "api-key" or "apikey"
 
 ### Security
 - **Key Security Verification**: Confirmed all API keys excluded from git
 - **Persistence Verification**: Confirmed keys persist across restarts and upgrades
 - **File Permissions**: Verified correct permissions (700/600) on storage files
+- **Client-Side Key Leakage Prevention**: 
+  - ESLint rule blocks `checkpoint-te` and `api-keys-storage` imports in client components
+  - Check Point TE API key never reaches client (server-side only)
+  - `checkpointTeKey` state cleared immediately after save (never persisted)
+  - All TE operations use server-side API routes (`/api/te/*`)
+- **Release Gate Security Scans**: Automated security checks in release gate
+  - Client-side key leakage detection
+  - Build output scan for API keys
+  - Git history scan for secrets
+  - Hard-gate failure on any security violation
 
 ## [1.0.6] - 2026-01-12
 

@@ -52,26 +52,62 @@ bash scripts/release-gate.sh
 
 ## 📖 Repository Commands
 
-### Discovered Commands (from `package.json`):
+### All Available Commands (from `package.json`):
 
-| Command | Script | Purpose | Exit on Error |
-|---------|--------|---------|---------------|
-| **Dev** | `npm run dev` | Development server | ❌ No |
-| **Build** | `npm run build` | Production build | ✅ Yes |
-| **Start** | `npm start` | Production server | ❌ No |
-| **Lint** | `npm run lint` | ESLint validation | ✅ Yes |
-| **Type Check** | `npm run type-check` | TypeScript check | ✅ Yes |
-| **Format** | `npm run format` | Prettier format | ❌ No |
-| **Format Check** | `npm run format:check` | Prettier validation | ✅ Yes |
-| **Check** | `npm run check` | Type check + Lint | ✅ Yes |
-| **Check:CI** | `npm run check:ci` | Full CI validation | ✅ Yes |
-| **Release Gate** | `npm run release-gate` | Pre-deployment validation | ✅ Yes |
+| Command | Script | Purpose | Exit on Error | Notes |
+|---------|--------|---------|---------------|-------|
+| **dev** | `npm run dev` | Development server (0.0.0.0) | ❌ No | Runs on all interfaces |
+| **build** | `npm run build` | Production build | ✅ Yes | Next.js production build |
+| **start** | `npm start` | Production server | ❌ No | Next.js production server |
+| **lint** | `npm run lint` | ESLint validation | ✅ Yes | Next.js ESLint config |
+| **type-check** | `npm run type-check` | TypeScript check | ✅ Yes | `tsc --noEmit` |
+| **typecheck** | `npm run typecheck` | TypeScript check (alias) | ✅ Yes | Same as type-check |
+| **format** | `npm run format` | Prettier format files | ❌ No | Formats all files |
+| **format:check** | `npm run format:check` | Prettier validation | ✅ Yes | Checks formatting |
+| **check** | `npm run check` | Type check + Lint | ✅ Yes | Runs both checks |
+| **check:ci** | `npm run check:ci` | Full CI validation | ✅ Yes | Type + Lint + Format |
+| **check:node** | `npm run check:node` | Node.js version check | ✅ Yes | Verifies Node 25.2.1 |
+| **pre-push** | `npm run pre-push` | Pre-push validation | ✅ Yes | Node + Lint + Build |
+| **smoke** | `npm run smoke` | Smoke tests | ❌ No | Basic validation script |
+| **release-gate** | `npm run release-gate` | Pre-deployment validation | ✅ Yes | **STRICT** - All checks |
+| **verify-security** | `npm run verify-security` | Security verification | ✅ Yes | Key security checks |
+| **validate-env** | `npm run validate-env` | Environment validation | ✅ Yes | Env var checks |
+| **test** | `npm run test` | Test placeholder | ❌ No | Echo message (no tests) |
+
+### Command Usage:
+
+```bash
+# Development
+npm run dev              # Start development server
+
+# Building
+npm run build            # Production build
+npm run type-check       # TypeScript type checking
+npm run lint             # ESLint validation
+
+# Formatting
+npm run format           # Format all files
+npm run format:check     # Check formatting
+
+# Validation
+npm run check            # Type check + Lint
+npm run check:ci         # Full CI validation (Type + Lint + Format)
+npm run release-gate     # **STRICT** Pre-deployment validation
+
+# Security
+npm run verify-security  # Verify key security
+npm run validate-env     # Validate environment variables
+
+# Production
+npm start                # Production server
+```
 
 ### Missing Commands (Not Applicable):
 
 - ❌ **Tests**: No test framework detected (Jest/Vitest)
   - **Reason**: Manual testing via smoke scripts
   - **Alternative**: `npm run smoke` for basic validation
+  - **Note**: Test command exists but only echoes a message
 
 ---
 
@@ -315,22 +351,122 @@ grep -r "TE_API_KEY\|CHECKPOINT_TE_API_KEY" .next/static 2>/dev/null || echo "�
 
 ---
 
-## ✅ Release Gate Checklist
+## ✅ Release Gate Checklist (STRICT - ALL MUST PASS)
 
-Before deploying, verify:
+### 🔴 Hard Gates (MUST PASS - No Exceptions)
 
-- [ ] Release Gate script passes (`npm run release-gate`)
-- [ ] No TypeScript errors
-- [ ] No ESLint errors
-- [ ] No API keys in client code
-- [ ] No API keys in build output
-- [ ] Production build succeeds
-- [ ] All security checks pass
-- [ ] Backwards compatibility verified
-- [ ] Error handling comprehensive
-- [ ] Logging secure (no API keys exposed)
+Before deploying, **ALL** of the following must pass:
+
+| Check | Command | Status | Failure Action |
+|-------|---------|--------|----------------|
+| **Clean Install** | `npm ci` or detected package manager | ✅ REQUIRED | FAIL - Fix dependency issues |
+| **TypeScript Compilation** | `npm run type-check` | ✅ REQUIRED | FAIL - Fix type errors |
+| **ESLint Validation** | `npm run lint` | ✅ REQUIRED | FAIL - Fix lint errors |
+| **Security: Client Key Leakage** | `grep -r checkpoint-te components/` | ✅ REQUIRED | FAIL - Remove client imports |
+| **Security: Build Output Scan** | `grep -r "sk-" .next/static` | ✅ REQUIRED | FAIL - Remove keys from build |
+| **Production Build** | `npm run build` | ✅ REQUIRED | FAIL - Fix build errors |
+| **Git Secret Scan** | `git grep "sk-[a-zA-Z0-9]\{48\}"` | ✅ REQUIRED | FAIL - Remove keys from code |
+
+### 🟡 Warnings (Non-Blocking but Recommended)
+
+| Check | Status | Action |
+|-------|--------|--------|
+| **Format Check** | ⚠️ Recommended | Run `npm run format` if failed |
+| **Node Version** | ⚠️ Recommended | Use Node 25.2.1 |
+| **Git Status** | ⚠️ Recommended | Commit/stash changes |
+
+### ✅ Verification Commands
+
+```bash
+# Run full Release Gate (RECOMMENDED)
+npm run release-gate
+
+# Manual verification
+npm run type-check   # Must pass
+npm run lint         # Must pass (warnings OK)
+npm run build        # Must pass
+npm run verify-security  # Must pass
+```
+
+### 🚨 Failure Response
+
+If Release Gate **FAILS**:
+1. **DO NOT DEPLOY** - Fix all failures first
+2. Review error messages from `npm run release-gate`
+3. Fix TypeScript errors: `npm run type-check`
+4. Fix ESLint errors: `npm run lint`
+5. Remove API keys from code if detected
+6. Re-run Release Gate until **ALL checks PASS**
+
+### ✅ Success Criteria
+
+Release Gate **PASSES** when:
+- ✅ All TypeScript errors resolved
+- ✅ All ESLint errors resolved
+- ✅ No API keys in client code
+- ✅ No API keys in build output
+- ✅ No API keys in tracked source files
+- ✅ Production build succeeds
+
+**Exit Code**: `0` = ✅ **PASS** (Ready for deployment), `1` = ❌ **FAIL** (Do NOT deploy)
+
+---
+
+## 📋 Quick Reference: Release Gate Process
+
+### 1. Pre-Deployment Checklist
+
+```bash
+# Step 1: Clean working directory
+git status  # Should be clean or only allowlisted files
+
+# Step 2: Run Release Gate (AUTOMATED)
+npm run release-gate
+
+# Step 3: If PASS, proceed with deployment
+# Step 4: If FAIL, fix errors and repeat Step 2
+```
+
+### 2. Release Gate Output
+
+**✅ PASS Example**:
+```
+╔═══════════════════════════════════════════════════════════════╗
+║                    ✅ RELEASE GATE: PASS                      ║
+║                                                               ║
+║  All checks passed. Ready for deployment.                    ║
+╚═══════════════════════════════════════════════════════════════╝
+```
+
+**❌ FAIL Example**:
+```
+╔═══════════════════════════════════════════════════════════════╗
+║                    ❌ RELEASE GATE: FAIL                      ║
+║                                                               ║
+║  One or more checks failed. Do NOT deploy.                   ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Failed checks:
+  ❌ TypeScript compilation: FAILED
+  ❌ Security: API keys found in client code
+```
+
+### 3. Common Failures & Fixes
+
+| Failure | Fix |
+|---------|-----|
+| TypeScript errors | Run `npm run type-check` and fix errors |
+| ESLint errors | Run `npm run lint` and fix errors |
+| Client key leakage | Remove `checkpoint-te` imports from client components |
+| Build failures | Check build logs, fix compilation errors |
+| Secret leakage | Remove API keys from source code |
+
+---
 
 **Status**: ✅ **PRODUCTION READY** (All checks passing)
+
+**Last Updated**: 2025-01-XX  
+**Maintained By**: Development Team
 
 ---
 

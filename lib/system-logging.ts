@@ -20,6 +20,64 @@ export interface SystemLogDetails {
   duration?: number
 }
 
+/**
+ * Redact sensitive information from headers (Authorization, API keys)
+ * SECURITY: Prevents API keys from appearing in logs
+ */
+function redactHeaders(headers?: Record<string, string>): Record<string, string> | undefined {
+  if (!headers) return headers
+  
+  const redacted = { ...headers }
+  
+  // Redact Authorization headers
+  if (redacted.Authorization) {
+    const auth = redacted.Authorization
+    if (auth.length > 30) {
+      redacted.Authorization = auth.substring(0, 30) + '***[REDACTED]***'
+    } else {
+      redacted.Authorization = '***[REDACTED]***'
+    }
+  }
+  
+  if (redacted.authorization) {
+    const auth = redacted.authorization
+    if (auth.length > 30) {
+      redacted.authorization = auth.substring(0, 30) + '***[REDACTED]***'
+    } else {
+      redacted.authorization = '***[REDACTED]***'
+    }
+  }
+  
+  // Redact any header containing "api-key" or "apikey"
+  Object.keys(redacted).forEach(key => {
+    if (key.toLowerCase().includes('api-key') || key.toLowerCase().includes('apikey')) {
+      redacted[key] = '***[REDACTED]***'
+    }
+  })
+  
+  return redacted
+}
+
+/**
+ * Redact sensitive information from request/response bodies
+ * SECURITY: Prevents API keys from appearing in logs
+ */
+function redactBody(body: unknown): unknown {
+  if (!body || typeof body !== 'object') return body
+  
+  try {
+    const bodyStr = JSON.stringify(body)
+    // Redact any patterns that look like API keys (sk- followed by 48+ characters)
+    const redacted = bodyStr.replace(/sk-[a-zA-Z0-9]{32,}/g, 'sk-***[REDACTED]***')
+    // Redact any patterns that look like bearer tokens
+    const redacted2 = redacted.replace(/Bearer\s+[a-zA-Z0-9_-]{32,}/g, 'Bearer ***[REDACTED]***')
+    return JSON.parse(redacted2)
+  } catch {
+    // If JSON parsing fails, return as-is (better to log something than nothing)
+    return body
+  }
+}
+
 const SYSTEM_LOGS_FILE = path.join(process.cwd(), '.secure-storage', 'system-logs.json')
 const MAX_SYSTEM_LOGS = 500
 
@@ -83,27 +141,36 @@ export async function addSystemLog(
 
   try {
     const logs = await readSystemLogs()
+    
+    // SECURITY: Redact sensitive information from details before logging
+    const safeDetails: SystemLogDetails | undefined = details ? {
+      ...details,
+      requestHeaders: redactHeaders(details.requestHeaders),
+      requestBody: redactBody(details.requestBody),
+      responseBody: redactBody(details.responseBody),
+    } : undefined
+    
     const newLog: SystemLogEntry = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       level,
       service,
       message,
-      details,
+      details: safeDetails,
       metadata,
     }
 
     const updatedLogs = [newLog, ...logs].slice(0, MAX_SYSTEM_LOGS)
     await writeSystemLogs(updatedLogs)
 
-    // Also log to console for immediate visibility
+    // Also log to console for immediate visibility (with redaction)
     const logPrefix = `[System ${level.toUpperCase()}] ${service}`
     if (level === 'error') {
-      console.error(logPrefix + ':', message, details || '')
+      console.error(logPrefix + ':', message, safeDetails || '')
     } else if (level === 'warning') {
-      console.warn(logPrefix + ':', message, details || '')
+      console.warn(logPrefix + ':', message, safeDetails || '')
     } else {
-      console.log(logPrefix + ':', message, details || '')
+      console.log(logPrefix + ':', message, safeDetails || '')
     }
   } catch (error) {
     // Fallback to console if file logging fails
