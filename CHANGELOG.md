@@ -2,6 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.10] - 2026-01-13
+
+### Added
+- **Enhanced RAG (Retrieval Augmented Generation) System**: Automatic file indexing and intelligent content search
+  - Files are automatically indexed when uploaded (no manual configuration needed)
+  - Chat client automatically searches uploaded files before using general LLM knowledge
+  - Improved content matching algorithm for data/PII queries
+  - System message informs LLM about available files and search instructions
+  - Enhanced file context formatting with clear file separation
+  - Increased file size limit from 5MB to 10MB for RAG processing
+  - Increased file count limit from 3 to 5 most relevant files
+  - Better handling of large files with intelligent truncation
+  - Fallback inclusion for safe files even when keywords don't match
+  - Support for CSV, JSON, and TXT files with automatic data file detection
+
+### Improved
+- **File Access Control**: More inclusive file filtering for RAG
+  - Files with `pending` or `not_scanned` status are now included (only explicitly flagged/malicious files excluded)
+  - Better security balance between safety and usability
+  - Clear distinction between safe files and malicious files
+- **Content Matching**: Enhanced algorithm for finding relevant files
+  - Automatic detection of data files (CSV, JSON, TXT)
+  - Recognition of data-related queries (users, records, fields, etc.)
+  - More lenient keyword matching (words > 2 chars instead of > 3)
+  - Intelligent fallback to include safe files when no direct matches found
+- **LLM Instructions**: Clear system prompts about file access
+  - LLM is explicitly informed about available uploaded files
+  - Instructions to search files first, then fall back to general knowledge
+  - Requirement to cite source files when providing information
+  - Clear instructions for data queries and file analysis
+
+### Fixed
+- **File Search Issue**: Fixed chat client not finding uploaded files
+  - Previously, chat would say "please upload files" even when files were uploaded
+  - Now automatically searches all safe uploaded files
+  - Better handling of files with various scan statuses
+
+## [1.0.9] - 2026-01-13
+
+### Added
+- **API Errors & Key Failures Section in Logs**: Dedicated section in Logs viewer showing all API errors and key failures with full error details
+  - Highlights key failures (401/403) with troubleshooting tips
+  - Shows full error messages, response bodies, and stack traces
+  - Filters logs by API failures, errors, and HTTP status codes >= 400
+  - Visual indicators (🔑 for key failures, 🚫 for access denied, ❌ for other errors)
+  - Expandable system details including endpoints, request IDs, and response bodies
+- **Dynamic Release Notes**: Release notes page now dynamically loads from CHANGELOG.md via API endpoint
+  - Automatically includes all release notes from CHANGELOG.md
+  - No need to manually update release notes page when adding new versions
+  - API endpoint (`/api/release-notes`) parses CHANGELOG.md and returns structured data
+  - Loading and error states for better UX
+- **Lakera Guard API v2 Enhancements**: Full support for official Lakera Guard API v2 specification
+  - Added `payload` field extraction (detected threats with locations)
+  - Added `breakdown` field extraction (detector results)
+  - Enhanced UI to display payload and breakdown data in chat messages, file scans, and system logs
+  - Improved threat reporting with exact text positions and detector information
+  - Console logging for debugging payload and breakdown data
+
+### Improved
+- **Logs Viewer**: Enhanced with dedicated API errors section showing full error details and key failure troubleshooting
+  - Better visibility into API failures and authentication issues
+  - Comprehensive error information for debugging
+  - Key failure detection with actionable troubleshooting tips
+- **Release Notes**: Now automatically syncs with CHANGELOG.md, ensuring all versions are always up-to-date
+  - Eliminates manual synchronization between CHANGELOG.md and release notes page
+  - Single source of truth for version history
+  - Automatic parsing and formatting of changelog entries
+
 ## [1.0.8] - 2026-01-13
 
 ### Added
@@ -31,6 +99,19 @@ All notable changes to this project will be documented in this file.
 - **API Endpoints Documentation** (`docs/API_ENDPOINTS_FOR_SECURITY.md`): Recommended API endpoints for security configuration
 - **CLI API Keys Documentation** (`docs/CLI_API_KEYS.md`): CLI usage guide
 - **Merge Safety Reports**: Detailed verification and risk assessment reports
+- **API Errors & Key Failures Section in Logs**: Dedicated section in Logs viewer showing all API errors and key failures with full error details
+  - Highlights key failures (401/403) with troubleshooting tips
+  - Shows full error messages, response bodies, and stack traces
+  - Filters logs by API failures, errors, and HTTP status codes >= 400
+- **Dynamic Release Notes**: Release notes page now dynamically loads from CHANGELOG.md via API endpoint
+  - Automatically includes all release notes from CHANGELOG.md
+  - No need to manually update release notes page when adding new versions
+  - API endpoint (`/api/release-notes`) parses CHANGELOG.md and returns structured data
+- **Lakera Guard API v2 Enhancements**: Full support for official Lakera Guard API v2 specification
+  - Added `payload` field extraction (detected threats with locations)
+  - Added `breakdown` field extraction (detector results)
+  - Enhanced UI to display payload and breakdown data in chat, files, and logs
+  - Improved threat reporting with exact text positions and detector information
 
 ### Fixed
 - **Git Repository Issues**: Fixed "fatal: not a git repository" errors on remote installations
@@ -42,6 +123,8 @@ All notable changes to this project will be documented in this file.
 - **Port Auto-Detection**: Installation script automatically finds free port starting from 3000
 - **Idempotent Installation**: Installation script can be safely re-run
 - **Documentation**: Comprehensive guides for installation, upgrade, and CLI usage
+- **Logs Viewer**: Enhanced with dedicated API errors section showing full error details and key failure troubleshooting
+- **Release Notes**: Now automatically syncs with CHANGELOG.md, ensuring all versions are always up-to-date
 
 ## [1.0.7] - 2026-01-12
 

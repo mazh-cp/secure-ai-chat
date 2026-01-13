@@ -24,6 +24,24 @@ export interface LogEntry {
     categories?: Record<string, boolean>
     scores?: Record<string, number>
     message?: string
+    // Official payload data (detected threats with locations)
+    payload?: Array<{
+      start: number
+      end: number
+      text: string
+      detector_type: string
+      labels: string[]
+      message_id: number
+    }>
+    // Official breakdown data (detector results)
+    breakdown?: Array<{
+      project_id: string
+      policy_id: string
+      detector_id: string
+      detector_type: string
+      detected: boolean
+      message_id: number
+    }>
   }
   checkpointTeDecision?: {
     scanned: boolean

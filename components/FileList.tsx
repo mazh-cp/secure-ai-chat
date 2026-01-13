@@ -328,18 +328,80 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
                 </div>
               )}
               
-              {/* Legacy scan details (for Lakera or other scanners) */}
-              {file.scanDetails && file.scanDetails.categories && Object.keys(file.scanDetails.categories).length > 0 && (
-                <div className="mt-2 pt-2 border-t border-white/10">
-                  <p className="text-theme-subtle text-xs font-medium mb-1">Additional Security Issues:</p>
-                  <ul className="text-theme-subtle text-xs space-y-1">
-                  {Object.entries(file.scanDetails.categories)
-                    .filter(([, value]) => value)
-                    .map(([key]) => (
-                      <li key={key}>• {key.replace(/_/g, ' ')}</li>
-                    ))}
-                </ul>
-                </div>
+              {/* Lakera Guard Scan Details */}
+              {file.scanDetails && (
+                <>
+                  {file.scanDetails.categories && Object.keys(file.scanDetails.categories).length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-white/10">
+                      <p className="text-theme-subtle text-xs font-medium mb-1">Security Categories:</p>
+                      <ul className="text-theme-subtle text-xs space-y-1">
+                        {Object.entries(file.scanDetails.categories)
+                          .filter(([, value]) => value)
+                          .map(([key]) => (
+                            <li key={key}>• {key.replace(/_/g, ' ')}</li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Payload Data - Detected Threats with Locations */}
+                  {file.scanDetails.payload && file.scanDetails.payload.length > 0 && (
+                    <div className="mt-3 p-2 glass-card rounded-lg border-yellow-400/30">
+                      <p className="text-xs text-yellow-300 font-medium mb-2">
+                        Detected Threats ({file.scanDetails.payload.length}):
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {file.scanDetails.payload.map((item, idx) => (
+                          <div key={idx} className="text-xs bg-yellow-900/10 p-2 rounded border border-yellow-400/20">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <span className="font-medium text-yellow-200">{item.detector_type}</span>
+                              <span className="text-theme-subtle">Pos: {item.start}-{item.end}</span>
+                            </div>
+                            <div className="mt-1 text-theme-muted italic text-xs">
+                              &quot;{item.text.length > 80 ? item.text.substring(0, 80) + '...' : item.text}&quot;
+                            </div>
+                            {item.labels && item.labels.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {item.labels.map((label, labelIdx) => (
+                                  <span key={labelIdx} className="px-1.5 py-0.5 bg-yellow-800/20 rounded text-xs text-yellow-200">
+                                    {label}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Breakdown Data - Detector Results */}
+                  {file.scanDetails.breakdown && file.scanDetails.breakdown.length > 0 && (
+                    <div className="mt-3 p-2 glass-card rounded-lg border-blue-400/30">
+                      <p className="text-xs text-blue-300 font-medium mb-2">
+                        Detector Breakdown ({file.scanDetails.breakdown.filter(d => d.detected).length}/{file.scanDetails.breakdown.length} detected):
+                      </p>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {file.scanDetails.breakdown.map((detector, idx) => (
+                          <div key={idx} className={`text-xs p-1.5 rounded flex items-center justify-between ${
+                            detector.detected ? 'bg-red-900/20 border border-red-400/30' : 'bg-green-900/10 border border-green-400/20'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              <span className={detector.detected ? 'text-red-300' : 'text-green-300'}>
+                                {detector.detected ? '⚠️' : '✓'}
+                              </span>
+                              <span className="font-medium text-theme">{detector.detector_type}</span>
+                              <span className="text-theme-subtle text-xs">({detector.detector_id})</span>
+                            </div>
+                            {detector.detected && (
+                              <span className="text-xs text-red-300 font-medium">DETECTED</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

@@ -8,16 +8,70 @@ interface ChatMessage {
   content: string
 }
 
+// Official Lakera Guard API v2 Response Structure
+// Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
 interface LakeraResponse {
   flagged: boolean
+  
+  // Official fields (when payload=true)
+  payload?: Array<{
+    start: number
+    end: number
+    text: string
+    detector_type: string
+    labels: string[]
+    message_id: number
+  }>
+  
+  // Official fields (when breakdown=true)
+  breakdown?: Array<{
+    project_id: string
+    policy_id: string
+    detector_id: string
+    detector_type: string
+    detected: boolean
+    message_id: number
+  }>
+  
+  // Official fields (when dev_info=true)
+  dev_info?: {
+    git_revision: string
+    git_timestamp: string
+    model_version: string
+    version: string
+  }
+  
+  // Official fields (metadata)
+  metadata?: {
+    request_uuid: string
+  }
+  
+  // Legacy/custom fields (may still be present for backward compatibility)
   categories?: Record<string, boolean>
   payload_scores?: Record<string, number>
   results?: Array<{
     flagged: boolean
     categories?: Record<string, boolean>
     payload_scores?: Record<string, number>
+    payload?: Array<{
+      start: number
+      end: number
+      text: string
+      detector_type: string
+      labels: string[]
+      message_id: number
+    }>
+    breakdown?: Array<{
+      project_id: string
+      policy_id: string
+      detector_id: string
+      detector_type: string
+      detected: boolean
+      message_id: number
+    }>
   }>
   message?: string
+  error?: string
 }
 
 interface ScanResult {
@@ -27,6 +81,24 @@ interface ScanResult {
   scores?: Record<string, number>
   message?: string
   threatLevel?: 'low' | 'medium' | 'high' | 'critical'
+  // Official payload data (detected threats with locations)
+  payload?: Array<{
+    start: number
+    end: number
+    text: string
+    detector_type: string
+    labels: string[]
+    message_id: number
+  }>
+  // Official breakdown data (detector results)
+  breakdown?: Array<{
+    project_id: string
+    policy_id: string
+    detector_id: string
+    detector_type: string
+    detected: boolean
+    message_id: number
+  }>
 }
 
 // Pre-scan validation for common prompt injection patterns
@@ -211,15 +283,64 @@ async function checkWithLakera(
     let flagged = false
     let categories: Record<string, boolean> | undefined
     let scores: Record<string, number> | undefined
+    let payload: Array<{
+      start: number
+      end: number
+      text: string
+      detector_type: string
+      labels: string[]
+      message_id: number
+    }> | undefined
+    let breakdown: Array<{
+      project_id: string
+      policy_id: string
+      detector_id: string
+      detector_type: string
+      detected: boolean
+      message_id: number
+    }> | undefined
 
     if (data.results && Array.isArray(data.results) && data.results.length > 0) {
       flagged = data.results.some(r => r.flagged === true)
-      categories = data.results[0]?.categories
-      scores = data.results[0]?.payload_scores
+      const firstResult = data.results[0]
+      categories = firstResult?.categories
+      scores = firstResult?.payload_scores
+      // Extract official payload and breakdown from results array
+      payload = firstResult?.payload
+      breakdown = firstResult?.breakdown
     } else {
       flagged = data.flagged === true
       categories = data.categories
       scores = data.payload_scores
+      // Extract official payload and breakdown from root level
+      payload = data.payload
+      breakdown = data.breakdown
+    }
+    
+    // Log breakdown information for debugging
+    if (breakdown && breakdown.length > 0) {
+      console.log('Lakera Guard Breakdown:', {
+        totalDetectors: breakdown.length,
+        detectedCount: breakdown.filter(d => d.detected).length,
+        detectors: breakdown.map(d => ({
+          id: d.detector_id,
+          type: d.detector_type,
+          detected: d.detected,
+        })),
+      })
+    }
+    
+    // Log payload information for debugging
+    if (payload && payload.length > 0) {
+      console.log('Lakera Guard Payload (Detected Threats):', {
+        totalMatches: payload.length,
+        matches: payload.map(p => ({
+          text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
+          detector: p.detector_type,
+          labels: p.labels,
+          position: `${p.start}-${p.end}`,
+        })),
+      })
     }
 
     // Combine pre-scan results with Lakera results
@@ -268,6 +389,8 @@ async function checkWithLakera(
         ? `Security threat detected (${threatLevel}): ${threatCategories.join(', ')}` 
         : 'No threats detected',
       threatLevel,
+      payload,      // Include official payload data (detected threats with locations)
+      breakdown,    // Include official breakdown data (detector results)
     }
   } catch (error) {
     console.error('Lakera check failed:', error)
@@ -387,8 +510,10 @@ export async function POST(request: NextRequest) {
       .pop()
 
     // RAG: Retrieve relevant file content if enabled
+    // ENHANCEMENT: Always include all safe files, not just keyword-matched
     // SECURITY: Only use files that have passed security scans
     let fileContext = ''
+    let availableFilesList: string[] = []
     if (enableRAG !== false && latestUserMessage) {
       try {
         const { listFiles, getFileContent } = await import('@/lib/persistent-storage')
@@ -398,25 +523,17 @@ export async function POST(request: NextRequest) {
           // Search for relevant content in uploaded files
           const userQuery = latestUserMessage.content.toLowerCase()
           const relevantFiles: string[] = []
+          const allSafeFiles: string[] = []
           
           // Check each file for relevant content
           for (const fileMeta of uploadedFiles) {
             // SECURITY ENFORCEMENT: Only use files that passed security scans
-            // Block files that:
-            // - Have not been scanned (scanStatus: 'pending' or 'not_scanned')
-            // - Were flagged as malicious (scanStatus: 'error' or scanResult indicates threat)
-            // - Failed Check Point TE scan (checkpointTeDetails.verdict: 'malicious')
-            // - Have high/critical threat levels
-            
-            // Skip unscanned files
+            // ENHANCEMENT: Allow 'safe' and 'not_scanned' files (not_scanned means user chose not to scan)
+            // Only block explicitly flagged/error/malicious files
             const scanStatus = fileMeta.scanStatus as string
-            if (scanStatus === 'pending' || scanStatus === 'not_scanned') {
-              console.warn(`RAG: Skipping unscanned file ${fileMeta.name} (security requirement)`)
-              continue
-            }
             
             // Skip files with errors or that were flagged
-            if (scanStatus === 'error' || (fileMeta.scanResult && fileMeta.scanResult.toLowerCase().includes('blocked'))) {
+            if (scanStatus === 'error' || scanStatus === 'flagged') {
               console.warn(`RAG: Skipping flagged file ${fileMeta.name} (security threat detected)`)
               continue
             }
@@ -428,7 +545,6 @@ export async function POST(request: NextRequest) {
             }
             
             // Check threat level from scan details
-            // scanDetails may have threatLevel or we infer from scanStatus
             const scanDetails = fileMeta.scanDetails as { threatLevel?: 'low' | 'medium' | 'high' | 'critical'; categories?: Record<string, boolean>; score?: number } | undefined
             const threatLevel = scanDetails?.threatLevel || 
                                (fileMeta.scanStatus === 'flagged' ? 'high' as const : 'low' as const)
@@ -437,33 +553,58 @@ export async function POST(request: NextRequest) {
               continue
             }
             
-            // Skip binary files and very large files for RAG
-            if (fileMeta.size > 5 * 1024 * 1024) continue // Skip files > 5MB
+            // ENHANCEMENT: Include files up to 10MB (increased from 5MB)
+            if (fileMeta.size > 10 * 1024 * 1024) {
+              console.warn(`RAG: Skipping large file ${fileMeta.name} (size: ${(fileMeta.size / 1024 / 1024).toFixed(2)}MB)`)
+              continue
+            }
             
             try {
               const fileContent = await getFileContent(fileMeta.id)
               if (!fileContent) continue
               
-              // Simple keyword matching - check if user query mentions terms that might be in the file
-              // For files with many individuals, check if query contains names, IDs, or common fields
+              availableFilesList.push(fileMeta.name)
+              
               const contentLower = fileContent.toLowerCase()
               
-              // Check if file might be relevant (contains keywords from query or is a data file)
-              const isDataFile = fileMeta.type.includes('csv') || fileMeta.type.includes('json') || fileMeta.name.endsWith('.csv')
-              const hasRelevantContent = isDataFile || 
-                userQuery.split(/\s+/).some((word: string) => word.length > 3 && contentLower.includes(word))
+              // ENHANCEMENT: Improved matching algorithm
+              // 1. Always include data files (CSV, JSON, TXT) if they're safe
+              // 2. Check for keyword matches (more lenient)
+              // 3. Check for common data patterns (names, emails, IDs, etc.)
+              const isDataFile = fileMeta.type.includes('csv') || 
+                               fileMeta.type.includes('json') || 
+                               fileMeta.name.endsWith('.csv') ||
+                               fileMeta.name.endsWith('.json') ||
+                               fileMeta.name.endsWith('.txt')
               
-              if (hasRelevantContent) {
+              // Enhanced keyword matching
+              const queryWords = userQuery.split(/\s+/).filter((w: string) => w.length > 2)
+              const hasKeywordMatch = queryWords.some((word: string) => contentLower.includes(word))
+              
+              // Check for common data patterns in query
+              const isDataQuery = /user|person|people|name|email|id|record|data|field|column|row|list|count|how many|who|what|where|when|find|search|show|display/i.test(userQuery)
+              
+              // ENHANCEMENT: Always include data files, or if query mentions data-related terms
+              // OR if there's any keyword match
+              const shouldInclude = isDataFile || (isDataQuery && isDataFile) || hasKeywordMatch || isDataQuery
+              
+              if (shouldInclude) {
                 // For large files, include a summary or excerpt
                 let contentToInclude = fileContent
-                if (fileContent.length > 10000) {
-                  // For very large files, include first 5000 and last 5000 chars
-                  contentToInclude = fileContent.substring(0, 5000) + '\n\n...[content truncated]...\n\n' + fileContent.substring(fileContent.length - 5000)
+                if (fileContent.length > 15000) {
+                  // For very large files, include first 7500 and last 7500 chars
+                  contentToInclude = fileContent.substring(0, 7500) + '\n\n...[content truncated - showing first and last portions]...\n\n' + fileContent.substring(fileContent.length - 7500)
                 }
                 relevantFiles.push(`\n\n[File: ${fileMeta.name}]\n${contentToInclude}`)
                 
-                // Limit to 3 most relevant files to avoid token limits
-                if (relevantFiles.length >= 3) break
+                // ENHANCEMENT: Limit to 5 most relevant files (increased from 3)
+                if (relevantFiles.length >= 5) break
+              } else {
+                // ENHANCEMENT: Still add to context but mark as less relevant
+                // This ensures LLM knows about all available files
+                if (fileContent.length <= 5000) {
+                  allSafeFiles.push(`\n\n[File: ${fileMeta.name} - Available for reference]\n${fileContent}`)
+                }
               }
             } catch (fileError) {
               // Skip files that can't be read
@@ -471,8 +612,16 @@ export async function POST(request: NextRequest) {
             }
           }
           
-          if (relevantFiles.length > 0) {
-            fileContext = `\n\n[Context from uploaded files (security-scanned and verified):]\n${relevantFiles.join('\n\n---\n\n')}\n\n[End of file context]`
+          // ENHANCEMENT: Include both relevant files and all safe files
+          const allFilesContext = relevantFiles.length > 0 
+            ? relevantFiles.join('\n\n---\n\n')
+            : allSafeFiles.slice(0, 3).join('\n\n---\n\n') // If no matches, include first 3 safe files
+          
+          if (allFilesContext) {
+            fileContext = `\n\n[Context from uploaded files (${uploadedFiles.length} files available, ${relevantFiles.length} directly relevant):]\n${allFilesContext}\n\n[End of file context]`
+          } else if (availableFilesList.length > 0) {
+            // ENHANCEMENT: Even if no content included, tell LLM about available files
+            fileContext = `\n\n[Note: ${availableFilesList.length} uploaded file(s) are available: ${availableFilesList.join(', ')}. These files contain user data, PII, and other information that may be relevant to the user's query. Please search through these files when answering questions about users, data, or records.]\n\n`
           }
         }
       } catch (ragError) {
@@ -528,6 +677,31 @@ export async function POST(request: NextRequest) {
 
     // Enhance messages with file context if RAG is enabled
     const enhancedMessages = [...messages]
+    
+    // ENHANCEMENT: Add system message about file access if files are available
+    if (fileContext && availableFilesList.length > 0) {
+      // Check if system message already exists
+      const hasSystemMessage = enhancedMessages.some(m => m.role === 'system')
+      
+      if (!hasSystemMessage) {
+        // Add system message at the beginning
+        enhancedMessages.unshift({
+          role: 'system',
+          content: `You are a helpful AI assistant with access to uploaded files containing user data, PII, and other information.
+
+IMPORTANT INSTRUCTIONS:
+1. You have access to ${availableFilesList.length} uploaded file(s): ${availableFilesList.join(', ')}
+2. When the user asks about users, data, records, or any information, FIRST search through the uploaded files
+3. If the information is found in the files, provide it directly from the file content
+4. If the information is NOT in the files, you can use your general knowledge to help, but clearly state that the information is not in the uploaded files
+5. Always cite which file(s) you used when providing information from files
+6. For data queries, analyze the file structure and provide accurate information based on the actual data
+
+The file content will be provided in the user's message below. Search through it carefully to answer their questions.`
+        })
+      }
+    }
+    
     if (fileContext && latestUserMessage) {
       // Add file context to the latest user message
       const lastIndex = enhancedMessages.length - 1

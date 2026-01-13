@@ -2,14 +2,67 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
 
+// Official Lakera Guard API v2 Response Structure
+// Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
 interface LakeraResponse {
   flagged: boolean
+  
+  // Official fields (when payload=true)
+  payload?: Array<{
+    start: number
+    end: number
+    text: string
+    detector_type: string
+    labels: string[]
+    message_id: number
+  }>
+  
+  // Official fields (when breakdown=true)
+  breakdown?: Array<{
+    project_id: string
+    policy_id: string
+    detector_id: string
+    detector_type: string
+    detected: boolean
+    message_id: number
+  }>
+  
+  // Official fields (when dev_info=true)
+  dev_info?: {
+    git_revision: string
+    git_timestamp: string
+    model_version: string
+    version: string
+  }
+  
+  // Official fields (metadata)
+  metadata?: {
+    request_uuid: string
+  }
+  
+  // Legacy/custom fields (may still be present for backward compatibility)
   categories?: Record<string, boolean>
   payload_scores?: Record<string, number>
   results?: Array<{
     flagged: boolean
     categories?: Record<string, boolean>
     payload_scores?: Record<string, number>
+    payload?: Array<{
+      start: number
+      end: number
+      text: string
+      detector_type: string
+      labels: string[]
+      message_id: number
+    }>
+    breakdown?: Array<{
+      project_id: string
+      policy_id: string
+      detector_id: string
+      detector_type: string
+      detected: boolean
+      message_id: number
+    }>
   }>
   message?: string
   error?: string
@@ -426,16 +479,64 @@ export async function POST(request: NextRequest) {
     let flagged = false
     let categories: Record<string, boolean> | undefined
     let scores: Record<string, number> | undefined
+    let payload: Array<{
+      start: number
+      end: number
+      text: string
+      detector_type: string
+      labels: string[]
+      message_id: number
+    }> | undefined
+    let breakdown: Array<{
+      project_id: string
+      policy_id: string
+      detector_id: string
+      detector_type: string
+      detected: boolean
+      message_id: number
+    }> | undefined
 
     if (data.results && Array.isArray(data.results) && data.results.length > 0) {
       flagged = data.results.some((r) => r.flagged === true)
       const firstResult = data.results[0]
       categories = firstResult?.categories
       scores = firstResult?.payload_scores
+      // Extract official payload and breakdown from results array
+      payload = firstResult?.payload
+      breakdown = firstResult?.breakdown
     } else {
       flagged = data.flagged === true
       categories = data.categories
       scores = data.payload_scores
+      // Extract official payload and breakdown from root level
+      payload = data.payload
+      breakdown = data.breakdown
+    }
+    
+    // Log breakdown information for debugging
+    if (breakdown && breakdown.length > 0) {
+      console.log('Lakera Guard Breakdown:', {
+        totalDetectors: breakdown.length,
+        detectedCount: breakdown.filter(d => d.detected).length,
+        detectors: breakdown.map(d => ({
+          id: d.detector_id,
+          type: d.detector_type,
+          detected: d.detected,
+        })),
+      })
+    }
+    
+    // Log payload information for debugging
+    if (payload && payload.length > 0) {
+      console.log('Lakera Guard Payload (Detected Threats):', {
+        totalMatches: payload.length,
+        matches: payload.map(p => ({
+          text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
+          detector: p.detector_type,
+          labels: p.labels,
+          position: `${p.start}-${p.end}`,
+        })),
+      })
     }
 
     // Combine pre-scan results with Lakera results
@@ -491,6 +592,8 @@ export async function POST(request: NextRequest) {
         message: flagged
           ? `Security threats detected (${threatLevel})`
           : 'File content appears safe',
+        payload,      // Include official payload data (detected threats with locations)
+        breakdown,    // Include official breakdown data (detector results)
       },
       success: true,
       timestamp: new Date().toISOString(),
@@ -518,6 +621,8 @@ export async function POST(request: NextRequest) {
           ? Math.max(...Object.values(scores)) 
           : undefined,
         threatLevel,
+        payload,      // Include official payload data (detected threats with locations)
+        breakdown,    // Include official breakdown data (detector results)
       },
       logData,
     })

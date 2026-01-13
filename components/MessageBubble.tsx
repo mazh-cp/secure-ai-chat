@@ -65,6 +65,34 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                       </p>
                     </div>
                   )}
+                  {/* Payload Data - Detected Threats with Locations */}
+                  {scanResult.payload && scanResult.payload.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs font-medium text-red-200">Detected Threats:</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {scanResult.payload.map((item, idx) => (
+                          <div key={idx} className="text-xs text-red-100/80 bg-red-900/20 p-1.5 rounded">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-medium">{item.detector_type}</span>
+                              <span className="text-red-200/60">Position: {item.start}-{item.end}</span>
+                            </div>
+                            <div className="mt-0.5 text-red-100/70 italic">
+                              &quot;{item.text.length > 100 ? item.text.substring(0, 100) + '...' : item.text}&quot;
+                            </div>
+                            {item.labels && item.labels.length > 0 && (
+                              <div className="mt-0.5 flex flex-wrap gap-1">
+                                {item.labels.map((label, labelIdx) => (
+                                  <span key={labelIdx} className="px-1 py-0.5 bg-red-800/30 rounded text-xs">
+                                    {label}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">

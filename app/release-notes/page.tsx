@@ -15,141 +15,38 @@ interface ReleaseNote {
   }
 }
 
-const releaseNotes: ReleaseNote[] = [
-  {
-    version: '1.0.8',
-    date: '2026-01-13',
-    type: 'minor',
-    changes: {
-      added: [
-        'Ubuntu VM Installation Script - Single-step installation for production deployments',
-        'Safe Remote Upgrade Script - Preserves all settings during upgrades',
-        'CLI Script to Set API Keys - Set keys via command line (no web UI required)',
-        'Git Repository Fix Script - Repairs corrupted git repositories',
-        'Cleanup/Reset Script - Safely removes application and services',
-        'Complete installation and upgrade documentation',
-        'API endpoints documentation for security configuration',
-      ],
-      fixed: [
-        'Fixed "fatal: not a git repository" errors on remote installations',
-        'Fixed 404 errors when downloading upgrade scripts',
-        'Fixed port conflicts with auto-detection of free ports',
-      ],
-      improved: [
-        'README.md - Added Quick Install and Reset/Cleanup sections',
-        'Port auto-detection prevents EADDRINUSE errors',
-        'Idempotent installation (safe to re-run)',
-        'Comprehensive documentation for production deployment',
-      ],
-    },
-  },
-  {
-    version: '1.0.7',
-    date: '2026-01-12',
-    type: 'minor',
-    changes: {
-      added: [
-        'Release Notes Page - Dedicated page for viewing version history',
-        'RAG (Retrieval Augmented Generation) - Chat can access uploaded files',
-        'GPT-5.x Support - Full support with automatic API migration',
-        'Release Gate System - Comprehensive pre-deployment validation',
-        'Security Verification Script - Automated key security checks',
-      ],
-      fixed: [
-        'Fixed file scanning errors for large files',
-        'Fixed navigation issue - sidebar always visible on desktop',
-        'Fixed Checkpoint TE status not updating after key save',
-        'Fixed webpack chunk errors',
-      ],
-      improved: [
-        'Enhanced error handling and recovery',
-        'Better status synchronization between pages',
-        'Improved file upload stability',
-        'Enhanced logging security with key redaction',
-      ],
-    },
-  },
-  {
-    version: '1.0.6',
-    date: '2026-01-12',
-    type: 'minor',
-    changes: {
-      added: [
-        'RAG (Retrieval Augmented Generation) - Chat can now access and answer questions about uploaded files',
-        'Release Notes section in Settings page',
-        'Automated security verification script (`npm run verify-security`)',
-        'Enhanced file scanning for large files (500+ individuals)',
-        'Periodic status checking for Checkpoint TE configuration',
-      ],
-      fixed: [
-        'Fixed "Failed to execute json" error when scanning large files',
-        'Fixed navigation issue - sidebar always visible on desktop',
-        'Fixed Checkpoint TE key status not updating after save',
-        'Fixed webpack chunk errors (Cannot find module errors)',
-        'Fixed form-data stream handling in Checkpoint TE upload',
-        'Fixed response body stream consumption issues',
-      ],
-      improved: [
-        'Improved key deletion with proper server-side cache invalidation',
-        'Enhanced error handling for file scanning',
-        'Better status synchronization between Settings and Files pages',
-        'Improved mobile navigation with auto-close sidebar',
-        'Enhanced system prompt to allow data queries from files',
-      ],
-      security: [
-        'Verified all API keys are excluded from git (.secure-storage/ in .gitignore)',
-        'Confirmed keys persist across restarts and upgrades',
-        'Added security verification script for key safety checks',
-      ],
-    },
-  },
-  {
-    version: '1.0.5',
-    date: '2026-01-09',
-    type: 'patch',
-    changes: {
-      fixed: [
-        'Fixed Checkpoint TE API key storage and retrieval',
-        'Fixed server-side key persistence',
-      ],
-      improved: [
-        'Improved key management UI',
-      ],
-    },
-  },
-  {
-    version: '1.0.4',
-    date: '2026-01-08',
-    type: 'minor',
-    changes: {
-      added: [
-        'Checkpoint TE (Threat Emulation) integration',
-        'File sandboxing with Check Point TE',
-        'Server-side API key storage with encryption',
-      ],
-      improved: [
-        'Enhanced file scanning capabilities',
-      ],
-    },
-  },
-]
-
 export default function ReleaseNotesPage() {
   const [appVersion, setAppVersion] = useState<string>('1.0.8')
+  const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadVersion = async () => {
+    const loadData = async () => {
       try {
-        const response = await fetch('/api/version')
-        if (response.ok) {
-          const data = await response.json()
-          setAppVersion(data.version || '1.0.8')
+        // Load app version
+        const versionResponse = await fetch('/api/version')
+        if (versionResponse.ok) {
+          const versionData = await versionResponse.json()
+          setAppVersion(versionData.version || '1.0.8')
         }
-      } catch (error) {
-        console.error('Failed to load version:', error)
+
+        // Load release notes from API
+        const notesResponse = await fetch('/api/release-notes')
+        if (notesResponse.ok) {
+          const notesData = await notesResponse.json()
+          setReleaseNotes(notesData.releaseNotes || [])
+        } else {
+          setError('Failed to load release notes')
+        }
+      } catch (err) {
+        console.error('Failed to load data:', err)
+        setError('Failed to load release notes')
+      } finally {
+        setLoading(false)
       }
     }
-    loadVersion()
+    loadData()
   }, [])
 
   const getTypeColor = (type: string) => {
@@ -165,6 +62,29 @@ export default function ReleaseNotesPage() {
       default:
         return 'bg-gray-500/20 text-gray-300 border-gray-500/50'
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="bento-grid">
+        <div className="bento-card bento-span-4 glass-card p-6 border-2 text-center">
+          <p className="text-theme-muted">Loading release notes...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || releaseNotes.length === 0) {
+    return (
+      <div className="bento-grid">
+        <div className="bento-card bento-span-4 glass-card p-6 border-2 text-center">
+          <p className="text-red-300">{error || 'No release notes available'}</p>
+          <Link href="/settings" className="mt-4 inline-block text-theme hover:text-brand-berry">
+            ← Back to Settings
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
