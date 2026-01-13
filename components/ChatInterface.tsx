@@ -41,17 +41,25 @@ export default function ChatInterface() {
         const response = await fetch('/api/keys/retrieve').catch(() => null)
         if (response?.ok) {
           const data = await response.json()
-          // Check if keys are configured (server returns null for actual keys for security)
-          if (data.configured?.openAiKey || data.keys?.openAiKey) {
+          // Check if keys are configured (server returns configured status and keys object)
+          // data.configured.openAiKey is boolean, data.keys.openAiKey is 'configured' or null
+          if (data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured') {
             // Use server-side keys - set a placeholder to indicate keys are configured
             // The actual key is stored server-side and used by API routes
             setApiKeys({
-              openAiKey: data.keys?.openAiKey || 'configured', // Use 'configured' as placeholder
-              lakeraAiKey: data.keys?.lakeraAiKey || '',
+              openAiKey: 'configured', // Always set to 'configured' if key exists server-side
+              lakeraAiKey: data.configured?.lakeraAiKey ? 'configured' : '',
               lakeraEndpoint: data.keys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
-              lakeraProjectId: data.keys?.lakeraProjectId || '',
+              lakeraProjectId: data.configured?.lakeraProjectId ? 'configured' : '',
+            })
+            console.log('✅ Keys loaded from server:', { 
+              configured: data.configured, 
+              keys: data.keys,
+              settingOpenAiKey: 'configured'
             })
             return
+          } else {
+            console.log('⚠️ Keys not configured yet:', data)
           }
         }
       } catch (error) {
@@ -147,7 +155,7 @@ export default function ChatInterface() {
     setError(null)
 
     // Check if API key is configured (either has actual key or 'configured' placeholder)
-    if (!apiKeys?.openAiKey || apiKeys.openAiKey === '') {
+    if (!apiKeys?.openAiKey || (apiKeys.openAiKey !== 'configured' && apiKeys.openAiKey === '')) {
       setError('OpenAI API key is not configured. Please go to Settings to add your API key.')
       return
     }
@@ -315,7 +323,7 @@ export default function ChatInterface() {
   }
 
   // Check if API key is configured (either has actual key or 'configured' placeholder)
-  const hasApiKey = apiKeys?.openAiKey && apiKeys.openAiKey !== ''
+  const hasApiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
 
   return (
     <div className="flex flex-col h-full">
