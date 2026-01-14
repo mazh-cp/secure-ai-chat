@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeApiKeySync, createTeAuthHeader, TE_API_BASE_URL } from '@/lib/checkpoint-te'
+import { getTeApiKeySync, createTeAuthHeader, getTeApiBaseUrl, buildTeQueryRequest } from '@/lib/checkpoint-te'
 import { CheckPointTELogFields, CheckPointTEResponse } from '@/types/checkpoint-te'
 import { systemLog } from '@/lib/system-logging'
 
@@ -27,7 +27,7 @@ interface QueryRequestBody {
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  const queryUrl = `${TE_API_BASE_URL}/query`
+  const queryUrl = `${getTeApiBaseUrl()}/query`
   
   try {
     let apiKey = getTeApiKeySync()
@@ -80,10 +80,20 @@ export async function POST(request: NextRequest) {
 
     const authHeader = createTeAuthHeader(apiKey)
 
+    // Build request payload with correct wrapper format
+    const requestPayload = buildTeQueryRequest({
+      sha256: body.sha256,
+      sha1: body.sha1,
+      md5: body.md5,
+      features: body.features,
+      imageId: body.te?.image?.id,
+      revision: body.te?.image?.revision,
+    })
+
     console.log('Querying Check Point TE for file analysis:', {
       sha256: body.sha256,
-      teImageId: body.te?.image?.id,
-      teRevision: body.te?.image?.revision,
+      teImageId: requestPayload.request.te?.image?.id,
+      teRevision: requestPayload.request.te?.image?.revision,
       url: queryUrl,
       requestId,
     })
@@ -100,7 +110,7 @@ export async function POST(request: NextRequest) {
           'Authorization': authHeader,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(requestPayload),
         signal: controller.signal,
       })
       clearTimeout(timeoutId)

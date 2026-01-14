@@ -394,13 +394,8 @@ export default function FilesPage() {
       }
 
       formData.append('file', fileBlob, file.name)
-      formData.append('request', JSON.stringify({
-        features: ['te'],
-        te: {
-          reports: ['pdf', 'xml'],
-          images: ['pdf', 'json'],
-        },
-      }))
+      // Server will use default request format via buildTeUploadRequest()
+      // No need to send 'request' field - server handles it correctly
 
       const uploadResponse = await fetch('/api/te/upload', {
         method: 'POST',

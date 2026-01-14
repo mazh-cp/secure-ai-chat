@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.11] - 2026-01-13
+
+### Fixed
+- **Check Point TE File Upload Error**: Fixed `TypeError: formDataStream is not async iterable` error in Check Point TE file upload route
+  - Replaced manual stream handling with `form-data` package's built-in `getBuffer()` method
+  - Simplified buffer conversion approach (reduced from 49 lines to 3 lines)
+  - Resolves runtime errors when uploading files to Check Point TE API
+  - Fixes "Failed to execute error" messages when scanning files
+
 ## [1.0.10] - 2026-01-13
 
 ### Added

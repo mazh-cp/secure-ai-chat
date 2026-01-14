@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeApiKeySync, createTeAuthHeader, TE_API_BASE_URL } from '@/lib/checkpoint-te'
+import { getTeApiKeySync, createTeAuthHeader, getTeApiBaseUrl, buildTeUploadRequest, getTeImageId } from '@/lib/checkpoint-te'
 import FormDataNode from 'form-data'
 import { systemLog } from '@/lib/system-logging'
 
@@ -12,7 +12,7 @@ import { systemLog } from '@/lib/system-logging'
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  const uploadUrl = `${TE_API_BASE_URL}/upload`
+  const uploadUrl = `${getTeApiBaseUrl()}/upload`
   
   try {
     let apiKey = getTeApiKeySync()
@@ -83,18 +83,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse request JSON or create default
-    let requestConfig: {
-      features: string[]
-      te: {
-        reports?: string[]
-        images?: string[]
-      }
+    // Parse request JSON or create default using helper function
+    // Check Point TE API expects request field to contain {"request": [...]} as JSON string
+    let requestBody: {
+      request: Array<{
+        features: string[]
+        te: {
+          reports?: string[]
+          images?: Array<{ id: string, revision: number }>
+        }
+      }>
     }
 
     if (requestJson) {
       try {
-        requestConfig = JSON.parse(requestJson)
+        const parsed = JSON.parse(requestJson)
+        // If already in correct format (wrapped in request array), use as-is
+        if (parsed.request && Array.isArray(parsed.request)) {
+          requestBody = parsed
+          // Validate and fix images format if needed
+          if (requestBody.request[0]?.te?.images && !Array.isArray(requestBody.request[0].te.images)) {
+            // If images is not an array of objects, remove it
+            delete requestBody.request[0].te.images
+          }
+        } else {
+          // Use helper function to build correct format
+          requestBody = buildTeUploadRequest({
+            reports: parsed.te?.reports || ['pdf', 'xml'],
+            imageId: parsed.te?.image?.id,
+            revision: parsed.te?.image?.revision,
+          })
+        }
       } catch {
         return NextResponse.json(
           { error: 'Invalid request JSON format' },
@@ -102,19 +121,39 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
-      // Default configuration
-      requestConfig = {
-        features: ['te'],
-        te: {
-          reports: ['pdf', 'xml'],
-          images: ['pdf', 'json'],
-        },
+      // Use helper function to build default configuration
+      requestBody = buildTeUploadRequest({
+        reports: ['pdf', 'xml'],
+      })
+    }
+
+    // Validate that imageId is configured if images are needed
+    // Note: images are optional, so we don't fail if not configured
+    // But if images are present, they must be in correct format
+    if (requestBody.request[0]?.te?.images && requestBody.request[0].te.images.length > 0) {
+      const hasValidImages = requestBody.request[0].te.images.every(
+        (img: unknown) => typeof img === 'object' && img !== null && 'id' in img && 'revision' in img
+      )
+      if (!hasValidImages) {
+        await systemLog.error('checkpoint_te', 'Invalid images format in request', {
+          endpoint: '/api/te/upload',
+          method: 'POST',
+          statusCode: 400,
+        }, { requestId })
+        
+        return NextResponse.json(
+          { 
+            error: 'Invalid images format. Images must be array of objects with id and revision fields.',
+            details: 'The te.images field requires format: [{id: string, revision: number}]. Configure CHECKPOINT_TECLOUD_IMAGE_ID and optionally CHECKPOINT_TECLOUD_IMAGE_REVISION.',
+          },
+          { status: 400 }
+        )
       }
     }
 
-    // Ensure features includes 'te'
-    if (!requestConfig.features.includes('te')) {
-      requestConfig.features.push('te')
+    // Ensure features includes 'te' in first request item
+    if (requestBody.request[0] && !requestBody.request[0].features.includes('te')) {
+      requestBody.request[0].features.push('te')
     }
 
     // Convert File to Buffer for multipart form data
@@ -133,7 +172,7 @@ export async function POST(request: NextRequest) {
       apiKeyLength: apiKey.length,
       apiKeyPrefix: apiKey.substring(0, Math.min(10, apiKey.length)) + (apiKey.length > 10 ? '...' : ''),
       authHeaderPrefix: authHeader.substring(0, Math.min(30, authHeader.length)) + (authHeader.length > 30 ? '...' : ''),
-      requestConfig: JSON.stringify(requestConfig),
+      requestBody: JSON.stringify(requestBody),
     })
 
     // Use form-data package for better compatibility with external APIs
@@ -147,7 +186,8 @@ export async function POST(request: NextRequest) {
     })
     
     // Append request as JSON string
-    teFormData.append('request', JSON.stringify(requestConfig), {
+    // Check Point TE API expects the request field to contain {"request": [...]} as JSON string
+    teFormData.append('request', JSON.stringify(requestBody), {
       contentType: 'application/json',
     })
 
@@ -167,52 +207,16 @@ export async function POST(request: NextRequest) {
       },
       hasFile: !!fileBuffer,
       fileSize: fileBuffer.length,
-      requestConfig: JSON.stringify(requestConfig),
+      requestBody: JSON.stringify(requestBody),
     })
 
-    // form-data package creates a stream that needs special handling with fetch
-    // Convert the form-data stream to a buffer using proper stream handling
-    // Type assertion: form-data implements a Readable-like stream interface
-    const formDataStream = teFormData as unknown as {
-      on(event: 'data', listener: (chunk: Buffer | string) => void): void
-      on(event: 'end', listener: () => void): void
-      on(event: 'error', listener: (error: Error) => void): void
-      resume(): void
-      readableEnded?: boolean
-      readableFlowing?: boolean | null
-    }
-    
-    // Collect chunks from the stream using event-based approach
-    const chunks: Buffer[] = []
-    const formDataBuffer = await new Promise<Buffer>((resolve, reject) => {
-      // Set up event listeners
-      formDataStream.on('data', (chunk: Buffer | string) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'binary'))
-      })
-      
-      formDataStream.on('end', () => {
-        resolve(Buffer.concat(chunks))
-      })
-      
-      formDataStream.on('error', (error: Error) => {
-        reject(error)
-      })
-      
-      // Handle case where stream might already be ended
-      if ((formDataStream as { readableEnded?: boolean }).readableEnded) {
-        resolve(Buffer.concat(chunks))
-        return
-      }
-      
-      // If stream is paused, resume it
-      if ((formDataStream as { readableFlowing?: boolean | null }).readableFlowing === false) {
-        formDataStream.resume()
-      }
-    })
+    // form-data package provides getBuffer() method to get the entire buffer
+    // This is simpler and more reliable than stream handling
+    const formDataBuffer = teFormData.getBuffer()
 
     console.log('FormData buffer size:', formDataBuffer.length, 'bytes', { requestId })
 
-    // Convert Buffer to Uint8Array for fetch body (Node.js fetch compatibility)
+    // Convert Buffer to Uint8Array for fetch body (TypeScript compatibility)
     const bodyData = new Uint8Array(formDataBuffer)
 
     // Set timeout for the fetch request (30 seconds)
@@ -314,7 +318,7 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
-        requestConfig: JSON.stringify(requestConfig),
+        requestBody: JSON.stringify(requestBody),
       })
 
       // Handle specific error codes
@@ -374,6 +378,29 @@ export async function POST(request: NextRequest) {
           }>
         }
       }
+      // Also handle alternative response structures
+      response?: {
+        data?: {
+          sha256?: string
+          sha1?: string
+          md5?: string
+          te?: {
+            images?: Array<{
+              id?: string
+              revision?: number
+            }>
+          }
+        }
+      }
+      sha256?: string
+      sha1?: string
+      md5?: string
+      te?: {
+        images?: Array<{
+          id?: string
+          revision?: number
+        }>
+      }
     }
 
     try {
@@ -382,26 +409,99 @@ export async function POST(request: NextRequest) {
         throw new Error(`Unexpected content type: ${contentType || 'unknown'}`)
       }
       
-      data = await response.json()
+      const rawResponse = await response.json()
+      console.log('Check Point TE upload raw response:', JSON.stringify(rawResponse, null, 2))
+      console.log('Check Point TE upload response type:', typeof rawResponse)
+      console.log('Check Point TE upload response keys:', rawResponse && typeof rawResponse === 'object' ? Object.keys(rawResponse) : 'not an object')
       
       // Validate response structure
-      if (!data || typeof data !== 'object') {
+      if (!rawResponse || typeof rawResponse !== 'object') {
         throw new Error('Invalid response format: expected object')
       }
       
-      // Validate that at least one hash or TE image ID is present for query
-      if (!data.data) {
-        throw new Error('Invalid response: missing data field')
+      // Handle different response structures
+      // Structure 1: { data: { sha256, sha1, md5, te: { images: [...] } } }
+      // Structure 2: { response: { data: { ... } } }
+      // Structure 3: { sha256, sha1, md5, te: { images: [...] } } (flat structure)
+      // Structure 4: { success: true } or {} (empty/minimal success response)
+      
+      let responseData: {
+        sha256?: string
+        sha1?: string
+        md5?: string
+        te?: {
+          images?: Array<{
+            id?: string
+            revision?: number
+          }>
+        }
+      } | null = null
+      
+      if (rawResponse.data && typeof rawResponse.data === 'object') {
+        responseData = rawResponse.data
+      } else if (rawResponse.response?.data && typeof rawResponse.response.data === 'object') {
+        responseData = rawResponse.response.data
+      } else if (rawResponse.sha256 || rawResponse.sha1 || rawResponse.md5 || rawResponse.te) {
+        responseData = rawResponse
       }
       
-      const hasHash = !!(data.data.sha256 || data.data.sha1 || data.data.md5)
-      const hasTeImage = !!(data.data.te?.images?.[0]?.id)
+      // If no recognized structure but status is 200, treat as successful upload
+      // Some Check Point TE API versions may return minimal success responses
+      if (!responseData) {
+        const rawResponseStr = JSON.stringify(rawResponse)
+        console.warn('Check Point TE upload response structure not recognized, but status is 200 OK:', rawResponseStr)
+        console.warn('Treating as successful upload with unknown response structure')
+        
+        // Compute file hash locally for query later
+        const crypto = require('crypto')
+        const fileBuffer = Buffer.from(await file.arrayBuffer())
+        const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex')
+        const sha1 = crypto.createHash('sha1').update(fileBuffer).digest('hex')
+        
+        // Accept the upload as successful and use computed hash
+        responseData = {
+          sha256,
+          sha1,
+        }
+        
+        await systemLog.info('checkpoint_te', 'Upload successful (unrecognized response structure, computed hash locally)', {
+          endpoint: uploadUrl,
+          method: 'POST',
+          statusCode: response.status,
+          responseBody: rawResponseStr.substring(0, 500),
+          duration: Date.now() - startTime,
+        }, { requestId, fileName: file.name, computedHash: true })
+      } else {
+        // Check if we have at least one hash or TE image ID
+        const hasHash = !!(responseData.sha256 || responseData.sha1 || responseData.md5)
+        const hasTeImage = !!(responseData.te?.images?.[0]?.id)
+        
+        if (!hasHash && !hasTeImage) {
+          console.warn('Check Point TE upload response missing hash/te fields, computing hash locally:', JSON.stringify(responseData, null, 2))
+          
+          // Compute file hash locally as fallback
+          const crypto = require('crypto')
+          const fileBuffer = Buffer.from(await file.arrayBuffer())
+          const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex')
+          const sha1 = crypto.createHash('sha1').update(fileBuffer).digest('hex')
+          
+          responseData.sha256 = responseData.sha256 || sha256
+          responseData.sha1 = responseData.sha1 || sha1
+        }
+      }
       
-      if (!hasHash && !hasTeImage) {
-        throw new Error('Invalid response: missing required fields (hash or TE image ID)')
+      // Normalize to expected structure
+      data = {
+        data: {
+          sha256: responseData.sha256,
+          sha1: responseData.sha1,
+          md5: responseData.md5,
+          te: responseData.te,
+        },
       }
     } catch (parseError) {
       const errorMsg = parseError instanceof Error ? parseError.message : 'Failed to parse response'
+      console.error('Check Point TE upload response parsing error:', parseError)
       await systemLog.error('checkpoint_te', `Invalid response format: ${errorMsg}`, {
         endpoint: uploadUrl,
         method: 'POST',

@@ -274,9 +274,112 @@ export function isTeApiKeyConfiguredSync(): boolean {
 
 /**
  * Check Point TE API endpoints
- * Base URL: https://te-api.checkpoint.com/tecloud/api/v1/file
+ * Base URL: https://te-na.checkpoint.com/tecloud/api/v1/file (USA region)
+ * Can be overridden via CHECKPOINT_TECLOUD_BASE_URL environment variable
+ * Reference: https://support.checkpoint.com/results/sk/sk114806
  */
-export const TE_API_BASE_URL = 'https://te-api.checkpoint.com/tecloud/api/v1/file'
+export const TE_API_BASE_URL = 'https://te-na.checkpoint.com/tecloud/api/v1/file'
+
+/**
+ * Get TE Cloud base URL from environment or use default
+ * Supports regional endpoints:
+ * - te-na.checkpoint.com (North America / USA)
+ * - te-api.checkpoint.com (Global / default fallback)
+ */
+export function getTeApiBaseUrl(): string {
+  return process.env.CHECKPOINT_TECLOUD_BASE_URL || TE_API_BASE_URL
+}
+
+/**
+ * Get OS image ID from environment
+ */
+export function getTeImageId(): string | null {
+  return process.env.CHECKPOINT_TECLOUD_IMAGE_ID?.trim() || null
+}
+
+/**
+ * Get OS image revision from environment
+ */
+export function getTeImageRevision(): number {
+  const rev = process.env.CHECKPOINT_TECLOUD_IMAGE_REVISION
+  return rev ? parseInt(rev, 10) : 1
+}
+
+/**
+ * Build TE upload request payload (correct format)
+ */
+export function buildTeUploadRequest(options: {
+  reports?: string[]
+  imageId?: string
+  revision?: number
+}): { request: Array<{ features: string[], te: { reports?: string[], images?: Array<{ id: string, revision: number }> } }> } {
+  const { reports = ['pdf', 'xml'], imageId, revision } = options
+  
+  const imageIdToUse = imageId || getTeImageId()
+  const revisionToUse = revision || getTeImageRevision()
+  
+  const requestItem: {
+    features: string[]
+    te: {
+      reports?: string[]
+      images?: Array<{ id: string, revision: number }>
+    }
+  } = {
+    features: ['te'],
+    te: {
+      reports,
+    },
+  }
+  
+  // Only include images if imageId is provided
+  if (imageIdToUse) {
+    requestItem.te.images = [{ id: imageIdToUse, revision: revisionToUse }]
+  }
+  
+  return { request: [requestItem] }
+}
+
+/**
+ * Build TE query request payload (correct format with request wrapper)
+ */
+export function buildTeQueryRequest(options: {
+  sha256?: string
+  sha1?: string
+  md5?: string
+  features?: string[]
+  imageId?: string
+  revision?: number
+}): { request: { sha256?: string, sha1?: string, md5?: string, features: string[], te?: { image: { id: string, revision: number } } } } {
+  const { sha256, sha1, md5, features = ['te'], imageId, revision } = options
+  
+  const imageIdToUse = imageId || getTeImageId()
+  const revisionToUse = revision || getTeImageRevision()
+  
+  const requestBody: {
+    sha256?: string
+    sha1?: string
+    md5?: string
+    features: string[]
+    te?: { image: { id: string, revision: number } }
+  } = {
+    features,
+  }
+  
+  if (sha256) requestBody.sha256 = sha256
+  if (sha1) requestBody.sha1 = sha1
+  if (md5) requestBody.md5 = md5
+  
+  if (imageIdToUse) {
+    requestBody.te = {
+      image: {
+        id: imageIdToUse,
+        revision: revisionToUse,
+      },
+    }
+  }
+  
+  return { request: requestBody }
+}
 
 /**
  * Create Authorization header for Check Point TE API
