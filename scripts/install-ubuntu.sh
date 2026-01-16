@@ -187,7 +187,8 @@ if ! command -v git >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  git "; then
 fi
 
 # Check build-essential (meta-package, check via dpkg only)
-if ! dpkg -l | grep -q "^ii  build-essential "; then
+# Use more flexible pattern to handle whitespace variations in dpkg output
+if ! dpkg -l 2>/dev/null | grep -q "^ii[[:space:]]\+build-essential[[:space:]]"; then
     MISSING_CRITICAL+=("build-essential")
 fi
 
