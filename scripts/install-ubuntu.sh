@@ -430,8 +430,94 @@ EOF
 chmod +x "$FULL_PATH/start-app.sh"
 print_success "Start script created: start-app.sh"
 
-# Step 8: Verification
-print_header "Step 8: Verification"
+# Step 8: Configure systemd Service for Automatic Startup
+print_header "Step 8: Configuring Automatic Startup (systemd)"
+
+# Find Node.js and npm paths
+NODE_PATH=$(which node 2>/dev/null || echo "")
+NPM_PATH=$(which npm 2>/dev/null || echo "")
+
+if [ -z "$NODE_PATH" ] || [ -z "$NPM_PATH" ]; then
+    # Try to find nvm paths
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    NODE_PATH=$(which node 2>/dev/null || echo "")
+    NPM_PATH=$(which npm 2>/dev/null || echo "")
+fi
+
+if [ -n "$NPM_PATH" ]; then
+    print_info "Found npm at: $NPM_PATH"
+    
+    # Get current user
+    CURRENT_USER=$(whoami)
+    SERVICE_FILE="/etc/systemd/system/secure-ai-chat.service"
+    
+    print_info "Creating systemd service file..."
+    sudo tee "$SERVICE_FILE" > /dev/null << EOF
+[Unit]
+Description=Secure AI Chat Application
+After=network.target
+
+[Service]
+Type=simple
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$FULL_PATH
+Environment="NODE_ENV=production"
+Environment="PORT=$APP_PORT"
+Environment="HOSTNAME=0.0.0.0"
+
+# Use npm from nvm
+ExecStart=$NPM_PATH start
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=secure-ai-chat
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=$FULL_PATH/.secure-storage $FULL_PATH/.next $FULL_PATH/.storage
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    print_success "Systemd service file created"
+    
+    # Reload systemd
+    print_info "Reloading systemd daemon..."
+    sudo systemctl daemon-reload
+    
+    # Enable service (start on boot)
+    print_info "Enabling service to start on boot..."
+    sudo systemctl enable secure-ai-chat > /dev/null 2>&1
+    
+    # Start service
+    print_info "Starting Secure AI Chat service..."
+    if sudo systemctl start secure-ai-chat; then
+        print_success "Service started successfully"
+        
+        # Wait a moment for service to start
+        sleep 3
+        
+        # Check service status
+        if sudo systemctl is-active --quiet secure-ai-chat; then
+            print_success "Service is running"
+        else
+            print_warning "Service may not be running. Check status with: sudo systemctl status secure-ai-chat"
+        fi
+    else
+        print_warning "Failed to start service automatically. You can start it manually with: sudo systemctl start secure-ai-chat"
+    fi
+else
+    print_warning "Could not find npm path. Skipping systemd service setup."
+    print_info "You can manually create the service file or start the app with: cd $FULL_PATH && ./start-app.sh"
+fi
+
+# Step 9: Verification
+print_header "Step 9: Verification"
 
 # Check Node.js version matches .nvmrc
 if [ -f ".nvmrc" ]; then
@@ -478,13 +564,19 @@ echo "2. Add your API keys in .env.local:"
 echo "   - OPENAI_API_KEY (required)"
 echo "   - LAKERA_AI_KEY (optional, for security scanning)"
 echo ""
-echo "3. Start the application:"
-echo "   cd $FULL_PATH"
-echo "   npm run dev          # Development mode (binds to 0.0.0.0)"
-echo "   # OR"
-echo "   ./start-app.sh       # Production mode (recommended - binds to 0.0.0.0)"
-echo "   # OR"
-echo "   HOSTNAME=0.0.0.0 npm start  # Production mode (alternative)"
+echo "3. Application Status:"
+if command -v systemctl &> /dev/null && sudo systemctl is-enabled secure-ai-chat &> /dev/null; then
+    echo "   ✅ Service is enabled and should start automatically on boot"
+    echo "   Check status: sudo systemctl status secure-ai-chat"
+    echo "   View logs: sudo journalctl -u secure-ai-chat -f"
+    echo "   Restart: sudo systemctl restart secure-ai-chat"
+else
+    echo "   Start manually:"
+    echo "   cd $FULL_PATH"
+    echo "   ./start-app.sh       # Production mode (recommended)"
+    echo "   # OR"
+    echo "   npm start            # Production mode"
+fi
 echo ""
 echo "4. Access the application:"
 echo "   Local:   http://localhost:${APP_PORT}"

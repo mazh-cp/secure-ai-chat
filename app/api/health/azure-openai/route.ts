@@ -68,6 +68,14 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         signal: controller.signal,
+        // Add timeout and error handling
+        cache: 'no-store',
+      }).catch((fetchErr) => {
+        // Handle network errors
+        if (fetchErr instanceof TypeError && fetchErr.message.includes('fetch')) {
+          throw new Error(`Network error: Unable to reach ${cleanEndpoint}. Please verify the endpoint URL is correct and accessible.`)
+        }
+        throw fetchErr
       })
 
       clearTimeout(timeoutId)
@@ -205,10 +213,21 @@ export async function POST(request: NextRequest) {
       }
 
       const errorMessage = fetchError instanceof Error ? fetchError.message : 'Connection failed'
+      
+      // Provide more specific error messages
+      let userFriendlyError = errorMessage
+      if (errorMessage.includes('Network error') || errorMessage.includes('fetch')) {
+        userFriendlyError = `Cannot connect to Azure OpenAI endpoint. Please verify: 1) Endpoint URL "${cleanEndpoint}" is correct, 2) Endpoint is accessible from this server, 3) No firewall blocking the connection, 4) Endpoint URL format is correct (should be like https://your-resource.openai.azure.com)`
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
+        userFriendlyError = `Connection timeout. Please verify: 1) Endpoint URL is correct, 2) Network connection is stable, 3) Azure OpenAI service is available`
+      } else {
+        userFriendlyError = `Failed to connect to Azure OpenAI: ${errorMessage}. Please verify: 1) Endpoint URL is correct, 2) Network allows connections to Azure, 3) API key is valid.`
+      }
+      
       return NextResponse.json(
         { 
           ok: false, 
-          error: `Failed to connect to Azure OpenAI: ${errorMessage}. Please verify: 1) Endpoint URL is correct, 2) Network allows connections to Azure, 3) API key is valid.` 
+          error: userFriendlyError
         },
         { status: 500 }
       )
