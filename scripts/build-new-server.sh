@@ -162,8 +162,15 @@ ok "Directory ownership set: $APP_DIR"
 say "Step 4: Installing Node.js v${NODE_VERSION} via nvm"
 
 # Install nvm and Node.js as app user
-sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'NVM_INSTALL'
+# Use a script file approach to avoid heredoc issues
+NVM_SCRIPT=$(mktemp)
+cat > "$NVM_SCRIPT" << 'NVM_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
+
+APP_DIR="$1"
+NODE_VERSION="$2"
+
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
 
@@ -177,17 +184,17 @@ set +u
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 set -e
 
-# Install Node.js v24.13.0
-if command -v nvm >/dev/null 2>&1 || [ -s "$NVM_DIR/nvm.sh" ]; then
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+# Install Node.js
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  \. "$NVM_DIR/nvm.sh"
   
-  if nvm list 2>/dev/null | grep -q "v24.13.0"; then
-    nvm use 24.13.0 >/dev/null 2>&1
-    nvm alias default 24.13.0 >/dev/null 2>&1
+  if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
+    nvm use ${NODE_VERSION} >/dev/null 2>&1 || nvm install ${NODE_VERSION} >/dev/null 2>&1
+    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
   else
-    nvm install 24.13.0 >/dev/null 2>&1
-    nvm use 24.13.0 >/dev/null 2>&1
-    nvm alias default 24.13.0 >/dev/null 2>&1
+    nvm install ${NODE_VERSION} >/dev/null 2>&1
+    nvm use ${NODE_VERSION} >/dev/null 2>&1
+    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
   fi
   
   # Verify installation
@@ -197,13 +204,23 @@ else
   echo "nvm not found" >&2
   exit 1
 fi
-NVM_INSTALL
+NVM_SCRIPT_CONTENT
 
-if [ $? -eq 0 ]; then
+chmod +x "$NVM_SCRIPT"
+
+# Run as app user
+if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$NVM_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > /tmp/nvm-install.log 2>&1; then
   ok "Node.js v${NODE_VERSION} installed"
+  cat /tmp/nvm-install.log | tail -2
 else
   fail "Node.js installation failed"
+  cat /tmp/nvm-install.log | tail -20
+  rm -f "$NVM_SCRIPT"
+  exit 1
 fi
+
+# Clean up script
+rm -f "$NVM_SCRIPT"
 
 # Step 5: Clone or update repository
 say "Step 5: Cloning/Updating Repository"
@@ -281,14 +298,21 @@ fi
 # Step 6: Install dependencies
 say "Step 6: Installing Dependencies"
 
-sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'INSTALL_DEPS'
+# Create install script to avoid heredoc issues
+INSTALL_SCRIPT=$(mktemp)
+cat > "$INSTALL_SCRIPT" << 'INSTALL_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
+
+APP_DIR="$1"
+NODE_VERSION="$2"
+
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
 set +u
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm use 24.13.0 >/dev/null 2>&1 || true
+nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
 set -e
 
 # Detect package manager
@@ -308,37 +332,57 @@ fi
 
 echo "Package manager: $PM"
 eval "$INSTALL_CMD"
-INSTALL_DEPS
+INSTALL_SCRIPT_CONTENT
 
-if [ $? -eq 0 ]; then
+chmod +x "$INSTALL_SCRIPT"
+
+# Run as app user
+if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$INSTALL_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > /tmp/install-deps.log 2>&1; then
   ok "Dependencies installed"
 else
   fail "Dependency installation failed"
+  cat /tmp/install-deps.log | tail -30
+  rm -f "$INSTALL_SCRIPT"
+  exit 1
 fi
+
+rm -f "$INSTALL_SCRIPT"
+
 
 # Step 7: Run release gate (if available)
 say "Step 7: Running Release Gate Validation"
 
 if [ -f "$APP_DIR/scripts/release-gate.sh" ]; then
-  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'RELEASE_GATE'
+  # Create release gate script
+  RELEASE_GATE_SCRIPT=$(mktemp)
+  cat > "$RELEASE_GATE_SCRIPT" << 'RELEASE_GATE_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
+
+APP_DIR="$1"
+NODE_VERSION="$2"
+
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
 set +u
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm use 24.13.0 >/dev/null 2>&1 || true
+nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
 set -e
 
 bash scripts/release-gate.sh > /tmp/release-gate.log 2>&1
-RELEASE_GATE
+RELEASE_GATE_SCRIPT_CONTENT
+
+  chmod +x "$RELEASE_GATE_SCRIPT"
   
-  if [ $? -eq 0 ]; then
+  if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$RELEASE_GATE_SCRIPT" "$APP_DIR" "${NODE_VERSION}" 2>&1; then
     ok "Release gate passed"
   else
     warn "Release gate failed (check /tmp/release-gate.log)"
     warn "Continuing with build anyway..."
   fi
+  
+  rm -f "$RELEASE_GATE_SCRIPT"
 else
   warn "Release gate script not found, skipping"
 fi
@@ -346,14 +390,21 @@ fi
 # Step 8: Build production bundle
 say "Step 8: Building Production Bundle"
 
-sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'BUILD'
+# Create build script
+BUILD_SCRIPT=$(mktemp)
+cat > "$BUILD_SCRIPT" << 'BUILD_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
+
+APP_DIR="$1"
+NODE_VERSION="$2"
+
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
 set +u
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm use 24.13.0 >/dev/null 2>&1 || true
+nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
 set -e
 
 # Detect package manager
@@ -366,9 +417,12 @@ else
 fi
 
 $RUN_CMD run build
-BUILD
+BUILD_SCRIPT_CONTENT
 
-if [ $? -eq 0 ]; then
+chmod +x "$BUILD_SCRIPT"
+
+# Run as app user
+if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$BUILD_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > /tmp/build.log 2>&1; then
   ok "Build completed"
   
   # Verify build output
@@ -379,7 +433,12 @@ if [ $? -eq 0 ]; then
   fi
 else
   fail "Build failed"
+  cat /tmp/build.log | tail -30
+  rm -f "$BUILD_SCRIPT"
+  exit 1
 fi
+
+rm -f "$BUILD_SCRIPT"
 
 # Step 9: Create environment file
 say "Step 9: Creating Environment File"
@@ -482,19 +541,29 @@ say "Step 12: Running Smoke Tests"
 if [ -f "$APP_DIR/scripts/smoke-test.sh" ]; then
   sleep 3  # Give server time to fully start
   
-  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'SMOKE_TEST'
+  # Create smoke test script
+  SMOKE_TEST_SCRIPT=$(mktemp)
+  cat > "$SMOKE_TEST_SCRIPT" << 'SMOKE_TEST_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
+
+APP_DIR="$1"
+
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 
 BASE_URL=http://localhost:3000 bash scripts/smoke-test.sh
-SMOKE_TEST
+SMOKE_TEST_SCRIPT_CONTENT
+
+  chmod +x "$SMOKE_TEST_SCRIPT"
   
-  if [ $? -eq 0 ]; then
+  if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$SMOKE_TEST_SCRIPT" "$APP_DIR" 2>&1; then
     ok "Smoke tests passed"
   else
     warn "Smoke tests failed (service may need configuration)"
   fi
+  
+  rm -f "$SMOKE_TEST_SCRIPT"
 else
   warn "Smoke test script not found, skipping"
 fi
