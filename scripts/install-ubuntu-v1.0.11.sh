@@ -24,6 +24,8 @@ BRANCH="${BRANCH:-main}"
 TAG="${TAG:-v1.0.11}"  # Default to v1.0.11
 NODE_VERSION="${NODE_VERSION:-25.2.1}"
 APP_PORT="${PORT:-3000}"
+# Default to home directory to avoid permission issues
+# Users can override with INSTALL_DIR=/opt if they want
 INSTALL_DIR="${INSTALL_DIR:-$HOME}"
 
 # Colors for output
@@ -156,21 +158,43 @@ print_success "npm $(npm -v) is available"
 # Step 3: Clone or update repository
 print_header "Step 3: Setting Up Repository"
 
+# Determine installation directory - use $HOME if /opt is not writable
+if [ "$INSTALL_DIR" = "/opt" ] && [ ! -w "/opt" ]; then
+    print_warning "/opt is not writable. Using home directory instead."
+    INSTALL_DIR="$HOME"
+fi
+
 FULL_PATH="${INSTALL_DIR}/${REPO_DIR}"
 
 # Ensure installation directory exists and has correct permissions
-print_info "Preparing installation directory..."
+print_info "Preparing installation directory: $INSTALL_DIR"
 if [ ! -d "$INSTALL_DIR" ]; then
-    print_info "Creating installation directory: $INSTALL_DIR"
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo chown $USER:$USER "$INSTALL_DIR" 2>/dev/null || true
+    print_info "Creating installation directory..."
+    if [ "$INSTALL_DIR" = "/opt" ]; then
+        sudo mkdir -p "$INSTALL_DIR"
+        sudo chown $USER:$USER "$INSTALL_DIR" 2>/dev/null || true
+    else
+        mkdir -p "$INSTALL_DIR"
+    fi
 fi
 
 # Ensure we have write access to installation directory
 if [ ! -w "$INSTALL_DIR" ]; then
     print_info "Fixing permissions for installation directory..."
-    sudo chown -R $USER:$USER "$INSTALL_DIR" 2>/dev/null || true
-    sudo chmod -R u+w "$INSTALL_DIR" 2>/dev/null || true
+    if [ "$INSTALL_DIR" = "/opt" ]; then
+        sudo chown -R $USER:$USER "$INSTALL_DIR" 2>/dev/null || true
+        sudo chmod -R u+w "$INSTALL_DIR" 2>/dev/null || true
+    else
+        chmod -R u+w "$INSTALL_DIR" 2>/dev/null || true
+    fi
+fi
+
+# Verify write access
+if [ ! -w "$INSTALL_DIR" ]; then
+    print_error "Cannot write to $INSTALL_DIR. Please check permissions or use a different directory."
+    print_info "You can set INSTALL_DIR environment variable:"
+    print_info "  INSTALL_DIR=\$HOME curl -fsSL ... | bash"
+    exit 1
 fi
 
 # Create repository directory if it doesn't exist
@@ -178,10 +202,26 @@ if [ ! -d "$FULL_PATH" ]; then
     print_info "Creating repository directory: $FULL_PATH"
     mkdir -p "$FULL_PATH" 2>/dev/null || {
         # If mkdir fails, try with sudo and fix ownership
-        sudo mkdir -p "$FULL_PATH"
-        sudo chown -R $USER:$USER "$FULL_PATH"
-        sudo chmod -R u+w "$FULL_PATH"
+        if [ "$INSTALL_DIR" = "/opt" ]; then
+            sudo mkdir -p "$FULL_PATH"
+            sudo chown -R $USER:$USER "$FULL_PATH"
+            sudo chmod -R u+w "$FULL_PATH"
+        else
+            print_error "Failed to create directory: $FULL_PATH"
+            exit 1
+        }
     }
+fi
+
+# Verify we can write to the repository directory
+if [ ! -w "$FULL_PATH" ]; then
+    print_info "Fixing permissions for repository directory..."
+    if [ "$INSTALL_DIR" = "/opt" ]; then
+        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+        sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
+    else
+        chmod -R u+w "$FULL_PATH" 2>/dev/null || true
+    fi
 fi
 
 if [ -d "$FULL_PATH" ]; then
