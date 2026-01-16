@@ -88,25 +88,107 @@ else
     fi
 fi
 
-# Step 1: Update system packages
-print_header "Step 1: Updating System Packages"
+# Step 1: Detect OS and Update System Packages
+print_header "Step 1: Detecting OS and Updating System Packages"
+
+# Detect OS version for better compatibility
+OS_ID="unknown"
+OS_VERSION="unknown"
+if [ -f /etc/os-release ]; then
+    # shellcheck source=/dev/null
+    . /etc/os-release
+    OS_ID="${ID:-unknown}"
+    OS_VERSION="${VERSION_ID:-unknown}"
+    if [ -n "$NAME" ]; then
+        print_info "Detected: $NAME (${OS_ID} ${OS_VERSION})"
+    else
+        print_info "Detected: ${OS_ID} ${OS_VERSION}"
+    fi
+else
+    print_warning "Could not detect OS version (missing /etc/os-release)"
+fi
+
+# Validate OS support
+if [[ "$OS_ID" =~ ^(ubuntu|debian)$ ]]; then
+    # Check minimum version (Ubuntu 20.04+ or Debian 11+ recommended)
+    if [[ "$OS_ID" == "ubuntu" ]]; then
+        VERSION_NUM=$(echo "$OS_VERSION" | cut -d'.' -f1)
+        if [ -n "$VERSION_NUM" ] && [ "$VERSION_NUM" -lt 20 ] 2>/dev/null; then
+            print_warning "Ubuntu version ${OS_VERSION} detected. Ubuntu 20.04+ is recommended."
+        fi
+    elif [[ "$OS_ID" == "debian" ]]; then
+        VERSION_NUM=$(echo "$OS_VERSION" | cut -d'.' -f1)
+        if [ -n "$VERSION_NUM" ] && [ "$VERSION_NUM" -lt 11 ] 2>/dev/null; then
+            print_warning "Debian version ${OS_VERSION} detected. Debian 11+ is recommended."
+        fi
+    fi
+    ok "OS detected: ${OS_ID} ${OS_VERSION}"
+else
+    print_warning "OS not recognized: ${OS_ID}. Continuing anyway..."
+fi
+
 print_info "Updating package list..."
-sudo apt-get update -qq
+if sudo apt-get update -qq; then
+    ok "Package list updated"
+else
+    print_warning "Package update had issues, continuing..."
+fi
 
 print_info "Installing required system packages..."
-sudo apt-get install -y -qq \
-    curl \
-    git \
-    build-essential \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    iproute2 \
-    > /dev/null 2>&1
+# Install essential packages for newer VMs
+PACKAGES=(
+    curl
+    git
+    build-essential
+    ca-certificates
+    gnupg
+    lsb-release
+    iproute2
+)
+
+# Check which packages are missing
+MISSING_PKGS=()
+for pkg in "${PACKAGES[@]}"; do
+    if ! dpkg -l | grep -q "^ii  $pkg "; then
+        MISSING_PKGS+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
+    print_info "Installing missing packages: ${MISSING_PKGS[*]}"
+    if sudo apt-get install -y -qq "${MISSING_PKGS[@]}" > /dev/null 2>&1; then
+        ok "System packages installed: ${MISSING_PKGS[*]}"
+    else
+        print_error "Failed to install some packages: ${MISSING_PKGS[*]}"
+        print_info "Attempting individual package installation..."
+        for pkg in "${MISSING_PKGS[@]}"; do
+            if sudo apt-get install -y "$pkg" > /dev/null 2>&1; then
+                print_info "Installed: $pkg"
+            else
+                print_warning "Failed to install: $pkg (may cause issues later)"
+            fi
+        done
+    fi
+else
+    ok "All required packages already installed"
+fi
+
+# Verify critical packages
+MISSING_CRITICAL=()
+for pkg in curl git build-essential; do
+    if ! command -v "$pkg" >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  $pkg "; then
+        MISSING_CRITICAL+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
+    print_error "Critical packages missing: ${MISSING_CRITICAL[*]}"
+    exit 1
+fi
+
 # Note: ss (socket statistics) is part of iproute2 and is preferred over netstat
 # To install netstat: sudo apt install net-tools
-
-print_success "System packages installed"
+print_success "System packages verified"
 
 # Step 2: Install/Upgrade Node.js to v24.13.0 via nvm
 print_header "Step 2: Installing/Upgrading Node.js to ${NODE_VERSION} (LTS) via nvm"
@@ -114,15 +196,54 @@ print_header "Step 2: Installing/Upgrading Node.js to ${NODE_VERSION} (LTS) via 
 # Install nvm if not already installed
 if [ ! -d "$HOME/.nvm" ]; then
     print_info "Installing nvm (Node Version Manager)..."
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash > /dev/null 2>&1
-    print_success "nvm installed"
+    # Use latest stable nvm version for newer VMs
+    NVM_VERSION="${NVM_VERSION:-v0.39.7}"
+    if curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash > /dev/null 2>&1; then
+        print_success "nvm ${NVM_VERSION} installed"
+    else
+        print_error "Failed to install nvm. Check internet connection."
+        exit 1
+    fi
 else
     print_info "nvm is already installed"
+    # Update nvm to latest if possible (non-blocking for newer systems)
+    if [ -d "$HOME/.nvm/.git" ]; then
+        print_info "Checking for nvm updates..."
+        (cd "$HOME/.nvm" && git fetch --tags origin > /dev/null 2>&1 && git checkout "$(git describe --abbrev=0 --tags --match 'v[0-9]*' "$(git rev-list --tags --max-count=1)")" > /dev/null 2>&1) || true
+    fi
 fi
 
-# Load nvm
+# Load nvm with better error handling for newer systems
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck source=/dev/null
+    . "$NVM_DIR/nvm.sh"
+    ok "nvm loaded"
+else
+    print_error "nvm installation appears incomplete. $NVM_DIR/nvm.sh not found."
+    exit 1
+fi
+
+# Verify nvm is working (for newer systems that may need additional setup)
+if ! command -v nvm >/dev/null 2>&1; then
+    # Try sourcing bashrc/profile for newer systems
+    if [ -f "$HOME/.bashrc" ]; then
+        # shellcheck source=/dev/null
+        . "$HOME/.bashrc" 2>/dev/null || true
+    fi
+    if [ -f "$HOME/.profile" ]; then
+        # shellcheck source=/dev/null
+        . "$HOME/.profile" 2>/dev/null || true
+    fi
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$NVM_DIR/nvm.sh"
+    fi
+    # Verify again
+    if ! command -v nvm >/dev/null 2>&1; then
+        print_warning "nvm command not available, but continuing (may use node directly)"
+    fi
+fi
 
 # Check current Node.js version (if any)
 CURRENT_NODE_VERSION=$(node -v 2>/dev/null || echo "none")
@@ -274,36 +395,76 @@ fi
 # Step 4: Install project dependencies
 print_header "Step 4b: Installing Project Dependencies"
 
+# Verify npm is available before installing dependencies
+if ! command -v npm >/dev/null 2>&1; then
+    print_error "npm not found. Node.js installation may have failed."
+    exit 1
+fi
+
+NPM_VERSION=$(npm -v)
+print_info "Using npm v${NPM_VERSION}"
+
+# For newer VMs, ensure npm is modern (9+) for better compatibility
+NPM_MAJOR=$(npm -v | cut -d'.' -f1)
+if [ -n "$NPM_MAJOR" ] && [ "$NPM_MAJOR" -lt 9 ] 2>/dev/null; then
+    print_info "Updating npm to latest (9+) for better compatibility with newer VMs..."
+    npm install -g npm@latest > /dev/null 2>&1 || true
+    print_info "Updated to npm v$(npm -v)"
+fi
+
 print_info "Installing npm dependencies (this may take a few minutes)..."
 if [ -f "package-lock.json" ]; then
     print_info "Found package-lock.json, using 'npm ci' for reproducible builds..."
+    
     if npm ci 2>&1; then
         print_success "Dependencies installed via npm ci"
     else
-        print_warning "npm ci failed (package-lock.json may be out of sync)"
+        print_warning "npm ci failed (package-lock.json may be out of sync with newer npm)"
         print_info "Attempting to fix package-lock.json..."
+        
         # Fix permissions and retry
         sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
         sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
-        print_info "Running 'npm install' to update package-lock.json..."
-        if npm install 2>&1; then
-            print_success "Dependencies installed and package-lock.json updated"
+        
+        # Update npm to latest for better compatibility with newer VMs
+        print_info "Updating npm to latest for better compatibility..."
+        npm install -g npm@latest > /dev/null 2>&1 || true
+        
+        # Try npm ci again after npm update
+        if npm ci 2>&1; then
+            print_success "Dependencies installed via npm ci (after npm update)"
         else
-            print_error "Failed to install dependencies"
-            print_error "This may indicate:"
-            print_error "  1. Network connectivity issues"
-            print_error "  2. Insufficient disk space"
-            print_error "  3. npm registry access problems"
-            print_info "Try manually: cd $FULL_PATH && npm install"
-            exit 1
+            print_info "Falling back to 'npm install' to update package-lock.json..."
+            if npm install 2>&1; then
+                print_success "Dependencies installed and package-lock.json updated"
+                print_warning "package-lock.json was updated - commit this file to repository"
+            else
+                print_error "Failed to install dependencies"
+                print_error "This may indicate:"
+                print_error "  1. Network connectivity issues"
+                print_error "  2. Insufficient disk space"
+                print_error "  3. Node.js/npm version incompatibility"
+                print_error "  4. Outdated package-lock.json incompatible with newer npm"
+                print_info "Try manually: cd $FULL_PATH && npm install"
+                exit 1
+            fi
         fi
     fi
 else
     print_warning "package-lock.json not found, using 'npm install'..."
+    
+    # For newer VMs, ensure npm is modern
+    if [ -n "$NPM_MAJOR" ] && [ "$NPM_MAJOR" -lt 9 ] 2>/dev/null; then
+        print_info "Updating npm to latest for better compatibility..."
+        npm install -g npm@latest > /dev/null 2>&1 || true
+    fi
+    
     if npm install 2>&1; then
         print_success "Dependencies installed"
+        print_warning "package-lock.json was created - commit this file to repository"
     else
         print_error "Failed to install dependencies"
+        print_info "Try manually: cd $FULL_PATH && npm install"
         exit 1
     fi
 fi
@@ -479,19 +640,42 @@ fi
 # Step 8: Configure systemd Service for Automatic Startup
 print_header "Step 8: Configuring Automatic Startup (systemd)"
 
-# Find Node.js and npm paths
-NODE_PATH=$(which node 2>/dev/null || echo "")
-NPM_PATH=$(which npm 2>/dev/null || echo "")
-
-if [ -z "$NODE_PATH" ] || [ -z "$NPM_PATH" ]; then
-    # Try to find nvm paths
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-    NODE_PATH=$(which node 2>/dev/null || echo "")
-    NPM_PATH=$(which npm 2>/dev/null || echo "")
+# Check if systemd is available (for newer VMs)
+if ! command -v systemctl >/dev/null 2>&1; then
+    print_warning "systemctl not found. Skipping systemd service setup."
+    print_info "This may be a non-systemd system (e.g., older Debian, container)."
+    print_info "You can start the app manually: cd $FULL_PATH && ./start-app.sh"
+    SKIP_SYSTEMD=true
+else
+    SKIP_SYSTEMD=false
 fi
 
-if [ -n "$NPM_PATH" ]; then
+if [ "$SKIP_SYSTEMD" = false ]; then
+    # Find Node.js and npm paths (for newer VMs, ensure we get nvm paths)
+    export NVM_DIR="$HOME/.nvm"
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$NVM_DIR/nvm.sh"
+    fi
+    
+    # Ensure Node.js version is active
+    if [ -f "$FULL_PATH/.nvmrc" ]; then
+        NODE_VERSION_FROM_NVMRC=$(cat "$FULL_PATH/.nvmrc" | tr -d '[:space:]')
+        if [ -n "$NODE_VERSION_FROM_NVMRC" ]; then
+            nvm use "${NODE_VERSION_FROM_NVMRC}" > /dev/null 2>&1 || true
+        fi
+    fi
+    
+    NODE_PATH=$(which node 2>/dev/null || echo "")
+    NPM_PATH=$(which npm 2>/dev/null || echo "")
+    
+    if [ -z "$NODE_PATH" ] || [ -z "$NPM_PATH" ]; then
+        print_warning "Could not find Node.js/npm paths. Skipping systemd service setup."
+        SKIP_SYSTEMD=true
+    fi
+fi
+
+if [ "$SKIP_SYSTEMD" = false ] && [ -n "$NPM_PATH" ]; then
     print_info "Found npm at: $NPM_PATH"
     
     # Get current user
