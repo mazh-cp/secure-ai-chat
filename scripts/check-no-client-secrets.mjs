@@ -45,12 +45,14 @@ const THREATCLOUD_PATTERNS = [
 ]
 
 const SERVER_ONLY_IMPORTS = [
+  // Only match imports from @/lib/checkpoint-te (server-only implementation), NOT @/types/checkpoint-te (types only)
   /from\s+['"]@\/lib\/checkpoint-te['"]/gi,
-  /from\s+['"]\.\.?\/.*checkpoint-te['"]/gi,
-  /import\s+.*checkpoint-te/gi,
+  /from\s+['"]\.\.?\/.*\/lib\/checkpoint-te['"]/gi,
+  // Do NOT match @/types/checkpoint-te (types are safe - TypeScript strips them at compile time)
+  
+  // Only match imports from @/lib/api-keys-storage (server-only implementation), NOT @/types
   /from\s+['"]@\/lib\/api-keys-storage['"]/gi,
-  /from\s+['"]\.\.?\/.*api-keys-storage['"]/gi,
-  /import\s+.*api-keys-storage/gi,
+  /from\s+['"]\.\.?\/.*\/lib\/api-keys-storage['"]/gi,
 ]
 
 const ENV_SECRET_PATTERNS = [
