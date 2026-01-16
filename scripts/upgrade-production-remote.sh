@@ -112,13 +112,28 @@ fi
 # Step 3: Create backup
 say "Step 3: Creating Backup"
 
+# Ensure APP_DIR is set and valid
+if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
+  fail "APP_DIR is not set or invalid: $APP_DIR"
+fi
+
 BACKUP_DIR="${APP_DIR}/.backups"
 BACKUP_PATH="${BACKUP_DIR}/upgrade-$(date +%Y%m%d-%H%M%S)"
 
+# Validate backup paths are set
+if [ -z "$BACKUP_DIR" ] || [ -z "$BACKUP_PATH" ]; then
+  fail "Backup paths are empty. APP_DIR: $APP_DIR"
+fi
+
+# Ensure APP_USER is set
+if [ -z "$APP_USER" ]; then
+  fail "APP_USER is not set"
+fi
+
 # Create backup directories with correct ownership
-sudo mkdir -p "$BACKUP_DIR"
-sudo mkdir -p "$BACKUP_PATH"
-sudo chown -R "$APP_USER:$APP_USER" "$BACKUP_DIR"
+sudo mkdir -p "$BACKUP_DIR" || fail "Failed to create backup directory: $BACKUP_DIR"
+sudo mkdir -p "$BACKUP_PATH" || fail "Failed to create backup path: $BACKUP_PATH"
+sudo chown -R "$APP_USER:$APP_USER" "$BACKUP_DIR" || fail "Failed to set ownership for: $BACKUP_DIR"
 ok "Backup directories created with ownership: $APP_USER"
 
 # Backup critical data
