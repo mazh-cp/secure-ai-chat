@@ -233,19 +233,62 @@ chmod +x "$NVM_SCRIPT"
 
 # Run as app user with better error handling
 step "Running nvm installation as $APP_USER..."
-LOG_FILE="/tmp/nvm-install.log"
+LOG_FILE="/tmp/nvm-install-$$.log"
 
-if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$NVM_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > "$LOG_FILE" 2>&1; then
+# Ensure log file is writable
+touch "$LOG_FILE"
+chmod 666 "$LOG_FILE"
+
+# Verify script exists and is executable
+if [ ! -f "$NVM_SCRIPT" ]; then
+  fail "Temp script not created: $NVM_SCRIPT"
+  exit 1
+fi
+
+if [ ! -x "$NVM_SCRIPT" ]; then
+  fail "Temp script not executable: $NVM_SCRIPT"
+  exit 1
+fi
+
+# Verify app user can access home directory
+if [ ! -d "$APP_DIR" ]; then
+  fail "App directory does not exist: $APP_DIR"
+  exit 1
+fi
+
+# Run installation and capture output
+set +e  # Don't exit on error, we'll handle it
+sudo -u "$APP_USER" HOME="$APP_DIR" bash "$NVM_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > "$LOG_FILE" 2>&1
+INSTALL_EXIT_CODE=$?
+set -e  # Re-enable exit on error
+
+if [ $INSTALL_EXIT_CODE -eq 0 ]; then
   ok "Node.js v${NODE_VERSION} installed"
   # Show version info
-  cat "$LOG_FILE" | grep -E "Node.js|npm|v${NODE_VERSION}" | tail -3 || cat "$LOG_FILE" | tail -3
+  echo ""
+  if grep -q "Node.js\|npm" "$LOG_FILE" 2>/dev/null; then
+    grep -E "Node.js|npm|v${NODE_VERSION}" "$LOG_FILE" | tail -3
+  else
+    cat "$LOG_FILE" | tail -5
+  fi
+  echo ""
 else
-  fail "Node.js installation failed"
+  fail "Node.js installation failed (exit code: $INSTALL_EXIT_CODE)"
   echo ""
-  echo "Error details from nvm installation:"
-  cat "$LOG_FILE" | tail -30
+  echo "=== Error details from nvm installation ==="
+  if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
+    cat "$LOG_FILE"
+  else
+    echo "No error output captured in $LOG_FILE"
+    echo "Script path: $NVM_SCRIPT"
+    echo "App user: $APP_USER"
+    echo "App directory: $APP_DIR"
+    echo "Node version: ${NODE_VERSION}"
+  fi
+  echo "=========================================="
   echo ""
-  echo "Check log file: $LOG_FILE"
+  echo "Log file: $LOG_FILE"
+  echo ""
   rm -f "$NVM_SCRIPT"
   exit 1
 fi
