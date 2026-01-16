@@ -8,6 +8,7 @@
 # - Azure OpenAI Integration (v1.0.11)
 # - Check Point WAF Support (v1.0.11)
 # - Automatic systemd service setup
+# - API Keys Save Fix (cache invalidation and provider enabling)
 # - All fixes and improvements from v1.0.10 and v1.0.11
 #
 # Usage:
@@ -586,6 +587,20 @@ else
     exit 1
 fi
 
+# Check secure storage directory
+if [ -d ".secure-storage" ]; then
+    print_success "Secure storage directory exists ✓"
+    # Verify permissions
+    STORAGE_PERMS=$(stat -c "%a" .secure-storage 2>/dev/null || stat -f "%OLp" .secure-storage 2>/dev/null || echo "unknown")
+    if [ "$STORAGE_PERMS" = "700" ] || [ "$STORAGE_PERMS" = "unknown" ]; then
+        print_success "Secure storage permissions correct (700) ✓"
+    else
+        print_warning "Secure storage permissions may need adjustment (current: $STORAGE_PERMS, expected: 700)"
+    fi
+else
+    print_warning "Secure storage directory not found (will be created on first API key save)"
+fi
+
 # Check service status
 if command -v systemctl &> /dev/null && sudo systemctl is-enabled secure-ai-chat &> /dev/null; then
     if sudo systemctl is-active --quiet secure-ai-chat; then
@@ -611,12 +626,23 @@ echo "1. Configure environment variables:"
 echo "   cd $FULL_PATH"
 echo "   nano .env.local"
 echo ""
-echo "2. Add your API keys in .env.local:"
+echo "2. Add your API keys:"
+echo "   Option A - Via Settings Page (Recommended):"
+echo "   - Access the application at http://localhost:${APP_PORT}"
+echo "   - Go to Settings page"
+echo "   - Enter your API keys in the form"
+echo "   - Click 'Save Settings'"
+echo "   - Keys will be stored securely server-side in .secure-storage/"
+echo ""
+echo "   Option B - Via .env.local file:"
 echo "   - OPENAI_API_KEY (required for OpenAI provider)"
 echo "   - AZURE_OPENAI_API_KEY (optional, for Azure OpenAI provider)"
 echo "   - AZURE_OPENAI_ENDPOINT (optional, for Azure OpenAI provider)"
 echo "   - LAKERA_AI_KEY (optional, for security scanning)"
 echo "   - CHECKPOINT_TE_API_KEY (optional, for Check Point TE)"
+echo ""
+echo "   Note: Keys saved via Settings page are stored in encrypted format"
+echo "   and take precedence over .env.local values."
 echo ""
 echo "3. Application Status:"
 if command -v systemctl &> /dev/null && sudo systemctl is-enabled secure-ai-chat &> /dev/null; then
@@ -641,6 +667,8 @@ echo "   ✅ Provider switching (OpenAI / Azure OpenAI)"
 echo "   ✅ Enhanced RAG (up to 10 files)"
 echo "   ✅ Automatic startup via systemd"
 echo "   ✅ Improved error handling"
+echo "   ✅ Fixed API keys save and provider enabling"
+echo "   ✅ Improved cache invalidation for key storage"
 echo ""
 echo -e "${BLUE}Firewall Configuration:${NC}"
 echo "   - UFW firewall has been configured"
@@ -661,5 +689,19 @@ echo ""
 echo -e "${BLUE}Health Check:${NC}"
 echo "   curl http://localhost:${APP_PORT}/api/health"
 echo "   curl http://localhost:${APP_PORT}/api/version"
+echo ""
+echo -e "${BLUE}API Keys Configuration:${NC}"
+echo "   After installation, configure API keys via:"
+echo "   1. Settings page: http://localhost:${APP_PORT}/settings"
+echo "   2. Or edit .env.local file: cd $FULL_PATH && nano .env.local"
+echo ""
+echo "   Keys saved via Settings page are stored in:"
+echo "   $FULL_PATH/.secure-storage/api-keys.enc (encrypted)"
+echo ""
+echo -e "${YELLOW}Important Notes:${NC}"
+echo "   - API keys saved via Settings page take precedence over .env.local"
+echo "   - Keys are encrypted at rest using AES-256-CBC"
+echo "   - After saving keys, providers will be automatically enabled in Chat"
+echo "   - If keys don't appear, check: sudo journalctl -u secure-ai-chat -n 50"
 echo ""
 echo -e "${GREEN}Installation script completed successfully!${NC}"
