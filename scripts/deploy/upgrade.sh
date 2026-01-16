@@ -375,11 +375,58 @@ fi
 # Step 5: Run release gate
 say "Step 5: Running Release Gate"
 
+RELEASE_GATE_FAILED=false
 if bash scripts/release-gate.sh > /tmp/upgrade-release-gate.log 2>&1; then
   ok "Release gate passed"
 else
-  fail "Release gate failed"
+  warn "Release gate failed - checking details..."
   cat /tmp/upgrade-release-gate.log | tail -50 | redact
+  
+  # Check if it's a critical security failure or just a warning
+  if grep -qi "SECURITY.*VIOLATION\|ThreatCloud.*leakage\|API key.*client" /tmp/upgrade-release-gate.log 2>/dev/null; then
+    fail "CRITICAL: Release gate security check failed - aborting upgrade"
+    RELEASE_GATE_FAILED=true
+  else
+    warn "Release gate failed (non-critical) - continuing with upgrade"
+    warn "You may want to review release-gate.log after upgrade completes"
+    RELEASE_GATE_FAILED=false
+  fi
+fi
+
+# If release gate failed critically, rollback and exit
+if [ "$RELEASE_GATE_FAILED" = true ]; then
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back due to release gate failure..."
+    
+    # Restore git state
+    if [ -n "$CURRENT_REF" ]; then
+      git checkout "$CURRENT_REF" -q 2>/dev/null || true
+      ok "Restored git state to: $CURRENT_REF"
+    fi
+    
+    # Restore build
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+      ok "Restored previous build"
+    fi
+    
+    # Restart service with old build
+    if is_systemd_service; then
+      say "Restarting service with previous version..."
+      restart_systemd_service
+      ok "Service restarted with previous version"
+    fi
+    
+    fail "Upgrade aborted - system rolled back to previous version"
+    fail "Review release gate output: cat /tmp/upgrade-release-gate.log"
+    exit 2
+  else
+    fail "Release gate failed but rollback is disabled"
+    fail "Review release gate output: cat /tmp/upgrade-release-gate.log"
+    exit 2
+  fi
+fi
   if [ "$ROLLBACK_ON_FAILURE" = true ]; then
     say "Rolling back..."
     git checkout "$CURRENT_REF" -q
