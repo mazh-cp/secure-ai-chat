@@ -229,8 +229,15 @@ say "Step 5: Cloning/Updating Repository"
 if [ -d "$APP_DIR/.git" ]; then
   step "Repository exists, updating..."
   
-  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'GIT_UPDATE'
+  # Create git update script
+  GIT_UPDATE_SCRIPT=$(mktemp)
+  cat > "$GIT_UPDATE_SCRIPT" << 'GIT_UPDATE_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
+
+APP_DIR="$1"
+GIT_REF="$2"
+
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
@@ -241,9 +248,18 @@ set -e
 git fetch origin --tags -q
 git checkout "$GIT_REF" -q || git checkout -b "$GIT_REF" origin/"$GIT_REF" 2>/dev/null || true
 git pull origin "$GIT_REF" -q || true
-GIT_UPDATE
+GIT_UPDATE_SCRIPT_CONTENT
+
+  chmod +x "$GIT_UPDATE_SCRIPT"
   
-  ok "Repository updated"
+  if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$GIT_UPDATE_SCRIPT" "$APP_DIR" "$GIT_REF" > /tmp/git-update.log 2>&1; then
+    ok "Repository updated"
+  else
+    warn "Repository update failed (check /tmp/git-update.log)"
+    warn "Continuing anyway..."
+  fi
+  
+  rm -f "$GIT_UPDATE_SCRIPT"
 else
   # Not a git repo, clone fresh
   step "Cloning repository..."
