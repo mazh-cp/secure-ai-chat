@@ -195,48 +195,58 @@ else
   if [ -d "$APP_DIR" ] && [ "$(ls -A "$APP_DIR" 2>/dev/null | head -1)" ]; then
     warn "Directory exists and is not empty, backing up..."
     BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
-    mv "$APP_DIR" "$BACKUP_DIR"
+    
+    # Backup and remove directory
+    mv "$APP_DIR" "$BACKUP_DIR" 2>/dev/null || {
+      # If mv fails, try copying then removing
+      cp -r "$APP_DIR" "$BACKUP_DIR" 2>/dev/null
+      rm -rf "$APP_DIR" 2>/dev/null
+    }
     warn "Backup created: $BACKUP_DIR"
     
-    # Ensure directory is completely removed
+    # Double-check directory is gone
+    sleep 1
     if [ -d "$APP_DIR" ]; then
-      warn "Removing leftover directory..."
+      warn "Force removing directory..."
       rm -rf "$APP_DIR" 2>/dev/null || true
+      sleep 1
     fi
-    
-    # Create fresh directory with proper ownership
-    mkdir -p "$APP_DIR"
-    chown "$APP_USER:$APP_USER" "$APP_DIR"
   fi
   
-  step "Cloning repository..."
-  # Clone as app user to temp location first
-  TEMP_DIR=$(mktemp -d)
-  chown "$APP_USER:$APP_USER" "$TEMP_DIR"
+  # Ensure directory doesn't exist before cloning
+  if [ -d "$APP_DIR" ]; then
+    warn "Directory still exists, force removing..."
+    rm -rf "$APP_DIR"
+    sleep 1
+  fi
   
-  sudo -u "$APP_USER" bash << GIT_CLONE
+  # Create fresh directory with proper ownership
+  mkdir -p "$APP_DIR"
+  chown "$APP_USER:$APP_USER" "$APP_DIR"
+  chmod 755 "$APP_DIR"
+  
+  step "Cloning repository..."
+  
+  # Clone directly as app user (directory is now empty and owned by app user)
+  sudo -u "$APP_USER" HOME="$APP_DIR" bash << GIT_CLONE
 set -eo pipefail
 export HOME="$APP_DIR"
 
-cd "$TEMP_DIR"
-git clone "$REPO_URL" temp-repo -q
-
-# Move to final location
-mv temp-repo/* "$APP_DIR/" 2>/dev/null || true
-mv temp-repo/.* "$APP_DIR/" 2>/dev/null || true
-rm -rf temp-repo
+cd "$(dirname "$APP_DIR")"
+git clone "$REPO_URL" "$(basename "$APP_DIR")" -q
 
 cd "$APP_DIR"
 git checkout "$GIT_REF" -q 2>/dev/null || true
 GIT_CLONE
   
-  # Clean up temp directory
-  rm -rf "$TEMP_DIR"
-  
-  # Ensure proper ownership
+  # Ensure proper ownership after clone
   chown -R "$APP_USER:$APP_USER" "$APP_DIR"
   
-  ok "Repository cloned"
+  if [ -d "$APP_DIR/.git" ]; then
+    ok "Repository cloned"
+  else
+    fail "Repository clone failed"
+  fi
 fi
 
 # Step 6: Install dependencies
