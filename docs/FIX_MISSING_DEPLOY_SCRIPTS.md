@@ -42,11 +42,15 @@ curl -o scripts/deploy/common.sh \
 curl -o scripts/deploy/clean-install.sh \
   https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/deploy/clean-install.sh
 
-curl -o scripts/deploy/secure-ai-chat.service \
+# Note: Use sudo for all downloads to avoid permission issues
+sudo curl -o scripts/deploy/secure-ai-chat.service \
   https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/deploy/secure-ai-chat.service
 
-# Make scripts executable
-chmod +x scripts/deploy/*.sh
+# Make scripts executable (use sudo if files were created with sudo)
+sudo chmod +x scripts/deploy/*.sh
+
+# Fix ownership if needed (replace adminuser with your actual app user)
+# sudo chown adminuser:adminuser scripts/deploy/*
 
 # Verify scripts exist and are executable
 ls -la scripts/deploy/
@@ -95,6 +99,27 @@ Once the scripts are in place, you can run the upgrade:
 ```bash
 cd /opt/secure-ai-chat
 sudo bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
+```
+
+---
+
+### Error: "Permission denied" when downloading files
+
+If you get "Permission denied" when using `curl -o`, use `sudo`:
+
+```bash
+# Create directory first
+sudo mkdir -p scripts/deploy
+
+# Download with sudo
+sudo curl -o scripts/deploy/upgrade.sh \
+  https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/deploy/upgrade.sh
+
+# Make executable with sudo
+sudo chmod +x scripts/deploy/*.sh
+
+# Fix ownership if needed (replace adminuser with your app user)
+sudo chown adminuser:adminuser scripts/deploy/*
 ```
 
 ---
