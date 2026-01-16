@@ -77,24 +77,9 @@ if [ ! -d "$APP_DIR" ]; then
   
   if [ -n "$FOUND_PATH" ]; then
     warn "Found installation at: $FOUND_PATH"
-    # Auto-use found path (non-interactive mode)
-    if [ ! -t 0 ]; then
-      # Running via curl | bash (non-interactive)
-      APP_DIR="$FOUND_PATH"
-      ok "Auto-using installation at: $APP_DIR"
-    else
-      # Interactive mode - ask for confirmation
-      read -p "Use this path? (Y/n): " -n 1 -r
-      echo
-      if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        APP_DIR="$FOUND_PATH"
-        ok "Using installation at: $APP_DIR"
-      else
-        fail "Please specify correct app directory: APP_DIR=/path/to/app $0"
-        fail "Or run fresh install: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash"
-        exit 1
-      fi
-    fi
+    # Auto-use found path (always, since we verified it exists and has package.json)
+    APP_DIR="$FOUND_PATH"
+    ok "Auto-using installation at: $APP_DIR"
   else
     fail "App directory does not exist: $APP_DIR"
     fail ""

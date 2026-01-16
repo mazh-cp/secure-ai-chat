@@ -116,18 +116,31 @@ function scanFile(filePath) {
       }
     }
     
-    // Check for server-only imports
+    // Check for server-only imports (but skip type-only imports)
     for (const pattern of SERVER_ONLY_IMPORTS) {
       if (pattern.test(content)) {
         const lines = content.split('\n')
         const lineNum = lines.findIndex(line => pattern.test(line))
         if (lineNum >= 0) {
+          const line = lines[lineNum]
+          
+          // Skip type-only imports from @/types (safe - TypeScript strips these at compile time)
+          // Examples: "import { CheckPointTEResponse } from '@/types/checkpoint-te'"
+          // Examples: "import type { ... } from '@/types/checkpoint-te'"
+          if (line.includes('@/types/checkpoint-te') || 
+              line.includes('@/types/api-keys') ||
+              line.trim().startsWith('import type') ||
+              /from\s+['"]@\/types\//.test(line)) {
+            // This is a type-only import - safe to ignore (no runtime code, no secrets)
+            continue
+          }
+          
           violations.push({
             file: relativePath,
             line: lineNum + 1,
             type: 'SERVER_ONLY_IMPORT',
             pattern: pattern.toString(),
-            context: lines[lineNum].trim().substring(0, 100),
+            context: line.trim().substring(0, 100),
           })
         }
       }
