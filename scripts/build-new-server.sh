@@ -166,67 +166,91 @@ say "Step 4: Installing Node.js v${NODE_VERSION} via nvm"
 NVM_SCRIPT=$(mktemp)
 cat > "$NVM_SCRIPT" << 'NVM_SCRIPT_CONTENT'
 #!/usr/bin/env bash
-set -e
-set +u  # Disable unbound variable check for nvm
+set +u  # Disable unbound variable check for nvm (must be first)
 
 APP_DIR="$1"
 NODE_VERSION="$2"
 
+# Error handling function
+error_exit() {
+  echo "ERROR: $1" >&2
+  exit 1
+}
+
+# Verify arguments
+if [ -z "$APP_DIR" ] || [ -z "$NODE_VERSION" ]; then
+  error_exit "Missing required arguments: APP_DIR or NODE_VERSION"
+fi
+
+# Set environment
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
 
-# Ensure directory exists
-mkdir -p "$NVM_DIR" 2>/dev/null || true
+# Ensure HOME directory exists and is accessible
+if [ ! -d "$APP_DIR" ]; then
+  error_exit "APP_DIR does not exist: $APP_DIR"
+fi
+
+# Ensure nvm directory exists
+mkdir -p "$NVM_DIR" 2>/dev/null || error_exit "Cannot create NVM_DIR: $NVM_DIR"
 
 # Install nvm if not exists
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-  echo "Installing nvm..."
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/tmp/nvm-install-output.log 2>&1
+  echo "Installing nvm..." >&2
+  NVM_INSTALL_LOG="/tmp/nvm-download-$$.log"
+  if curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh -o /tmp/nvm-install.sh 2>"$NVM_INSTALL_LOG"; then
+    if bash /tmp/nvm-install.sh > "$NVM_INSTALL_LOG" 2>&1; then
+      echo "nvm installed successfully" >&2
+      rm -f /tmp/nvm-install.sh "$NVM_INSTALL_LOG"
+    else
+      echo "ERROR: nvm install script failed" >&2
+      cat "$NVM_INSTALL_LOG" >&2
+      rm -f /tmp/nvm-install.sh "$NVM_INSTALL_LOG"
+      exit 1
+    fi
+  else
+    echo "ERROR: Failed to download nvm install script" >&2
+    cat "$NVM_INSTALL_LOG" >&2
+    rm -f /tmp/nvm-install.sh "$NVM_INSTALL_LOG"
+    exit 1
+  fi
   # Wait for nvm to be installed
-  sleep 1
+  sleep 2
 fi
 
 # Load nvm
 if [ -s "$NVM_DIR/nvm.sh" ]; then
-  \. "$NVM_DIR/nvm.sh"
+  \. "$NVM_DIR/nvm.sh" || error_exit "Failed to source nvm.sh"
 else
-  echo "ERROR: nvm.sh not found after installation" >&2
-  cat /tmp/nvm-install-output.log >&2 2>/dev/null || true
-  exit 1
+  error_exit "nvm.sh not found after installation: $NVM_DIR/nvm.sh"
 fi
 
 # Install Node.js
-if command -v nvm >/dev/null 2>&1 || [ -s "$NVM_DIR/nvm.sh" ]; then
-  \. "$NVM_DIR/nvm.sh"
-  
-  # Check if version already installed
-  if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
-    echo "Node.js v${NODE_VERSION} already installed"
-    nvm use ${NODE_VERSION} 2>&1
-    nvm alias default ${NODE_VERSION} 2>&1
-  else
-    echo "Installing Node.js v${NODE_VERSION}..."
-    nvm install ${NODE_VERSION} 2>&1
-    nvm use ${NODE_VERSION} 2>&1
-    nvm alias default ${NODE_VERSION} 2>&1
-  fi
-  
-  # Verify installation
-  echo "Verifying installation..."
-  NODE_VER=$(node -v 2>&1)
-  NPM_VER=$(npm -v 2>&1)
-  
-  if [ -n "$NODE_VER" ] && [ -n "$NPM_VER" ]; then
-    echo "Node.js: $NODE_VER"
-    echo "npm: $NPM_VER"
-  else
-    echo "ERROR: Node.js or npm verification failed" >&2
-    exit 1
-  fi
+\. "$NVM_DIR/nvm.sh" || error_exit "Failed to load nvm"
+
+# Check if version already installed
+if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
+  echo "Node.js v${NODE_VERSION} already installed" >&2
+  nvm use ${NODE_VERSION} 2>&1 || error_exit "Failed to use Node.js v${NODE_VERSION}"
+  nvm alias default ${NODE_VERSION} 2>&1 || error_exit "Failed to set default alias"
 else
-  echo "ERROR: nvm command not available" >&2
-  exit 1
+  echo "Installing Node.js v${NODE_VERSION}..." >&2
+  nvm install ${NODE_VERSION} 2>&1 || error_exit "Failed to install Node.js v${NODE_VERSION}"
+  nvm use ${NODE_VERSION} 2>&1 || error_exit "Failed to use Node.js v${NODE_VERSION}"
+  nvm alias default ${NODE_VERSION} 2>&1 || error_exit "Failed to set default alias"
 fi
+
+# Verify installation
+echo "Verifying installation..." >&2
+NODE_VER=$(node -v 2>&1)
+NPM_VER=$(npm -v 2>&1)
+
+if [ -z "$NODE_VER" ] || [ -z "$NPM_VER" ]; then
+  error_exit "Node.js or npm verification failed - node: '$NODE_VER', npm: '$NPM_VER'"
+fi
+
+echo "Node.js: $NODE_VER"
+echo "npm: $NPM_VER"
 NVM_SCRIPT_CONTENT
 
 chmod +x "$NVM_SCRIPT"
