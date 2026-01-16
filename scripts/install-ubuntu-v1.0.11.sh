@@ -226,11 +226,11 @@ if [ -d "$FULL_PATH/.git" ]; then
     git fetch origin --tags -q
     if [ -n "$TAG" ]; then
         print_info "Checking out tag: $TAG"
-        git checkout "$TAG" -q || {
+        if ! git checkout "$TAG" -q; then
             print_error "Tag $TAG not found. Available tags:"
             git tag -l | tail -10
             exit 1
-        }
+        fi
         print_success "Checked out tag: $TAG"
     else
         git checkout "$BRANCH" -q
@@ -244,7 +244,9 @@ else
     # Remove directory if it exists but is not a git repo
     if [ -d "$REPO_DIR" ] && [ ! -d "$REPO_DIR/.git" ]; then
         print_warning "Directory exists but is not a git repository. Removing..."
-        rm -rf "$REPO_DIR" 2>/dev/null || sudo rm -rf "$REPO_DIR" 2>/dev/null || true
+        if ! rm -rf "$REPO_DIR" 2>/dev/null; then
+            sudo rm -rf "$REPO_DIR" 2>/dev/null || true
+        fi
     fi
     
     # Clone repository
@@ -252,11 +254,11 @@ else
         print_info "Cloning repository with tag: $TAG"
         git clone "$REPO_URL" "$REPO_DIR" -q
         cd "$REPO_DIR"
-        git checkout "$TAG" -q || {
+        if ! git checkout "$TAG" -q; then
             print_error "Tag $TAG not found. Available tags:"
             git tag -l | tail -10
             exit 1
-        }
+        fi
     else
         git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
         cd "$REPO_DIR"
