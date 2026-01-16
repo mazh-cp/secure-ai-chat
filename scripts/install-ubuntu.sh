@@ -173,16 +173,27 @@ else
     ok "All required packages already installed"
 fi
 
-# Verify critical packages
+# Verify critical packages (build-essential is a meta-package, check via dpkg only)
 MISSING_CRITICAL=()
-for pkg in curl git build-essential; do
-    if ! command -v "$pkg" >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  $pkg "; then
-        MISSING_CRITICAL+=("$pkg")
-    fi
-done
+
+# Check curl (has command)
+if ! command -v curl >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  curl "; then
+    MISSING_CRITICAL+=("curl")
+fi
+
+# Check git (has command)
+if ! command -v git >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  git "; then
+    MISSING_CRITICAL+=("git")
+fi
+
+# Check build-essential (meta-package, check via dpkg only)
+if ! dpkg -l | grep -q "^ii  build-essential "; then
+    MISSING_CRITICAL+=("build-essential")
+fi
 
 if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
     print_error "Critical packages missing: ${MISSING_CRITICAL[*]}"
+    print_error "Please install manually: sudo apt-get update && sudo apt-get install -y ${MISSING_CRITICAL[*]}"
     exit 1
 fi
 
