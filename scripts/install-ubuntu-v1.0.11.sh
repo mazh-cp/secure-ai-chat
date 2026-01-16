@@ -399,8 +399,23 @@ else
     fi
 fi
 
+# Step 6.5: Ensure secure storage directory exists
+print_header "Step 6.5: Setting Up Secure Storage"
+
+print_info "Creating secure storage directory for API keys..."
+if [ ! -d "$FULL_PATH/.secure-storage" ]; then
+    mkdir -p "$FULL_PATH/.secure-storage"
+    chmod 700 "$FULL_PATH/.secure-storage"
+    print_success "Secure storage directory created with restricted permissions (700)"
+else
+    print_info "Secure storage directory already exists"
+    # Ensure correct permissions
+    chmod 700 "$FULL_PATH/.secure-storage" 2>/dev/null || true
+    print_success "Secure storage directory permissions verified"
+fi
+
 # Step 7: Build the application
-print_header "Step 6: Building Application"
+print_header "Step 7: Building Application"
 
 print_info "Running type check..."
 if npm run type-check --silent; then
@@ -420,7 +435,7 @@ else
 fi
 
 # Step 8: Configure systemd Service for Automatic Startup
-print_header "Step 7: Configuring Automatic Startup (systemd)"
+print_header "Step 8: Configuring Automatic Startup (systemd)"
 
 # Find Node.js and npm paths
 export NVM_DIR="$HOME/.nvm"
@@ -503,7 +518,7 @@ else
 fi
 
 # Step 9: Configure UFW Firewall
-print_header "Step 8: Configuring UFW Firewall"
+print_header "Step 9: Configuring UFW Firewall"
 
 # Check if UFW is installed
 if ! command -v ufw &> /dev/null; then
@@ -559,7 +574,7 @@ sudo ufw status numbered | grep -E "(Status|${APP_PORT}|22/tcp)" || true
 print_success "Firewall configuration complete"
 
 # Step 10: Verification
-print_header "Step 9: Verification"
+print_header "Step 10: Verification"
 
 # Check Node.js version matches .nvmrc
 if [ -f ".nvmrc" ]; then
