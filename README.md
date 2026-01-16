@@ -106,14 +106,17 @@ See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instru
 **For fresh Ubuntu VM installation:**
 
 ```bash
-# Option 1: Direct download and run (requires repo on GitHub)
+# Option 1: Install specific version (v1.0.11) - RECOMMENDED
+TAG=v1.0.11 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+
+# Option 2: Install latest from main branch
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 
-# Option 2: Using wget (requires repo on GitHub)
-wget -qO- https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+# Option 3: Using wget with specific version
+TAG=v1.0.11 wget -qO- https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 
-# Option 3: Local installation (if you have the script file)
-bash scripts/install-ubuntu.sh
+# Option 4: Local installation (if you have the script file)
+TAG=v1.0.11 bash scripts/install-ubuntu.sh
 ```
 
 This script will automatically:

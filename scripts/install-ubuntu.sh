@@ -21,6 +21,7 @@ set -eo pipefail
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 REPO_DIR="${REPO_DIR:-secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
+TAG="${TAG:-}"  # Optional: specify tag (e.g., v1.0.11) to checkout instead of branch
 NODE_VERSION="${NODE_VERSION:-25.2.1}"
 APP_PORT="${PORT:-3000}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME}"
@@ -162,21 +163,58 @@ if [ -d "$FULL_PATH" ]; then
     print_info "Repository directory exists. Updating..."
     cd "$FULL_PATH"
     if [ -d ".git" ]; then
-        git fetch origin -q
-        git checkout "$BRANCH" -q
-        git pull origin "$BRANCH" -q
-        print_success "Repository updated"
+        git fetch origin --tags -q
+        if [ -n "$TAG" ]; then
+            print_info "Checking out tag: $TAG"
+            git checkout "$TAG" -q || {
+                print_error "Tag $TAG not found. Available tags:"
+                git tag -l | tail -10
+                exit 1
+            }
+            print_success "Checked out tag: $TAG"
+        else
+            git checkout "$BRANCH" -q
+            git pull origin "$BRANCH" -q
+            print_success "Repository updated to $BRANCH"
+        fi
     else
         print_warning "Directory exists but is not a git repository. Removing and cloning fresh..."
         cd "$INSTALL_DIR"
         rm -rf "$REPO_DIR"
-        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+        if [ -n "$TAG" ]; then
+            print_info "Cloning repository with tag: $TAG"
+            git clone --branch "$TAG" --depth 1 "$REPO_URL" "$REPO_DIR" -q || {
+                print_error "Failed to clone tag $TAG. Trying full clone..."
+                git clone "$REPO_URL" "$REPO_DIR" -q
+                cd "$REPO_DIR"
+                git checkout "$TAG" -q || {
+                    print_error "Tag $TAG not found"
+                    exit 1
+                }
+            }
+        else
+            git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+        fi
         print_success "Repository cloned"
     fi
 else
     print_info "Cloning repository..."
     cd "$INSTALL_DIR"
-    git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+    if [ -n "$TAG" ]; then
+        print_info "Cloning repository with tag: $TAG"
+        git clone --branch "$TAG" --depth 1 "$REPO_URL" "$REPO_DIR" -q || {
+            print_warning "Shallow clone failed for tag. Trying full clone..."
+            git clone "$REPO_URL" "$REPO_DIR" -q
+            cd "$REPO_DIR"
+            git checkout "$TAG" -q || {
+                print_error "Tag $TAG not found. Available tags:"
+                git tag -l | tail -10
+                exit 1
+            }
+        }
+    else
+        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+    fi
     print_success "Repository cloned to $FULL_PATH"
 fi
 
@@ -214,14 +252,32 @@ fi
 print_header "Step 4b: Installing Project Dependencies"
 
 print_info "Installing npm dependencies (this may take a few minutes)..."
-if npm ci --silent 2>&1; then
-    print_success "Dependencies installed"
+if [ -f "package-lock.json" ]; then
+    print_info "Found package-lock.json, using 'npm ci' for reproducible builds..."
+    if npm ci 2>&1; then
+        print_success "Dependencies installed via npm ci"
+    else
+        print_warning "npm ci failed (package-lock.json may be out of sync)"
+        print_info "Attempting to fix package-lock.json..."
+        # Fix permissions and retry
+        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+        sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
+        print_info "Running 'npm install' to update package-lock.json..."
+        if npm install 2>&1; then
+            print_success "Dependencies installed and package-lock.json updated"
+        else
+            print_error "Failed to install dependencies"
+            print_error "This may indicate:"
+            print_error "  1. Network connectivity issues"
+            print_error "  2. Insufficient disk space"
+            print_error "  3. npm registry access problems"
+            print_info "Try manually: cd $FULL_PATH && npm install"
+            exit 1
+        fi
+    fi
 else
-    print_warning "npm ci failed, trying npm install..."
-    # Fix permissions and retry
-    sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
-    sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
-    if npm install --silent 2>&1; then
+    print_warning "package-lock.json not found, using 'npm install'..."
+    if npm install 2>&1; then
         print_success "Dependencies installed"
     else
         print_error "Failed to install dependencies"
