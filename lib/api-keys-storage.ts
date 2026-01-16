@@ -418,9 +418,16 @@ export async function deleteAllApiKeys(): Promise<void> {
 /**
  * Get API keys (async version)
  * Returns keys from environment variables, cached, or file storage
+ * Force reload can bypass cache to ensure fresh data
  */
-export async function getApiKeys(): Promise<StoredApiKeys> {
-  if (keysLoaded && cachedKeys) {
+export async function getApiKeys(forceReload: boolean = false): Promise<StoredApiKeys> {
+  // If force reload is requested, clear cache and reload
+  if (forceReload) {
+    cachedKeys = null
+    keysLoaded = false
+  }
+  
+  if (keysLoaded && cachedKeys && !forceReload) {
     return cachedKeys
   }
   return await loadApiKeys()

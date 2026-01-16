@@ -38,15 +38,34 @@ export default function ChatInterface() {
     const loadApiKeys = async () => {
       try {
         // Try to get keys from server-side storage first
-        const response = await fetch('/api/keys/retrieve').catch(() => null)
+        // Add cache-busting query parameter to ensure fresh data
+        const cacheBuster = `?t=${Date.now()}`
+        const response = await fetch(`/api/keys/retrieve${cacheBuster}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
+        }).catch(() => null)
+        
         if (response?.ok) {
           const data = await response.json()
+          
+          // Debug logging in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔑 Keys status from API:', {
+              configured: data.configured,
+              keys: data.keys,
+              hasOpenAi: data.configured?.openAiKey || data.keys?.openAiKey === 'configured',
+            })
+          }
+          
           // Check if keys are configured (server returns configured status and keys object)
           // data.configured.openAiKey is boolean, data.keys.openAiKey is 'configured' or null
           // For endpoints, data.keys contains the actual URL value (safe to expose)
-          const hasAnyKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
+          const hasOpenAiKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
           
-          if (hasAnyKey) {
+          if (hasOpenAiKey) {
             // Use server-side keys - set a placeholder to indicate keys are configured
             // The actual key is stored server-side and used by API routes
             // For endpoints, use the actual URL value if available (endpoints are safe to expose)
@@ -58,30 +77,52 @@ export default function ChatInterface() {
             })
             return
           } else {
-            console.log('⚠️ Keys not configured yet:', data)
+            // Log detailed info for debugging
+            console.warn('⚠️ Keys not configured yet. API response:', {
+              configured: data.configured,
+              keys: data.keys,
+              status: response.status,
+            })
+            
+            // Clear any stale state if API says no keys
+            if (apiKeys?.openAiKey === 'configured') {
+              setApiKeys(null)
+            }
           }
+        } else if (response) {
+          // API responded but with error
+          console.error('⚠️ Failed to fetch keys status:', response.status, response.statusText)
         }
       } catch (error) {
-        console.error('Failed to load API keys from server:', error)
+        console.error('❌ Failed to load API keys from server:', error)
       }
       
-      // Fallback to localStorage for backward compatibility
-      if (typeof window !== 'undefined') {
+      // Fallback to localStorage for backward compatibility (only if no server-side keys found)
+      if (typeof window !== 'undefined' && !apiKeys) {
         const stored = localStorage.getItem('apiKeys')
         if (stored) {
           try {
-            setApiKeys(JSON.parse(stored))
+            const parsed = JSON.parse(stored)
+            // Only use localStorage if it has actual keys (not just placeholders)
+            if (parsed.openAiKey && parsed.openAiKey !== 'configured') {
+              setApiKeys(parsed)
+            }
           } catch (e) {
-            console.error('Failed to load API keys:', e)
+            console.error('Failed to load API keys from localStorage:', e)
           }
         }
       }
     }
     
+    // Load immediately
     loadApiKeys()
     
-    // Periodically check for key updates (every 5 seconds)
-    const interval = setInterval(loadApiKeys, 5000)
+    // Periodically check for key updates (every 5 seconds) with retry logic
+    const interval = setInterval(() => {
+      loadApiKeys().catch((err) => {
+        console.error('Periodic key check failed:', err)
+      })
+    }, 5000)
     
     return () => clearInterval(interval)
   }, [])
