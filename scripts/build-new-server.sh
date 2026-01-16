@@ -166,7 +166,8 @@ say "Step 4: Installing Node.js v${NODE_VERSION} via nvm"
 NVM_SCRIPT=$(mktemp)
 cat > "$NVM_SCRIPT" << 'NVM_SCRIPT_CONTENT'
 #!/usr/bin/env bash
-set -eo pipefail
+set -e
+set +u  # Disable unbound variable check for nvm
 
 APP_DIR="$1"
 NODE_VERSION="$2"
@@ -174,47 +175,77 @@ NODE_VERSION="$2"
 export HOME="$APP_DIR"
 export NVM_DIR="$HOME/.nvm"
 
+# Ensure directory exists
+mkdir -p "$NVM_DIR" 2>/dev/null || true
+
 # Install nvm if not exists
-if [ ! -d "$NVM_DIR" ]; then
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+  echo "Installing nvm..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/tmp/nvm-install-output.log 2>&1
+  # Wait for nvm to be installed
+  sleep 1
 fi
 
-# Load nvm (disable strict mode for nvm)
-set +u
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-set -e
-
-# Install Node.js
+# Load nvm
 if [ -s "$NVM_DIR/nvm.sh" ]; then
   \. "$NVM_DIR/nvm.sh"
+else
+  echo "ERROR: nvm.sh not found after installation" >&2
+  cat /tmp/nvm-install-output.log >&2 2>/dev/null || true
+  exit 1
+fi
+
+# Install Node.js
+if command -v nvm >/dev/null 2>&1 || [ -s "$NVM_DIR/nvm.sh" ]; then
+  \. "$NVM_DIR/nvm.sh"
   
+  # Check if version already installed
   if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
-    nvm use ${NODE_VERSION} >/dev/null 2>&1 || nvm install ${NODE_VERSION} >/dev/null 2>&1
-    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+    echo "Node.js v${NODE_VERSION} already installed"
+    nvm use ${NODE_VERSION} 2>&1
+    nvm alias default ${NODE_VERSION} 2>&1
   else
-    nvm install ${NODE_VERSION} >/dev/null 2>&1
-    nvm use ${NODE_VERSION} >/dev/null 2>&1
-    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+    echo "Installing Node.js v${NODE_VERSION}..."
+    nvm install ${NODE_VERSION} 2>&1
+    nvm use ${NODE_VERSION} 2>&1
+    nvm alias default ${NODE_VERSION} 2>&1
   fi
   
   # Verify installation
-  node -v
-  npm -v
+  echo "Verifying installation..."
+  NODE_VER=$(node -v 2>&1)
+  NPM_VER=$(npm -v 2>&1)
+  
+  if [ -n "$NODE_VER" ] && [ -n "$NPM_VER" ]; then
+    echo "Node.js: $NODE_VER"
+    echo "npm: $NPM_VER"
+  else
+    echo "ERROR: Node.js or npm verification failed" >&2
+    exit 1
+  fi
 else
-  echo "nvm not found" >&2
+  echo "ERROR: nvm command not available" >&2
   exit 1
 fi
 NVM_SCRIPT_CONTENT
 
 chmod +x "$NVM_SCRIPT"
 
-# Run as app user
-if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$NVM_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > /tmp/nvm-install.log 2>&1; then
+# Run as app user with better error handling
+step "Running nvm installation as $APP_USER..."
+LOG_FILE="/tmp/nvm-install.log"
+
+if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$NVM_SCRIPT" "$APP_DIR" "${NODE_VERSION}" > "$LOG_FILE" 2>&1; then
   ok "Node.js v${NODE_VERSION} installed"
-  cat /tmp/nvm-install.log | tail -2
+  # Show version info
+  cat "$LOG_FILE" | grep -E "Node.js|npm|v${NODE_VERSION}" | tail -3 || cat "$LOG_FILE" | tail -3
 else
   fail "Node.js installation failed"
-  cat /tmp/nvm-install.log | tail -20
+  echo ""
+  echo "Error details from nvm installation:"
+  cat "$LOG_FILE" | tail -30
+  echo ""
+  echo "Check log file: $LOG_FILE"
   rm -f "$NVM_SCRIPT"
   exit 1
 fi
