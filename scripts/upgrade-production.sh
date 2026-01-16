@@ -47,7 +47,46 @@ echo ""
 say "Step 1: Validating Prerequisites"
 
 if [ ! -d "$APP_DIR" ]; then
-  fail "App directory does not exist: $APP_DIR"
+  warn "App directory does not exist: $APP_DIR"
+  warn "Attempting to find installation..."
+  
+  # Try to find the installation
+  POSSIBLE_PATHS=(
+    "/opt/secure-ai-chat"
+    "/home/$(whoami)/secure-ai-chat"
+    "$HOME/secure-ai-chat"
+    "/var/www/secure-ai-chat"
+    "$(find /home /opt -type d -name "secure-ai-chat" 2>/dev/null | head -1)"
+  )
+  
+  FOUND_PATH=""
+  for path in "${POSSIBLE_PATHS[@]}"; do
+    if [ -n "$path" ] && [ -d "$path" ] && [ -f "$path/package.json" ]; then
+      FOUND_PATH="$path"
+      break
+    fi
+  done
+  
+  if [ -n "$FOUND_PATH" ]; then
+    warn "Found installation at: $FOUND_PATH"
+    read -p "Use this path? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      APP_DIR="$FOUND_PATH"
+      ok "Using installation at: $APP_DIR"
+    else
+      fail "Please specify correct app directory: APP_DIR=/path/to/app $0"
+      fail "Or run fresh install: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash"
+      exit 1
+    fi
+  else
+    fail "App directory does not exist: $APP_DIR"
+    fail ""
+    fail "Options:"
+    fail "  1. Specify correct path: APP_DIR=/path/to/app $0"
+    fail "  2. Run fresh install: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash"
+    exit 1
+  fi
 fi
 
 if [ "$EUID" -eq 0 ]; then
