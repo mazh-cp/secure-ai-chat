@@ -24,7 +24,7 @@ BRANCH="${BRANCH:-main}"
 TAG="${TAG:-v1.0.11}"  # Default to v1.0.11
 NODE_VERSION="${NODE_VERSION:-25.2.1}"
 APP_PORT="${PORT:-3000}"
-INSTALL_DIR="${INSTALL_DIR:-/opt}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -158,6 +158,32 @@ print_header "Step 3: Setting Up Repository"
 
 FULL_PATH="${INSTALL_DIR}/${REPO_DIR}"
 
+# Ensure installation directory exists and has correct permissions
+print_info "Preparing installation directory..."
+if [ ! -d "$INSTALL_DIR" ]; then
+    print_info "Creating installation directory: $INSTALL_DIR"
+    sudo mkdir -p "$INSTALL_DIR"
+    sudo chown $USER:$USER "$INSTALL_DIR" 2>/dev/null || true
+fi
+
+# Ensure we have write access to installation directory
+if [ ! -w "$INSTALL_DIR" ]; then
+    print_info "Fixing permissions for installation directory..."
+    sudo chown -R $USER:$USER "$INSTALL_DIR" 2>/dev/null || true
+    sudo chmod -R u+w "$INSTALL_DIR" 2>/dev/null || true
+fi
+
+# Create repository directory if it doesn't exist
+if [ ! -d "$FULL_PATH" ]; then
+    print_info "Creating repository directory: $FULL_PATH"
+    mkdir -p "$FULL_PATH" 2>/dev/null || {
+        # If mkdir fails, try with sudo and fix ownership
+        sudo mkdir -p "$FULL_PATH"
+        sudo chown -R $USER:$USER "$FULL_PATH"
+        sudo chmod -R u+w "$FULL_PATH"
+    }
+fi
+
 if [ -d "$FULL_PATH" ]; then
     print_info "Repository directory exists. Updating..."
     cd "$FULL_PATH"
@@ -179,18 +205,27 @@ if [ -d "$FULL_PATH" ]; then
     else
         print_warning "Directory exists but is not a git repository. Removing and cloning fresh..."
         cd "$INSTALL_DIR"
-        rm -rf "$REPO_DIR"
+        sudo rm -rf "$REPO_DIR" 2>/dev/null || rm -rf "$REPO_DIR" 2>/dev/null || true
         if [ -n "$TAG" ]; then
             print_info "Cloning repository with tag: $TAG"
-            git clone "$REPO_URL" "$REPO_DIR" -q
+            git clone "$REPO_URL" "$REPO_DIR" -q || {
+                print_error "Failed to clone repository. Check permissions and network connection."
+                exit 1
+            }
             cd "$REPO_DIR"
             git checkout "$TAG" -q || {
-                print_error "Tag $TAG not found"
+                print_error "Tag $TAG not found. Available tags:"
+                git tag -l | tail -10
                 exit 1
             }
         else
-            git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+            git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q || {
+                print_error "Failed to clone repository. Check permissions and network connection."
+                exit 1
+            }
         fi
+        # Fix ownership after clone
+        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
         print_success "Repository cloned"
     fi
 else
@@ -198,7 +233,19 @@ else
     cd "$INSTALL_DIR"
     if [ -n "$TAG" ]; then
         print_info "Cloning repository with tag: $TAG"
-        git clone "$REPO_URL" "$REPO_DIR" -q
+        git clone "$REPO_URL" "$REPO_DIR" -q || {
+            print_error "Failed to clone repository. Check permissions and network connection."
+            print_info "Trying with sudo to create directory first..."
+            sudo mkdir -p "$FULL_PATH"
+            sudo chown -R $USER:$USER "$FULL_PATH"
+            git clone "$REPO_URL" "$REPO_DIR" -q || {
+                print_error "Clone failed. Please check:"
+                print_error "  1. Network connectivity"
+                print_error "  2. Git is installed"
+                print_error "  3. Permissions for $INSTALL_DIR"
+                exit 1
+            }
+        }
         cd "$REPO_DIR"
         git checkout "$TAG" -q || {
             print_error "Tag $TAG not found. Available tags:"
@@ -206,8 +253,13 @@ else
             exit 1
         }
     else
-        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q || {
+            print_error "Failed to clone repository. Check permissions and network connection."
+            exit 1
+        }
     fi
+    # Fix ownership after clone
+    sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
     print_success "Repository cloned to $FULL_PATH"
 fi
 
