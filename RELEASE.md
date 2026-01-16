@@ -297,6 +297,196 @@ Before publishing changes to GitHub, ensure:
 - ✅ Build succeeds
 - ✅ Secret leakage scans pass
 
+## Safe Publish (One Command)
+
+For the safest workflow, use the automated safe publish script:
+
+```bash
+# Basic usage (create/update PR)
+./scripts/publish-safe.sh
+
+# With tag (create tag after PR is merged)
+./scripts/publish-safe.sh --tag v1.0.12
+```
+
+### How It Works
+
+The `publish-safe.sh` script ensures:
+
+1. **Safety Checks**:
+   - ✅ Refuses to run on `main` branch (must use feature branch)
+   - ✅ Ensures working tree is clean (no uncommitted changes)
+   - ✅ Verifies `origin` remote exists
+   - ✅ Runs Release Gate locally (must PASS)
+
+2. **Automated PR Creation**:
+   - Pushes current branch to `origin`
+   - Creates PR to `main` using GitHub CLI (if available)
+   - Or provides manual PR URL if `gh` is not installed
+
+3. **Tagging** (optional):
+   - If `--tag vX.Y.Z` is provided, creates helper script for tagging after merge
+   - Tag is created AFTER PR is merged (manual step for safety)
+
+### Prerequisites
+
+1. **Feature Branch**: Never run on `main` branch
+   ```bash
+   git checkout -b feature/your-change-name
+   ```
+
+2. **GitHub CLI** (optional but recommended):
+   ```bash
+   # Install from: https://cli.github.com/
+   # Then authenticate:
+   gh auth login
+   ```
+
+3. **Clean Working Tree**: Commit all changes before running
+   ```bash
+   git status  # Should be clean
+   ```
+
+### Usage Examples
+
+#### Basic Workflow (No Tag)
+
+```bash
+# 1. Create feature branch
+git checkout -b feature/add-new-feature
+
+# 2. Make changes and commit
+git add .
+git commit -m "Add new feature"
+
+# 3. Run safe publish
+./scripts/publish-safe.sh
+
+# 4. Script will:
+#    - Run Release Gate (must pass)
+#    - Push branch to origin
+#    - Create/update PR to main
+#    - Provide next steps
+```
+
+#### Workflow with Tag
+
+```bash
+# 1. Create feature branch
+git checkout -b release/v1.0.12
+
+# 2. Make changes and commit
+git add .
+git commit -m "Release v1.0.12: New features"
+
+# 3. Run safe publish with tag
+./scripts/publish-safe.sh --tag v1.0.12
+
+# 4. After PR is merged, create tag:
+bash .tag-after-merge-v1.0.12.sh
+```
+
+### Branch Protection Setup
+
+To enforce the safe publish workflow on GitHub:
+
+1. **Set `main` as Default Branch**:
+   - Go to repository Settings → Branches
+   - Ensure `main` is the default branch
+
+2. **Enable Branch Protection**:
+   - Go to Settings → Branches → Add rule for `main`
+   - Enable:
+     - ✅ **Require pull request reviews** before merging
+     - ✅ **Require status checks to pass** → Select `release-gate`
+     - ✅ **Require branches to be up to date** before merging
+     - ✅ **Do not allow bypassing** (optional, for extra safety)
+
+3. **Block Direct Pushes**:
+   - With branch protection enabled, direct pushes to `main` are blocked
+   - All changes must go through PR → CI → Review → Merge
+
+### GitHub Actions Workflow
+
+The `release-gate` GitHub Actions workflow runs automatically on:
+
+- **Pull Requests** to `main` or `master`
+- **Pushes** to `main` or `master`
+
+The workflow:
+1. Checks out code
+2. Sets up Node.js 24.13.0
+3. Enables corepack
+4. Runs `./scripts/release-gate.sh`
+5. Fails if Release Gate does not pass
+
+**Workflow Name**: `release-gate` (required by branch protection)
+
+### Troubleshooting
+
+#### "Cannot run on 'main' branch"
+
+**Solution**: Create a feature branch first:
+```bash
+git checkout -b feature/your-change-name
+```
+
+#### "Working tree is dirty"
+
+**Solution**: Commit or stash changes:
+```bash
+git add .
+git commit -m "Your commit message"
+# OR
+git stash
+```
+
+#### "GitHub CLI not found"
+
+**Solution**: Either install GitHub CLI:
+```bash
+# macOS
+brew install gh
+
+# Ubuntu/Debian
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+sudo apt update
+sudo apt install gh
+```
+
+Or use the manual PR URL provided by the script.
+
+#### "Release Gate FAILED"
+
+**Solution**: Fix the issues reported by Release Gate:
+```bash
+./scripts/release-gate.sh  # See detailed errors
+# Fix issues, then re-run publish-safe.sh
+```
+
+### Manual PR Creation
+
+If GitHub CLI is not available, the script provides a manual PR URL:
+
+```
+https://github.com/<owner>/<repo>/compare/main...<branch>?expand=1
+```
+
+1. Open the URL in your browser
+2. Fill in PR title and description
+3. Click "Create Pull Request"
+4. Wait for CI checks to pass
+5. Review and merge
+
+### Assumptions
+
+- **Branch Names**: Feature branches should not be named `main` or `master`
+- **Remote Name**: Git remote must be named `origin`
+- **GitHub CLI**: Optional but recommended for automatic PR creation
+- **CI/CD**: GitHub Actions must be enabled in repository settings
+- **Branch Protection**: Recommended but not required (script works without it)
+
 ---
 
 **Last Updated**: 2026-01-16  

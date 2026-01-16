@@ -1,0 +1,40 @@
+name: release-gate
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  release-gate:
+    name: Release Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.0'
+          cache: 'npm'
+          
+      - name: Enable corepack
+        run: corepack enable
+        
+      - name: Run Release Gate
+        run: |
+          chmod +x scripts/release-gate.sh
+          bash scripts/release-gate.sh
+          
+      - name: Report status
+        if: failure()
+        run: |
+          echo "::error::Release Gate failed. Do not merge this PR."
+          exit 1
