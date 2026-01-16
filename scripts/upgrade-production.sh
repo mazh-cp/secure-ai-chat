@@ -137,6 +137,9 @@ fi
 # Step 5: Run upgrade script
 say "Step 5: Running Upgrade"
 
+# Detect app user for storage permission fixes
+APP_USER=$(grep "^User=" /etc/systemd/system/secure-ai-chat.service 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "$(whoami)")
+
 cd "$APP_DIR"
 bash scripts/deploy/upgrade.sh --app-dir "$APP_DIR" --ref "$GIT_REF"
 
@@ -144,8 +147,48 @@ if [ $? -ne 0 ]; then
   fail "Upgrade failed. Check logs above."
 fi
 
-# Step 6: Verify upgrade
-say "Step 6: Verifying Upgrade"
+# Step 6: Fix storage permissions (hotfix)
+say "Step 6: Fixing Storage Permissions"
+
+if [ -f "scripts/fix-storage-permissions.sh" ]; then
+  bash scripts/fix-storage-permissions.sh
+  ok "Storage permissions fixed"
+else
+  # Fallback: Fix permissions manually
+  say "Fixing storage permissions manually..."
+  
+  # Fix .storage directory
+  if [ ! -d ".storage" ]; then
+    mkdir -p .storage
+    chmod 755 .storage
+    [ "$(whoami)" != "$APP_USER" ] && sudo chown "$APP_USER:$APP_USER" .storage 2>/dev/null || true
+    ok ".storage created with permissions 755"
+  else
+    chmod 755 .storage
+    [ "$(whoami)" != "$APP_USER" ] && sudo chown "$APP_USER:$APP_USER" .storage 2>/dev/null || true
+    ok ".storage permissions fixed to 755"
+  fi
+  
+  # Fix .storage/files directory
+  if [ ! -d ".storage/files" ]; then
+    mkdir -p .storage/files
+    chmod 755 .storage/files
+    [ "$(whoami)" != "$APP_USER" ] && sudo chown "$APP_USER:$APP_USER" .storage/files 2>/dev/null || true
+    ok ".storage/files created with permissions 755"
+  else
+    chmod 755 .storage/files
+    [ "$(whoami)" != "$APP_USER" ] && sudo chown "$APP_USER:$APP_USER" .storage/files 2>/dev/null || true
+    ok ".storage/files permissions fixed to 755"
+  fi
+  
+  # Fix existing file permissions
+  find .storage/files -name "*.dat" -type f -exec chmod 644 {} \; 2>/dev/null || true
+  [ -f ".storage/files-metadata.json" ] && chmod 644 .storage/files-metadata.json 2>/dev/null || true
+  ok "File permissions fixed"
+fi
+
+# Step 7: Verify upgrade
+say "Step 7: Verifying Upgrade"
 
 # Check service status
 if sudo systemctl is-active --quiet secure-ai-chat 2>/dev/null; then
@@ -162,7 +205,7 @@ else
   warn "Health endpoint not responding (service may still be starting)"
 fi
 
-# Check storage permissions
+# Verify storage permissions
 if [ -d ".storage" ]; then
   PERMS=$(stat -c%a .storage 2>/dev/null || stat -f%OLp .storage 2>/dev/null || echo "unknown")
   if [ "$PERMS" = "755" ]; then
