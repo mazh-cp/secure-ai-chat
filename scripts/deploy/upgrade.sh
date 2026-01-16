@@ -427,18 +427,6 @@ if [ "$RELEASE_GATE_FAILED" = true ]; then
     exit 2
   fi
 fi
-  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
-    say "Rolling back..."
-    git checkout "$CURRENT_REF" -q
-    if [ -d "${BACKUP_PATH}/.next" ]; then
-      rm -rf .next
-      cp -r "${BACKUP_PATH}/.next" .next
-    fi
-    restart_systemd_service
-    fail "Upgrade failed, rolled back to previous version"
-  fi
-  exit 1
-fi
 
 # Step 6: Build production
 say "Step 6: Building Production Bundle"
