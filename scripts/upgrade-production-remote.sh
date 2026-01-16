@@ -114,8 +114,12 @@ say "Step 3: Creating Backup"
 
 BACKUP_DIR="${APP_DIR}/.backups"
 BACKUP_PATH="${BACKUP_DIR}/upgrade-$(date +%Y%m%d-%H%M%S)"
+
+# Create backup directories with correct ownership
 sudo mkdir -p "$BACKUP_DIR"
 sudo mkdir -p "$BACKUP_PATH"
+sudo chown -R "$APP_USER:$APP_USER" "$BACKUP_DIR"
+ok "Backup directories created with ownership: $APP_USER"
 
 # Backup critical data
 sudo cp -r "$APP_DIR/.secure-storage" "$BACKUP_PATH/.secure-storage" 2>/dev/null || warn "No .secure-storage to backup"
@@ -127,10 +131,15 @@ if [ -d "$APP_DIR/.next" ]; then
   sudo cp -r "$APP_DIR/.next" "$BACKUP_PATH/.next" 2>/dev/null || warn "Failed to backup .next"
 fi
 
-# Save git ref if git repo
+# Fix ownership of all backup files
+sudo chown -R "$APP_USER:$APP_USER" "$BACKUP_PATH" 2>/dev/null || true
+
+# Save git ref if git repo (now with correct ownership)
 if [ -d "$APP_DIR/.git" ]; then
   CURRENT_REF=$(cd "$APP_DIR" && git rev-parse HEAD 2>/dev/null || echo "unknown")
   echo "$CURRENT_REF" > "$BACKUP_PATH/.git-ref"
+  # Ensure file ownership is correct
+  [ "$(whoami)" != "$APP_USER" ] && sudo chown "$APP_USER:$APP_USER" "$BACKUP_PATH/.git-ref" 2>/dev/null || true
 fi
 
 ok "Backup created: $BACKUP_PATH"
