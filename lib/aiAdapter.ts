@@ -246,25 +246,68 @@ async function callGPT4ChatCompletionsAPI(
   }
   
   let response: Response
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+  
   try {
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
+      // Add cache control for better error handling
+      cache: 'no-store',
     })
+    clearTimeout(timeoutId)
   } catch (fetchError) {
-    // Handle network errors, CORS, connection refused, etc.
-    const errorMessage = fetchError instanceof Error ? fetchError.message : 'Network error'
+    clearTimeout(timeoutId)
+    
+    // Handle network errors, CORS, connection refused, DNS failures, etc.
     const isAzure = options.useAzure && options.azureEndpoint
+    let errorMessage = 'Unknown network error'
+    let troubleshooting = ''
+    
+    if (fetchError instanceof Error) {
+      errorMessage = fetchError.message
+      
+      // Handle specific error types
+      if (fetchError.name === 'AbortError' || errorMessage.includes('aborted')) {
+        errorMessage = 'Request timeout (30 seconds). The Azure OpenAI service may be slow or unavailable.'
+        troubleshooting = 'Please check: 1) Azure OpenAI service status, 2) Network connectivity, 3) Try again in a few moments.'
+      } else if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
+        errorMessage = 'Network connection failed. Unable to reach Azure OpenAI endpoint.'
+        troubleshooting = isAzure
+          ? 'Please verify: 1) Endpoint URL is correct and accessible, 2) Network allows outbound HTTPS connections, 3) DNS can resolve the endpoint, 4) No firewall blocking the connection, 5) Endpoint format: https://your-resource.openai.azure.com (without /openai/deployments)'
+          : 'Please check your network connection and try again.'
+      } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
+        errorMessage = 'DNS resolution failed. Cannot resolve Azure OpenAI endpoint hostname.'
+        troubleshooting = 'Please verify: 1) Endpoint URL hostname is correct, 2) DNS is working, 3) Endpoint URL format is correct.'
+      } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('connection refused')) {
+        errorMessage = 'Connection refused by Azure OpenAI endpoint.'
+        troubleshooting = 'Please verify: 1) Endpoint URL is correct, 2) Port is accessible (should be 443 for HTTPS), 3) Service is available.'
+      } else if (errorMessage.includes('CERT') || errorMessage.includes('certificate')) {
+        errorMessage = 'SSL/TLS certificate error when connecting to Azure OpenAI.'
+        troubleshooting = 'Please verify: 1) Endpoint URL uses HTTPS, 2) Certificate is valid, 3) System time is correct.'
+      } else {
+        troubleshooting = isAzure
+          ? 'Please verify: 1) Endpoint URL is correct, 2) Deployment name matches model name, 3) API key is valid, 4) Network allows connections to Azure.'
+          : 'Please check your network connection.'
+      }
+    }
+    
     const baseMessage = isAzure 
-      ? 'Failed to connect to Azure OpenAI API. Please verify:'
-      : 'Failed to connect to OpenAI API. Please check your network connection.'
+      ? 'Failed to connect to Azure OpenAI API.'
+      : 'Failed to connect to OpenAI API.'
     
-    const details = isAzure
-      ? ' 1) Your endpoint URL is correct, 2) Your deployment name matches the model name, 3) Your API key is valid, 4) Your network allows connections to Azure.'
-      : ''
+    // Log detailed error for debugging
+    console.error('Azure OpenAI fetch error:', {
+      endpoint: endpoint.replace(/\/\/.*@/, '//***'),
+      error: errorMessage,
+      errorType: fetchError instanceof Error ? fetchError.name : 'Unknown',
+      isAzure,
+    })
     
-    throw new Error(`${baseMessage} ${errorMessage}${details}`)
+    throw new Error(`${baseMessage} ${errorMessage}${troubleshooting ? ' ' + troubleshooting : ''}`)
   }
   
   if (!response.ok) {
