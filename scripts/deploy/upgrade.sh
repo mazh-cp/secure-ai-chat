@@ -458,7 +458,7 @@ else
   fi
 fi
 
-# Create .storage if missing
+# Create .storage if missing (with correct permissions for file persistence)
 if [ ! -d ".storage" ]; then
   say "Creating .storage directory..."
   mkdir -p .storage
@@ -468,7 +468,42 @@ if [ ! -d ".storage" ]; then
   fi
   ok ".storage created with permissions 755"
 else
-  ok ".storage exists"
+  # HOTFIX: Ensure .storage has correct permissions (0o755) for file persistence
+  PERMS=$(stat -c%a .storage 2>/dev/null || stat -f%OLp .storage 2>/dev/null || echo "unknown")
+  if [ "$PERMS" != "755" ]; then
+    warn ".storage permissions: $PERMS (fixing to 755 for file persistence)..."
+    chmod 755 .storage
+    if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+      sudo chown "$APP_USER:$APP_USER" .storage
+    fi
+    ok ".storage permissions fixed to 755"
+  else
+    ok ".storage exists with correct permissions (755)"
+  fi
+fi
+
+# Create .storage/files subdirectory with correct permissions
+if [ ! -d ".storage/files" ]; then
+  say "Creating .storage/files directory..."
+  mkdir -p .storage/files
+  chmod 755 .storage/files
+  if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+    sudo chown "$APP_USER:$APP_USER" .storage/files
+  fi
+  ok ".storage/files created with permissions 755"
+else
+  # Ensure .storage/files has correct permissions
+  PERMS=$(stat -c%a .storage/files 2>/dev/null || stat -f%OLp .storage/files 2>/dev/null || echo "unknown")
+  if [ "$PERMS" != "755" ]; then
+    warn ".storage/files permissions: $PERMS (fixing to 755)..."
+    chmod 755 .storage/files
+    if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+      sudo chown "$APP_USER:$APP_USER" .storage/files
+    fi
+    ok ".storage/files permissions fixed to 755"
+  else
+    ok ".storage/files exists with correct permissions (755)"
+  fi
 fi
 
 # Print diagnostics (non-secret)
