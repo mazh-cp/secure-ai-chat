@@ -304,9 +304,57 @@ INSTALL_CMD=$(get_install_cmd "$PM")
 RUN_CMD=$(get_run_cmd "$PM")
 
 say "Package manager: $PM"
+
+# Auto-update npm to 9+ for newer VMs (matching local install-ubuntu.sh)
+cd "$APP_DIR"
+if [ "$PM" = "npm" ]; then
+  # Load nvm if available
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" || true
+  
+  if command -v npm >/dev/null 2>&1; then
+    NPM_MAJOR=$(npm -v 2>/dev/null | cut -d'.' -f1 || echo "0")
+    if [ -n "$NPM_MAJOR" ] && [ "$NPM_MAJOR" -lt 9 ] 2>/dev/null; then
+      say "Updating npm to latest for better compatibility with newer VMs..."
+      npm install -g npm@latest > /dev/null 2>&1 || true
+      say "Updated to npm v$(npm -v)"
+    fi
+  fi
+fi
+
 say "Running: $INSTALL_CMD"
 
-if eval "$INSTALL_CMD" > /tmp/upgrade-install.log 2>&1; then
+# Use npm ci with fallback (matching local install-ubuntu.sh)
+if [ "$PM" = "npm" ] && [ -f "package-lock.json" ]; then
+  if npm ci > /tmp/upgrade-install.log 2>&1; then
+    ok "Dependencies installed via npm ci"
+  else
+    warn "npm ci failed, attempting npm update and retry..."
+    npm install -g npm@latest > /dev/null 2>&1 || true
+    if npm ci > /tmp/upgrade-install.log 2>&1; then
+      ok "Dependencies installed via npm ci (after npm update)"
+    else
+      warn "npm ci failed, falling back to npm install..."
+      if npm install > /tmp/upgrade-install.log 2>&1; then
+        ok "Dependencies installed via npm install"
+      else
+        fail "Dependency installation failed"
+        cat /tmp/upgrade-install.log | tail -30 | redact
+        if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+          say "Rolling back..."
+          git checkout "$CURRENT_REF" -q
+          if [ -d "${BACKUP_PATH}/.next" ]; then
+            rm -rf .next
+            cp -r "${BACKUP_PATH}/.next" .next
+          fi
+          restart_systemd_service
+          fail "Upgrade failed, rolled back to previous version"
+        fi
+        exit 1
+      fi
+    fi
+  fi
+elif eval "$INSTALL_CMD" > /tmp/upgrade-install.log 2>&1; then
   ok "Dependencies installed"
 else
   fail "Dependency installation failed"

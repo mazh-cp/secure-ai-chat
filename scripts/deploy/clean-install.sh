@@ -64,37 +64,99 @@ echo ""
 say "Step 1: Checking OS Prerequisites"
 
 if [ "$SKIP_OS_DEPS" = false ]; then
-  # Detect OS
+  # Detect OS version for better compatibility (matching local install-ubuntu.sh)
+  OS_ID="unknown"
+  OS_VERSION="unknown"
   if [ -f /etc/os-release ]; then
     # shellcheck source=/dev/null
     . /etc/os-release
     OS_ID="${ID:-unknown}"
+    OS_VERSION="${VERSION_ID:-unknown}"
+    if [ -n "${NAME:-}" ]; then
+      say "Detected: $NAME (${OS_ID} ${OS_VERSION})"
+    else
+      say "Detected: ${OS_ID} ${OS_VERSION}"
+    fi
   else
-    OS_ID="unknown"
+    warn "Could not detect OS version (missing /etc/os-release)"
   fi
   
+  # Validate OS support
   if [[ "$OS_ID" =~ ^(ubuntu|debian)$ ]]; then
-    say "Detected: $OS_ID"
+    # Check minimum version (Ubuntu 20.04+ or Debian 11+ recommended)
+    if [[ "$OS_ID" == "ubuntu" ]]; then
+      VERSION_NUM=$(echo "$OS_VERSION" | cut -d'.' -f1)
+      if [ -n "$VERSION_NUM" ] && [ "$VERSION_NUM" -lt 20 ] 2>/dev/null; then
+        warn "Ubuntu version ${OS_VERSION} detected. Ubuntu 20.04+ is recommended."
+      fi
+    elif [[ "$OS_ID" == "debian" ]]; then
+      VERSION_NUM=$(echo "$OS_VERSION" | cut -d'.' -f1)
+      if [ -n "$VERSION_NUM" ] && [ "$VERSION_NUM" -lt 11 ] 2>/dev/null; then
+        warn "Debian version ${OS_VERSION} detected. Debian 11+ is recommended."
+      fi
+    fi
     
-    # Check for required packages
+    say "Updating package list..."
+    if sudo apt-get update -qq; then
+      ok "Package list updated"
+    else
+      warn "Package update had issues, continuing..."
+    fi
+    
+    # Install essential packages for newer VMs (auto-install missing)
+    PACKAGES=(
+      curl
+      git
+      build-essential
+      ca-certificates
+      gnupg
+      lsb-release
+      iproute2
+    )
+    
+    # Check which packages are missing
     MISSING_PKGS=()
-    
-    for pkg in curl git build-essential; do
-      if ! command -v "$pkg" >/dev/null 2>&1; then
+    for pkg in "${PACKAGES[@]}"; do
+      if ! dpkg -l | grep -q "^ii  $pkg "; then
         MISSING_PKGS+=("$pkg")
       fi
     done
     
     if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
-      warn "Missing packages: ${MISSING_PKGS[*]}"
-      say "Install with: sudo apt-get update && sudo apt-get install -y ${MISSING_PKGS[*]}"
-      fail "Please install missing packages first"
+      say "Installing missing packages: ${MISSING_PKGS[*]}"
+      if sudo apt-get install -y -qq "${MISSING_PKGS[@]}" > /dev/null 2>&1; then
+        ok "System packages installed: ${MISSING_PKGS[*]}"
+      else
+        warn "Failed to install some packages: ${MISSING_PKGS[*]}"
+        say "Attempting individual package installation..."
+        for pkg in "${MISSING_PKGS[@]}"; do
+          if sudo apt-get install -y "$pkg" > /dev/null 2>&1; then
+            say "Installed: $pkg"
+          else
+            warn "Failed to install: $pkg (may cause issues later)"
+          fi
+        done
+      fi
+    else
+      ok "All required packages already installed"
+    fi
+    
+    # Verify critical packages
+    MISSING_CRITICAL=()
+    for pkg in curl git build-essential; do
+      if ! command -v "$pkg" >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  $pkg "; then
+        MISSING_CRITICAL+=("$pkg")
+      fi
+    done
+    
+    if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
+      fail "Critical packages missing: ${MISSING_CRITICAL[*]}"
       exit 1
     fi
     
-    ok "Required packages installed"
+    ok "OS prerequisites verified (${OS_ID} ${OS_VERSION})"
   else
-    warn "OS not recognized: $OS_ID"
+    warn "OS not recognized: ${OS_ID}"
     warn "Please ensure: curl, git, build-essential (or equivalent) are installed"
   fi
 else
@@ -108,15 +170,27 @@ if ! command -v node >/dev/null 2>&1; then
   warn "Node.js not found"
   say "Installing Node.js v24.13.0 via nvm..."
   
-  # Install nvm if not exists
+  # Install nvm if not exists (with better error handling for newer VMs)
   if [ ! -d "$HOME/.nvm" ]; then
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
-    ok "nvm installed"
+    NVM_VERSION="${NVM_VERSION:-v0.39.7}"
+    if curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash >/dev/null 2>&1; then
+      ok "nvm ${NVM_VERSION} installed"
+    else
+      fail "Failed to install nvm. Check internet connection."
+      exit 1
+    fi
   fi
   
-  # Load nvm
+  # Load nvm with better error handling for newer systems
   export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck source=/dev/null
+    . "$NVM_DIR/nvm.sh"
+    ok "nvm loaded"
+  else
+    fail "nvm installation appears incomplete. $NVM_DIR/nvm.sh not found."
+    exit 1
+  fi
   
   # Install Node.js v24.13.0
   nvm install 24.13.0 >/dev/null 2>&1
@@ -197,13 +271,39 @@ export NVM_DIR="\$HOME/.nvm"
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
 nvm use 24.13.0 >/dev/null 2>&1 || true
 
+# Auto-update npm to 9+ for newer VMs (matching local install-ubuntu.sh)
+if command -v npm >/dev/null 2>&1; then
+  NPM_MAJOR=\$(npm -v 2>/dev/null | cut -d'.' -f1 || echo "0")
+  if [ -n "\$NPM_MAJOR" ] && [ "\$NPM_MAJOR" -lt 9 ] 2>/dev/null; then
+    echo "Updating npm to latest for better compatibility with newer VMs..."
+    npm install -g npm@latest > /dev/null 2>&1 || true
+    echo "Updated to npm v\$(npm -v)"
+  fi
+fi
+
 PM=\$(cd "$APP_DIR" && bash -c 'source "$SCRIPT_DIR/common.sh" && detect_package_manager')
 INSTALL_CMD=\$(cd "$APP_DIR" && bash -c "source '$SCRIPT_DIR/common.sh' && get_install_cmd \$PM")
 
 echo "Package manager: \$PM"
 echo "Running: \$INSTALL_CMD"
 
-eval "\$INSTALL_CMD" > /tmp/clean-install.log 2>&1
+# Use npm ci with fallback (matching local install-ubuntu.sh)
+if [ -f "package-lock.json" ]; then
+  if npm ci > /tmp/clean-install.log 2>&1; then
+    echo "Dependencies installed via npm ci"
+  else
+    echo "npm ci failed, attempting npm update and retry..."
+    npm install -g npm@latest > /dev/null 2>&1 || true
+    if npm ci > /tmp/clean-install.log 2>&1; then
+      echo "Dependencies installed via npm ci (after npm update)"
+    else
+      echo "npm ci failed, falling back to npm install..."
+      npm install > /tmp/clean-install.log 2>&1
+    fi
+  fi
+else
+  eval "\$INSTALL_CMD" > /tmp/clean-install.log 2>&1
+fi
 INSTALL_SCRIPT
 
 if [ $? -eq 0 ]; then

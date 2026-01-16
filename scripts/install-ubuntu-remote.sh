@@ -82,39 +82,162 @@ else
     fi
 fi
 
-# Step 1: Update system packages
-print_header "Step 1: Updating System Packages"
+# Step 1: Detect OS and Update System Packages
+print_header "Step 1: Detecting OS and Updating System Packages"
+
+# Detect OS version for better compatibility (matching local install-ubuntu.sh)
+OS_ID="unknown"
+OS_VERSION="unknown"
+if [ -f /etc/os-release ]; then
+    # shellcheck source=/dev/null
+    . /etc/os-release
+    OS_ID="${ID:-unknown}"
+    OS_VERSION="${VERSION_ID:-unknown}"
+    if [ -n "$NAME" ]; then
+        print_info "Detected: $NAME (${OS_ID} ${OS_VERSION})"
+    else
+        print_info "Detected: ${OS_ID} ${OS_VERSION}"
+    fi
+else
+    print_warning "Could not detect OS version (missing /etc/os-release)"
+fi
+
+# Validate OS support
+if [[ "$OS_ID" =~ ^(ubuntu|debian)$ ]]; then
+    # Check minimum version (Ubuntu 20.04+ or Debian 11+ recommended)
+    if [[ "$OS_ID" == "ubuntu" ]]; then
+        VERSION_NUM=$(echo "$OS_VERSION" | cut -d'.' -f1)
+        if [ -n "$VERSION_NUM" ] && [ "$VERSION_NUM" -lt 20 ] 2>/dev/null; then
+            print_warning "Ubuntu version ${OS_VERSION} detected. Ubuntu 20.04+ is recommended."
+        fi
+    elif [[ "$OS_ID" == "debian" ]]; then
+        VERSION_NUM=$(echo "$OS_VERSION" | cut -d'.' -f1)
+        if [ -n "$VERSION_NUM" ] && [ "$VERSION_NUM" -lt 11 ] 2>/dev/null; then
+            print_warning "Debian version ${OS_VERSION} detected. Debian 11+ is recommended."
+        fi
+    fi
+    print_success "OS detected: ${OS_ID} ${OS_VERSION}"
+else
+    print_warning "OS not recognized: ${OS_ID}. Continuing anyway..."
+fi
+
 print_info "Updating package list..."
-sudo apt-get update -qq
+if sudo apt-get update -qq; then
+    print_success "Package list updated"
+else
+    print_warning "Package update had issues, continuing..."
+fi
 
 print_info "Installing required system packages..."
-sudo apt-get install -y -qq \
-    curl \
-    git \
-    build-essential \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    iproute2 \
-    > /dev/null 2>&1
+# Install essential packages for newer VMs
+PACKAGES=(
+    curl
+    git
+    build-essential
+    ca-certificates
+    gnupg
+    lsb-release
+    iproute2
+)
 
-print_success "System packages installed"
+# Check which packages are missing
+MISSING_PKGS=()
+for pkg in "${PACKAGES[@]}"; do
+    if ! dpkg -l | grep -q "^ii  $pkg "; then
+        MISSING_PKGS+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
+    print_info "Installing missing packages: ${MISSING_PKGS[*]}"
+    if sudo apt-get install -y -qq "${MISSING_PKGS[@]}" > /dev/null 2>&1; then
+        print_success "System packages installed: ${MISSING_PKGS[*]}"
+    else
+        print_error "Failed to install some packages: ${MISSING_PKGS[*]}"
+        print_info "Attempting individual package installation..."
+        for pkg in "${MISSING_PKGS[@]}"; do
+            if sudo apt-get install -y "$pkg" > /dev/null 2>&1; then
+                print_info "Installed: $pkg"
+            else
+                print_warning "Failed to install: $pkg (may cause issues later)"
+            fi
+        done
+    fi
+else
+    print_success "All required packages already installed"
+fi
+
+# Verify critical packages
+MISSING_CRITICAL=()
+for pkg in curl git build-essential; do
+    if ! command -v "$pkg" >/dev/null 2>&1 && ! dpkg -l | grep -q "^ii  $pkg "; then
+        MISSING_CRITICAL+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
+    print_error "Critical packages missing: ${MISSING_CRITICAL[*]}"
+    exit 1
+fi
+
+# Note: ss (socket statistics) is part of iproute2 and is preferred over netstat
+# To install netstat: sudo apt install net-tools
+print_success "System packages verified"
 
 # Step 2: Install/Upgrade Node.js to v24.13.0 via nvm
 print_header "Step 2: Installing/Upgrading Node.js to ${NODE_VERSION} (LTS) via nvm"
 
-# Install nvm if not already installed
+# Install nvm if not already installed (with better error handling for newer VMs)
 if [ ! -d "$HOME/.nvm" ]; then
     print_info "Installing nvm (Node Version Manager)..."
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash > /dev/null 2>&1
-    print_success "nvm installed"
+    # Use latest stable nvm version for newer VMs
+    NVM_VERSION="${NVM_VERSION:-v0.39.7}"
+    if curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash > /dev/null 2>&1; then
+        print_success "nvm ${NVM_VERSION} installed"
+    else
+        print_error "Failed to install nvm. Check internet connection."
+        exit 1
+    fi
 else
     print_info "nvm is already installed"
+    # Update nvm to latest if possible (non-blocking for newer systems)
+    if [ -d "$HOME/.nvm/.git" ]; then
+        print_info "Checking for nvm updates..."
+        (cd "$HOME/.nvm" && git fetch --tags origin > /dev/null 2>&1 && git checkout "$(git describe --abbrev=0 --tags --match 'v[0-9]*' "$(git rev-list --tags --max-count=1)")" > /dev/null 2>&1) || true
+    fi
 fi
 
-# Load nvm
+# Load nvm with better error handling for newer systems
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck source=/dev/null
+    . "$NVM_DIR/nvm.sh"
+    print_success "nvm loaded"
+else
+    print_error "nvm installation appears incomplete. $NVM_DIR/nvm.sh not found."
+    exit 1
+fi
+
+# Verify nvm is working (for newer systems that may need additional setup)
+if ! command -v nvm >/dev/null 2>&1; then
+    # Try sourcing bashrc/profile for newer systems
+    if [ -f "$HOME/.bashrc" ]; then
+        # shellcheck source=/dev/null
+        . "$HOME/.bashrc" 2>/dev/null || true
+    fi
+    if [ -f "$HOME/.profile" ]; then
+        # shellcheck source=/dev/null
+        . "$HOME/.profile" 2>/dev/null || true
+    fi
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$NVM_DIR/nvm.sh"
+    fi
+    # Verify again
+    if ! command -v nvm >/dev/null 2>&1; then
+        print_warning "nvm command not available, but continuing (may use node directly)"
+    fi
+fi
 
 # Check current Node.js version (if any)
 CURRENT_NODE_VERSION=$(node -v 2>/dev/null || echo "none")
