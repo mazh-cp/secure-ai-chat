@@ -429,6 +429,24 @@ print_success "Firewall configuration complete"
 
 # Create a wrapper script for starting the app with correct hostname
 print_info "Creating start script with proper hostname binding..."
+
+# Ensure we're in the correct directory
+cd "$FULL_PATH" || {
+    print_error "Failed to change to directory: $FULL_PATH"
+    exit 1
+}
+
+# Ensure directory exists and is writable
+if [ ! -d "$FULL_PATH" ]; then
+    print_error "Directory does not exist: $FULL_PATH"
+    exit 1
+fi
+
+if [ ! -w "$FULL_PATH" ]; then
+    print_error "Directory is not writable: $FULL_PATH"
+    exit 1
+fi
+
 cat > "$FULL_PATH/start-app.sh" << 'EOF'
 #!/bin/bash
 # Start script for Secure AI Chat
@@ -450,8 +468,13 @@ export PORT=${PORT:-3000}
 echo "Starting Secure AI Chat on $HOSTNAME:$PORT..."
 npm start
 EOF
-chmod +x "$FULL_PATH/start-app.sh"
-print_success "Start script created: start-app.sh"
+
+# Make script executable
+if chmod +x "$FULL_PATH/start-app.sh"; then
+    print_success "Start script created: $FULL_PATH/start-app.sh"
+else
+    print_warning "Failed to make start script executable, but file was created"
+fi
 
 # Step 8: Configure systemd Service for Automatic Startup
 print_header "Step 8: Configuring Automatic Startup (systemd)"
