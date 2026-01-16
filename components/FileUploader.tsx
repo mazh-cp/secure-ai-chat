@@ -10,7 +10,7 @@ interface FileUploaderProps {
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
-const MAX_FILES = 5 // Maximum number of files that can be uploaded simultaneously
+const MAX_FILES = 10 // Maximum number of files that can be uploaded simultaneously
 const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx']
 
 export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, ragScanEnabled = true }: FileUploaderProps) {

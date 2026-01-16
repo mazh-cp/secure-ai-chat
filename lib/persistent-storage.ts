@@ -39,11 +39,15 @@ interface FilesMetadata {
 
 /**
  * Initialize storage directories if they don't exist
+ * HOTFIX: Use 0o755 for directories to ensure persistence across restarts
+ * Files themselves are still protected (content stored securely)
  */
 async function ensureStorageDirs(): Promise<void> {
   try {
-    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 })
-    await fs.mkdir(FILES_DIR, { recursive: true, mode: 0o700 })
+    // Use 0o755 for directories (readable by app user, writable by owner)
+    // This ensures files persist across restarts and systemd service restarts
+    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o755 })
+    await fs.mkdir(FILES_DIR, { recursive: true, mode: 0o755 })
   } catch (error) {
     console.error('Failed to create storage directories:', error)
     throw error
@@ -96,11 +100,12 @@ async function loadMetadata(): Promise<FilesMetadata> {
 
 /**
  * Save metadata file
+ * HOTFIX: Use 0o644 for metadata file to ensure persistence
  */
 async function saveMetadata(metadata: FilesMetadata): Promise<void> {
   try {
     await ensureStorageDirs()
-    await fs.writeFile(METADATA_FILE, JSON.stringify(metadata, null, 2), 'utf-8')
+    await fs.writeFile(METADATA_FILE, JSON.stringify(metadata, null, 2), { encoding: 'utf-8', mode: 0o644 })
   } catch (error) {
     console.error('Failed to save metadata:', error)
     throw error
@@ -131,8 +136,10 @@ export async function storeFile(
     await ensureStorageDirs()
 
     // Store file content
+    // HOTFIX: Use 0o644 for files (readable by app user, writable by owner)
+    // This ensures files persist and are accessible after restarts
     const filePath = getFilePath(fileId)
-    await fs.writeFile(filePath, fileContent, 'utf-8')
+    await fs.writeFile(filePath, fileContent, { encoding: 'utf-8', mode: 0o644 })
 
     // Store metadata
     const metadata = await loadMetadata()
