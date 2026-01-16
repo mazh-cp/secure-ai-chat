@@ -270,17 +270,37 @@ else
   TEMP_NAME="secure-ai-chat-clone-$(date +%s)"
   TEMP_DIR="$PARENT_DIR/$TEMP_NAME"
   
-  # Clone to temp location first
-  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'GIT_CLONE'
+  # Clone to temp location first - use script file
+  GIT_CLONE_SCRIPT=$(mktemp)
+  cat > "$GIT_CLONE_SCRIPT" << 'GIT_CLONE_SCRIPT_CONTENT'
+#!/usr/bin/env bash
 set -eo pipefail
-export HOME="$APP_DIR"
+
+PARENT_DIR="$1"
+TEMP_NAME="$2"
+REPO_URL="$3"
+GIT_REF="$4"
 
 cd "$PARENT_DIR"
 git clone "$REPO_URL" "$TEMP_NAME" -q
 
-cd "$TEMP_DIR"
+cd "$PARENT_DIR/$TEMP_NAME"
 git checkout "$GIT_REF" -q 2>/dev/null || true
-GIT_CLONE
+GIT_CLONE_SCRIPT_CONTENT
+
+  chmod +x "$GIT_CLONE_SCRIPT"
+  
+  # Clone as app user
+  if sudo -u "$APP_USER" HOME="$APP_DIR" bash "$GIT_CLONE_SCRIPT" "$PARENT_DIR" "$TEMP_NAME" "$REPO_URL" "$GIT_REF" > /tmp/git-clone.log 2>&1; then
+    ok "Repository cloned to temp location"
+  else
+    fail "Repository clone failed"
+    cat /tmp/git-clone.log | tail -20
+    rm -f "$GIT_CLONE_SCRIPT"
+    exit 1
+  fi
+  
+  rm -f "$GIT_CLONE_SCRIPT"
   
   # Verify clone succeeded
   if [ ! -d "$TEMP_DIR/.git" ]; then
