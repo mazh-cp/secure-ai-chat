@@ -349,6 +349,23 @@ fi
 # Step 4: Install dependencies
 print_header "Step 4: Installing Dependencies"
 
+# Verify npm is available before installing dependencies
+if ! command -v npm >/dev/null 2>&1; then
+    print_error "npm not found. Node.js installation may have failed."
+    exit 1
+fi
+
+NPM_VERSION=$(npm -v)
+print_info "Using npm v${NPM_VERSION}"
+
+# For newer VMs, ensure npm is modern (9+) for better compatibility
+NPM_MAJOR=$(npm -v | cut -d'.' -f1)
+if [ -n "$NPM_MAJOR" ] && [ "$NPM_MAJOR" -lt 9 ] 2>/dev/null; then
+    print_info "Updating npm to latest (9+) for better compatibility with newer VMs..."
+    npm install -g npm@latest > /dev/null 2>&1 || true
+    print_info "Updated to npm v$(npm -v)"
+fi
+
 print_info "Installing project dependencies (this may take a few minutes)..."
 if [ -f "pnpm-lock.yaml" ]; then
     if ! command -v pnpm &> /dev/null; then
@@ -363,12 +380,45 @@ elif [ -f "yarn.lock" ]; then
     fi
     yarn install --frozen-lockfile || yarn install --immutable || yarn install
 elif [ -f "package-lock.json" ]; then
-    npm ci
+    print_info "Found package-lock.json, using 'npm ci' for reproducible builds..."
+    if npm ci 2>&1; then
+        print_success "Dependencies installed via npm ci"
+    else
+        print_warning "npm ci failed (package-lock.json may be out of sync with newer npm)"
+        print_info "Attempting to fix with npm update and retry..."
+        
+        # Update npm to latest for better compatibility
+        npm install -g npm@latest > /dev/null 2>&1 || true
+        
+        # Try npm ci again after npm update
+        if npm ci 2>&1; then
+            print_success "Dependencies installed via npm ci (after npm update)"
+        else
+            print_info "Falling back to 'npm install' to update package-lock.json..."
+            if npm install 2>&1; then
+                print_success "Dependencies installed and package-lock.json updated"
+                print_warning "package-lock.json was updated - commit this file to repository"
+            else
+                print_error "Failed to install dependencies"
+                print_error "This may indicate:"
+                print_error "  1. Network connectivity issues"
+                print_error "  2. Insufficient disk space"
+                print_error "  3. Node.js/npm version incompatibility"
+                print_error "  4. Outdated package-lock.json incompatible with newer npm"
+                exit 1
+            fi
+        fi
+    fi
 else
-    npm install
+    print_warning "package-lock.json not found, using 'npm install'..."
+    if npm install 2>&1; then
+        print_success "Dependencies installed"
+        print_warning "package-lock.json was created - commit this file to repository"
+    else
+        print_error "Failed to install dependencies"
+        exit 1
+    fi
 fi
-
-print_success "Dependencies installed"
 
 # Step 5: Set up environment configuration
 print_header "Step 5: Setting Up Environment Configuration"
