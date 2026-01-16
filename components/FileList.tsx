@@ -5,6 +5,7 @@ import { UploadedFile } from '@/types/files'
 interface FileListProps {
   files: UploadedFile[]
   onRemove: (fileId: string) => void
+  onClearAll?: () => void
   onScan: (fileId: string) => void
   isScanning: boolean
   lakeraScanEnabled?: boolean
@@ -73,7 +74,7 @@ function getScanStatusBadge(status: UploadedFile['scanStatus']) {
   }
 }
 
-export default function FileList({ files, onRemove, onScan, isScanning, lakeraScanEnabled = true }: FileListProps) {
+export default function FileList({ files, onRemove, onClearAll, onScan, isScanning, lakeraScanEnabled = true }: FileListProps) {
   if (files.length === 0) {
     return (
       <div className="glass rounded-2xl p-8 text-center border-brand-berry/20">
@@ -86,6 +87,20 @@ export default function FileList({ files, onRemove, onScan, isScanning, lakeraSc
 
   return (
     <div className="space-y-3">
+      {/* Clear All Button */}
+      {files.length > 0 && onClearAll && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={onClearAll}
+            className="px-4 py-2 text-sm glass-button text-red-400 hover:text-red-300 rounded-xl transition-all border-red-400/30 border-2"
+            style={{
+              backgroundColor: "var(--destructive-bg, transparent)",
+            }}
+          >
+            Clear All Files ({files.length})
+          </button>
+        </div>
+      )}
       {files.map((file) => (
         <div
           key={file.id}

@@ -8,6 +8,8 @@ interface ApiKeys {
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
+  azureOpenAiKey: string
+  azureOpenAiEndpoint: string
 }
 
 interface AppSettings {
@@ -22,6 +24,8 @@ export default function SettingsForm() {
     lakeraAiKey: '',
     lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
     lakeraProjectId: '',
+    azureOpenAiKey: '',
+    azureOpenAiEndpoint: '',
   })
 
   const [settings, setSettings] = useState<AppSettings>({
@@ -42,6 +46,8 @@ export default function SettingsForm() {
     lakeraProjectId?: boolean
     lakeraEndpoint?: string
     checkpointTeApiKey?: boolean
+    azureOpenAiKey?: boolean
+    azureOpenAiEndpoint?: boolean
   }>({})
 
   // Check Point TE API key state (server-side only)
@@ -50,19 +56,23 @@ export default function SettingsForm() {
   const [isCheckingTeStatus, setIsCheckingTeStatus] = useState<boolean>(false)
   const [isSavingTeKey, setIsSavingTeKey] = useState<boolean>(false)
 
+  // Azure OpenAI validation state
+  const [isValidatingAzure, setIsValidatingAzure] = useState<boolean>(false)
+  const [azureValidationResult, setAzureValidationResult] = useState<{ success: boolean; message: string } | null>(null)
+
   // PIN verification state
   const [pinConfigured, setPinConfigured] = useState<boolean>(false)
   const [pin, setPin] = useState<string>('')
   const [currentPin, setCurrentPin] = useState<string>('')
   const [pinForVerification, setPinForVerification] = useState<string>('')
   const [showPinDialog, setShowPinDialog] = useState<boolean>(false)
-  const [pinDialogAction, setPinDialogAction] = useState<'remove-te-key' | 'clear-all' | 'clear-openai' | 'clear-lakera-ai' | 'clear-lakera-project-id' | 'clear-lakera-endpoint' | null>(null)
+  const [pinDialogAction, setPinDialogAction] = useState<'remove-te-key' | 'clear-all' | 'clear-openai' | 'clear-lakera-ai' | 'clear-lakera-project-id' | 'clear-lakera-endpoint' | 'clear-azure-openai-key' | 'clear-azure-openai-endpoint' | null>(null)
   const [keyToClear, setKeyToClear] = useState<keyof ApiKeys | null>(null)
   const [isManagingPin, setIsManagingPin] = useState<boolean>(false)
 
   // Load keys from server-side storage and check status
   const loadApiKeys = async () => {
-    let statusData: { configured?: { openAiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
+    let statusData: { configured?: { openAiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string; azureOpenAiKey?: boolean; azureOpenAiEndpoint?: boolean } } | null = null
     let statusResponse: Response | null = null
     
     try {
@@ -77,6 +87,8 @@ export default function SettingsForm() {
           lakeraProjectId: statusData?.configured?.lakeraProjectId || false,
           lakeraEndpoint: statusData?.configured?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
           checkpointTeApiKey: false, // Handled separately
+          azureOpenAiKey: statusData?.configured?.azureOpenAiKey || false,
+          azureOpenAiEndpoint: statusData?.configured?.azureOpenAiEndpoint || false,
         })
       }
       
@@ -178,6 +190,8 @@ export default function SettingsForm() {
           lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
           lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
           lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+          azureOpenAiKey: keysData.configured?.azureOpenAiKey || prev.azureOpenAiKey,
+          azureOpenAiEndpoint: keysData.configured?.azureOpenAiEndpoint || prev.azureOpenAiEndpoint,
         }))
       }
     } catch (error) {
@@ -399,8 +413,9 @@ export default function SettingsForm() {
       await performRemoveCheckpointTeKey()
     } else if (pinDialogAction === 'clear-all') {
       await performClearAll()
-    } else if (pinDialogAction === 'clear-openai' || pinDialogAction === 'clear-lakera-ai' || 
-               pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
+    } else if (              pinDialogAction === 'clear-openai' || pinDialogAction === 'clear-lakera-ai' || 
+               pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint' ||
+               pinDialogAction === 'clear-azure-openai-key' || pinDialogAction === 'clear-azure-openai-endpoint') {
       // Clear individual key
       if (keyToClear) {
         await performClearKey(keyToClear)
@@ -411,6 +426,55 @@ export default function SettingsForm() {
     setPinForVerification('')
     setPinDialogAction(null)
     setKeyToClear(null)
+  }
+
+  // Validate Azure OpenAI credentials
+  const validateAzureOpenAI = async () => {
+    if (!keys.azureOpenAiKey || !keys.azureOpenAiEndpoint) {
+      setAzureValidationResult({
+        success: false,
+        message: 'Please enter both API key and endpoint before validating.'
+      })
+      return
+    }
+
+    setIsValidatingAzure(true)
+    setAzureValidationResult(null)
+
+    try {
+      const response = await fetch('/api/health/azure-openai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: keys.azureOpenAiKey,
+          endpoint: keys.azureOpenAiEndpoint,
+          deploymentName: 'gpt-4o-mini', // Default deployment to test
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.ok) {
+        setAzureValidationResult({
+          success: true,
+          message: data.message || 'Azure OpenAI credentials validated successfully!'
+        })
+      } else {
+        setAzureValidationResult({
+          success: false,
+          message: data.error || 'Validation failed. Please check your credentials.'
+        })
+      }
+    } catch (error) {
+      setAzureValidationResult({
+        success: false,
+        message: 'Failed to validate credentials. Please check your network connection.'
+      })
+    } finally {
+      setIsValidatingAzure(false)
+    }
   }
 
   // Prevent typing - block all keyboard input except paste shortcut
@@ -452,8 +516,8 @@ export default function SettingsForm() {
     
     if (!pastedText) return
     
-    // For lakeraEndpoint, only allow valid URLs
-    if (fieldName === 'lakeraEndpoint') {
+    // For endpoints, only allow valid URLs
+    if (fieldName === 'lakeraEndpoint' || fieldName === 'azureOpenAiEndpoint') {
       if (pastedText.startsWith('http://') || pastedText.startsWith('https://')) {
         setKeys(prev => ({ ...prev, [fieldName]: pastedText }))
       }
@@ -522,6 +586,10 @@ export default function SettingsForm() {
         setPinDialogAction('clear-lakera-project-id')
       } else if (fieldName === 'lakeraEndpoint') {
         setPinDialogAction('clear-lakera-endpoint')
+      } else if (fieldName === 'azureOpenAiKey') {
+        setPinDialogAction('clear-azure-openai-key')
+      } else if (fieldName === 'azureOpenAiEndpoint') {
+        setPinDialogAction('clear-azure-openai-endpoint')
       }
       setShowPinDialog(true)
       setPinForVerification('')
@@ -542,6 +610,8 @@ export default function SettingsForm() {
         lakeraAiKey: 'lakeraAiKey',
         lakeraProjectId: 'lakeraProjectId',
         lakeraEndpoint: 'lakeraEndpoint',
+        azureOpenAiKey: 'azureOpenAiKey',
+        azureOpenAiEndpoint: 'azureOpenAiEndpoint',
       }
       
       const serverKeyName = serverKeyMap[fieldName]
@@ -638,6 +708,8 @@ export default function SettingsForm() {
           lakeraAiKey: '',
           lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
           lakeraProjectId: '',
+          azureOpenAiKey: '',
+          azureOpenAiEndpoint: '',
         })
         
         // Clear localStorage cache
@@ -858,9 +930,17 @@ export default function SettingsForm() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-6 p-6">
-          {/* OpenAI Key */}
+        {/* Two Column Layout for Better UX */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column: API Keys */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-theme mb-4 pb-2 border-b-2" style={{ borderColor: "rgb(var(--border))" }}>
+              API Keys
+            </h2>
+            
+            {/* OpenAI Key */}
           <div>
             <label htmlFor="openAiKey" className={`${labelClass} flex items-center gap-2`}>
               <span>OpenAI Key</span>
@@ -1064,92 +1144,157 @@ export default function SettingsForm() {
             )}
           </div>
 
-          {/* Verification PIN Section */}
-          <div className="pt-6 border-t border-palette-border-default/20 mt-8">
-            <h3 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
-              <span>🔐</span>
-              Verification PIN
-            </h3>
-            <p className="text-sm text-theme-subtle mb-4">
-              Set up a PIN code to protect against unauthorized API key removal. PIN must be 4-8 digits.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`text-xs font-medium ${pinConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
-                  {pinConfigured ? '✓ PIN Configured' : '⚠ PIN Not configured'}
-                </span>
-              </div>
-              
-              {pinConfigured && (
-                <div>
-                  <label htmlFor="currentPin" className="block text-xs font-medium text-theme-muted mb-1">
-                    Current PIN (required to update)
-                  </label>
-                  <input
-                    type="password"
-                    id="currentPin"
-                    value={currentPin}
-                    onChange={(e) => setCurrentPin(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="Enter current PIN"
-                    className={inputClass}
-                    style={inputStyle}
-                    maxLength={8}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                  />
-                </div>
-              )}
-              
-              <div>
-                <label htmlFor="pin" className="block text-xs font-medium text-theme-muted mb-1">
-                  {pinConfigured ? 'New PIN' : 'Set PIN'}
-                </label>
-                <input
-                  type="password"
-                  id="pin"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder={pinConfigured ? "Enter new PIN (4-8 digits)" : "Enter PIN (4-8 digits)"}
-                  className={inputClass}
-                  style={inputStyle}
-                  maxLength={8}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+          {/* Azure OpenAI Key */}
+          <div>
+            <label htmlFor="azureOpenAiKey" className={`${labelClass} flex items-center gap-2`}>
+              <span>Azure OpenAI API Key</span>
+              {/* Status Dot */}
+              {serverStatus.azureOpenAiKey || keys.azureOpenAiKey ? (
+                <div 
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Configured and working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                  }}
                 />
-              </div>
-              
-              <div className="flex gap-2">
+              ) : (
+                <div 
+                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                  title="Not configured or not working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              )}
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                id="azureOpenAiKey"
+                name="azureOpenAiKey"
+                value={keys.azureOpenAiKey}
+                placeholder="Paste your Azure OpenAI API key here (Ctrl/Cmd + V)"
+                {...secureInputProps}
+              />
+              {keys.azureOpenAiKey && (
                 <button
                   type="button"
-                  onClick={handleSetPin}
-                  disabled={isManagingPin || !pin.trim() || (pinConfigured && !currentPin.trim())}
-                  className="px-4 py-2 glass-button text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => handleClear('azureOpenAiKey')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
                 >
-                  {isManagingPin ? 'Setting...' : pinConfigured ? 'Update PIN' : 'Set PIN'}
+                  Clear
                 </button>
-                {pinConfigured && (
-                  <button
-                    type="button"
-                    onClick={handleRemovePin}
-                    disabled={isManagingPin}
-                    className="px-4 py-2 glass-button text-red-400 hover:text-red-300 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Remove PIN
-                  </button>
-                )}
-              </div>
-              
-              <p className="text-xs text-theme-subtle mt-2">
-                {pinConfigured 
-                  ? '✓ PIN protection is active. PIN verification required to remove API keys.'
-                  : '⚠ No PIN protection. API keys can be removed without verification.'}
-              </p>
+              )}
             </div>
+            <p className="text-xs text-theme-subtle mt-1">
+              🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
+            </p>
+            {serverStatus.azureOpenAiKey && !keys.azureOpenAiKey && (
+              <p className="text-xs text-green-400 mt-1">
+                ✓ Configured via environment variable (server-side)
+              </p>
+            )}
+            {!serverStatus.azureOpenAiKey && !keys.azureOpenAiKey && (
+              <p className="text-xs text-theme-muted mt-1">
+                Optional - Configure Azure OpenAI API key to use Azure OpenAI models
+              </p>
+            )}
           </div>
 
-          {/* Check Point ThreatCloud / Threat Emulation API Key */}
-          <div className="pt-6 border-t border-palette-border-default/20 mt-8">
+          {/* Azure OpenAI Endpoint */}
+          <div>
+            <label htmlFor="azureOpenAiEndpoint" className={`${labelClass} flex items-center gap-2`}>
+              <span>Azure OpenAI Endpoint</span>
+              {/* Status Dot */}
+              {serverStatus.azureOpenAiEndpoint || keys.azureOpenAiEndpoint ? (
+                <div 
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Configured and working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                  title="Not configured or not working"
+                  style={{
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              )}
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                id="azureOpenAiEndpoint"
+                name="azureOpenAiEndpoint"
+                value={keys.azureOpenAiEndpoint}
+                placeholder="https://your-resource.openai.azure.com"
+                {...secureInputProps}
+              />
+              {keys.azureOpenAiEndpoint && (
+                <button
+                  type="button"
+                  onClick={() => handleClear('azureOpenAiEndpoint')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-theme-subtle mt-1">
+              🔒 Paste only (Ctrl/Cmd + V) - Your Azure OpenAI endpoint URL (e.g., https://your-resource.openai.azure.com)
+            </p>
+            {serverStatus.azureOpenAiEndpoint && !keys.azureOpenAiEndpoint && (
+              <p className="text-xs text-green-400 mt-1">
+                ✓ Configured via environment variable (server-side)
+              </p>
+            )}
+            {!serverStatus.azureOpenAiEndpoint && !keys.azureOpenAiEndpoint && (
+              <p className="text-xs text-theme-muted mt-1">
+                Optional - Configure Azure OpenAI endpoint to use Azure OpenAI models
+              </p>
+            )}
+            
+            {/* Validation Button and Result */}
+            {keys.azureOpenAiKey && keys.azureOpenAiEndpoint && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={validateAzureOpenAI}
+                  disabled={isValidatingAzure}
+                  className="px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    background: isValidatingAzure ? "rgb(var(--surface-2))" : "rgb(var(--accent))",
+                    color: "rgb(var(--text-1))",
+                  }}
+                >
+                  {isValidatingAzure ? 'Validating...' : '🔍 Validate Azure OpenAI Credentials'}
+                </button>
+                
+                {azureValidationResult && (
+                  <div className={`mt-2 p-2 rounded text-xs ${
+                    azureValidationResult.success 
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}>
+                    {azureValidationResult.success ? '✓' : '✗'} {azureValidationResult.message}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          </div>
+          
+          {/* Right Column: Security & Settings */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-theme mb-4 pb-2 border-b-2" style={{ borderColor: "rgb(var(--border))" }}>
+              Security & Settings
+            </h2>
+            
+            {/* Check Point ThreatCloud / Threat Emulation API Key */}
+            <div className="pt-6 border-t border-palette-border-default/20">
             <label htmlFor="checkpointTeKey" className={`${labelClass} flex items-center gap-2`}>
               <span>Check Point ThreatCloud / Threat Emulation (TE) API Key</span>
               {/* Status Dot */}
@@ -1257,44 +1402,11 @@ export default function SettingsForm() {
                 </span>
               </p>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-palette-border-default/20">
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="glass-button text-theme-subtle hover:text-red-400 transition-colors text-sm px-4 py-2 rounded-xl"
-              style={{
-                backgroundColor: "var(--destructive-bg, transparent)",
-              }}
-            >
-              Clear All Keys
-            </button>
-            <div className="flex items-center space-x-4">
-              {saveStatus === 'success' && (
-                <span className="text-green-400 text-sm">✓ Saved successfully</span>
-              )}
-              {saveStatus === 'error' && (
-                <span className="text-red-400 text-sm">✗ Failed to save</span>
-              )}
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="glass-button px-6 py-2 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                style={{
-                  backgroundColor: "rgb(var(--accent))",
-                  color: "white",
-                }}
-              >
-                {isSaving ? 'Saving...' : 'Save Keys'}
-              </button>
             </div>
-          </div>
 
-          {/* Page Heading Setting */}
-          <div className="pt-6 border-t border-palette-border-default/20">
-            <h3 className="text-lg font-semibold text-theme mb-4">Page Customization</h3>
+            {/* Page Heading Setting */}
+            <div className="pt-6 border-t border-palette-border-default/20">
+              <h3 className="text-lg font-semibold text-theme mb-4">Page Customization</h3>
             
             <div className="mb-4">
               <label htmlFor="pageHeading" className={labelClass}>
@@ -1314,10 +1426,10 @@ export default function SettingsForm() {
                 Custom heading text displayed on the main chat page
               </p>
             </div>
-          </div>
+            </div>
 
-          {/* Site Logo */}
-          <div className="pt-6 border-t border-palette-border-default/20">
+            {/* Site Logo */}
+            <div className="pt-6 border-t border-palette-border-default/20">
             <h3 className="text-sm font-medium text-theme mb-4">Site Logo</h3>
             
             <div className="mb-4">
@@ -1374,9 +1486,128 @@ export default function SettingsForm() {
                 Upload a logo file (PNG, JPG, or SVG, max 5MB). Logo will appear in the top header.
               </p>
             </div>
+            </div>
           </div>
+        </div>
 
-          {/* PIN Verification Dialog */}
+        {/* Action Buttons - Span full width */}
+        <div className="flex items-center justify-between pt-4 border-t border-palette-border-default/20 mt-6">
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="glass-button text-theme-subtle hover:text-red-400 transition-colors text-sm px-4 py-2 rounded-xl"
+            style={{
+              backgroundColor: "var(--destructive-bg, transparent)",
+            }}
+          >
+            Clear All Keys
+          </button>
+          <div className="flex items-center space-x-4">
+            {saveStatus === 'success' && (
+              <span className="text-green-400 text-sm">✓ Saved successfully</span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="text-red-400 text-sm">✗ Failed to save</span>
+            )}
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="glass-button px-6 py-2 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              style={{
+                backgroundColor: "rgb(var(--accent))",
+                color: "white",
+              }}
+            >
+              {isSaving ? 'Saving...' : 'Save Keys'}
+            </button>
+          </div>
+        </div>
+
+        {/* Verification PIN Section - Moved to Bottom */}
+        <div className="pt-6 border-t border-palette-border-default/20 mt-6">
+          <h3 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
+            <span>🔐</span>
+            Verification PIN
+          </h3>
+          <p className="text-sm text-theme-subtle mb-4">
+            Set up a PIN code to protect against unauthorized API key removal. PIN must be 4-8 digits.
+          </p>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <span className={`text-xs font-medium ${pinConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
+                {pinConfigured ? '✓ PIN Configured' : '⚠ PIN Not configured'}
+              </span>
+            </div>
+            
+            {pinConfigured && (
+              <div>
+                <label htmlFor="currentPin" className="block text-xs font-medium text-theme-muted mb-1">
+                  Current PIN (required to update)
+                </label>
+                <input
+                  type="password"
+                  id="currentPin"
+                  value={currentPin}
+                  onChange={(e) => setCurrentPin(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Enter current PIN"
+                  className={inputClass}
+                  style={inputStyle}
+                  maxLength={8}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+              </div>
+            )}
+            
+            <div>
+              <label htmlFor="pin" className="block text-xs font-medium text-theme-muted mb-1">
+                {pinConfigured ? 'New PIN' : 'Set PIN'}
+              </label>
+              <input
+                type="password"
+                id="pin"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder={pinConfigured ? "Enter new PIN (4-8 digits)" : "Enter PIN (4-8 digits)"}
+                className={inputClass}
+                style={inputStyle}
+                maxLength={8}
+                inputMode="numeric"
+                pattern="[0-9]*"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleSetPin}
+                disabled={isManagingPin || !pin.trim() || (pinConfigured && !currentPin.trim())}
+                className="px-4 py-2 glass-button text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isManagingPin ? 'Setting...' : pinConfigured ? 'Update PIN' : 'Set PIN'}
+              </button>
+              {pinConfigured && (
+                <button
+                  type="button"
+                  onClick={handleRemovePin}
+                  disabled={isManagingPin}
+                  className="px-4 py-2 glass-button text-red-400 hover:text-red-300 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Remove PIN
+                </button>
+              )}
+            </div>
+            
+            <p className="text-xs text-theme-subtle mt-2">
+              {pinConfigured 
+                ? '✓ PIN protection is active. PIN verification required to remove API keys.'
+                : '⚠ No PIN protection. API keys can be removed without verification.'}
+            </p>
+          </div>
+        </div>
+
+        {/* PIN Verification Dialog */}
           {showPinDialog && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => {
               setShowPinDialog(false)

@@ -23,6 +23,8 @@ export async function GET() {
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
         lakeraEndpoint: !!keys.lakeraEndpoint,
+        azureOpenAiKey: !!keys.azureOpenAiKey,
+        azureOpenAiEndpoint: !!keys.azureOpenAiEndpoint,
       },
       // Indicate source (environment or storage)
       source: {
@@ -30,6 +32,8 @@ export async function GET() {
         lakeraAiKey: process.env.LAKERA_AI_KEY ? 'environment' : (keys.lakeraAiKey ? 'storage' : 'none'),
         lakeraProjectId: process.env.LAKERA_PROJECT_ID ? 'environment' : (keys.lakeraProjectId ? 'storage' : 'none'),
         lakeraEndpoint: process.env.LAKERA_ENDPOINT ? 'environment' : (keys.lakeraEndpoint ? 'storage' : 'none'),
+        azureOpenAiKey: process.env.AZURE_OPENAI_API_KEY ? 'environment' : (keys.azureOpenAiKey ? 'storage' : 'none'),
+        azureOpenAiEndpoint: process.env.AZURE_OPENAI_ENDPOINT ? 'environment' : (keys.azureOpenAiEndpoint ? 'storage' : 'none'),
       },
       message: 'API keys configuration status retrieved successfully',
     })
@@ -135,6 +139,41 @@ export async function POST(request: NextRequest) {
         keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
       }
     }
+    
+    if (keys.azureOpenAiKey !== undefined) {
+      if (keys.azureOpenAiKey && typeof keys.azureOpenAiKey === 'string' && keys.azureOpenAiKey.trim()) {
+        const trimmedKey = keys.azureOpenAiKey.trim()
+        // Azure OpenAI keys don't need to start with 'sk-', just need to be valid length
+        if (trimmedKey.length >= 10) {
+          keysToSave.azureOpenAiKey = trimmedKey
+          console.log('Azure OpenAI key validated and will be saved')
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Azure OpenAI API key format. Key must be at least 10 characters' },
+            { status: 400 }
+          )
+        }
+      } else if (!keys.azureOpenAiKey || !keys.azureOpenAiKey.trim()) {
+        console.log('Azure OpenAI key is empty, will not save')
+      }
+    }
+    
+    if (keys.azureOpenAiEndpoint !== undefined) {
+      if (keys.azureOpenAiEndpoint && typeof keys.azureOpenAiEndpoint === 'string' && keys.azureOpenAiEndpoint.trim()) {
+        const trimmedEndpoint = keys.azureOpenAiEndpoint.trim()
+        if (trimmedEndpoint.startsWith('http://') || trimmedEndpoint.startsWith('https://')) {
+          keysToSave.azureOpenAiEndpoint = trimmedEndpoint
+          console.log('Azure OpenAI endpoint validated and will be saved')
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Azure OpenAI endpoint format. Must be a valid URL starting with http:// or https://' },
+            { status: 400 }
+          )
+        }
+      } else if (!keys.azureOpenAiEndpoint || !keys.azureOpenAiEndpoint.trim()) {
+        console.log('Azure OpenAI endpoint is empty, will not save')
+      }
+    }
 
     // Get existing keys and merge
     const existingKeys = await getApiKeys()
@@ -153,6 +192,8 @@ export async function POST(request: NextRequest) {
       lakeraAiKey: !!keysToSave.lakeraAiKey,
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
+      azureOpenAiKey: !!keysToSave.azureOpenAiKey,
+      azureOpenAiEndpoint: !!keysToSave.azureOpenAiEndpoint,
     })
     
     // setApiKeys will merge with existing keys internally
@@ -166,6 +207,8 @@ export async function POST(request: NextRequest) {
       lakeraAiKey: !!savedKeys.lakeraAiKey,
       lakeraProjectId: !!savedKeys.lakeraProjectId,
       lakeraEndpoint: !!savedKeys.lakeraEndpoint,
+      azureOpenAiKey: !!savedKeys.azureOpenAiKey,
+      azureOpenAiEndpoint: !!savedKeys.azureOpenAiEndpoint,
     })
 
     console.log('API keys configured and saved successfully')
@@ -178,6 +221,8 @@ export async function POST(request: NextRequest) {
         lakeraAiKey: !!(keysToSave.lakeraAiKey || existingKeys.lakeraAiKey || process.env.LAKERA_AI_KEY),
         lakeraProjectId: !!(keysToSave.lakeraProjectId || existingKeys.lakeraProjectId || process.env.LAKERA_PROJECT_ID),
         lakeraEndpoint: !!(keysToSave.lakeraEndpoint || existingKeys.lakeraEndpoint || process.env.LAKERA_ENDPOINT),
+        azureOpenAiKey: !!(keysToSave.azureOpenAiKey || existingKeys.azureOpenAiKey || process.env.AZURE_OPENAI_API_KEY),
+        azureOpenAiEndpoint: !!(keysToSave.azureOpenAiEndpoint || existingKeys.azureOpenAiEndpoint || process.env.AZURE_OPENAI_ENDPOINT),
       },
     })
   } catch (error) {

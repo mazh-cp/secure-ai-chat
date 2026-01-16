@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
 import { callOpenAI as callOpenAIAdapter, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
+import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
+import { validateTokenLimit, truncateToTokenLimit } from '@/lib/token-counter'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -462,7 +464,7 @@ async function callOpenAI(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG } = body
+    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG, provider = 'openai' } = body
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -482,26 +484,56 @@ export async function POST(request: NextRequest) {
       lakeraAiKey: serverKeys.lakeraAiKey || clientApiKeys?.lakeraAiKey || null,
       lakeraProjectId: serverKeys.lakeraProjectId || clientApiKeys?.lakeraProjectId || null,
       lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+      azureOpenAiKey: serverKeys.azureOpenAiKey || clientApiKeys?.azureOpenAiKey || null,
+      azureOpenAiEndpoint: serverKeys.azureOpenAiEndpoint || clientApiKeys?.azureOpenAiEndpoint || null,
     }
 
-    // Validate API key is not a placeholder
-    if (!apiKeys.openAiKey || 
-        apiKeys.openAiKey.includes('your_ope') || 
-        apiKeys.openAiKey.includes('your-api-key') ||
-        apiKeys.openAiKey.length < 20) {
-      return NextResponse.json(
-        { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
-        { status: 400 }
-      )
-    }
-    
-    // Additional validation: OpenAI keys should start with 'sk-'
-    if (!apiKeys.openAiKey.startsWith('sk-')) {
-      console.error('Invalid OpenAI API key format detected:', apiKeys.openAiKey.substring(0, 10) + '...')
-      return NextResponse.json(
-        { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
-        { status: 400 }
-      )
+    // Determine which API key to use based on provider
+    const useAzure = provider === 'azure'
+    const activeApiKey = useAzure ? apiKeys.azureOpenAiKey : apiKeys.openAiKey
+    const activeEndpoint = useAzure ? apiKeys.azureOpenAiEndpoint : null
+
+    // Validate API key based on provider
+    if (useAzure) {
+      // Validate Azure OpenAI credentials
+      if (!activeApiKey || 
+          activeApiKey === 'configured' ||
+          activeApiKey.includes('your') || 
+          activeApiKey.length < 10) {
+        return NextResponse.json(
+          { error: 'Azure OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
+          { status: 400 }
+        )
+      }
+      
+      if (!activeEndpoint || 
+          !activeEndpoint.startsWith('http://') && !activeEndpoint.startsWith('https://')) {
+        return NextResponse.json(
+          { error: 'Azure OpenAI endpoint is not configured or is invalid. Please add a valid endpoint URL in Settings.' },
+          { status: 400 }
+        )
+      }
+    } else {
+      // Validate OpenAI credentials
+      if (!activeApiKey || 
+          activeApiKey === 'configured' ||
+          activeApiKey.includes('your_ope') || 
+          activeApiKey.includes('your-api-key') ||
+          activeApiKey.length < 20) {
+        return NextResponse.json(
+          { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
+          { status: 400 }
+        )
+      }
+      
+      // Additional validation: OpenAI keys should start with 'sk-'
+      if (!activeApiKey.startsWith('sk-')) {
+        console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
+        return NextResponse.json(
+          { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
+          { status: 400 }
+        )
+      }
     }
 
     // Get the latest user message for security check and RAG
@@ -517,6 +549,7 @@ export async function POST(request: NextRequest) {
     if (enableRAG !== false && latestUserMessage) {
       try {
         const { listFiles, getFileContent } = await import('@/lib/persistent-storage')
+        const { formatFileContentForRAG, validateFilePromptSecurity } = await import('@/lib/file-content-processor')
         const uploadedFiles = await listFiles()
         
         if (uploadedFiles.length > 0) {
@@ -588,6 +621,20 @@ export async function POST(request: NextRequest) {
               // OR if there's any keyword match
               const shouldInclude = isDataFile || (isDataQuery && isDataFile) || hasKeywordMatch || isDataQuery
               
+              // SECURITY: Validate prompt security for file-based queries (ADDITIONAL security layer)
+              // This works alongside Lakera AI and Check Point TE - does NOT replace them
+              // Files must still pass Lakera/Check Point TE checks (lines 562-586) before reaching here
+              const promptSecurityCheck = validateFilePromptSecurity(
+                latestUserMessage.content,
+                fileContent
+              )
+              
+              // Block high-risk prompts (only if both prompt AND file show suspicious patterns)
+              if (!promptSecurityCheck.safe) {
+                console.warn(`RAG: Blocked potentially unsafe prompt with file ${fileMeta.name} (risk: ${promptSecurityCheck.riskLevel})`)
+                continue
+              }
+              
               if (shouldInclude) {
                 // For large files, include a summary or excerpt
                 let contentToInclude = fileContent
@@ -595,15 +642,31 @@ export async function POST(request: NextRequest) {
                   // For very large files, include first 7500 and last 7500 chars
                   contentToInclude = fileContent.substring(0, 7500) + '\n\n...[content truncated - showing first and last portions]...\n\n' + fileContent.substring(fileContent.length - 7500)
                 }
-                relevantFiles.push(`\n\n[File: ${fileMeta.name}]\n${contentToInclude}`)
                 
-                // ENHANCEMENT: Limit to 5 most relevant files (increased from 3)
-                if (relevantFiles.length >= 5) break
+                // ENHANCEMENT: Format file content with field information for structured data
+                // This enables field-level access for CSV/JSON files
+                const formattedContent = formatFileContentForRAG(
+                  fileMeta.name,
+                  contentToInclude,
+                  fileMeta.type,
+                  false // includeAllFields - can be made configurable in future
+                )
+                relevantFiles.push(`\n\n${formattedContent}`)
+                
+                // ENHANCEMENT: Limit to 10 most relevant files (increased from 5)
+                if (relevantFiles.length >= 10) break
               } else {
                 // ENHANCEMENT: Still add to context but mark as less relevant
                 // This ensures LLM knows about all available files
                 if (fileContent.length <= 5000) {
-                  allSafeFiles.push(`\n\n[File: ${fileMeta.name} - Available for reference]\n${fileContent}`)
+                  // Format with field information for structured data
+                  const formattedContent = formatFileContentForRAG(
+                    fileMeta.name,
+                    fileContent,
+                    fileMeta.type,
+                    false
+                  )
+                  allSafeFiles.push(`\n\n${formattedContent.replace(/^\[File:/, '[File: (Available for reference)')}`)
                 }
               }
             } catch (fileError) {
@@ -615,7 +678,7 @@ export async function POST(request: NextRequest) {
           // ENHANCEMENT: Include both relevant files and all safe files
           const allFilesContext = relevantFiles.length > 0 
             ? relevantFiles.join('\n\n---\n\n')
-            : allSafeFiles.slice(0, 3).join('\n\n---\n\n') // If no matches, include first 3 safe files
+            : allSafeFiles.slice(0, 10).join('\n\n---\n\n') // If no matches, include first 10 safe files
           
           if (allFilesContext) {
             fileContext = `\n\n[Context from uploaded files (${uploadedFiles.length} files available, ${relevantFiles.length} directly relevant):]\n${allFilesContext}\n\n[End of file context]`
@@ -652,6 +715,38 @@ export async function POST(request: NextRequest) {
 
       // If input is flagged, block it immediately
       if (inputScanResult.flagged) {
+        // Log security block for Check Point WAF
+        const { addSystemLog } = await import('@/lib/system-logging')
+        addSystemLog(
+          'warning',
+          'checkpoint-waf',
+          `Security threat detected in chat input - message blocked`,
+          {
+            endpoint: '/api/chat',
+            method: 'POST',
+            statusCode: 403,
+            error: 'Security block',
+            requestBody: {
+              messagePreview: latestUserMessage.content.substring(0, 100),
+            },
+          },
+          {
+            waf: {
+              clientIP: userIP,
+              blocked: true,
+              threatDetected: true,
+            },
+            security: {
+              threatLevel: inputScanResult.threatLevel,
+              categories: inputScanResult.categories,
+              scores: inputScanResult.scores,
+              payload: inputScanResult.payload,
+            },
+          }
+        ).catch((error) => {
+          console.error('Failed to log WAF security block:', error)
+        })
+
         return NextResponse.json(
           { 
             error: inputScanResult.message || 'Message blocked by security filter',
@@ -723,15 +818,124 @@ The file content will be provided in the user's message below. Search through it
       content: msg.content,
     }))
     
-    // Call adapter with appropriate token limits
+    // Prepare adapter options (include Azure OpenAI options if using Azure)
+    const maxOutputTokens = validatedModel.startsWith('gpt-5') ? 2000 : 1000
+    const adapterOptions = {
+      maxTokens: maxOutputTokens,
+      temperature: 0.7,
+      ...(useAzure && activeEndpoint ? {
+        useAzure: true,
+        azureEndpoint: activeEndpoint,
+      } : {}),
+    }
+    
+    // Validate token limits before making API call
+    const tokenValidation = validateTokenLimit(adapterMessages, validatedModel, maxOutputTokens)
+    if (!tokenValidation.valid) {
+      console.warn('Token limit validation failed:', {
+        model: validatedModel,
+        inputTokens: tokenValidation.inputTokens,
+        totalTokens: tokenValidation.totalTokens,
+        limit: tokenValidation.limit,
+        error: tokenValidation.error,
+      })
+      
+      // Try to truncate messages to fit within limit
+      const truncationResult = truncateToTokenLimit(adapterMessages, validatedModel, maxOutputTokens)
+      
+      if (truncationResult.truncated) {
+        console.warn('Messages truncated to fit token limit:', {
+          originalTokenCount: truncationResult.originalTokenCount,
+          finalTokenCount: truncationResult.finalTokenCount,
+          messagesRemoved: adapterMessages.length - truncationResult.messages.length,
+        })
+        // Use truncated messages
+        const truncatedAdapterMessages: AdapterChatMessage[] = truncationResult.messages.map(msg => ({
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+        }))
+        
+        // Re-validate with truncated messages
+        const revalidation = validateTokenLimit(truncatedAdapterMessages, validatedModel, maxOutputTokens)
+        if (!revalidation.valid) {
+          // Still exceeds limit even after truncation - return error
+          return NextResponse.json(
+            {
+              error: tokenValidation.error || 'Message exceeds token limit. Please use a model with a larger context window or reduce message length.',
+              tokenDetails: {
+                inputTokens: tokenValidation.inputTokens,
+                totalTokens: tokenValidation.totalTokens,
+                limit: tokenValidation.limit,
+                suggestion: 'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
+              },
+            },
+            { status: 400 }
+          )
+        }
+        // Use truncated messages
+        adapterMessages.length = 0
+        adapterMessages.push(...truncatedAdapterMessages)
+      } else {
+        // Could not truncate - return error
+        return NextResponse.json(
+          {
+            error: tokenValidation.error || 'Message exceeds token limit. Please use a model with a larger context window or reduce message length.',
+            tokenDetails: {
+              inputTokens: tokenValidation.inputTokens,
+              totalTokens: tokenValidation.totalTokens,
+              limit: tokenValidation.limit,
+              suggestion: 'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
+            },
+          },
+          { status: 400 }
+        )
+      }
+    }
+    
+    // Check rate limit before making API call
+    const rateLimitCheck = checkRateLimit(activeApiKey, validatedModel, useAzure ? 'azure' : 'openai')
+    if (!rateLimitCheck.allowed) {
+      console.warn('Rate limit exceeded:', {
+        model: validatedModel,
+        provider: useAzure ? 'azure' : 'openai',
+        retryAfter: rateLimitCheck.retryAfter,
+        resetAt: new Date(rateLimitCheck.resetAt).toISOString(),
+      })
+      
+      return NextResponse.json(
+        {
+          error: `Rate limit exceeded. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`,
+          rateLimitDetails: {
+            retryAfter: rateLimitCheck.retryAfter,
+            resetAt: new Date(rateLimitCheck.resetAt).toISOString(),
+            suggestion: 'Please wait a moment before making another request, or reduce the frequency of your requests.',
+          },
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimitCheck.retryAfter || 60),
+            'X-RateLimit-Reset': String(rateLimitCheck.resetAt),
+          },
+        }
+      )
+    }
+    
+    // Log rate limit status (for monitoring)
+    const rateLimitStatus = getRateLimitStatus(activeApiKey, validatedModel, useAzure ? 'azure' : 'openai')
+    console.log('Rate limit status:', {
+      model: validatedModel,
+      provider: useAzure ? 'azure' : 'openai',
+      remaining: rateLimitStatus.remaining,
+      limit: rateLimitStatus.limit,
+    })
+    
+    // Call adapter with appropriate options
     const adapterResult = await callOpenAIAdapter(
       adapterMessages,
-      apiKeys.openAiKey,
+      activeApiKey,
       validatedModel,
-      {
-        maxTokens: validatedModel.startsWith('gpt-5') ? 2000 : 1000,
-        temperature: 0.7,
-      }
+      adapterOptions
     )
     
     // Log fallback if used
@@ -763,6 +967,39 @@ The file content will be provided in the user's message below. Search through it
 
       // If output is flagged, block it
       if (outputScanResult.flagged) {
+        // Log security block for Check Point WAF
+        const { addSystemLog } = await import('@/lib/system-logging')
+        addSystemLog(
+          'warning',
+          'checkpoint-waf',
+          `Security threat detected in AI response - output blocked`,
+          {
+            endpoint: '/api/chat',
+            method: 'POST',
+            statusCode: 403,
+            error: 'Security block - AI response',
+            requestBody: {
+              messagePreview: latestUserMessage?.content?.substring(0, 100),
+              responsePreview: aiResponse.substring(0, 100),
+            },
+          },
+          {
+            waf: {
+              clientIP: userIP,
+              blocked: true,
+              threatDetected: true,
+            },
+            security: {
+              threatLevel: outputScanResult.threatLevel,
+              categories: outputScanResult.categories,
+              scores: outputScanResult.scores,
+              payload: outputScanResult.payload,
+            },
+          }
+        ).catch((error) => {
+          console.error('Failed to log WAF security block:', error)
+        })
+
         return NextResponse.json(
           { 
             error: 'AI response blocked by security filter',
@@ -839,7 +1076,127 @@ The file content will be provided in the user's message below. Search through it
     })
   } catch (error) {
     console.error('Chat API error:', error)
-    const message = error instanceof Error ? error.message : 'An error occurred'
-    return NextResponse.json({ error: message }, { status: 500 })
+    let errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    let statusCode = 500
+    
+    // Handle network/fetch errors specifically
+    if (error instanceof Error && (error.message.includes('Failed to connect') || error.message.includes('Network error') || error.message.includes('fetch failed'))) {
+      statusCode = 503
+      // Preserve the detailed error message from the adapter
+      if (!errorMessage.includes('Please verify')) {
+        errorMessage = `Connection error: ${errorMessage}. Please check your network connection and API endpoint configuration.`
+      }
+    }
+    
+    // Handle rate limit errors from adapter
+    if (error instanceof Error && (error as any).rateLimit) {
+      statusCode = 429
+      const retryAfter = (error as any).retryAfter || 60
+      errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
+      
+      // Log rate limit error
+      const { addLog } = await import('@/lib/logging')
+      addLog({
+        type: 'error',
+        action: 'error',
+        source: 'chat',
+        error: errorMessage,
+        success: false,
+        associatedRisks: ['llm03'], // Supply Chain risk
+      })
+      
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          rateLimitDetails: {
+            retryAfter,
+            suggestion: 'Please wait a moment before making another request, or reduce the frequency of your requests.',
+          },
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+          },
+        }
+      )
+    }
+    
+    // Handle token limit errors from adapter
+    if (error instanceof Error && (error as any).tokenLimit) {
+      statusCode = 400
+      errorMessage = errorMessage || 'Token limit exceeded. Please reduce message length or use a model with a larger context window.'
+      
+      // Log token limit error
+      const { addLog } = await import('@/lib/logging')
+      addLog({
+        type: 'error',
+        action: 'error',
+        source: 'chat',
+        error: errorMessage,
+        success: false,
+        associatedRisks: ['llm03'], // Supply Chain risk
+      })
+      
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          tokenLimitDetails: {
+            suggestion: 'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
+          },
+        },
+        { status: 400 }
+      )
+    }
+    
+    // Check if error message contains rate limit or token limit keywords
+    const lowerMessage = errorMessage.toLowerCase()
+    if (lowerMessage.includes('rate limit') || lowerMessage.includes('429')) {
+      statusCode = 429
+      const retryMatch = errorMessage.match(/(\d+)\s*seconds?/i)
+      const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60
+      
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          rateLimitDetails: {
+            retryAfter,
+            suggestion: 'Please wait a moment before making another request.',
+          },
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+          },
+        }
+      )
+    }
+    
+    if (lowerMessage.includes('token') || lowerMessage.includes('context_length')) {
+      statusCode = 400
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          tokenLimitDetails: {
+            suggestion: 'Please reduce message length or use a model with a larger context window.',
+          },
+        },
+        { status: 400 }
+      )
+    }
+    
+    // Log generic error
+    const { addLog } = await import('@/lib/logging')
+    addLog({
+      type: 'error',
+      action: 'error',
+      source: 'chat',
+      error: errorMessage,
+      success: false,
+      associatedRisks: ['llm03'], // Supply Chain risk
+    })
+    
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }

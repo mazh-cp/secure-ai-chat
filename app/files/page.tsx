@@ -296,23 +296,60 @@ export default function FilesPage() {
   }
 
   const handleFileRemove = async (fileId: string) => {
-    // Remove from local state
-    setFiles(prev => prev.filter(f => f.id !== fileId))
-
     // Delete from server
     try {
       const response = await fetch(`/api/files/delete?fileId=${encodeURIComponent(fileId)}`, {
         method: 'DELETE',
       })
 
-      if (!response.ok) {
+      if (response.ok) {
+        // Successfully deleted - refresh files from server to ensure consistency
+        await loadFilesFromServer()
+        // Also clear localStorage cache
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('uploadedFiles')
+        }
+      } else {
         const errorData = await response.json().catch(() => ({}))
         console.error('Failed to delete file from server:', errorData.error || 'Unknown error')
-        // Continue even if server deletion fails
+        // Show error but don't remove from UI if server deletion fails
+        alert(`Failed to delete file: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error deleting file from server:', error)
-      // Continue even if server deletion fails
+      alert(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Handle Clear All Files
+  const handleClearAll = async () => {
+    if (files.length === 0) {
+      return
+    }
+    
+    if (!confirm(`Are you sure you want to delete all ${files.length} file(s)? This action cannot be undone.`)) {
+      return
+    }
+    
+    try {
+      const response = await fetch('/api/files/clear', {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        // Successfully cleared - refresh files from server
+        await loadFilesFromServer()
+        // Also clear localStorage cache
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('uploadedFiles')
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        alert(`Failed to clear all files: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error clearing all files:', error)
+      alert(`Failed to clear all files: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -1213,6 +1250,7 @@ export default function FilesPage() {
         <FileList 
           files={files} 
           onRemove={handleFileRemove}
+          onClearAll={handleClearAll}
           onScan={handleFileScan}
           isScanning={isScanning}
           lakeraScanEnabled={lakeraScanEnabled}
@@ -1223,7 +1261,7 @@ export default function FilesPage() {
       <div className="bento-card bento-span-2 glass-card p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <h3 className="text-brand-berry font-medium mb-2">📁 Supported Features</h3>
         <ul className="text-sm text-theme-muted space-y-1">
-          <li>• Upload up to 5 files simultaneously</li>
+          <li>• RAG supports up to 10 files for chat interaction</li>
           <li>• Maximum file size: 50 MB per file</li>
           <li>• Supported formats: PDF, TXT, MD, JSON, CSV, DOCX</li>
           <li>• Lakera AI security scanning for uploaded content</li>

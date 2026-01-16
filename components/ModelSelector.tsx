@@ -13,15 +13,36 @@ interface ModelSelectorProps {
   selectedModel: string
   onModelChange: (modelId: string) => void
   apiKey: string | null
+  provider?: 'openai' | 'azure'
 }
 
-export default function ModelSelector({ selectedModel, onModelChange, apiKey }: ModelSelectorProps) {
+// For Azure OpenAI, use predefined compatible models instead of fetching from API
+// Azure OpenAI uses deployment names, not model IDs from OpenAI API
+const AZURE_COMPATIBLE_MODELS: Model[] = [
+  { id: 'gpt-4o-mini', name: 'gpt-4o-mini (Recommended)', created: Date.now(), owned_by: 'azure' },
+  { id: 'gpt-4o', name: 'gpt-4o', created: Date.now(), owned_by: 'azure' },
+  { id: 'gpt-4', name: 'gpt-4', created: Date.now(), owned_by: 'azure' },
+  { id: 'gpt-4-turbo', name: 'gpt-4-turbo', created: Date.now(), owned_by: 'azure' },
+]
+
+export default function ModelSelector({ selectedModel, onModelChange, apiKey, provider = 'openai' }: ModelSelectorProps) {
   const [models, setModels] = useState<Model[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Fetch available models - API key is retrieved server-side
   useEffect(() => {
+    // For Azure OpenAI, use predefined compatible models
+    if (provider === 'azure') {
+      setModels(AZURE_COMPATIBLE_MODELS)
+      // If no model is selected or current model is not Azure-compatible, select gpt-4o-mini
+      if (!selectedModel || !AZURE_COMPATIBLE_MODELS.some(m => m.id === selectedModel)) {
+        onModelChange('gpt-4o-mini')
+      }
+      setIsLoading(false)
+      return
+    }
+
     const fetchModels = async () => {
       setIsLoading(true)
       setError(null)
@@ -61,7 +82,7 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
     }
 
     fetchModels()
-  }, [selectedModel, onModelChange])
+  }, [selectedModel, onModelChange, provider])
 
   // Note: We no longer check apiKey prop since the API endpoint gets it from server-side storage
 
@@ -109,11 +130,20 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
         }}
       >
         {models.map((model) => (
-          <option key={model.id} value={model.id} style={{ background: "rgb(var(--surface-1))", color: "rgb(var(--text-1))" }}>
+          <option 
+            key={model.id} 
+            value={model.id} 
+            style={{ background: "rgb(var(--surface-1))", color: "rgb(var(--text-1))" }}
+          >
             {model.name}
           </option>
         ))}
       </select>
+      {provider === 'azure' && (
+        <span className="text-xs text-theme-subtle ml-2">
+          💡 Use your Azure deployment name
+        </span>
+      )}
     </div>
   )
 }

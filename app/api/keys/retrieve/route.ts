@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
         lakeraAiKey: keys.lakeraAiKey ? 'configured' : null,
         lakeraProjectId: keys.lakeraProjectId ? 'configured' : null,
         lakeraEndpoint: keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+        azureOpenAiKey: keys.azureOpenAiKey ? 'configured' : null,
+        // Endpoint URLs are safe to return (they're not secrets, just URLs)
+        azureOpenAiEndpoint: keys.azureOpenAiEndpoint ? keys.azureOpenAiEndpoint : null,
       },
       // Also return configured status for easier checking
       configured: {
@@ -30,6 +33,8 @@ export async function GET(request: NextRequest) {
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
         lakeraEndpoint: !!keys.lakeraEndpoint,
+        azureOpenAiKey: !!keys.azureOpenAiKey,
+        azureOpenAiEndpoint: !!keys.azureOpenAiEndpoint,
       },
     })
   } catch (error) {

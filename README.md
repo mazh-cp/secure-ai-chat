@@ -20,6 +20,7 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 - 📋 **Release Notes**: Dedicated page for version history and changelog
 - 🔍 **RAG (Retrieval Augmented Generation)**: Chat can access and answer questions about uploaded files
 - 🛡️ **File Scanning**: Lakera AI and Checkpoint TE integration for file security
+- 🔐 **Check Point WAF Integration**: Full support for Check Point WAF as reverse proxy with logging and monitoring
 
 ## Tech Stack
 
@@ -260,6 +261,8 @@ The application uses environment variables for configuration. Copy `.env.example
 - `CHECKPOINT_TE_API_KEY` - Your Check Point ThreatCloud / Threat Emulation API key (for file sandboxing)
   - Can also be configured via Settings page (stored server-side)
   - Get it from: https://te.checkpoint.com/
+- `WAF_AUTH_ENABLED` - Enable authentication for Check Point WAF log access (default: `false`, recommended: `true` in production)
+- `WAF_API_KEY` - API key for Check Point WAF log access (required if `WAF_AUTH_ENABLED=true`)
 - `NEXT_PUBLIC_APP_NAME` - Application name (defaults to "Secure AI Chat")
 - `NEXT_PUBLIC_APP_VERSION` - Application version (defaults to "0.1.0")
 - `PORT` - Server port (defaults to 3000)
@@ -309,6 +312,13 @@ Secure-Ai-Chat/
   - X-XSS-Protection
   - Referrer-Policy
   - Permissions-Policy
+
+- **Check Point WAF Integration**: 
+  - Full support for Check Point WAF as reverse proxy
+  - Request/response logging for WAF monitoring
+  - Log access API endpoints for Check Point WAF
+  - Security event tracking and reporting
+  - See [docs/CHECKPOINT_WAF_INTEGRATION.md](docs/CHECKPOINT_WAF_INTEGRATION.md) for details
 
 - **Encryption Utilities**: Placeholder functions in `lib/security.ts` for:
   - Message encryption/decryption

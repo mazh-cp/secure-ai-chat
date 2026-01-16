@@ -17,6 +17,9 @@ export interface StoredApiKeys {
   lakeraAiKey?: string
   lakeraProjectId?: string
   lakeraEndpoint?: string
+  // Azure OpenAI fields
+  azureOpenAiKey?: string
+  azureOpenAiEndpoint?: string
 }
 
 // Encryption key (in production, use a secure key management service)
@@ -147,6 +150,24 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
     }
   }
   
+  if (process.env.AZURE_OPENAI_API_KEY) {
+    const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    if (envKey && envKey.length >= 10) {
+      envKeys.azureOpenAiKey = envKey
+    } else {
+      console.warn('AZURE_OPENAI_API_KEY environment variable contains invalid value, ignoring')
+    }
+  }
+  
+  if (process.env.AZURE_OPENAI_ENDPOINT) {
+    const envKey = process.env.AZURE_OPENAI_ENDPOINT.trim()
+    if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+      envKeys.azureOpenAiEndpoint = envKey
+    } else {
+      console.warn('AZURE_OPENAI_ENDPOINT environment variable contains invalid value, ignoring')
+    }
+  }
+  
   // If any env vars are set, merge them with file storage (env vars take priority)
   try {
     await ensureStorageDir()
@@ -162,6 +183,8 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
             lakeraAiKey: !!fileKeys.lakeraAiKey,
             lakeraProjectId: !!fileKeys.lakeraProjectId,
             lakeraEndpoint: !!fileKeys.lakeraEndpoint,
+            azureOpenAiKey: !!fileKeys.azureOpenAiKey,
+            azureOpenAiEndpoint: !!fileKeys.azureOpenAiEndpoint,
           })
           // Merge: env vars take priority
           cachedKeys = { ...fileKeys, ...envKeys }
@@ -171,6 +194,8 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
             lakeraAiKey: !!cachedKeys.lakeraAiKey,
             lakeraProjectId: !!cachedKeys.lakeraProjectId,
             lakeraEndpoint: !!cachedKeys.lakeraEndpoint,
+            azureOpenAiKey: !!cachedKeys.azureOpenAiKey,
+            azureOpenAiEndpoint: !!cachedKeys.azureOpenAiEndpoint,
           })
           return cachedKeys
         } catch (decryptError) {
@@ -268,6 +293,28 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
     }
     
+    // Handle Azure OpenAI Key
+    if (keys.azureOpenAiKey !== undefined) {
+      if (keys.azureOpenAiKey && keys.azureOpenAiKey.trim() && !process.env.AZURE_OPENAI_API_KEY) {
+        keysToSave.azureOpenAiKey = keys.azureOpenAiKey.trim()
+      } else if (!keys.azureOpenAiKey && existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+        keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
+      }
+    } else if (existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+      keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
+    }
+    
+    // Handle Azure OpenAI Endpoint
+    if (keys.azureOpenAiEndpoint !== undefined) {
+      if (keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.trim() && !process.env.AZURE_OPENAI_ENDPOINT) {
+        keysToSave.azureOpenAiEndpoint = keys.azureOpenAiEndpoint.trim()
+      } else if (!keys.azureOpenAiEndpoint && existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+        keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
+      }
+    } else if (existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+      keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
+    }
+    
     // Always save at least the endpoint, even if no other keys
     // But only write if we have at least one key to save (or endpoint)
     if (Object.keys(keysToSave).length === 0 && !keysToSave.lakeraEndpoint) {
@@ -298,6 +345,18 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
           envKeys.lakeraEndpoint = envKey
         }
       }
+      if (process.env.AZURE_OPENAI_API_KEY) {
+        const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
+        if (envKey && envKey.length >= 10) {
+          envKeys.azureOpenAiKey = envKey
+        }
+      }
+      if (process.env.AZURE_OPENAI_ENDPOINT) {
+        const envKey = process.env.AZURE_OPENAI_ENDPOINT.trim()
+        if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+          envKeys.azureOpenAiEndpoint = envKey
+        }
+      }
       cachedKeys = { ...existingKeys, ...envKeys }
       keysLoaded = true
       return
@@ -316,6 +375,8 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       lakeraAiKey: !!keysToSave.lakeraAiKey,
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
+      azureOpenAiKey: !!keysToSave.azureOpenAiKey,
+      azureOpenAiEndpoint: !!keysToSave.azureOpenAiEndpoint,
     })
     // Update cache with merged keys (env vars take priority)
     const envKeys: StoredApiKeys = {}
@@ -323,6 +384,8 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
     if (process.env.LAKERA_PROJECT_ID) envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
     if (process.env.LAKERA_ENDPOINT) envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
+    if (process.env.AZURE_OPENAI_API_KEY) envKeys.azureOpenAiKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    if (process.env.AZURE_OPENAI_ENDPOINT) envKeys.azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT.trim()
     cachedKeys = { ...keysToSave, ...envKeys }
   } catch (error) {
     console.error('Error saving API keys:', error)
@@ -352,6 +415,12 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
       return
     }
     if (keyName === 'lakeraEndpoint' && process.env.LAKERA_ENDPOINT) {
+      return
+    }
+    if (keyName === 'azureOpenAiKey' && process.env.AZURE_OPENAI_API_KEY) {
+      return
+    }
+    if (keyName === 'azureOpenAiEndpoint' && process.env.AZURE_OPENAI_ENDPOINT) {
       return
     }
     
@@ -396,6 +465,12 @@ export async function deleteAllApiKeys(): Promise<void> {
     }
     if (!process.env.LAKERA_ENDPOINT) {
       keysToDelete.lakeraEndpoint = ''
+    }
+    if (!process.env.AZURE_OPENAI_API_KEY) {
+      keysToDelete.azureOpenAiKey = ''
+    }
+    if (!process.env.AZURE_OPENAI_ENDPOINT) {
+      keysToDelete.azureOpenAiEndpoint = ''
     }
     
     await saveApiKeys(keysToDelete)
@@ -468,6 +543,20 @@ export function getApiKeysSync(): StoredApiKeys {
     // Validate it's a valid URL
     if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
       envKeys.lakeraEndpoint = envKey
+    }
+  }
+  
+  if (process.env.AZURE_OPENAI_API_KEY) {
+    const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    if (envKey && envKey.length >= 10) {
+      envKeys.azureOpenAiKey = envKey
+    }
+  }
+  
+  if (process.env.AZURE_OPENAI_ENDPOINT) {
+    const envKey = process.env.AZURE_OPENAI_ENDPOINT.trim()
+    if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+      envKeys.azureOpenAiEndpoint = envKey
     }
   }
   

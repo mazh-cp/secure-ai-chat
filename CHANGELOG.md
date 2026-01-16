@@ -2,14 +2,107 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.11] - 2026-01-13
+## [1.0.11] - 2026-01-16
+
+### Added
+- **Azure OpenAI Support**: Full integration with Azure OpenAI endpoints
+  - Added Azure OpenAI API key and endpoint configuration in Settings
+  - Provider selector on Chat page to switch between OpenAI and Azure OpenAI
+  - Automatic endpoint and header handling for Azure OpenAI API calls
+  - Support for Azure OpenAI deployments with custom endpoints
+  - Provider preference stored in localStorage for persistence
+  - Seamless switching between OpenAI and Azure OpenAI without changing core application functionality
+  - Azure OpenAI credential validation endpoint (`/api/health/azure-openai`)
+  - Real-time validation button in Settings page for Azure OpenAI credentials
+  - Automatic model selection (gpt-4o-mini) when switching to Azure provider
+  - Predefined Azure-compatible models list (gpt-4o-mini, gpt-4o, gpt-4, gpt-4-turbo)
+  - Enhanced error messages for Azure-specific issues (deployment not found, backend unavailable, etc.)
+- **Check Point WAF Integration**: Enterprise-grade Web Application Firewall integration
+  - Middleware for capturing request metadata and security events
+  - WAF logs API endpoint (`/api/waf/logs`) for Check Point WAF consumption
+  - WAF health check endpoint (`/api/waf/health`) for monitoring
+  - Support for Check Point WAF-specific headers and IP detection
+  - Security event logging for blocked requests and threat detection
+  - CSV and JSON export formats for log analysis
+  - Optional authentication for WAF endpoints (via `WAF_AUTH_ENABLED` and `WAF_API_KEY`)
+  - Comprehensive filtering options (by level, service, time range, IP, endpoint, etc.)
 
 ### Fixed
+- **API Parameter Update**: Fixed `max_completion_tokens` parameter error for GPT-5.x models
+  - Changed `max_completion_tokens` to `max_output_tokens` to match updated API specification
+  - Updated parameter normalization in AI adapter for Responses API
+  - Resolves "Unsupported Parameter, 'max_completion_tokens' in the response API" errors
+  - Fixes production errors when using GPT-5.x models with token limits
 - **Check Point TE File Upload Error**: Fixed `TypeError: formDataStream is not async iterable` error in Check Point TE file upload route
   - Replaced manual stream handling with `form-data` package's built-in `getBuffer()` method
   - Simplified buffer conversion approach (reduced from 49 lines to 3 lines)
   - Resolves runtime errors when uploading files to Check Point TE API
   - Fixes "Failed to execute error" messages when scanning files
+- **Azure OpenAI "No Suitable backend" Error**: Fixed backend routing issues with Azure OpenAI
+  - Updated API version from `2024-10-21` to `2025-04-01-preview` (matching Azure OpenAI SDK)
+  - Enhanced error detection for "No Suitable backend" errors
+  - Improved error messages with specific troubleshooting guidance
+  - Better handling of deployment name mismatches and capacity issues
+- **Azure OpenAI Key Detection**: Fixed issue where Azure OpenAI keys weren't detected after saving
+  - Updated `/api/keys/retrieve` endpoint to return Azure OpenAI keys
+  - Fixed ChatInterface to properly load and validate Azure OpenAI credentials
+  - Improved key status indicators in Settings page
+- **Chat Page Accessibility**: Fixed blocking behavior when one provider has invalid keys
+  - Chat page now accessible if at least one provider has valid keys
+  - Provider selector always visible to allow switching between providers
+  - Non-blocking error messages with suggestions to switch providers
+  - Message input disabled only for the currently selected provider if keys are missing
+  - RAG functionality works with whichever provider is functional
+
+### Improved
+- **API Keys Management**: Enhanced storage and retrieval of Azure OpenAI credentials
+  - Azure OpenAI keys stored securely server-side with encryption
+  - Support for environment variables (AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT)
+  - Validation of Azure OpenAI endpoint URLs
+  - Status indicators for Azure OpenAI configuration
+  - Real-time validation with detailed error messages
+  - Deployment name verification in validation endpoint
+- **AI Adapter**: Enhanced model-agnostic adapter for multiple providers
+  - Unified interface for OpenAI and Azure OpenAI API calls
+  - Automatic endpoint selection based on provider
+  - Proper header handling (Bearer token for OpenAI, api-key for Azure OpenAI)
+  - Updated to use `2025-04-01-preview` API version for Azure OpenAI (matching SDK standards)
+  - Enhanced network error handling with specific Azure troubleshooting guidance
+  - Better error parsing for non-JSON responses
+  - Backward compatible with existing OpenAI configurations
+- **Settings Page UI**: Improved layout and user experience
+  - Two-column responsive layout for better organization
+  - Verification PIN section moved to bottom of page
+  - Azure OpenAI validation button with real-time feedback
+  - Clear status indicators for all API keys
+  - Better visual hierarchy and reduced scrolling
+- **Provider Switching**: Enhanced provider selection and model management
+  - Provider selector always visible (even if one provider has no keys)
+  - Visual indicators showing which providers are configured
+  - Automatic model selection when switching providers
+  - GPT-5 models blocked for Azure (not supported)
+  - Clear error messages with provider switching suggestions
+- **Rate Limiting**: Comprehensive rate limiting system to prevent API quota exhaustion
+  - In-memory sliding window rate limiter for API calls
+  - Model-specific rate limits (GPT-4: 100/min, GPT-4o: 200/min, GPT-5: 50/min)
+  - Azure OpenAI support with higher default limits (300/min)
+  - Automatic rate limit checking before API calls
+  - Proper error handling with Retry-After headers (429 status)
+  - Rate limit status tracking and monitoring
+- **Token Limit Validation**: Model-specific token limit validation and management
+  - Token counting/estimation utility (~4 chars per token approximation)
+  - Model-specific context window limits (GPT-4: 8K-128K, GPT-5: 128K)
+  - Automatic token validation before API calls
+  - Intelligent message truncation when limits are exceeded
+  - 10% safety buffer to prevent edge cases
+  - Clear error messages with suggestions for resolution
+  - Support for all GPT-4 and GPT-5 model variants
+- **Error Handling**: Enhanced error handling for rate limits and token limits
+  - Specific error types for rate limit (429) and token limit (400) errors
+  - User-friendly error messages with actionable suggestions
+  - Automatic detection of rate limit errors from API responses
+  - Proper HTTP status codes and Retry-After headers
+  - Logging of rate limit and token limit violations
 
 ## [1.0.10] - 2026-01-13
 
