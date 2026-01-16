@@ -21,11 +21,10 @@ set -eo pipefail
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 REPO_DIR="${REPO_DIR:-secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
-TAG="${TAG:-v1.0.11}"  # Default to v1.0.11
+TAG="${TAG:-v1.0.11}"
 NODE_VERSION="${NODE_VERSION:-25.2.1}"
 APP_PORT="${PORT:-3000}"
 # Default to home directory to avoid permission issues
-# Users can override with INSTALL_DIR=/opt if they want
 INSTALL_DIR="${INSTALL_DIR:-$HOME}"
 
 # Colors for output
@@ -200,16 +199,12 @@ fi
 # Create repository directory if it doesn't exist
 if [ ! -d "$FULL_PATH" ]; then
     print_info "Creating repository directory: $FULL_PATH"
-    if ! mkdir -p "$FULL_PATH" 2>/dev/null; then
-        # If mkdir fails, try with sudo and fix ownership
-        if [ "$INSTALL_DIR" = "/opt" ]; then
-            sudo mkdir -p "$FULL_PATH"
-            sudo chown -R $USER:$USER "$FULL_PATH"
-            sudo chmod -R u+w "$FULL_PATH"
-        else
-            print_error "Failed to create directory: $FULL_PATH"
-            exit 1
-        fi
+    if [ "$INSTALL_DIR" = "/opt" ]; then
+        sudo mkdir -p "$FULL_PATH"
+        sudo chown -R $USER:$USER "$FULL_PATH"
+        sudo chmod -R u+w "$FULL_PATH"
+    else
+        mkdir -p "$FULL_PATH"
     fi
 fi
 
@@ -224,68 +219,38 @@ if [ ! -w "$FULL_PATH" ]; then
     fi
 fi
 
-if [ -d "$FULL_PATH" ]; then
+# Now clone or update repository
+if [ -d "$FULL_PATH/.git" ]; then
     print_info "Repository directory exists. Updating..."
     cd "$FULL_PATH"
-    if [ -d ".git" ]; then
-        git fetch origin --tags -q
-        if [ -n "$TAG" ]; then
-            print_info "Checking out tag: $TAG"
-            git checkout "$TAG" -q || {
-                print_error "Tag $TAG not found. Available tags:"
-                git tag -l | tail -10
-                exit 1
-            }
-            print_success "Checked out tag: $TAG"
-        else
-            git checkout "$BRANCH" -q
-            git pull origin "$BRANCH" -q
-            print_success "Repository updated to $BRANCH"
-        fi
+    git fetch origin --tags -q
+    if [ -n "$TAG" ]; then
+        print_info "Checking out tag: $TAG"
+        git checkout "$TAG" -q || {
+            print_error "Tag $TAG not found. Available tags:"
+            git tag -l | tail -10
+            exit 1
+        }
+        print_success "Checked out tag: $TAG"
     else
-        print_warning "Directory exists but is not a git repository. Removing and cloning fresh..."
-        cd "$INSTALL_DIR"
-        sudo rm -rf "$REPO_DIR" 2>/dev/null || rm -rf "$REPO_DIR" 2>/dev/null || true
-        if [ -n "$TAG" ]; then
-            print_info "Cloning repository with tag: $TAG"
-            git clone "$REPO_URL" "$REPO_DIR" -q || {
-                print_error "Failed to clone repository. Check permissions and network connection."
-                exit 1
-            }
-            cd "$REPO_DIR"
-            git checkout "$TAG" -q || {
-                print_error "Tag $TAG not found. Available tags:"
-                git tag -l | tail -10
-                exit 1
-            }
-        else
-            git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q || {
-                print_error "Failed to clone repository. Check permissions and network connection."
-                exit 1
-            }
-        fi
-        # Fix ownership after clone
-        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
-        print_success "Repository cloned"
+        git checkout "$BRANCH" -q
+        git pull origin "$BRANCH" -q
+        print_success "Repository updated to $BRANCH"
     fi
 else
     print_info "Cloning repository..."
     cd "$INSTALL_DIR"
+    
+    # Remove directory if it exists but is not a git repo
+    if [ -d "$REPO_DIR" ] && [ ! -d "$REPO_DIR/.git" ]; then
+        print_warning "Directory exists but is not a git repository. Removing..."
+        rm -rf "$REPO_DIR" 2>/dev/null || sudo rm -rf "$REPO_DIR" 2>/dev/null || true
+    fi
+    
+    # Clone repository
     if [ -n "$TAG" ]; then
         print_info "Cloning repository with tag: $TAG"
-        git clone "$REPO_URL" "$REPO_DIR" -q || {
-            print_error "Failed to clone repository. Check permissions and network connection."
-            print_info "Trying with sudo to create directory first..."
-            sudo mkdir -p "$FULL_PATH"
-            sudo chown -R $USER:$USER "$FULL_PATH"
-            git clone "$REPO_URL" "$REPO_DIR" -q || {
-                print_error "Clone failed. Please check:"
-                print_error "  1. Network connectivity"
-                print_error "  2. Git is installed"
-                print_error "  3. Permissions for $INSTALL_DIR"
-                exit 1
-            }
-        }
+        git clone "$REPO_URL" "$REPO_DIR" -q
         cd "$REPO_DIR"
         git checkout "$TAG" -q || {
             print_error "Tag $TAG not found. Available tags:"
@@ -293,13 +258,15 @@ else
             exit 1
         }
     else
-        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q || {
-            print_error "Failed to clone repository. Check permissions and network connection."
-            exit 1
-        }
+        git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$REPO_DIR" -q
+        cd "$REPO_DIR"
     fi
+    
     # Fix ownership after clone
-    sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+    if [ "$INSTALL_DIR" = "/opt" ]; then
+        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+    fi
+    
     print_success "Repository cloned to $FULL_PATH"
 fi
 
@@ -323,7 +290,9 @@ print_header "Step 4a: Fixing Permissions"
 CURRENT_USER=$(whoami)
 if [ "$CURRENT_USER" != "root" ]; then
     print_info "Setting ownership and permissions..."
-    sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+    if [ "$INSTALL_DIR" = "/opt" ]; then
+        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+    fi
     sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
     sudo chmod 644 "$FULL_PATH/package.json" 2>/dev/null || true
     sudo chmod 644 "$FULL_PATH/package-lock.json" 2>/dev/null || true
@@ -342,12 +311,20 @@ if [ -f "package-lock.json" ]; then
         print_success "Dependencies installed via npm ci"
     else
         print_warning "npm ci failed, trying npm install..."
-        sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+        if [ "$INSTALL_DIR" = "/opt" ]; then
+            sudo chown -R $USER:$USER "$FULL_PATH" 2>/dev/null || true
+        fi
         sudo chmod -R u+w "$FULL_PATH" 2>/dev/null || true
+        print_info "Running 'npm install' to update package-lock.json..."
         if npm install 2>&1; then
             print_success "Dependencies installed and package-lock.json updated"
         else
             print_error "Failed to install dependencies"
+            print_error "This may indicate:"
+            print_error "  1. Network connectivity issues"
+            print_error "  2. Insufficient disk space"
+            print_error "  3. npm registry access problems"
+            print_info "Try manually: cd $FULL_PATH && npm install"
             exit 1
         fi
     fi
