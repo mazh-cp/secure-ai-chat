@@ -197,12 +197,45 @@ else
     BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
     mv "$APP_DIR" "$BACKUP_DIR"
     warn "Backup created: $BACKUP_DIR"
+    
+    # Ensure directory is completely removed
+    if [ -d "$APP_DIR" ]; then
+      warn "Removing leftover directory..."
+      rm -rf "$APP_DIR" 2>/dev/null || true
+    fi
+    
+    # Create fresh directory with proper ownership
+    mkdir -p "$APP_DIR"
+    chown "$APP_USER:$APP_USER" "$APP_DIR"
   fi
   
   step "Cloning repository..."
-  sudo -u "$APP_USER" git clone "$REPO_URL" "$APP_DIR" -q
-  cd "$APP_DIR"
-  sudo -u "$APP_USER" git checkout "$GIT_REF" -q 2>/dev/null || true
+  # Clone as app user to temp location first
+  TEMP_DIR=$(mktemp -d)
+  chown "$APP_USER:$APP_USER" "$TEMP_DIR"
+  
+  sudo -u "$APP_USER" bash << GIT_CLONE
+set -eo pipefail
+export HOME="$APP_DIR"
+
+cd "$TEMP_DIR"
+git clone "$REPO_URL" temp-repo -q
+
+# Move to final location
+mv temp-repo/* "$APP_DIR/" 2>/dev/null || true
+mv temp-repo/.* "$APP_DIR/" 2>/dev/null || true
+rm -rf temp-repo
+
+cd "$APP_DIR"
+git checkout "$GIT_REF" -q 2>/dev/null || true
+GIT_CLONE
+  
+  # Clean up temp directory
+  rm -rf "$TEMP_DIR"
+  
+  # Ensure proper ownership
+  chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+  
   ok "Repository cloned"
 fi
 
