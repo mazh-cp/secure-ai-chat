@@ -122,8 +122,39 @@ else
   FAILED=$((FAILED + 1))
 fi
 
+# Production-specific endpoints
+say "4. Production-Specific Endpoints"
+
+# Settings read (should not expose secrets)
+if test_endpoint "GET" "/api/keys/retrieve" "200" "Settings status read"; then
+  : # OK
+else
+  FAILED=$((FAILED + 1))
+fi
+
+# File upload list (minimal check)
+if test_endpoint "GET" "/api/files/list" "200" "File upload list"; then
+  : # OK
+else
+  FAILED=$((FAILED + 1))
+fi
+
+# Models endpoint (RAG status check)
+if test_endpoint "GET" "/api/models" "200" "Models list (RAG enabled)"; then
+  : # OK
+else
+  FAILED=$((FAILED + 1))
+fi
+
+# Check Point TE status (server-side only, no secrets)
+if test_endpoint "GET" "/api/te/config" "200" "Check Point TE status"; then
+  : # OK
+else
+  FAILED=$((FAILED + 1))
+fi
+
 # WAF endpoints (if available)
-say "4. WAF Endpoints (Optional)"
+say "5. WAF Endpoints (Optional)"
 
 if test_endpoint "GET" "/api/waf/health" "200" "WAF health"; then
   : # OK
@@ -132,7 +163,7 @@ else
 fi
 
 # Check for secrets in any log output (if server logs are accessible)
-say "5. Secret Leakage Check"
+say "6. Secret Leakage Check"
 
 # Check if we can access server logs (systemd journal)
 if command -v journalctl >/dev/null 2>&1 && systemctl is-active secure-ai-chat >/dev/null 2>&1; then

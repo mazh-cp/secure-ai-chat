@@ -237,6 +237,54 @@ fi
 
 ok "Build output verified"
 
+# Step 6a: Ensure required directories exist with correct permissions
+say "Step 6a: Ensuring Required Directories Exist"
+
+APP_USER=$(get_app_user)
+
+# Create .secure-storage if missing
+if [ ! -d ".secure-storage" ]; then
+  say "Creating .secure-storage directory..."
+  mkdir -p .secure-storage
+  chmod 700 .secure-storage
+  if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+    sudo chown "$APP_USER:$APP_USER" .secure-storage
+  fi
+  ok ".secure-storage created with permissions 700"
+else
+  # Ensure permissions are correct
+  PERMS=$(stat -c%a .secure-storage 2>/dev/null || stat -f%OLp .secure-storage 2>/dev/null || echo "unknown")
+  if [ "$PERMS" != "700" ]; then
+    warn ".secure-storage permissions: $PERMS (fixing to 700)..."
+    chmod 700 .secure-storage
+    ok ".secure-storage permissions fixed"
+  else
+    ok ".secure-storage exists with correct permissions"
+  fi
+fi
+
+# Create .storage if missing
+if [ ! -d ".storage" ]; then
+  say "Creating .storage directory..."
+  mkdir -p .storage
+  chmod 755 .storage
+  if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+    sudo chown "$APP_USER:$APP_USER" .storage
+  fi
+  ok ".storage created with permissions 755"
+else
+  ok ".storage exists"
+fi
+
+# Print diagnostics (non-secret)
+say "Diagnostics"
+info "Node version: $(node -v 2>/dev/null || echo 'unknown')"
+info "Package manager: $(detect_package_manager)"
+info "Git revision: $(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+info "Disk free: $(df -h . | tail -1 | awk '{print $4}' || echo 'unknown')"
+info "App user: $APP_USER"
+info "Required dirs perms: .secure-storage (700), .storage (755)"
+
 # Step 7: Restart service
 say "Step 7: Restarting Service"
 

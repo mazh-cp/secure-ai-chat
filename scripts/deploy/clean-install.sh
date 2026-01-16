@@ -271,6 +271,46 @@ fi
 
 ok "Build output verified"
 
+# Step 7a: Ensure required directories exist with correct permissions
+say "Step 7a: Ensuring Required Directories Exist"
+
+# Create .secure-storage if missing
+if [ ! -d "$APP_DIR/.secure-storage" ]; then
+  say "Creating .secure-storage directory..."
+  sudo -u "$APP_USER" mkdir -p "$APP_DIR/.secure-storage"
+  sudo chmod 700 "$APP_DIR/.secure-storage"
+  sudo chown "$APP_USER:$APP_USER" "$APP_DIR/.secure-storage"
+  ok ".secure-storage created with permissions 700"
+else
+  # Ensure permissions are correct
+  sudo chmod 700 "$APP_DIR/.secure-storage"
+  sudo chown "$APP_USER:$APP_USER" "$APP_DIR/.secure-storage"
+  ok ".secure-storage exists with correct permissions"
+fi
+
+# Create .storage if missing
+if [ ! -d "$APP_DIR/.storage" ]; then
+  say "Creating .storage directory..."
+  sudo -u "$APP_USER" mkdir -p "$APP_DIR/.storage"
+  sudo chmod 755 "$APP_DIR/.storage"
+  sudo chown "$APP_USER:$APP_USER" "$APP_DIR/.storage"
+  ok ".storage created with permissions 755"
+else
+  sudo chmod 755 "$APP_DIR/.storage"
+  sudo chown "$APP_USER:$APP_USER" "$APP_DIR/.storage"
+  ok ".storage exists"
+fi
+
+# Print diagnostics (non-secret)
+say "Diagnostics"
+info "Node version: $(sudo -u "$APP_USER" bash -c 'source "$HOME/.nvm/nvm.sh" 2>/dev/null; nvm use 24.13.0 >/dev/null 2>&1; node -v' || echo 'unknown')"
+info "Package manager: $(detect_package_manager)"
+info "Git revision: $(cd "$APP_DIR" && sudo -u "$APP_USER" git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+info "Disk free: $(df -h "$APP_DIR" | tail -1 | awk '{print $4}' || echo 'unknown')"
+info "App user: $APP_USER"
+info "App directory: $APP_DIR"
+info "Required dirs perms: .secure-storage (700), .storage (755)"
+
 # Step 8: Create systemd service (template)
 say "Step 8: Creating Systemd Service Template"
 

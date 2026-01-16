@@ -9,7 +9,12 @@ Group={{APP_USER}}
 WorkingDirectory={{APP_DIR}}
 EnvironmentFile=/etc/secure-ai-chat.env
 
-# Load nvm and use correct Node.js version
+# Ensure NODE_ENV=production (override env file if needed)
+Environment="NODE_ENV=production"
+
+# Load nvm and use correct Node.js version, then validate startup and start
+# Validate startup ensures directories exist with correct permissions
+ExecStartPre=/usr/bin/bash -c 'cd {{APP_DIR}} && bash scripts/validate-startup.sh || exit 1'
 ExecStart=/usr/bin/env bash -lc 'source "$HOME/.nvm/nvm.sh" && nvm use {{NODE_VERSION}} && cd {{APP_DIR}} && npm start'
 
 Restart=always
