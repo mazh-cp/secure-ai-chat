@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     // Clean endpoint URL (remove trailing slash)
     const cleanEndpoint = trimmedEndpoint.replace(/\/$/, '')
     
+    // Check if this is an APIM gateway endpoint (contains azure-api.net and has a path)
+    const isApimGateway = cleanEndpoint.includes('azure-api.net') && cleanEndpoint.split('/').length > 3
+    
     // Try to validate by making a test API call to list deployments or test a specific deployment
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
@@ -59,6 +62,7 @@ export async function POST(request: NextRequest) {
       // First, try to list deployments to verify endpoint and key are valid
       // If that fails, try a minimal chat completions call with the specified deployment
       // Using 2025-04-01-preview to match Azure OpenAI SDK standards
+      // Support both standard Azure OpenAI and APIM gateway endpoints
       let testEndpoint = `${cleanEndpoint}/openai/deployments?api-version=2025-04-01-preview`
       
       let response = await fetch(testEndpoint, {
@@ -107,6 +111,7 @@ export async function POST(request: NextRequest) {
 
       // If listing deployments fails, try a minimal chat completions call
       // This will verify the specific deployment exists and is accessible
+      // Support both standard Azure OpenAI and APIM gateway endpoints
       if (deploymentName) {
         const chatEndpoint = `${cleanEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2025-04-01-preview`
         

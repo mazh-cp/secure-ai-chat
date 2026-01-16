@@ -223,16 +223,33 @@ async function callGPT4ChatCompletionsAPI(
     // Use the latest preview API version (2025-04-01-preview) to match Azure OpenAI SDK standards
     // This version supports the latest models and features
     // Note: Verify your deployment name matches exactly (case-sensitive) in Azure Portal
+    
+    // Support both standard Azure OpenAI endpoints and Azure API Management (APIM) gateway endpoints
+    // Standard format: https://resource.openai.azure.com
+    // APIM format: https://gateway.azure-api.net/path/ (e.g., https://staging-openai.azure-api.net/openai-gw-proxy-dev/)
     const apiVersion = '2025-04-01-preview' // Latest preview version matching Azure OpenAI SDK
     const baseEndpoint = options.azureEndpoint.replace(/\/$/, '')
-    endpoint = `${baseEndpoint}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`
+    
+    // Check if this is an APIM gateway endpoint (contains azure-api.net and has a path)
+    const isApimGateway = baseEndpoint.includes('azure-api.net') && baseEndpoint.split('/').length > 3
+    
+    if (isApimGateway) {
+      // APIM gateway: endpoint already includes the path, just append deployments path
+      // Format: https://gateway.azure-api.net/path/openai/deployments/...
+      endpoint = `${baseEndpoint}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`
+    } else {
+      // Standard Azure OpenAI: append /openai/deployments/...
+      endpoint = `${baseEndpoint}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`
+    }
+    
     // Azure OpenAI uses 'api-key' header instead of 'Bearer' Authorization
     headers['api-key'] = openAiKey
     // Remove model from request body for Azure (it's in the URL)
     console.log('Azure OpenAI request:', { 
       endpoint: endpoint.replace(/\/\/.*@/, '//***').replace(/api-key=[^&]*/, 'api-key=***'), 
       model,
-      apiVersion 
+      apiVersion,
+      isApimGateway 
     })
   } else {
     // Standard OpenAI: use Bearer token and include model in request body
