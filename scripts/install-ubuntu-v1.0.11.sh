@@ -200,7 +200,7 @@ fi
 # Create repository directory if it doesn't exist
 if [ ! -d "$FULL_PATH" ]; then
     print_info "Creating repository directory: $FULL_PATH"
-    mkdir -p "$FULL_PATH" 2>/dev/null || {
+    if ! mkdir -p "$FULL_PATH" 2>/dev/null; then
         # If mkdir fails, try with sudo and fix ownership
         if [ "$INSTALL_DIR" = "/opt" ]; then
             sudo mkdir -p "$FULL_PATH"
@@ -209,8 +209,8 @@ if [ ! -d "$FULL_PATH" ]; then
         else
             print_error "Failed to create directory: $FULL_PATH"
             exit 1
-        }
-    }
+        fi
+    fi
 fi
 
 # Verify we can write to the repository directory
