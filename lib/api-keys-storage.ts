@@ -295,31 +295,47 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     
     // Handle Azure OpenAI Key
     if (keys.azureOpenAiKey !== undefined) {
+      // If a new key is provided (even if empty string), use it
       if (keys.azureOpenAiKey && keys.azureOpenAiKey.trim() && !process.env.AZURE_OPENAI_API_KEY) {
         keysToSave.azureOpenAiKey = keys.azureOpenAiKey.trim()
-      } else if (!keys.azureOpenAiKey && existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
-        keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
+      } else if (!keys.azureOpenAiKey || !keys.azureOpenAiKey.trim()) {
+        // Empty string or null provided - don't save (will be removed)
+        // Only keep existing if it exists and env var is not set
+        if (existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+          keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
+        }
+        // If no existing key, don't add to keysToSave (will be null/removed)
       }
     } else if (existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+      // No new key provided, keep existing
       keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
     }
     
     // Handle Azure OpenAI Endpoint
     if (keys.azureOpenAiEndpoint !== undefined) {
+      // If a new endpoint is provided (even if empty string), use it
       if (keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.trim() && !process.env.AZURE_OPENAI_ENDPOINT) {
         keysToSave.azureOpenAiEndpoint = keys.azureOpenAiEndpoint.trim()
-      } else if (!keys.azureOpenAiEndpoint && existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
-        keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
+      } else if (!keys.azureOpenAiEndpoint || !keys.azureOpenAiEndpoint.trim()) {
+        // Empty string or null provided - don't save (will be removed)
+        // Only keep existing if it exists and env var is not set
+        if (existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+          keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
+        }
+        // If no existing endpoint, don't add to keysToSave (will be null/removed)
       }
     } else if (existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+      // No new endpoint provided, keep existing
       keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
     }
     
-    // Always save at least the endpoint, even if no other keys
-    // But only write if we have at least one key to save (or endpoint)
-    if (Object.keys(keysToSave).length === 0 && !keysToSave.lakeraEndpoint) {
+    // Check if we have any keys to save
+    // Always save at least the lakeraEndpoint if it exists, even if no other keys
+    const hasKeysToSave = Object.keys(keysToSave).length > 0 || keysToSave.lakeraEndpoint
+    
+    if (!hasKeysToSave) {
       console.warn('No keys to save - all may be set via environment variables or empty')
-      // Still update cache with existing keys
+      // Still update cache with existing keys and env vars
       const envKeys: StoredApiKeys = {}
       if (process.env.OPENAI_API_KEY) {
         const envKey = process.env.OPENAI_API_KEY.trim()
@@ -572,6 +588,8 @@ export async function setApiKeys(keys: StoredApiKeys): Promise<void> {
   // Invalidate cache to force reload on next access
   cachedKeys = null
   keysLoaded = false
+  // Force reload to update cache with saved keys
+  await loadApiKeys()
 }
 
 /**

@@ -200,7 +200,8 @@ export async function POST(request: NextRequest) {
     // We pass only the keys that were validated and should be saved
     await setApiKeys(keysToSave)
     
-    // Verify keys were saved
+    // Force a fresh reload to ensure cache is updated
+    // This ensures the next GET request returns the correct status
     const savedKeys = await getApiKeys()
     console.log('Keys saved. Verification:', {
       openAiKey: !!savedKeys.openAiKey,
@@ -210,6 +211,27 @@ export async function POST(request: NextRequest) {
       azureOpenAiKey: !!savedKeys.azureOpenAiKey,
       azureOpenAiEndpoint: !!savedKeys.azureOpenAiEndpoint,
     })
+    
+    // Double-check by reading directly from file to ensure persistence
+    try {
+      const { promises: fs } = await import('fs')
+      const path = await import('path')
+      const storageDir = path.join(process.cwd(), '.secure-storage')
+      const keysFilePath = path.join(storageDir, 'api-keys.enc')
+      
+      try {
+        const fileExists = await fs.access(keysFilePath).then(() => true).catch(() => false)
+        if (fileExists) {
+          console.log('✅ Keys file exists and is accessible')
+        } else {
+          console.warn('⚠️ Keys file does not exist after save')
+        }
+      } catch (checkError) {
+        console.warn('Could not verify keys file:', checkError)
+      }
+    } catch (importError) {
+      // Ignore import errors in edge cases
+    }
 
     console.log('API keys configured and saved successfully')
 
