@@ -68,56 +68,136 @@ if [ ! -d ".git" ]; then
   warn "Not a git repository: $APP_DIR"
   warn "Initializing git repository for future upgrades..."
   
-  # Initialize git repository
-  if git init -q; then
-    ok "Git repository initialized"
+  # Get app user (to handle ownership issues)
+  APP_USER=$(get_app_user)
+  say "App user: $APP_USER"
+  
+  # Fix git safe.directory issue (if running as different user)
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    say "Configuring git safe.directory for $APP_DIR..."
+    git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+    ok "Git safe.directory configured"
+  fi
+  
+  # Initialize git repository as app user if different
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    say "Initializing git repository as $APP_USER..."
+    if sudo -u "$APP_USER" git -C "$APP_DIR" init -q; then
+      ok "Git repository initialized"
+    else
+      fail "Failed to initialize git repository"
+      exit 1
+    fi
   else
-    fail "Failed to initialize git repository"
-    exit 1
+    if git init -q; then
+      ok "Git repository initialized"
+    else
+      fail "Failed to initialize git repository"
+      exit 1
+    fi
   fi
   
-  # Add remote if not exists
-  if ! git remote | grep -q "^origin$"; then
-    git remote add origin https://github.com/mazh-cp/secure-ai-chat.git
-    ok "Git remote 'origin' added"
+  # Add remote if not exists (as app user)
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    if ! sudo -u "$APP_USER" git -C "$APP_DIR" remote | grep -q "^origin$"; then
+      sudo -u "$APP_USER" git -C "$APP_DIR" remote add origin https://github.com/mazh-cp/secure-ai-chat.git
+      ok "Git remote 'origin' added"
+    fi
+  else
+    if ! git remote | grep -q "^origin$"; then
+      git remote add origin https://github.com/mazh-cp/secure-ai-chat.git
+      ok "Git remote 'origin' added"
+    fi
   fi
   
-  # Fetch latest code
+  # Fetch latest code (as app user)
   say "Fetching latest code from origin..."
-  if git fetch origin main -q; then
-    ok "Fetched latest code"
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    if sudo -u "$APP_USER" git -C "$APP_DIR" fetch origin main -q; then
+      ok "Fetched latest code"
+    else
+      warn "Failed to fetch from origin (may need network access)"
+    fi
   else
-    warn "Failed to fetch from origin (may need network access)"
+    if git fetch origin main -q; then
+      ok "Fetched latest code"
+    else
+      warn "Failed to fetch from origin (may need network access)"
+    fi
   fi
   
-  # Checkout main branch (detached HEAD is OK for upgrade)
-  if git checkout -b main origin/main 2>/dev/null || git checkout main 2>/dev/null || git checkout -b main 2>/dev/null; then
-    ok "Checked out main branch"
+  # Checkout main branch (as app user)
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    if sudo -u "$APP_USER" git -C "$APP_DIR" checkout -b main origin/main 2>/dev/null || \
+       sudo -u "$APP_USER" git -C "$APP_DIR" checkout main 2>/dev/null || \
+       sudo -u "$APP_USER" git -C "$APP_DIR" checkout -b main 2>/dev/null; then
+      ok "Checked out main branch"
+    else
+      warn "Could not checkout main branch (will try to continue)"
+    fi
   else
-    warn "Could not checkout main branch (will try to continue)"
+    if git checkout -b main origin/main 2>/dev/null || git checkout main 2>/dev/null || git checkout -b main 2>/dev/null; then
+      ok "Checked out main branch"
+    else
+      warn "Could not checkout main branch (will try to continue)"
+    fi
   fi
   
-  # Stage current files
-  git add -A >/dev/null 2>&1 || true
+  # Stage current files (as app user)
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    sudo -u "$APP_USER" git -C "$APP_DIR" add -A >/dev/null 2>&1 || true
+  else
+    git add -A >/dev/null 2>&1 || true
+  fi
   
-  # Commit current state if not already committed
-  if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [ -z "$(git log --oneline -1 2>/dev/null)" ]; then
-    git commit -m "Pre-upgrade state: $(date +%Y%m%d_%H%M%S)" >/dev/null 2>&1 || true
+  # Commit current state (as app user)
+  if [ "$(whoami)" != "$APP_USER" ]; then
+    if ! sudo -u "$APP_USER" git -C "$APP_DIR" diff --quiet HEAD 2>/dev/null || \
+       ! sudo -u "$APP_USER" git -C "$APP_DIR" diff --cached --quiet 2>/dev/null || \
+       [ -z "$(sudo -u "$APP_USER" git -C "$APP_DIR" log --oneline -1 2>/dev/null)" ]; then
+      sudo -u "$APP_USER" git -C "$APP_DIR" commit -m "Pre-upgrade state: $(date +%Y%m%d_%H%M%S)" >/dev/null 2>&1 || true
+    fi
+  else
+    if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [ -z "$(git log --oneline -1 2>/dev/null)" ]; then
+      git commit -m "Pre-upgrade state: $(date +%Y%m%d_%H%M%S)" >/dev/null 2>&1 || true
+    fi
   fi
   
   warn "Git repository initialized. Future upgrades will use git pull."
 fi
 
-# Check for uncommitted changes
-if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-  warn "Uncommitted changes detected"
-  warn "Stashing changes for upgrade..."
-  git stash push -m "Auto-stash before upgrade $(date +%Y%m%d_%H%M%S)" || true
+# Ensure safe.directory is configured (for all subsequent git commands)
+APP_USER=$(get_app_user)
+if [ "$(whoami)" != "$APP_USER" ]; then
+  git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 fi
 
-# Check for untracked files (warn but don't fail)
-if [ -n "$(git ls-files --others --exclude-standard)" ]; then
-  warn "Untracked files detected (will be preserved)"
+# Get app user for git operations
+APP_USER=$(get_app_user)
+
+# Check for uncommitted changes (as app user)
+if [ "$(whoami)" != "$APP_USER" ]; then
+  if ! sudo -u "$APP_USER" git -C "$APP_DIR" diff --quiet HEAD 2>/dev/null || ! sudo -u "$APP_USER" git -C "$APP_DIR" diff --cached --quiet 2>/dev/null; then
+    warn "Uncommitted changes detected"
+    warn "Stashing changes for upgrade..."
+    sudo -u "$APP_USER" git -C "$APP_DIR" stash push -m "Auto-stash before upgrade $(date +%Y%m%d_%H%M%S)" || true
+  fi
+  
+  # Check for untracked files (warn but don't fail)
+  if [ -n "$(sudo -u "$APP_USER" git -C "$APP_DIR" ls-files --others --exclude-standard 2>/dev/null)" ]; then
+    warn "Untracked files detected (will be preserved)"
+  fi
+else
+  if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+    warn "Uncommitted changes detected"
+    warn "Stashing changes for upgrade..."
+    git stash push -m "Auto-stash before upgrade $(date +%Y%m%d_%H%M%S)" || true
+  fi
+  
+  # Check for untracked files (warn but don't fail)
+  if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    warn "Untracked files detected (will be preserved)"
+  fi
 fi
 
 ok "Git repository validated"
@@ -125,31 +205,59 @@ ok "Git repository validated"
 # Step 2: Fetch latest code
 say "Step 2: Fetching Latest Code"
 
-git fetch origin --tags -q || fail "Failed to fetch from origin"
-ok "Fetched latest code"
-
-# Get current commit (for rollback)
-CURRENT_REF=$(git rev-parse HEAD)
-say "Current commit: $(git rev-parse --short HEAD)"
-
-# Checkout target ref
-say "Checking out: $GIT_REF"
-if git checkout "$GIT_REF" -q; then
-  ok "Checked out $GIT_REF"
+if [ "$(whoami)" != "$APP_USER" ]; then
+  sudo -u "$APP_USER" git -C "$APP_DIR" fetch origin --tags -q || fail "Failed to fetch from origin"
+  ok "Fetched latest code"
+  
+  # Get current commit (for rollback)
+  CURRENT_REF=$(sudo -u "$APP_USER" git -C "$APP_DIR" rev-parse HEAD)
+  say "Current commit: $(sudo -u "$APP_USER" git -C "$APP_DIR" rev-parse --short HEAD)"
+  
+  # Checkout target ref
+  say "Checking out: $GIT_REF"
+  if sudo -u "$APP_USER" git -C "$APP_DIR" checkout "$GIT_REF" -q; then
+    ok "Checked out $GIT_REF"
+  else
+    fail "Failed to checkout $GIT_REF"
+    exit 1
+  fi
+  
+  # Pull latest changes
+  if sudo -u "$APP_USER" git -C "$APP_DIR" pull origin "$GIT_REF" -q; then
+    ok "Pulled latest changes"
+  else
+    warn "Pull failed (may be on detached HEAD or tag)"
+  fi
+  
+  NEW_REF=$(sudo -u "$APP_USER" git -C "$APP_DIR" rev-parse HEAD)
+  say "New commit: $(sudo -u "$APP_USER" git -C "$APP_DIR" rev-parse --short HEAD)"
 else
-  fail "Failed to checkout $GIT_REF"
-  exit 1
+  git fetch origin --tags -q || fail "Failed to fetch from origin"
+  ok "Fetched latest code"
+  
+  # Get current commit (for rollback)
+  CURRENT_REF=$(git rev-parse HEAD)
+  say "Current commit: $(git rev-parse --short HEAD)"
+  
+  # Checkout target ref
+  say "Checking out: $GIT_REF"
+  if git checkout "$GIT_REF" -q; then
+    ok "Checked out $GIT_REF"
+  else
+    fail "Failed to checkout $GIT_REF"
+    exit 1
+  fi
+  
+  # Pull latest changes
+  if git pull origin "$GIT_REF" -q; then
+    ok "Pulled latest changes"
+  else
+    warn "Pull failed (may be on detached HEAD or tag)"
+  fi
+  
+  NEW_REF=$(git rev-parse HEAD)
+  say "New commit: $(git rev-parse --short HEAD)"
 fi
-
-# Pull latest changes
-if git pull origin "$GIT_REF" -q; then
-  ok "Pulled latest changes"
-else
-  warn "Pull failed (may be on detached HEAD or tag)"
-fi
-
-NEW_REF=$(git rev-parse HEAD)
-say "New commit: $(git rev-parse --short HEAD)"
 
 # Step 3: Backup current build + config
 say "Step 3: Creating Backup"
