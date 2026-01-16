@@ -144,13 +144,13 @@ export default function RiskMapPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-theme">
+        <h1 className="text-4xl font-bold text-theme">
           AI Risk Map
         </h1>
-        <p className="mt-1 text-sm text-theme-muted">
+        <p className="mt-1 text-base text-theme-muted">
           OWASP Top 10 for LLMs 2025 - Interactive risk visualization based on your session activity
         </p>
-        <p className="mt-2 text-xs text-theme-subtle">
+        <p className="mt-2 text-base text-theme-subtle">
           Based on <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener noreferrer" className="text-palette-accent-primary hover:underline">OWASP GenAI Security Project</a>
         </p>
       </div>
@@ -185,42 +185,42 @@ export default function RiskMapPage() {
         {!selectedRisk && (
           <div className="lg:col-span-2">
             <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
-              <h2 className="text-lg font-semibold text-theme mb-4">
+              <h2 className="text-xl font-semibold text-theme mb-4">
                 Risk Overview
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  <div className="text-4xl font-bold text-red-600 dark:text-red-400">
                     {OWASP_TOP_10_2025.filter(r => r.severity === 'critical').length}
                   </div>
-                  <div className="text-xs text-red-700 dark:text-red-300 mt-1">Critical</div>
+                  <div className="text-base text-red-700 dark:text-red-300 mt-1">Critical</div>
                 </div>
                 <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  <div className="text-4xl font-bold text-orange-600 dark:text-orange-400">
                     {OWASP_TOP_10_2025.filter(r => r.severity === 'high').length}
                   </div>
-                  <div className="text-xs text-orange-700 dark:text-orange-300 mt-1">High</div>
+                  <div className="text-base text-orange-700 dark:text-orange-300 mt-1">High</div>
                 </div>
                 <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                  <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">
                     {OWASP_TOP_10_2025.filter(r => r.severity === 'medium').length}
                   </div>
-                  <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">Medium</div>
+                  <div className="text-base text-yellow-700 dark:text-yellow-300 mt-1">Medium</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
                     {OWASP_TOP_10_2025.filter(r => r.severity === 'low').length}
                   </div>
-                  <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">Low</div>
+                  <div className="text-base text-blue-700 dark:text-blue-300 mt-1">Low</div>
                 </div>
                 <div className="text-center p-4 glass-card rounded-lg border border-palette-border-default/20">
-                  <div className="text-2xl font-bold text-theme">
+                  <div className="text-4xl font-bold text-theme">
                     {riskAssociations.size}
                   </div>
-                  <div className="text-xs text-theme-muted mt-1">Active Risks</div>
+                  <div className="text-base text-theme-muted mt-1">Active Risks</div>
                 </div>
               </div>
-              <p className="mt-4 text-sm text-theme-muted">
+              <p className="mt-4 text-base text-theme-muted">
                 Click on any risk card above to view detailed information and related session activity.
               </p>
             </div>

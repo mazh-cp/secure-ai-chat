@@ -69,8 +69,8 @@ export default function Home() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-theme drop-shadow-lg">Secure AI Chat</h1>
-            <p className="mt-2 text-sm text-theme-muted">
+            <h1 className="text-4xl font-bold text-theme drop-shadow-lg">Secure AI Chat</h1>
+            <p className="mt-2 text-base text-theme-muted">
               Private, encrypted conversations with AI powered by Lakera AI security
             </p>
           </div>

@@ -22,17 +22,14 @@ const DEFAULT_RATE_LIMITS = {
     'gpt-4o': 200,
     'gpt-4o-mini': 200,
     'gpt-4-turbo': 100,
-    'gpt-5': 50,
-    'gpt-5.1': 50,
-    'gpt-5.2': 50,
-    'gpt-5.3': 50,
-    'gpt-5.4': 50,
-    'gpt-5.5': 50,
+    // GPT-5.x models: Increased to match GPT-4o limits (OpenAI typically allows similar rates)
+    'gpt-5': 200,
+    'gpt-5.1': 200,
+    'gpt-5.2': 200,
+    'gpt-5.3': 200,
+    'gpt-5.4': 200,
+    'gpt-5.5': 200,
     default: 100, // Default fallback
-  },
-  // Azure OpenAI rate limits (requests per minute) - typically higher
-  azure: {
-    default: 300, // Azure typically allows higher rates
   },
 }
 
@@ -42,26 +39,52 @@ const CLEANUP_INTERVAL = 5 * 60 * 1000
 /**
  * Generate a rate limit key from API key and model
  */
-function getRateLimitKey(apiKey: string, model: string, provider: 'openai' | 'azure' = 'openai'): string {
+function getRateLimitKey(apiKey: string, model: string): string {
   // Use first 8 chars of API key for identification (don't store full key)
   const keyPrefix = apiKey.substring(0, 8)
-  return `${provider}:${keyPrefix}:${model}`
+  return `openai:${keyPrefix}:${model}`
 }
 
 /**
  * Get rate limit for a model
  */
-function getRateLimit(model: string, provider: 'openai' | 'azure' = 'openai'): number {
-  const limits = DEFAULT_RATE_LIMITS[provider]
+function getRateLimit(model: string): number {
+  const limits = DEFAULT_RATE_LIMITS.openai
   
-  // Check for exact model match
-  if (limits[model as keyof typeof limits]) {
-    return limits[model as keyof typeof limits] as number
+  // Normalize model name to lowercase for matching
+  const normalizedModel = model.toLowerCase().trim()
+  
+  // Check for exact model match first
+  if (limits[normalizedModel as keyof typeof limits]) {
+    return limits[normalizedModel as keyof typeof limits] as number
   }
   
-  // Check for model prefix match (e.g., gpt-4-turbo-preview matches gpt-4-turbo)
+  // Special handling for GPT-5.x models (they may have suffixes like -pro-2025-12-11)
+  // Check for GPT-5.x models first (including gpt-5, gpt-5.1, gpt-5.2, etc.)
+  if (normalizedModel.startsWith('gpt-5')) {
+    // Extract base version (e.g., 'gpt-5' or 'gpt-5.1' or 'gpt-5.2' from gpt-5.2-pro-2025-12-11)
+    const gpt5Match = normalizedModel.match(/^gpt-5(\.\d+)?/)
+    if (gpt5Match) {
+      const baseVersion = gpt5Match[0] // e.g., 'gpt-5' or 'gpt-5.1' or 'gpt-5.2'
+      
+      // Try exact version match first (e.g., gpt-5.1)
+      if (limits[baseVersion as keyof typeof limits]) {
+        return limits[baseVersion as keyof typeof limits] as number
+      }
+      
+      // If specific version not found, use gpt-5 as fallback
+      if (limits['gpt-5' as keyof typeof limits]) {
+        return limits['gpt-5' as keyof typeof limits] as number
+      }
+    }
+    
+    // Fallback: if it starts with gpt-5 but doesn't match above, use gpt-5 limit
+    return limits['gpt-5' as keyof typeof limits] || limits.default || 100
+  }
+  
+  // Check other models with prefix match (e.g., gpt-4-turbo-preview matches gpt-4-turbo)
   for (const [key, value] of Object.entries(limits)) {
-    if (key !== 'default' && model.toLowerCase().startsWith(key.toLowerCase())) {
+    if (key !== 'default' && normalizedModel.startsWith(key.toLowerCase())) {
       return value
     }
   }
@@ -76,11 +99,10 @@ function getRateLimit(model: string, provider: 'openai' | 'azure' = 'openai'): n
  */
 export function checkRateLimit(
   apiKey: string,
-  model: string,
-  provider: 'openai' | 'azure' = 'openai'
+  model: string
 ): { allowed: boolean; remaining: number; resetAt: number; retryAfter?: number } {
-  const key = getRateLimitKey(apiKey, model, provider)
-  const limit = getRateLimit(model, provider)
+  const key = getRateLimitKey(apiKey, model)
+  const limit = getRateLimit(model)
   const now = Date.now()
   const windowMs = 60 * 1000 // 1 minute window
   
@@ -125,8 +147,8 @@ export function checkRateLimit(
 /**
  * Reset rate limit for a key (useful for testing or manual reset)
  */
-export function resetRateLimit(apiKey: string, model: string, provider: 'openai' | 'azure' = 'openai'): void {
-  const key = getRateLimitKey(apiKey, model, provider)
+export function resetRateLimit(apiKey: string, model: string): void {
+  const key = getRateLimitKey(apiKey, model)
   rateLimitStore.delete(key)
 }
 
@@ -135,11 +157,10 @@ export function resetRateLimit(apiKey: string, model: string, provider: 'openai'
  */
 export function getRateLimitStatus(
   apiKey: string,
-  model: string,
-  provider: 'openai' | 'azure' = 'openai'
+  model: string
 ): { limit: number; remaining: number; resetAt: number } {
-  const key = getRateLimitKey(apiKey, model, provider)
-  const limit = getRateLimit(model, provider)
+  const key = getRateLimitKey(apiKey, model)
+  const limit = getRateLimit(model)
   const entry = rateLimitStore.get(key)
   const now = Date.now()
   

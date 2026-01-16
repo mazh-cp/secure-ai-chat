@@ -18,7 +18,7 @@ function getSeverityBadge(severity: OWASPRisk['severity']) {
   const badges = {
     critical: (
       <span 
-        className="px-3 py-1 rounded-full text-sm font-semibold severity-critical" 
+        className="px-3 py-1 rounded-full text-base font-semibold severity-critical" 
         style={{ color: "var(--chip-text)" }}
       >
         🔴 Critical
@@ -26,7 +26,7 @@ function getSeverityBadge(severity: OWASPRisk['severity']) {
     ),
     high: (
       <span 
-        className="px-3 py-1 rounded-full text-sm font-semibold severity-high" 
+        className="px-3 py-1 rounded-full text-base font-semibold severity-high" 
         style={{ color: "var(--chip-text)" }}
       >
         🟠 High
@@ -34,7 +34,7 @@ function getSeverityBadge(severity: OWASPRisk['severity']) {
     ),
     medium: (
       <span 
-        className="px-3 py-1 rounded-full text-sm font-semibold severity-medium" 
+        className="px-3 py-1 rounded-full text-base font-semibold severity-medium" 
         style={{ color: "var(--chip-text)" }}
       >
         🟡 Medium
@@ -42,7 +42,7 @@ function getSeverityBadge(severity: OWASPRisk['severity']) {
     ),
     low: (
       <span 
-        className="px-3 py-1 rounded-full text-sm font-semibold severity-low" 
+        className="px-3 py-1 rounded-full text-base font-semibold severity-low" 
         style={{ color: "var(--chip-text)" }}
       >
         🔵 Low
@@ -66,15 +66,15 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center space-x-3 mb-2">
-              <span className="text-2xl font-bold text-theme">
+              <span className="text-3xl font-bold text-theme">
                 {risk.code}
               </span>
               {getSeverityBadge(risk.severity)}
             </div>
-            <h2 className="text-2xl font-bold text-theme mb-2">
+            <h2 className="text-3xl font-bold text-theme mb-2">
               {risk.name}
             </h2>
-            <p className="text-sm text-theme-muted">
+            <p className="text-base text-theme-muted">
               Category: {risk.category}
             </p>
           </div>
@@ -82,7 +82,7 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
         
         {/* Description */}
         <div className="glass-card rounded-lg p-4 mt-4">
-          <p className="text-sm text-theme leading-relaxed">
+          <p className="text-base text-theme leading-relaxed">
             {risk.description}
           </p>
         </div>
@@ -90,26 +90,26 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mt-4">
           <div className="text-center p-3 bg-brand-berry/10 dark:bg-brand-berry/20 rounded-lg border border-brand-berry/30 dark:border-brand-berry/40">
-            <div className="text-2xl font-bold text-brand-berry dark:text-brand-berry">
+            <div className="text-3xl font-bold text-brand-berry dark:text-brand-berry">
               {relatedLogs.length}
             </div>
-            <div className="text-xs text-brand-berry/80 dark:text-brand-berry mt-1">
+            <div className="text-base text-brand-berry/80 dark:text-brand-berry mt-1">
               Related Events
             </div>
           </div>
           <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
               {relatedLogs.filter(l => l.lakeraDecision?.flagged).length}
             </div>
-            <div className="text-xs text-green-700 dark:text-green-300 mt-1">
+            <div className="text-base text-green-700 dark:text-green-300 mt-1">
               Flagged
             </div>
           </div>
           <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
               {((relatedLogs.length / Math.max(totalLogs, 1)) * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+            <div className="text-base text-orange-700 dark:text-orange-300 mt-1">
               of Total
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
 
       {/* Related Session Activity */}
       <div>
-        <h3 className="text-lg font-semibold text-theme mb-4">
+        <h3 className="text-3xl font-semibold text-theme mb-4">
           Related Session Activity ({relatedLogs.length})
         </h3>
         
@@ -127,7 +127,7 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
             <p className="text-theme-muted">
               No activity associated with this risk yet
             </p>
-            <p className="text-sm text-theme-subtle mt-1">
+            <p className="text-base text-theme-subtle mt-1">
               Activity will appear here when detected in your session
             </p>
           </div>
@@ -152,15 +152,15 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                   {/* Header */}
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3 flex-1">
-                      <span className="text-xl">
+                      <span className="text-3xl">
                         {log.type === 'chat' ? '💬' : log.type === 'file_scan' ? '📁' : '⚠️'}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-sm font-semibold text-theme capitalize">
+                          <span className="text-base font-semibold text-theme capitalize">
                             {log.type.replace('_', ' ')}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          <span className={`px-2 py-0.5 rounded-full text-base ${
                             log.action === 'blocked' 
                               ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
                               : log.action === 'allowed'
@@ -172,17 +172,17 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                             {log.action}
                           </span>
                         </div>
-                        <p className="text-xs text-theme-muted">
+                        <p className="text-base text-theme-muted">
                           {format(log.timestamp, 'MMM dd, yyyy HH:mm:ss')}
                         </p>
                         {log.userIP && (
-                          <p className="text-xs text-theme-muted mt-1">
+                          <p className="text-base text-theme-muted mt-1">
                             IP: {log.userIP}
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-theme-subtle">
+                    <div className="text-base text-theme-subtle">
                       {isExpanded ? '▼' : '▶'}
                     </div>
                   </div>
@@ -193,12 +193,12 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                       {/* Request Details */}
                       {log.requestDetails && (
                         <div>
-                          <h4 className="text-xs font-semibold text-theme mb-2">
+                          <h4 className="text-base font-semibold text-theme mb-2">
                             Request Details:
                           </h4>
                           {log.requestDetails.message && (
                             <div className="glass-card rounded p-3">
-                              <p className="text-xs text-theme-muted break-words">
+                              <p className="text-base text-theme-muted break-words">
                                 <strong>Message:</strong> {log.requestDetails.message.substring(0, 300)}
                                 {log.requestDetails.message.length > 300 && '...'}
                               </p>
@@ -207,20 +207,20 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                           {log.requestDetails.fileName && (
                             <div className="grid grid-cols-2 gap-2 mt-2">
                               <div>
-                                <span className="text-xs text-theme-muted">
+                                <span className="text-base text-theme-muted">
                                   <strong>File:</strong> {log.requestDetails.fileName}
                                 </span>
                               </div>
                               {log.requestDetails.fileType && (
                                 <div>
-                                  <span className="text-xs text-theme-muted">
+                                  <span className="text-base text-theme-muted">
                                     <strong>Type:</strong> {log.requestDetails.fileType}
                                   </span>
                                 </div>
                               )}
                               {log.requestDetails.fileSize && (
                                 <div>
-                                  <span className="text-xs text-theme-muted">
+                                  <span className="text-base text-theme-muted">
                                     <strong>Size:</strong> {(log.requestDetails.fileSize / 1024).toFixed(2)} KB
                                   </span>
                                 </div>
@@ -240,30 +240,30 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                           }
                         `}>
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-lg">🛡️</span>
-                            <span className="text-sm font-semibold text-theme">
+                            <span className="text-3xl">🛡️</span>
+                            <span className="text-base font-semibold text-theme">
                               Lakera AI Decision
                             </span>
                             {log.lakeraDecision.flagged ? (
-                              <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold" style={{ color: "var(--chip-text)" }}>
+                              <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-base font-semibold" style={{ color: "var(--chip-text)" }}>
                                 Flagged
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-green-600 text-white text-xs font-semibold" style={{ color: "var(--chip-text)" }}>
+                              <span className="px-2 py-0.5 rounded-full bg-green-600 text-white text-base font-semibold" style={{ color: "var(--chip-text)" }}>
                                 Safe
                               </span>
                             )}
                           </div>
                           
                           {log.lakeraDecision.message && (
-                            <p className="text-xs text-theme mb-2">
+                            <p className="text-base text-theme mb-2">
                               {log.lakeraDecision.message}
                             </p>
                           )}
 
                           {log.lakeraDecision.categories && Object.keys(log.lakeraDecision.categories).length > 0 && (
                             <div className="mt-2">
-                              <p className="text-xs font-medium text-theme mb-1">
+                              <p className="text-base font-medium text-theme mb-1">
                                 Threat Categories:
                               </p>
                               <div className="flex flex-wrap gap-1">
@@ -274,7 +274,7 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                                     return (
                                       <span
                                         key={category}
-                                        className="px-2 py-0.5 rounded text-xs capitalize"
+                                        className="px-2 py-0.5 rounded text-base capitalize"
                                         style={{
                                           backgroundColor: bgColor,
                                           color: "var(--chip-text)",
@@ -291,7 +291,7 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
 
                           {log.lakeraDecision.scores && Object.keys(log.lakeraDecision.scores).length > 0 && (
                             <div className="mt-2">
-                              <p className="text-xs text-theme">
+                              <p className="text-base text-theme">
                                 <strong>Threat Score:</strong>{' '}
                                 {Math.max(...Object.values(log.lakeraDecision.scores)).toFixed(2)}
                               </p>
@@ -303,10 +303,10 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
                       {/* Error */}
                       {log.error && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                          <p className="text-xs font-medium text-red-800 dark:text-red-300 mb-1">
+                          <p className="text-base font-medium text-red-800 dark:text-red-300 mb-1">
                             Error:
                           </p>
-                          <p className="text-xs text-red-700 dark:text-red-400">
+                          <p className="text-base text-red-700 dark:text-red-400">
                             {log.error}
                           </p>
                         </div>
@@ -322,7 +322,7 @@ export default function RiskDetail({ risk, relatedLogs, totalLogs }: RiskDetailP
 
       {/* Risk Information Link */}
       <div className="mt-6 p-4 bg-brand-berry/10 dark:bg-brand-berry/20 border border-brand-berry/30 dark:border-brand-berry/40 rounded-lg">
-        <p className="text-sm text-brand-berry/80 dark:text-brand-berry">
+        <p className="text-base text-brand-berry/80 dark:text-brand-berry">
           <strong>Learn More:</strong> For detailed information about {risk.code}, visit the{' '}
           <a
             href={`https://genai.owasp.org/llm-top-10/`}

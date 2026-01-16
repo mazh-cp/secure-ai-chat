@@ -94,8 +94,8 @@ export default function DashboardPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-theme drop-shadow-lg">Dashboard</h1>
-            <p className="mt-2 text-sm text-theme-muted">
+            <h1 className="text-4xl font-bold text-theme drop-shadow-lg">Dashboard</h1>
+            <p className="mt-2 text-base text-theme-muted">
               Monitor all user requests, IP addresses, security decisions, and system-level events
             </p>
           </div>
@@ -113,8 +113,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">📊</div>
-          <div className="text-3xl font-bold text-theme mb-1">{totalLogs}</div>
-          <div className="text-xs text-theme-subtle text-center">Total Requests</div>
+          <div className="text-4xl font-bold text-theme mb-1">{totalLogs}</div>
+          <div className="text-base text-theme-subtle text-center">Total Requests</div>
         </div>
       </div>
 
@@ -128,8 +128,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">💬</div>
-          <div className="text-3xl font-bold text-theme mb-1">{chatLogs}</div>
-          <div className="text-xs text-theme-subtle text-center">Chat Requests</div>
+          <div className="text-4xl font-bold text-theme mb-1">{chatLogs}</div>
+          <div className="text-base text-theme-subtle text-center">Chat Requests</div>
         </div>
       </div>
 
@@ -143,8 +143,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">📁</div>
-          <div className="text-3xl font-bold text-theme mb-1">{fileScanLogs}</div>
-          <div className="text-xs text-theme-subtle text-center">File Scans</div>
+          <div className="text-4xl font-bold text-theme mb-1">{fileScanLogs}</div>
+          <div className="text-base text-theme-subtle text-center">File Scans</div>
         </div>
       </div>
 
@@ -158,8 +158,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">🚫</div>
-          <div className="text-3xl font-bold text-red-400 mb-1">{blockedCount}</div>
-          <div className="text-xs text-theme-subtle text-center">Blocked</div>
+          <div className="text-4xl font-bold text-red-400 mb-1">{blockedCount}</div>
+          <div className="text-base text-theme-subtle text-center">Blocked</div>
         </div>
       </div>
 
@@ -173,8 +173,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">✓</div>
-          <div className="text-3xl font-bold text-brand-berry mb-1">{allowedCount}</div>
-          <div className="text-xs text-theme-subtle text-center">Allowed</div>
+          <div className="text-4xl font-bold text-brand-berry mb-1">{allowedCount}</div>
+          <div className="text-base text-theme-subtle text-center">Allowed</div>
         </div>
       </div>
 
@@ -188,8 +188,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">🛡️</div>
-          <div className="text-3xl font-bold text-brand-berry mb-1">{scannedCount}</div>
-          <div className="text-xs text-theme-subtle text-center">Scanned</div>
+          <div className="text-4xl font-bold text-brand-berry mb-1">{scannedCount}</div>
+          <div className="text-base text-theme-subtle text-center">Scanned</div>
         </div>
       </div>
 
@@ -203,8 +203,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
-          <div className="text-3xl font-bold text-yellow-400 mb-1">{flaggedCount}</div>
-          <div className="text-xs text-theme-subtle text-center">Flagged</div>
+          <div className="text-4xl font-bold text-yellow-400 mb-1">{flaggedCount}</div>
+          <div className="text-base text-theme-subtle text-center">Flagged</div>
         </div>
       </div>
 
@@ -218,8 +218,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚠️</div>
-          <div className="text-3xl font-bold text-red-400 mb-1">{errorLogs}</div>
-          <div className="text-xs text-theme-subtle text-center">Application Errors</div>
+          <div className="text-4xl font-bold text-red-400 mb-1">{errorLogs}</div>
+          <div className="text-base text-theme-subtle text-center">Application Errors</div>
         </div>
       </div>
 
@@ -233,8 +233,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">⚙️</div>
-          <div className="text-3xl font-bold text-blue-400 mb-1">{systemErrorLogs}</div>
-          <div className="text-xs text-theme-subtle text-center">System Errors</div>
+          <div className="text-4xl font-bold text-blue-400 mb-1">{systemErrorLogs}</div>
+          <div className="text-base text-theme-subtle text-center">System Errors</div>
         </div>
       </div>
 
@@ -248,8 +248,8 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-4xl mb-2">🛡️</div>
-          <div className="text-3xl font-bold text-orange-400 mb-1">{checkpointTeErrors}</div>
-          <div className="text-xs text-theme-subtle text-center">Check Point TE Errors</div>
+          <div className="text-4xl font-bold text-orange-400 mb-1">{checkpointTeErrors}</div>
+          <div className="text-base text-theme-subtle text-center">Check Point TE Errors</div>
         </div>
       </div>
 
@@ -266,7 +266,7 @@ export default function DashboardPage() {
           <div className="flex items-center space-x-2 flex-wrap">
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-xl text-base font-medium transition-all ${
                 filter === 'all'
                   ? 'glass-button text-theme scale-105'
                   : 'glass text-theme-muted hover:text-brand-berry hover:scale-105 hover:border-brand-berry/30'
@@ -276,7 +276,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setFilter('chat')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-xl text-base font-medium transition-all ${
                 filter === 'chat'
                   ? 'glass-button text-theme scale-105'
                   : 'glass text-theme-muted hover:text-brand-berry hover:scale-105 hover:border-brand-berry/30'
@@ -286,7 +286,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setFilter('file_scan')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-xl text-base font-medium transition-all ${
                 filter === 'file_scan'
                   ? 'glass-button text-theme scale-105'
                   : 'glass text-theme-muted hover:text-brand-berry hover:scale-105 hover:border-brand-berry/30'
@@ -296,7 +296,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setFilter('error')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-xl text-base font-medium transition-all ${
                 filter === 'error'
                   ? 'glass-button text-red-400 scale-105'
                   : 'glass text-theme-muted hover:text-theme hover:scale-105'
@@ -306,7 +306,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setFilter('system')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-xl text-base font-medium transition-all ${
                 filter === 'system'
                   ? 'glass-button text-blue-400 scale-105'
                   : 'glass text-theme-muted hover:text-blue-400 hover:scale-105'
@@ -318,7 +318,7 @@ export default function DashboardPage() {
 
           <button
             onClick={handleClearLogs}
-            className="px-4 py-2 glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all text-sm font-medium"
+            className="px-4 py-2 glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all text-base font-medium"
             style={{
               backgroundColor: "var(--destructive-bg, transparent)",
             }}

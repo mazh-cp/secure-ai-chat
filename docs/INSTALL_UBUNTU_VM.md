@@ -21,7 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **What the script does:**
 - Installs system dependencies (curl, git, build tools, nginx)
 - Creates dedicated user: `secureai`
-- Installs Node.js LTS 20.x via nvm
+- Installs/Upgrades Node.js to v24.13.0 (LTS) via nvm (automatically upgrades if different version detected)
 - Clones repository to `/opt/secure-ai-chat`
 - Installs dependencies and builds application
 - Configures systemd service for auto-start
@@ -379,7 +379,7 @@ Internet → Port 80 (nginx) → Port 3000+ (Secure AI Chat)
 
 ## Node.js Version
 
-The installation uses **Node.js LTS 20.x** (Long Term Support) for production server installs. This provides stability and security updates.
+The installation uses **Node.js v24.13.0 (LTS)** (Long Term Support) for production server installs. The installation script automatically detects and upgrades to v24.13.0 if a different version is found, ensuring stability and security updates.
 
 For development, you may use Node.js 25.2.1 as specified in `package.json`.
 

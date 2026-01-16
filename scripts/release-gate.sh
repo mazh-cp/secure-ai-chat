@@ -151,11 +151,25 @@ else
 fi
 
 # ============================================
-# 6. Security: Client-Side Key Leakage Check
+# 6. Security: Client-Side Key Leakage Check (Hard Gate)
 # ============================================
-say "6. Security: Client-Side Key Leakage Check"
+say "6. Security: Client-Side Key Leakage Check (Hard Gate)"
 
-# Check for checkpoint-te imports in client components
+# Run automated check-no-client-secrets script
+if node scripts/check-no-client-secrets.mjs > /tmp/secret-check.log 2>&1; then
+  ok "No ThreatCloud API key leakage to client"
+else
+  fail "SECURITY: ThreatCloud API key leakage detected in client code"
+  echo ""
+  echo "Secret leakage violations:"
+  cat /tmp/secret-check.log
+  exit 2
+fi
+
+# Additional manual checks (redundant but explicit)
+say "6b. Additional Security Checks"
+
+# Check for checkpoint-te imports in client components (manual verification)
 CLIENT_IMPORTS=$(grep -r "from.*checkpoint-te\|import.*checkpoint-te" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled" || true)
 
 if [[ -n "$CLIENT_IMPORTS" ]]; then
@@ -163,7 +177,7 @@ if [[ -n "$CLIENT_IMPORTS" ]]; then
   echo "$CLIENT_IMPORTS"
   exit 2
 fi
-ok "No checkpoint-te imports in client components"
+ok "No checkpoint-te imports in client components (manual check)"
 
 # Check for api-keys-storage imports in client components
 API_KEY_IMPORTS=$(grep -r "from.*api-keys-storage\|import.*api-keys-storage" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null || true)
@@ -173,7 +187,7 @@ if [[ -n "$API_KEY_IMPORTS" ]]; then
   echo "$API_KEY_IMPORTS"
   exit 2
 fi
-ok "No api-keys-storage imports in client components"
+ok "No api-keys-storage imports in client components (manual check)"
 
 # Check for localStorage/sessionStorage API key usage
 STORAGE_KEY_USAGE=$(grep -r "localStorage\.getItem.*api.*key\|sessionStorage\.getItem.*api.*key\|localStorage\.setItem.*api.*key\|sessionStorage\.setItem.*api.*key" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" -i 2>/dev/null | grep -v "lakeraToggles\|checkpointTeSandboxEnabled\|lakeraFileScanEnabled\|lakeraRagScanEnabled" || true)
@@ -183,7 +197,7 @@ if [[ -n "$STORAGE_KEY_USAGE" ]]; then
   echo "$STORAGE_KEY_USAGE"
   exit 2
 fi
-ok "No API keys in localStorage/sessionStorage"
+ok "No API keys in localStorage/sessionStorage (manual check)"
 
 # ============================================
 # 7. Build
@@ -230,9 +244,25 @@ fi
 ok "No Check Point TE key patterns in build"
 
 # ============================================
-# 9. Secret Leakage Scan (Git History)
+# 9. Validate v1.0.10 Features Not Revoked
 # ============================================
-say "9. Secret Leakage Scan (Git History)"
+say "9. Validate v1.0.10 Features Not Revoked"
+
+# Run v1.0.10 feature validation
+if node scripts/validate-v1.0.10-features.mjs > /tmp/v1.0.10-validation.log 2>&1; then
+  ok "All v1.0.10 features present and intact"
+else
+  fail "v1.0.10 features validation failed - some features may be revoked"
+  echo ""
+  echo "v1.0.10 feature validation errors:"
+  cat /tmp/v1.0.10-validation.log
+  exit 2
+fi
+
+# ============================================
+# 10. Secret Leakage Scan (Git History)
+# ============================================
+say "10. Secret Leakage Scan (Git History)"
 
 # Check for API keys in tracked files (not in .gitignore)
 GIT_KEY_CHECK=$(git grep -i "sk-[a-zA-Z0-9]\{48\}" -- "*.ts" "*.tsx" "*.js" "*.jsx" "*.json" 2>/dev/null | grep -v ".next\|node_modules" || true)

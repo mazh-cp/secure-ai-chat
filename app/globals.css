@@ -25,8 +25,15 @@ body {
   background: rgb(var(--bg)); /* Solid background (UniFi style) */
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem; /* 16px base - ensure it's set */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light Mode - Slightly larger base font and medium weight */
+:root[data-theme="light"] body {
+  font-size: 1.0625rem; /* 17px - slightly larger for better readability */
+  font-weight: 500; /* Medium weight */
 }
 
 /* Subtle gradient overlay (optional, can be removed for pure UniFi style) */
@@ -174,6 +181,41 @@ body {
 
   .text-theme-faint {
     color: rgba(var(--text-2), 0.6);
+  }
+
+  /* Light Mode - Bolder and darker text */
+  :root[data-theme="light"] .text-theme {
+    color: rgb(var(--text-1));
+    font-weight: 500; /* Medium weight for better readability */
+  }
+
+  :root[data-theme="light"] .text-theme-muted {
+    color: rgb(var(--text-2));
+    font-weight: 500; /* Medium weight instead of normal */
+  }
+
+  :root[data-theme="light"] .text-theme-subtle {
+    color: rgba(var(--text-2), 0.9); /* Less opacity, more visible */
+    font-weight: 500; /* Medium weight */
+  }
+
+  /* Light Mode - Chat messages and settings text */
+  :root[data-theme="light"] .glass,
+  :root[data-theme="light"] .glass-button,
+  :root[data-theme="light"] .glass-input,
+  :root[data-theme="light"] .glass-card {
+    font-weight: 500; /* Medium weight for better readability */
+  }
+
+  /* Light Mode - Labels and headings */
+  :root[data-theme="light"] label,
+  :root[data-theme="light"] .text-sm,
+  :root[data-theme="light"] .text-base {
+    font-weight: 500; /* Medium weight */
+  }
+
+  :root[data-theme="light"] .text-xs {
+    font-weight: 500; /* Medium weight for small text too */
   }
 
   .text-accent {

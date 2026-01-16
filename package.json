@@ -13,17 +13,19 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "check": "npm run type-check && npm run lint",
     "check:ci": "npm run type-check && npm run lint && npm run format:check",
     "check:node": "node -e \"const v=process.versions.node; if(v!=='25.2.1'){console.error('❌ Node 25.2.1 required. Current:', v); process.exit(1)} else {console.log('✅ Node OK:', v)}\"",
+    "check:secrets": "node scripts/check-no-client-secrets.mjs",
+    "validate:v1.0.10": "node scripts/validate-v1.0.10-features.mjs",
     "pre-push": "npm run check:node && npm run lint && npm run build",
     "smoke": "bash scripts/smoke.sh",
     "release-gate": "bash scripts/release-gate.sh",
     "validate-env": "bash scripts/validate-env.sh",
-    "test": "echo 'No tests configured. Run npm run smoke for smoke tests.'",
-    "typecheck": "tsc --noEmit"
+    "test": "echo 'No tests configured. Run npm run smoke for smoke tests.'"
   },
   "dependencies": {
     "@types/form-data": "^2.2.1",

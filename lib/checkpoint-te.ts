@@ -1,7 +1,18 @@
 /**
  * Check Point ThreatCloud / Threat Emulation (TE) API utilities
  * This module handles server-side storage and retrieval of the TE API key
+ * 
+ * SECURITY: This module is SERVER-ONLY and must NEVER be imported in client components.
+ * The ThreatCloud API key must NEVER reach the client.
  */
+
+// Hard gate: Prevent client-side import
+if (typeof window !== 'undefined') {
+  throw new Error(
+    'SECURITY VIOLATION: lib/checkpoint-te.ts is server-only and cannot be imported in client components. ' +
+    'The ThreatCloud API key must never reach the client.'
+  )
+}
 
 import { promises as fs } from 'fs'
 import path from 'path'

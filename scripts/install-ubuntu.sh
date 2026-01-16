@@ -22,7 +22,7 @@ REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 REPO_DIR="${REPO_DIR:-secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
 TAG="${TAG:-}"  # Optional: specify tag (e.g., v1.0.11) to checkout instead of branch
-NODE_VERSION="${NODE_VERSION:-25.2.1}"
+NODE_VERSION="${NODE_VERSION:-24.13.0}"
 APP_PORT="${PORT:-3000}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME}"
 
@@ -108,12 +108,12 @@ sudo apt-get install -y -qq \
 
 print_success "System packages installed"
 
-# Step 2: Install Node.js via nvm
-print_header "Step 2: Installing Node.js ${NODE_VERSION} via nvm"
+# Step 2: Install/Upgrade Node.js to v24.13.0 via nvm
+print_header "Step 2: Installing/Upgrading Node.js to ${NODE_VERSION} (LTS) via nvm"
 
 # Install nvm if not already installed
 if [ ! -d "$HOME/.nvm" ]; then
-    print_info "Installing nvm..."
+    print_info "Installing nvm (Node Version Manager)..."
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash > /dev/null 2>&1
     print_success "nvm installed"
 else
@@ -124,26 +124,49 @@ fi
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-# Install and use Node.js v25.2.1
+# Check current Node.js version (if any)
+CURRENT_NODE_VERSION=$(node -v 2>/dev/null || echo "none")
+if [ "$CURRENT_NODE_VERSION" != "none" ]; then
+    print_info "Current Node.js version: ${CURRENT_NODE_VERSION}"
+    if [ "$CURRENT_NODE_VERSION" != "v${NODE_VERSION}" ]; then
+        print_warning "Node.js version ${CURRENT_NODE_VERSION} detected. Upgrading to v${NODE_VERSION} (LTS)..."
+    else
+        print_info "Node.js v${NODE_VERSION} is already active"
+    fi
+else
+    print_info "Node.js not found. Installing v${NODE_VERSION} (LTS)..."
+fi
+
+# Install and use Node.js v24.13.0 (LTS) - always ensure it's installed and set as default
 if nvm list | grep -q "v${NODE_VERSION}"; then
     print_info "Node.js v${NODE_VERSION} is already installed via nvm"
     nvm use ${NODE_VERSION} > /dev/null 2>&1
     nvm alias default ${NODE_VERSION} > /dev/null 2>&1
+    print_success "Node.js v${NODE_VERSION} activated and set as default"
 else
-    print_info "Installing Node.js v${NODE_VERSION} via nvm..."
+    print_info "Installing Node.js v${NODE_VERSION} (LTS) via nvm..."
     nvm install ${NODE_VERSION} > /dev/null 2>&1
     nvm use ${NODE_VERSION} > /dev/null 2>&1
     nvm alias default ${NODE_VERSION} > /dev/null 2>&1
-    print_success "Node.js v${NODE_VERSION} installed"
+    print_success "Node.js v${NODE_VERSION} (LTS) installed and set as default"
 fi
 
 # Verify Node.js version
 CURRENT_NODE=$(node -v)
 if [ "$CURRENT_NODE" = "v${NODE_VERSION}" ]; then
-    print_success "Node.js ${CURRENT_NODE} is active"
+    print_success "Node.js ${CURRENT_NODE} (LTS) is active and set as default"
 else
     print_error "Node.js version mismatch. Expected v${NODE_VERSION}, got ${CURRENT_NODE}"
-    exit 1
+    print_info "Attempting to fix..."
+    nvm use ${NODE_VERSION} > /dev/null 2>&1
+    nvm alias default ${NODE_VERSION} > /dev/null 2>&1
+    CURRENT_NODE=$(node -v)
+    if [ "$CURRENT_NODE" = "v${NODE_VERSION}" ]; then
+        print_success "Node.js ${CURRENT_NODE} (LTS) is now active"
+    else
+        print_error "Failed to set Node.js v${NODE_VERSION}. Please check nvm installation."
+        exit 1
+    fi
 fi
 
 # Verify npm is installed

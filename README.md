@@ -32,9 +32,9 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 
 ## Prerequisites
 
-- Node.js 25.2.1 (pinned via .nvmrc) for development
+- Node.js v24.13.0 (LTS) (pinned via .nvmrc) for development
 - npm, yarn, or pnpm
-- **Note**: For production server installs on Ubuntu VM, use Node.js LTS 20.x (installed automatically by the install script)
+- **Note**: For production server installs on Ubuntu VM, Node.js v24.13.0 (LTS) is automatically installed/upgraded by the install script
 
 ## Installation
 
@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **What it does:**
 - Installs system dependencies (curl, git, build tools, nginx)
 - Creates dedicated user (`secureai`)
-- Installs Node.js LTS 20.x via nvm
+- Installs/Upgrades Node.js to v24.13.0 (LTS) via nvm (automatically upgrades if different version detected)
 - Clones repository to `/opt/secure-ai-chat`
 - Installs dependencies and builds application
 - Configures systemd service for auto-start
@@ -121,7 +121,7 @@ TAG=v1.0.11 bash scripts/install-ubuntu.sh
 
 This script will automatically:
 - Install system dependencies (curl, git, build tools)
-- Install Node.js v25.2.1 via nvm
+- Install Node.js v24.13.0 (LTS) via nvm
 - Clone the repository
 - Install all npm dependencies
 - Set up environment configuration
@@ -238,7 +238,19 @@ sudo systemctl start secure-ai-chat
 kubectl apply -f k8s-deployment.yaml
 ```
 
-See [INSTALL.md](INSTALL.md) for detailed deployment instructions and restart verification steps.
+**Deployment Guide**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment workflows:
+- **Upgrade Existing Installation**: Safe, idempotent, rollback-friendly upgrades
+- **Clean Install on New Server**: Full setup from scratch
+- **Stable Build Validation**: Release gate and smoke tests
+- **Systemd Service Configuration**: Service management and troubleshooting
+
+**Release Process**: See [RELEASE.md](RELEASE.md) for:
+- Release gate validation
+- GitHub publishing steps
+- Security hard gates
+- Pre-deployment checklist
+
+See [INSTALL.md](INSTALL.md) for detailed installation instructions and restart verification steps.
 
 ### Environment Variables for Production
 

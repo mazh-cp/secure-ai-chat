@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Mark route as dynamic since it uses query parameters
+export const dynamic = 'force-dynamic'
+
 interface OpenAIModel {
   id: string
   object: string
@@ -20,11 +23,13 @@ interface OpenAIModelsResponse {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get API key from server-side storage (priority) or query param (fallback)
+    // Get API keys from server-side storage
     const { getApiKeys } = await import('@/lib/api-keys-storage')
     const serverKeys = await getApiKeys()
     
-    const apiKey = serverKeys.openAiKey || request.headers.get('x-openai-key') || request.nextUrl.searchParams.get('key')
+    // Handle OpenAI only
+    const { searchParams } = new URL(request.url)
+    const apiKey = serverKeys.openAiKey || request.headers.get('x-openai-key') || searchParams.get('key')
 
     if (!apiKey) {
       return NextResponse.json(
@@ -65,10 +70,18 @@ export async function GET(request: NextRequest) {
 
       const data: OpenAIModelsResponse = await response.json()
       
-      // Filter to only chat-compatible models (gpt-* models)
+      // Filter to only chat-compatible models (gpt-* models, excluding realtime, image, audio models)
       // Sort by name for better UX (newer models first)
       const chatModels = data.data
-        .filter(model => model.id.startsWith('gpt-'))
+        .filter(model => {
+          const id = model.id.toLowerCase()
+          // Include GPT models but exclude realtime, image, and audio models
+          return id.startsWith('gpt-') && 
+                 !id.includes('realtime') && 
+                 !id.includes('image') && 
+                 !id.includes('audio') &&
+                 !id.includes('whisper')
+        })
         .sort((a, b) => {
           // Sort by id (newer models like gpt-4o come before gpt-4)
           if (a.id > b.id) return -1
@@ -127,6 +140,7 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 
 /**
  * Format model ID to a more readable name

@@ -1,0 +1,27 @@
+[Unit]
+Description=Secure AI Chat Application
+After=network.target
+
+[Service]
+Type=simple
+User={{APP_USER}}
+Group={{APP_USER}}
+WorkingDirectory={{APP_DIR}}
+EnvironmentFile=/etc/secure-ai-chat.env
+
+# Load nvm and use correct Node.js version
+ExecStart=/usr/bin/env bash -lc 'source "$HOME/.nvm/nvm.sh" && nvm use {{NODE_VERSION}} && cd {{APP_DIR}} && npm start'
+
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=secure-ai-chat
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths={{APP_DIR}}/.secure-storage {{APP_DIR}}/.next {{APP_DIR}}/.storage
+
+[Install]
+WantedBy=multi-user.target

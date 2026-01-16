@@ -100,14 +100,19 @@ export default function ReleaseNotesPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-theme drop-shadow-lg">Release Notes</h1>
-            <p className="mt-2 text-sm text-theme-muted">
+            <h1 className="text-4xl font-bold text-theme drop-shadow-lg">Release Notes</h1>
+            <p className="mt-2 text-base text-theme-muted">
               Version history and changelog for Secure AI Chat
             </p>
           </div>
           <div className="text-right">
-            <div className="text-sm text-theme-muted">Current Version</div>
-            <div className="text-2xl font-bold text-theme">{appVersion}</div>
+            <div className="text-base text-theme-muted">Current Version</div>
+            <div className="text-4xl font-bold text-theme">{appVersion}</div>
+            {releaseNotes.length > 1 && (
+              <div className="mt-2 text-sm text-theme-subtle">
+                Previous: v{releaseNotes[1].version}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -135,24 +140,36 @@ export default function ReleaseNotesPage() {
               {/* Version Header */}
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-palette-border-default/20">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-bold text-theme">v{release.version}</h2>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getTypeColor(release.type)}`}>
+                  <h2 className="text-4xl font-bold text-theme">v{release.version}</h2>
+                  <span className={`px-3 py-1 rounded-full text-base font-semibold border ${getTypeColor(release.type)}`}>
                     {release.type.toUpperCase()}
                   </span>
                   {index === 0 && (
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/50">
-                      LATEST
+                    <span className="px-3 py-1 rounded-full text-base font-semibold bg-green-500/20 text-green-300 border border-green-500/50">
+                      CURRENT
+                    </span>
+                  )}
+                  {index === 1 && (
+                    <span className="px-3 py-1 rounded-full text-base font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/50">
+                      PREVIOUS
                     </span>
                   )}
                 </div>
-                <div className="text-sm text-theme-muted">{release.date}</div>
+                <div className="text-right">
+                  <div className="text-base text-theme-muted">{release.date}</div>
+                  {index === 0 && releaseNotes.length > 1 && (
+                    <div className="text-sm text-theme-subtle mt-1">
+                      From v{releaseNotes[1].version}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Changes */}
               <div className="space-y-4">
                 {release.changes.added && release.changes.added.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-green-300 mb-2 flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-green-300 mb-2 flex items-center gap-2">
                       <span>✨</span> Added
                     </h3>
                     <ul className="list-disc list-inside space-y-1 text-theme-muted ml-4">
@@ -165,7 +182,7 @@ export default function ReleaseNotesPage() {
 
                 {release.changes.fixed && release.changes.fixed.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-blue-300 mb-2 flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-blue-300 mb-2 flex items-center gap-2">
                       <span>🐛</span> Fixed
                     </h3>
                     <ul className="list-disc list-inside space-y-1 text-theme-muted ml-4">
@@ -178,7 +195,7 @@ export default function ReleaseNotesPage() {
 
                 {release.changes.improved && release.changes.improved.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-yellow-300 mb-2 flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-yellow-300 mb-2 flex items-center gap-2">
                       <span>⚡</span> Improved
                     </h3>
                     <ul className="list-disc list-inside space-y-1 text-theme-muted ml-4">
@@ -191,7 +208,7 @@ export default function ReleaseNotesPage() {
 
                 {release.changes.security && release.changes.security.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-red-300 mb-2 flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-red-300 mb-2 flex items-center gap-2">
                       <span>🔐</span> Security
                     </h3>
                     <ul className="list-disc list-inside space-y-1 text-theme-muted ml-4">

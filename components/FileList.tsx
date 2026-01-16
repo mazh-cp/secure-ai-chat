@@ -35,37 +35,37 @@ function getScanStatusBadge(status: UploadedFile['scanStatus']) {
   switch (status) {
     case 'pending':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-theme-muted" style={{ color: "var(--chip-text)" }}>
+        <span className="px-2 py-1 text-sm rounded-full glass text-theme-muted" style={{ color: "var(--chip-text)" }}>
           Pending Scan
         </span>
       )
     case 'scanning':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-button text-blue-300 animate-pulse" style={{ color: "var(--chip-text)" }}>
+        <span className="px-2 py-1 text-sm rounded-full glass-button text-blue-300 animate-pulse" style={{ color: "var(--chip-text)" }}>
           Scanning...
         </span>
       )
     case 'safe':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-card text-green-300 border-green-400/30" style={{ color: "var(--chip-text)" }}>
+        <span className="px-2 py-1 text-sm rounded-full glass-card text-green-300 border-green-400/30" style={{ color: "var(--chip-text)" }}>
           ✓ Safe
         </span>
       )
     case 'flagged':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-card text-red-300 border-red-400/50" style={{ color: "var(--chip-text)" }}>
+        <span className="px-2 py-1 text-sm rounded-full glass-card text-red-300 border-red-400/50" style={{ color: "var(--chip-text)" }}>
           ⚠️ Flagged
         </span>
       )
     case 'error':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass-card text-yellow-300 border-yellow-400/30" style={{ color: "var(--chip-text)" }}>
+        <span className="px-2 py-1 text-sm rounded-full glass-card text-yellow-300 border-yellow-400/30" style={{ color: "var(--chip-text)" }}>
           ⚠️ Error
         </span>
       )
     case 'not_scanned':
       return (
-        <span className="px-2 py-1 text-xs rounded-full glass text-theme-subtle border-brand-berry/20" style={{ color: "var(--chip-text)" }}>
+        <span className="px-2 py-1 text-sm rounded-full glass text-theme-subtle border-brand-berry/20" style={{ color: "var(--chip-text)" }}>
           Not Scanned
         </span>
       )
@@ -132,7 +132,7 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                 <div className="mt-2 flex items-center space-x-2">
                   {getScanStatusBadge(file.scanStatus)}
                   {file.scanResult && file.scanStatus !== 'safe' && (
-                    <span className="text-xs text-theme-subtle truncate" title={file.scanResult}>
+                    <span className="text-sm text-theme-subtle truncate" title={file.scanResult}>
                       {file.scanResult}
                     </span>
                   )}
@@ -154,7 +154,7 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                 </button>
               )}
               {!lakeraScanEnabled && (file.scanStatus === 'pending' || file.scanStatus === 'error' || file.scanStatus === 'not_scanned') && (
-                <span className="text-xs text-yellow-400 ml-2">
+                <span className="text-sm text-yellow-400 ml-2">
                   (Scanning disabled)
                 </span>
               )}
@@ -186,7 +186,7 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                     {file.scanStatus === 'flagged' ? '🛡️ Check Point TE Security Alert:' : '🛡️ Check Point TE Analysis:'}
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                     {/* Verdict and Status */}
                     {file.checkpointTeDetails.logFields.verdict && (
                       <div>
@@ -348,8 +348,8 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                 <>
                   {file.scanDetails.categories && Object.keys(file.scanDetails.categories).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-white/10">
-                      <p className="text-theme-subtle text-xs font-medium mb-1">Security Categories:</p>
-                      <ul className="text-theme-subtle text-xs space-y-1">
+                      <p className="text-theme-subtle text-sm font-medium mb-1">Security Categories:</p>
+                      <ul className="text-theme-subtle text-sm space-y-1">
                         {Object.entries(file.scanDetails.categories)
                           .filter(([, value]) => value)
                           .map(([key]) => (
@@ -362,23 +362,23 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                   {/* Payload Data - Detected Threats with Locations */}
                   {file.scanDetails.payload && file.scanDetails.payload.length > 0 && (
                     <div className="mt-3 p-2 glass-card rounded-lg border-yellow-400/30">
-                      <p className="text-xs text-yellow-300 font-medium mb-2">
+                      <p className="text-sm text-yellow-300 font-medium mb-2">
                         Detected Threats ({file.scanDetails.payload.length}):
                       </p>
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {file.scanDetails.payload.map((item, idx) => (
-                          <div key={idx} className="text-xs bg-yellow-900/10 p-2 rounded border border-yellow-400/20">
+                          <div key={idx} className="text-sm bg-yellow-900/10 p-2 rounded border border-yellow-400/20">
                             <div className="flex items-start justify-between gap-2 mb-1">
                               <span className="font-medium text-yellow-200">{item.detector_type}</span>
                               <span className="text-theme-subtle">Pos: {item.start}-{item.end}</span>
                             </div>
-                            <div className="mt-1 text-theme-muted italic text-xs">
+                            <div className="mt-1 text-theme-muted italic text-sm">
                               &quot;{item.text.length > 80 ? item.text.substring(0, 80) + '...' : item.text}&quot;
                             </div>
                             {item.labels && item.labels.length > 0 && (
                               <div className="mt-1 flex flex-wrap gap-1">
                                 {item.labels.map((label, labelIdx) => (
-                                  <span key={labelIdx} className="px-1.5 py-0.5 bg-yellow-800/20 rounded text-xs text-yellow-200">
+                                  <span key={labelIdx} className="px-1.5 py-0.5 bg-yellow-800/20 rounded text-sm text-yellow-200">
                                     {label}
                                   </span>
                                 ))}
@@ -393,12 +393,12 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                   {/* Breakdown Data - Detector Results */}
                   {file.scanDetails.breakdown && file.scanDetails.breakdown.length > 0 && (
                     <div className="mt-3 p-2 glass-card rounded-lg border-blue-400/30">
-                      <p className="text-xs text-blue-300 font-medium mb-2">
+                      <p className="text-sm text-blue-300 font-medium mb-2">
                         Detector Breakdown ({file.scanDetails.breakdown.filter(d => d.detected).length}/{file.scanDetails.breakdown.length} detected):
                       </p>
                       <div className="space-y-1 max-h-40 overflow-y-auto">
                         {file.scanDetails.breakdown.map((detector, idx) => (
-                          <div key={idx} className={`text-xs p-1.5 rounded flex items-center justify-between ${
+                          <div key={idx} className={`text-sm p-1.5 rounded flex items-center justify-between ${
                             detector.detected ? 'bg-red-900/20 border border-red-400/30' : 'bg-green-900/10 border border-green-400/20'
                           }`}>
                             <div className="flex items-center gap-2">
@@ -406,10 +406,10 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                                 {detector.detected ? '⚠️' : '✓'}
                               </span>
                               <span className="font-medium text-theme">{detector.detector_type}</span>
-                              <span className="text-theme-subtle text-xs">({detector.detector_id})</span>
+                              <span className="text-theme-subtle text-sm">({detector.detector_id})</span>
                             </div>
                             {detector.detected && (
-                              <span className="text-xs text-red-300 font-medium">DETECTED</span>
+                              <span className="text-sm text-red-300 font-medium">DETECTED</span>
                             )}
                           </div>
                         ))}

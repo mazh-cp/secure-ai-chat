@@ -3,7 +3,15 @@ import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
 import { callOpenAI as callOpenAIAdapter, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
-import { validateTokenLimit, truncateToTokenLimit } from '@/lib/token-counter'
+import { 
+  validateTokenLimit, 
+  validateTokenLimitAsync,
+  truncateToTokenLimit,
+  truncateToTokenLimitAsync,
+  estimateRequestTokens,
+  shouldThrottleByTokens,
+  getTokenLimitAsync
+} from '@/lib/token-counter'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -464,7 +472,7 @@ async function callOpenAI(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG, provider = 'openai' } = body
+    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG } = body
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -477,63 +485,64 @@ export async function POST(request: NextRequest) {
     const { getApiKeys } = await import('@/lib/api-keys-storage')
     const serverKeys = await getApiKeys()
     
+    // Debug: Log key status (without exposing actual keys)
+    console.log('API Keys Status:', {
+      serverKeys: {
+        openAiKey: !!serverKeys.openAiKey,
+      },
+      clientApiKeys: {
+        openAiKey: clientApiKeys?.openAiKey ? (clientApiKeys.openAiKey === 'configured' ? 'configured (placeholder)' : 'provided') : 'not provided',
+      },
+    })
+    
     // Use server-side keys if available (allows site to work from any browser/device)
-    // Fall back to client keys only if server-side keys are not configured (backward compatibility)
+    // IMPORTANT: Never use client keys that are "configured" placeholder - only use actual keys
+    // Fall back to client keys only if they are actual keys (not "configured" placeholder)
     const apiKeys = {
-      openAiKey: serverKeys.openAiKey || clientApiKeys?.openAiKey || null,
-      lakeraAiKey: serverKeys.lakeraAiKey || clientApiKeys?.lakeraAiKey || null,
-      lakeraProjectId: serverKeys.lakeraProjectId || clientApiKeys?.lakeraProjectId || null,
+      openAiKey: serverKeys.openAiKey || 
+                 (clientApiKeys?.openAiKey && clientApiKeys.openAiKey !== 'configured' ? clientApiKeys.openAiKey : null),
+      lakeraAiKey: serverKeys.lakeraAiKey || 
+                   (clientApiKeys?.lakeraAiKey && clientApiKeys.lakeraAiKey !== 'configured' ? clientApiKeys.lakeraAiKey : null),
+      lakeraProjectId: serverKeys.lakeraProjectId || 
+                      (clientApiKeys?.lakeraProjectId && clientApiKeys.lakeraProjectId !== 'configured' ? clientApiKeys.lakeraProjectId : null),
       lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
-      azureOpenAiKey: serverKeys.azureOpenAiKey || clientApiKeys?.azureOpenAiKey || null,
-      azureOpenAiEndpoint: serverKeys.azureOpenAiEndpoint || clientApiKeys?.azureOpenAiEndpoint || null,
     }
 
-    // Determine which API key to use based on provider
-    const useAzure = provider === 'azure'
-    const activeApiKey = useAzure ? apiKeys.azureOpenAiKey : apiKeys.openAiKey
-    const activeEndpoint = useAzure ? apiKeys.azureOpenAiEndpoint : null
+    // Use OpenAI API key
+    const activeApiKey = apiKeys.openAiKey
 
-    // Validate API key based on provider
-    if (useAzure) {
-      // Validate Azure OpenAI credentials
-      if (!activeApiKey || 
-          activeApiKey === 'configured' ||
-          activeApiKey.includes('your') || 
-          activeApiKey.length < 10) {
-        return NextResponse.json(
-          { error: 'Azure OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
-          { status: 400 }
-        )
-      }
-      
-      if (!activeEndpoint || 
-          !activeEndpoint.startsWith('http://') && !activeEndpoint.startsWith('https://')) {
-        return NextResponse.json(
-          { error: 'Azure OpenAI endpoint is not configured or is invalid. Please add a valid endpoint URL in Settings.' },
-          { status: 400 }
-        )
-      }
-    } else {
-      // Validate OpenAI credentials
-      if (!activeApiKey || 
-          activeApiKey === 'configured' ||
-          activeApiKey.includes('your_ope') || 
-          activeApiKey.includes('your-api-key') ||
-          activeApiKey.length < 20) {
-        return NextResponse.json(
-          { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
-          { status: 400 }
-        )
-      }
-      
-      // Additional validation: OpenAI keys should start with 'sk-'
-      if (!activeApiKey.startsWith('sk-')) {
-        console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
-        return NextResponse.json(
-          { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
-          { status: 400 }
-        )
-      }
+    // Debug: Log active key status (without exposing actual key)
+    console.log('Active API Key Status:', {
+      hasKey: !!activeApiKey,
+      keyLength: activeApiKey ? activeApiKey.length : 0,
+      keyPrefix: activeApiKey ? activeApiKey.substring(0, 5) + '...' : 'none',
+    })
+
+    // Validate OpenAI credentials
+    if (!activeApiKey || 
+        activeApiKey === 'configured' ||
+        activeApiKey.includes('your_ope') || 
+        activeApiKey.includes('your-api-key') ||
+        activeApiKey.length < 20) {
+      console.error('OpenAI validation failed:', {
+        hasKey: !!activeApiKey,
+        isConfiguredPlaceholder: activeApiKey === 'configured',
+        length: activeApiKey ? activeApiKey.length : 0,
+        startsWithSk: activeApiKey ? activeApiKey.startsWith('sk-') : false,
+      })
+      return NextResponse.json(
+        { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
+        { status: 400 }
+      )
+    }
+    
+    // Additional validation: OpenAI keys should start with 'sk-'
+    if (!activeApiKey.startsWith('sk-')) {
+      console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
+      return NextResponse.json(
+        { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
+        { status: 400 }
+      )
     }
 
     // Get the latest user message for security check and RAG
@@ -809,7 +818,7 @@ The file content will be provided in the user's message below. Search through it
     }
 
     // Call OpenAI using the adapter (handles GPT-5.x Responses API and GPT-4 Chat Completions)
-    // Validate and normalize model first
+    // Validate and normalize the model
     const validatedModel = validateModel(model || 'gpt-4o-mini')
     
     // Convert messages to adapter format
@@ -818,19 +827,51 @@ The file content will be provided in the user's message below. Search through it
       content: msg.content,
     }))
     
-    // Prepare adapter options (include Azure OpenAI options if using Azure)
+    // Prepare adapter options
+    // Check if it's a GPT-5 model
     const maxOutputTokens = validatedModel.startsWith('gpt-5') ? 2000 : 1000
     const adapterOptions = {
       maxTokens: maxOutputTokens,
       temperature: 0.7,
-      ...(useAzure && activeEndpoint ? {
-        useAzure: true,
-        azureEndpoint: activeEndpoint,
-      } : {}),
     }
     
-    // Validate token limits before making API call
-    const tokenValidation = validateTokenLimit(adapterMessages, validatedModel, maxOutputTokens)
+    // Estimate tokens before making API call (for self-throttling)
+    const tokenEstimation = estimateRequestTokens(adapterMessages, maxOutputTokens)
+    console.log('Token estimation before API call:', {
+      model: validatedModel,
+      promptTokens: tokenEstimation.promptTokens,
+      maxOutputTokens: tokenEstimation.maxOutputTokens,
+      estimatedTotalTokens: tokenEstimation.estimatedTotalTokens,
+      breakdown: tokenEstimation.breakdown,
+    })
+    
+    // Self-throttle: Check if estimated tokens would exceed limits
+    const throttleCheck = await shouldThrottleByTokens(adapterMessages, validatedModel, maxOutputTokens, activeApiKey)
+    if (throttleCheck.shouldThrottle) {
+      console.warn('Token-based throttling triggered:', {
+        model: validatedModel,
+        estimatedTokens: throttleCheck.estimatedTokens,
+        limit: throttleCheck.limit,
+        excessTokens: throttleCheck.excessTokens,
+      })
+      
+      return NextResponse.json(
+        {
+          error: `Request would exceed token limit. Estimated: ${throttleCheck.estimatedTokens} tokens, Limit: ${throttleCheck.limit} tokens.`,
+          tokenDetails: {
+            estimatedTokens: throttleCheck.estimatedTokens,
+            limit: throttleCheck.limit,
+            excessTokens: throttleCheck.excessTokens,
+            breakdown: tokenEstimation.breakdown,
+            recommendation: throttleCheck.recommendation || 'Please reduce message length or max_output_tokens.',
+          },
+        },
+        { status: 400 }
+      )
+    }
+    
+    // Validate token limits before making API call (using dynamic limits)
+    const tokenValidation = await validateTokenLimitAsync(adapterMessages, validatedModel, maxOutputTokens, activeApiKey)
     if (!tokenValidation.valid) {
       console.warn('Token limit validation failed:', {
         model: validatedModel,
@@ -840,8 +881,8 @@ The file content will be provided in the user's message below. Search through it
         error: tokenValidation.error,
       })
       
-      // Try to truncate messages to fit within limit
-      const truncationResult = truncateToTokenLimit(adapterMessages, validatedModel, maxOutputTokens)
+      // Try to truncate messages to fit within limit (using dynamic limits)
+      const truncationResult = await truncateToTokenLimitAsync(adapterMessages, validatedModel, maxOutputTokens, activeApiKey)
       
       if (truncationResult.truncated) {
         console.warn('Messages truncated to fit token limit:', {
@@ -855,8 +896,8 @@ The file content will be provided in the user's message below. Search through it
           content: msg.content,
         }))
         
-        // Re-validate with truncated messages
-        const revalidation = validateTokenLimit(truncatedAdapterMessages, validatedModel, maxOutputTokens)
+        // Re-validate with truncated messages (using dynamic limits)
+        const revalidation = await validateTokenLimitAsync(truncatedAdapterMessages, validatedModel, maxOutputTokens, activeApiKey)
         if (!revalidation.valid) {
           // Still exceeds limit even after truncation - return error
           return NextResponse.json(
@@ -893,11 +934,10 @@ The file content will be provided in the user's message below. Search through it
     }
     
     // Check rate limit before making API call
-    const rateLimitCheck = checkRateLimit(activeApiKey, validatedModel, useAzure ? 'azure' : 'openai')
+    const rateLimitCheck = checkRateLimit(activeApiKey, validatedModel)
     if (!rateLimitCheck.allowed) {
       console.warn('Rate limit exceeded:', {
         model: validatedModel,
-        provider: useAzure ? 'azure' : 'openai',
         retryAfter: rateLimitCheck.retryAfter,
         resetAt: new Date(rateLimitCheck.resetAt).toISOString(),
       })
@@ -922,12 +962,19 @@ The file content will be provided in the user's message below. Search through it
     }
     
     // Log rate limit status (for monitoring)
-    const rateLimitStatus = getRateLimitStatus(activeApiKey, validatedModel, useAzure ? 'azure' : 'openai')
-    console.log('Rate limit status:', {
+    const rateLimitStatus = getRateLimitStatus(activeApiKey, validatedModel)
+    const dynamicTokenLimit = await getTokenLimitAsync(validatedModel, activeApiKey)
+    console.log('Pre-request status:', {
       model: validatedModel,
-      provider: useAzure ? 'azure' : 'openai',
-      remaining: rateLimitStatus.remaining,
-      limit: rateLimitStatus.limit,
+      rateLimit: {
+        remaining: rateLimitStatus.remaining,
+        limit: rateLimitStatus.limit,
+      },
+      tokenEstimation: {
+        estimatedTotalTokens: tokenEstimation.estimatedTotalTokens,
+        limit: dynamicTokenLimit,
+        utilizationPercent: ((tokenEstimation.estimatedTotalTokens / dynamicTokenLimit) * 100).toFixed(2) + '%',
+      },
     })
     
     // Call adapter with appropriate options

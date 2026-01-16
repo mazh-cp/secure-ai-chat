@@ -164,7 +164,7 @@ export default function Layout({ children }: LayoutProps) {
                     }
                   }}
                   className={`
-                    flex items-center space-x-3 rounded-xl px-4 py-3 text-sm font-medium
+                    flex items-center space-x-3 rounded-xl px-4 py-3 text-base font-medium
                     transition-all duration-300 relative overflow-hidden
                     ${isActive
                       ? 'glass-card text-theme shadow-lg scale-105'
@@ -175,7 +175,7 @@ export default function Layout({ children }: LayoutProps) {
                   {isActive && (
                     <div className="absolute inset-0 liquid-shimmer"></div>
                   )}
-                  <span className="text-lg relative z-10">{item.icon}</span>
+                  <span className="text-xl relative z-10">{item.icon}</span>
                   <span className="relative z-10">{item.name}</span>
                 </Link>
               )
@@ -184,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Footer */}
           <div className="border-t border-palette-border-default/20 pt-4 mt-6">
-            <div className="text-xs text-theme-subtle">
+            <div className="text-sm text-theme-subtle">
               <p className="font-semibold text-theme-muted">Secure AI Chat</p>
               <p className="mt-1">Powered by Lakera AI</p>
               <p className="mt-1 text-theme-subtle/80">App version {appVersion}</p>
@@ -230,7 +230,7 @@ export default function Layout({ children }: LayoutProps) {
 
             <div className="flex items-center space-x-4">
               <div className="hidden sm:block glass-button px-4 py-2 rounded-full">
-                <div className="flex items-center space-x-2 text-sm text-theme-muted" title={openAIStatus === 'connected' ? 'OpenAI: Connected' : openAIStatus === 'disconnected' ? 'OpenAI: Disconnected' : 'OpenAI: Checking...'}>
+                <div className="flex items-center space-x-2 text-base text-theme-muted" title={openAIStatus === 'connected' ? 'OpenAI: Connected' : openAIStatus === 'disconnected' ? 'OpenAI: Disconnected' : 'OpenAI: Checking...'}>
                   <div className={`h-2 w-2 rounded-full pulse-glow ${
                     openAIStatus === 'connected' ? 'bg-green-400' : 
                     openAIStatus === 'disconnected' ? 'bg-red-400' : 

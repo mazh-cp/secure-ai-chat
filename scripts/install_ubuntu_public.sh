@@ -15,7 +15,7 @@ REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 INSTALL_DIR="/opt/secure-ai-chat"
 APP_USER="secureai"
 APP_GROUP="secureai"
-NODE_VERSION="20"  # Use LTS 20.x
+NODE_VERSION="24.13.0"  # Use LTS 24.13.0 (stable version)
 NGINX_SITE="secure-ai-chat"
 SERVICE_NAME="secure-ai-chat"
 
@@ -81,7 +81,7 @@ fi
 log_info "Starting Secure AI Chat installation..."
 log_info "Install directory: $INSTALL_DIR"
 log_info "User: $APP_USER"
-log_info "Node version: LTS $NODE_VERSION.x"
+log_info "Node version: $NODE_VERSION (LTS)"
 
 # Step 1: Update system packages
 log_info "Updating system packages..."
@@ -101,25 +101,39 @@ fi
 sudo mkdir -p "$INSTALL_DIR"
 sudo chown "$APP_USER:$APP_USER" "$INSTALL_DIR" 2>/dev/null || true
 
-# Step 3: Install Node.js LTS 20.x via nvm (as secureai user)
-log_info "Installing Node.js LTS 20.x via nvm..."
-sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << 'NVM_SCRIPT'
+# Step 3: Install/Upgrade Node.js to v24.13.0 (LTS) via nvm (as secureai user)
+log_info "Installing/Upgrading Node.js to $NODE_VERSION (LTS) via nvm..."
+sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << NVM_SCRIPT
 set -e
 export HOME=/opt/secure-ai-chat
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="\$HOME/.nvm"
 
 # Install nvm if not exists
-if [ ! -d "$NVM_DIR" ]; then
+if [ ! -d "\$NVM_DIR" ]; then
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
 fi
 
 # Load nvm
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
 
-# Install Node.js LTS 20.x (latest 20.x version)
-nvm install 20 --lts >/dev/null 2>&1 || nvm install 20 >/dev/null 2>&1
-nvm use 20 >/dev/null 2>&1
-nvm alias default 20 >/dev/null 2>&1
+# Check current Node.js version (if any)
+CURRENT_NODE_VERSION=\$(node -v 2>/dev/null || echo "none")
+if [ "\$CURRENT_NODE_VERSION" != "none" ]; then
+    echo "Current Node.js version: \${CURRENT_NODE_VERSION}"
+    if [ "\$CURRENT_NODE_VERSION" != "v${NODE_VERSION}" ]; then
+        echo "Upgrading to v${NODE_VERSION} (LTS)..."
+    fi
+fi
+
+# Install Node.js v24.13.0 (LTS) - always ensure it's installed and set as default
+if nvm list | grep -q "v${NODE_VERSION}"; then
+    nvm use ${NODE_VERSION} >/dev/null 2>&1
+    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+else
+    nvm install ${NODE_VERSION} >/dev/null 2>&1
+    nvm use ${NODE_VERSION} >/dev/null 2>&1
+    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+fi
 
 # Verify installation
 node -v

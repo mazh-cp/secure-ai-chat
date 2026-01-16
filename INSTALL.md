@@ -47,7 +47,7 @@ bash scripts/install-ubuntu.sh
 
 1. **Updates System Packages** - Updates apt package list
 2. **Installs System Dependencies** - Installs curl, git, build-essential, etc.
-3. **Installs Node.js v25.2.1** - Installs Node.js v25.2.1 via nvm (Node Version Manager)
+3. **Installs/Upgrades Node.js to v24.13.0 (LTS)** - Automatically installs or upgrades Node.js to v24.13.0 (LTS) via nvm (Node Version Manager) for better stability. If a different version is detected, it will be upgraded to v24.13.0.
 4. **Clones Repository** - Downloads the latest code from GitHub
 5. **Installs Dependencies** - Runs `npm ci` to install all npm packages
 6. **Configures Environment** - Creates `.env.local` from `.env.example`
@@ -62,8 +62,9 @@ You can customize the installation using environment variables:
 # Custom installation directory (default: ~/secure-ai-chat)
 INSTALL_DIR=/opt/apps curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 
-# Custom Node.js version (default: 25.2.1)
-# Note: The script uses nvm to install Node.js v25.2.1
+# Custom Node.js version (default: 24.13.0 LTS)
+# Note: The script automatically installs/upgrades to Node.js v24.13.0 (LTS) for better stability
+# If a different version is detected, it will be upgraded to v24.13.0
 # To use a different version, modify NODE_VERSION in the script or use nvm directly
 
 # Custom port (default: 3000)
@@ -157,12 +158,13 @@ For production environments, consider:
 
 **Issue: Script fails at Node.js installation**
 - Solution: Check internet connection and nvm installation
-- Manual: Install nvm and Node.js v25.2.1 manually:
+- Manual: Install nvm and Node.js v24.13.0 manually:
   ```bash
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
   export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-  nvm install 25.2.1
-  nvm use 25.2.1
+  nvm install 24.13.0
+  nvm use 24.13.0
+  nvm alias default 24.13.0
   ```
 
 **Issue: npm ci fails**
@@ -170,8 +172,8 @@ For production environments, consider:
 - Check: `df -h` to see disk space
 
 **Issue: Build fails**
-- Solution: Check Node.js version (requires 25.2.1): `node -v`
-- Solution: Use correct Node.js version: `nvm use 25.2.1` (if using nvm)
+- Solution: Check Node.js version (requires 24.13.0 LTS): `node -v`
+- Solution: Use correct Node.js version: `nvm use 24.13.0` (if using nvm)
 - Solution: Clear cache and rebuild: `rm -rf .next node_modules && npm ci && npm run build`
 
 **Issue: Deprecated package warnings during npm install**

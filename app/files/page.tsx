@@ -1090,8 +1090,8 @@ export default function FilesPage() {
       <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-theme drop-shadow-lg">File Upload & RAG</h1>
-            <p className="mt-2 text-sm text-theme-muted">
+            <h1 className="text-4xl font-bold text-theme drop-shadow-lg">File Upload & RAG</h1>
+            <p className="mt-2 text-base text-theme-muted">
               Upload documents for RAG (Retrieval-Augmented Generation). Files are scanned by Lakera AI for security.
             </p>
           </div>
@@ -1104,19 +1104,19 @@ export default function FilesPage() {
       {/* Upload Section Card */}
       <div className="bento-card bento-span-2 glass-card p-6 border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-theme">Upload Files</h2>
+          <h2 className="text-xl font-semibold text-theme">Upload Files</h2>
         </div>
         
         {/* Toggle Options - More Visible */}
         <div className="mb-6 space-y-4">
           <div className="glass-card rounded-xl p-4 border-brand-berry/30">
-            <h3 className="text-sm font-semibold text-theme mb-3">Scanning Options</h3>
+            <h3 className="text-base font-semibold text-theme mb-3">Scanning Options</h3>
             
             {/* Lakera Scan Toggle */}
             <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-theme">Lakera Scan</span>
+                  <span className="text-base font-medium text-theme">Lakera Scan</span>
                   {/* Status Dot */}
                   <div 
                     className={`h-2 w-2 rounded-full transition-all ${
@@ -1130,7 +1130,7 @@ export default function FilesPage() {
                     }}
                   />
                 </div>
-                <span className="text-xs text-theme-subtle mt-1">Enable manual file scanning</span>
+                <span className="text-base text-theme-subtle mt-1">Enable manual file scanning</span>
               </div>
               <div className="flex items-center space-x-3">
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -1146,7 +1146,7 @@ export default function FilesPage() {
                     className="sr-only peer"
                   />
                   <div className="w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50"></div>
-                  <span className={`ml-3 text-sm font-medium ${lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}>
+                  <span className={`ml-3 text-base font-medium ${lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}>
                     {lakeraScanEnabled ? 'ON' : 'OFF'}
                   </span>
                 </label>
@@ -1157,7 +1157,7 @@ export default function FilesPage() {
             <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-theme">RAG Auto-Scan</span>
+                  <span className="text-base font-medium text-theme">RAG Auto-Scan</span>
                   {/* Status Dot */}
                   <div 
                     className={`h-2 w-2 rounded-full transition-all ${
@@ -1171,7 +1171,7 @@ export default function FilesPage() {
                     }}
                   />
                 </div>
-                <span className="text-xs text-theme-subtle mt-1">Automatically scan files on upload</span>
+                <span className="text-base text-theme-subtle mt-1">Automatically scan files on upload</span>
               </div>
               <div className="flex items-center space-x-3">
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -1183,7 +1183,7 @@ export default function FilesPage() {
                     className="sr-only peer"
                   />
                   <div className={`w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50 ${!lakeraScanEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  <span className={`ml-3 text-sm font-medium ${ragScanEnabled && lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}>
+                  <span className={`ml-3 text-base font-medium ${ragScanEnabled && lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}>
                     {ragScanEnabled && lakeraScanEnabled ? 'ON' : 'OFF'}
                   </span>
                 </label>
@@ -1194,7 +1194,7 @@ export default function FilesPage() {
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-theme">File Sandboxing (Check Point TE)</span>
+                  <span className="text-base font-medium text-theme">File Sandboxing (Check Point TE)</span>
                   {/* Status Dot */}
                   <div 
                     className={`h-2 w-2 rounded-full transition-all ${
@@ -1208,7 +1208,7 @@ export default function FilesPage() {
                     }}
                   />
                 </div>
-                <span className="text-xs text-theme-subtle mt-1">
+                <span className="text-base text-theme-subtle mt-1">
                   {checkpointTeConfigured 
                     ? 'Sandbox files with Check Point Threat Emulation' 
                     : '⚠️ API key not configured in Settings'}
@@ -1230,7 +1230,7 @@ export default function FilesPage() {
                     className="sr-only peer"
                   />
                   <div className={`w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50 ${!checkpointTeConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  <span className={`ml-3 text-sm font-medium ${checkpointTeSandboxEnabled && checkpointTeConfigured ? 'text-brand-berry' : 'text-white/60'}`}>
+                  <span className={`ml-3 text-base font-medium ${checkpointTeSandboxEnabled && checkpointTeConfigured ? 'text-brand-berry' : 'text-white/60'}`}>
                     {checkpointTeSandboxEnabled && checkpointTeConfigured ? 'ON' : 'OFF'}
                   </span>
                 </label>
@@ -1244,7 +1244,7 @@ export default function FilesPage() {
 
       {/* Files List Section Card */}
       <div className="bento-card bento-span-2 bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col border-2" style={{ borderColor: "rgb(var(--border))" }}>
-        <h2 className="text-lg font-semibold text-theme mb-4">
+        <h2 className="text-xl font-semibold text-theme mb-4">
           Uploaded Files ({files.length})
         </h2>
         <FileList 
@@ -1260,7 +1260,7 @@ export default function FilesPage() {
       {/* Info Section Card */}
       <div className="bento-card bento-span-2 glass-card p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <h3 className="text-brand-berry font-medium mb-2">📁 Supported Features</h3>
-        <ul className="text-sm text-theme-muted space-y-1">
+        <ul className="text-base text-theme-muted space-y-1">
           <li>• RAG supports up to 10 files for chat interaction</li>
           <li>• Maximum file size: 50 MB per file</li>
           <li>• Supported formats: PDF, TXT, MD, JSON, CSV, DOCX</li>

@@ -226,10 +226,10 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
                 ? `Processing ${processedCount}/${totalFiles} files...` 
                 : 'Drop files here or click to upload'}
             </p>
-            <p className="text-theme-muted text-sm mt-1">
+            <p className="text-theme-muted text-base mt-1">
               PDF, TXT, MD, JSON, CSV, DOCX up to 50 MB each
             </p>
-            <p className="text-theme-subtle text-xs mt-1">
+            <p className="text-theme-subtle text-base mt-1">
               You can upload up to {MAX_FILES} files at once
             </p>
             {isProcessing && totalFiles > 0 && (
@@ -247,13 +247,13 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
       {/* Error Message */}
       {error && (
         <div className="glass-card rounded-2xl p-3 border-red-400/30">
-          <p className="text-red-300 text-sm">⚠️ {error}</p>
+          <p className="text-red-300 text-base">⚠️ {error}</p>
         </div>
       )}
 
       {/* Info */}
       <div className="glass rounded-2xl p-3 border-brand-berry/20">
-        <p className="text-theme-muted text-xs">
+        <p className="text-theme-muted text-base">
           {ragScanEnabled && lakeraScanEnabled 
             ? '🔒 Files are processed locally and automatically scanned by Lakera AI for RAG security threats on upload.'
             : lakeraScanEnabled

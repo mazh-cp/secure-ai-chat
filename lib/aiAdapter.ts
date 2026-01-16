@@ -6,7 +6,6 @@
  * - Message normalization (converts messages[] to single input for GPT-5.x)
  * - Parameter normalization (max_output_tokens for GPT-5.x, max_tokens for GPT-4)
  * - Automatic fallback (GPT-5.2 → GPT-5.1 → GPT-4o)
- * - Azure OpenAI support (custom endpoint and api-key header)
  * 
  * This adapter hides model-specific differences from the rest of the application.
  */
@@ -20,9 +19,6 @@ export interface AdapterOptions {
   maxTokens?: number // Will be converted to max_output_tokens for GPT-5.x
   temperature?: number
   systemPrompt?: string
-  // Azure OpenAI options
-  azureEndpoint?: string // Azure OpenAI endpoint URL
-  useAzure?: boolean // Whether to use Azure OpenAI
 }
 
 export interface AdapterResponse {
@@ -108,13 +104,8 @@ async function callGPT5ResponsesAPI(
     'Content-Type': 'application/json',
   }
   
-  if (options.useAzure && options.azureEndpoint) {
-    // Azure OpenAI doesn't support GPT-5 models or Responses API
-    throw new Error('Azure OpenAI does not support GPT-5 models. Please use GPT-4 models (e.g., gpt-4o, gpt-4o-mini) with Azure OpenAI.')
-  } else {
-    // Standard OpenAI: use Bearer token
-    headers['Authorization'] = `Bearer ${openAiKey}`
-  }
+  // Standard OpenAI: use Bearer token
+  headers['Authorization'] = `Bearer ${openAiKey}`
   
   let response: Response
   try {
@@ -217,45 +208,9 @@ async function callGPT4ChatCompletionsAPI(
     'Content-Type': 'application/json',
   }
   
-  if (options.useAzure && options.azureEndpoint) {
-    // Azure OpenAI: use custom endpoint and api-key header
-    // For Azure, the model name in the endpoint is typically the deployment name
-    // Use the latest preview API version (2025-04-01-preview) to match Azure OpenAI SDK standards
-    // This version supports the latest models and features
-    // Note: Verify your deployment name matches exactly (case-sensitive) in Azure Portal
-    
-    // Support both standard Azure OpenAI endpoints and Azure API Management (APIM) gateway endpoints
-    // Standard format: https://resource.openai.azure.com
-    // APIM format: https://gateway.azure-api.net/path/ (e.g., https://staging-openai.azure-api.net/openai-gw-proxy-dev/)
-    const apiVersion = '2025-04-01-preview' // Latest preview version matching Azure OpenAI SDK
-    const baseEndpoint = options.azureEndpoint.replace(/\/$/, '')
-    
-    // Check if this is an APIM gateway endpoint (contains azure-api.net and has a path)
-    const isApimGateway = baseEndpoint.includes('azure-api.net') && baseEndpoint.split('/').length > 3
-    
-    if (isApimGateway) {
-      // APIM gateway: endpoint already includes the path, just append deployments path
-      // Format: https://gateway.azure-api.net/path/openai/deployments/...
-      endpoint = `${baseEndpoint}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`
-    } else {
-      // Standard Azure OpenAI: append /openai/deployments/...
-      endpoint = `${baseEndpoint}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`
-    }
-    
-    // Azure OpenAI uses 'api-key' header instead of 'Bearer' Authorization
-    headers['api-key'] = openAiKey
-    // Remove model from request body for Azure (it's in the URL)
-    console.log('Azure OpenAI request:', { 
-      endpoint: endpoint.replace(/\/\/.*@/, '//***').replace(/api-key=[^&]*/, 'api-key=***'), 
-      model,
-      apiVersion,
-      isApimGateway 
-    })
-  } else {
-    // Standard OpenAI: use Bearer token and include model in request body
-    requestBody.model = model
-    headers['Authorization'] = `Bearer ${openAiKey}`
-  }
+  // Standard OpenAI: use Bearer token and include model in request body
+  requestBody.model = model
+  headers['Authorization'] = `Bearer ${openAiKey}`
   
   // GPT-4 uses max_tokens
   if (options.maxTokens !== undefined) {
@@ -280,7 +235,6 @@ async function callGPT4ChatCompletionsAPI(
     clearTimeout(timeoutId)
     
     // Handle network errors, CORS, connection refused, DNS failures, etc.
-    const isAzure = options.useAzure && options.azureEndpoint
     let errorMessage = 'Unknown network error'
     let troubleshooting = ''
     
@@ -289,42 +243,33 @@ async function callGPT4ChatCompletionsAPI(
       
       // Handle specific error types
       if (fetchError.name === 'AbortError' || errorMessage.includes('aborted')) {
-        errorMessage = 'Request timeout (30 seconds). The Azure OpenAI service may be slow or unavailable.'
-        troubleshooting = 'Please check: 1) Azure OpenAI service status, 2) Network connectivity, 3) Try again in a few moments.'
+        errorMessage = 'Request timeout (30 seconds). The OpenAI service may be slow or unavailable.'
+        troubleshooting = 'Please check: 1) OpenAI service status, 2) Network connectivity, 3) Try again in a few moments.'
       } else if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
-        errorMessage = 'Network connection failed. Unable to reach Azure OpenAI endpoint.'
-        troubleshooting = isAzure
-          ? 'Please verify: 1) Endpoint URL is correct and accessible, 2) Network allows outbound HTTPS connections, 3) DNS can resolve the endpoint, 4) No firewall blocking the connection, 5) Endpoint format: https://your-resource.openai.azure.com (without /openai/deployments)'
-          : 'Please check your network connection and try again.'
+        errorMessage = 'Network connection failed. Unable to reach OpenAI endpoint.'
+        troubleshooting = 'Please check your network connection and try again.'
       } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
-        errorMessage = 'DNS resolution failed. Cannot resolve Azure OpenAI endpoint hostname.'
-        troubleshooting = 'Please verify: 1) Endpoint URL hostname is correct, 2) DNS is working, 3) Endpoint URL format is correct.'
+        errorMessage = 'DNS resolution failed. Cannot resolve OpenAI endpoint hostname.'
+        troubleshooting = 'Please verify: 1) DNS is working, 2) Network connectivity.'
       } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('connection refused')) {
-        errorMessage = 'Connection refused by Azure OpenAI endpoint.'
-        troubleshooting = 'Please verify: 1) Endpoint URL is correct, 2) Port is accessible (should be 443 for HTTPS), 3) Service is available.'
+        errorMessage = 'Connection refused by OpenAI endpoint.'
+        troubleshooting = 'Please verify: 1) Network connectivity, 2) Service is available.'
       } else if (errorMessage.includes('CERT') || errorMessage.includes('certificate')) {
-        errorMessage = 'SSL/TLS certificate error when connecting to Azure OpenAI.'
-        troubleshooting = 'Please verify: 1) Endpoint URL uses HTTPS, 2) Certificate is valid, 3) System time is correct.'
+        errorMessage = 'SSL/TLS certificate error when connecting to OpenAI.'
+        troubleshooting = 'Please verify: 1) Certificate is valid, 2) System time is correct.'
       } else {
-        troubleshooting = isAzure
-          ? 'Please verify: 1) Endpoint URL is correct, 2) Deployment name matches model name, 3) API key is valid, 4) Network allows connections to Azure.'
-          : 'Please check your network connection.'
+        troubleshooting = 'Please check your network connection.'
       }
     }
     
-    const baseMessage = isAzure 
-      ? 'Failed to connect to Azure OpenAI API.'
-      : 'Failed to connect to OpenAI API.'
-    
     // Log detailed error for debugging
-    console.error('Azure OpenAI fetch error:', {
+    console.error('OpenAI fetch error:', {
       endpoint: endpoint.replace(/\/\/.*@/, '//***'),
       error: errorMessage,
       errorType: fetchError instanceof Error ? fetchError.name : 'Unknown',
-      isAzure,
     })
     
-    throw new Error(`${baseMessage} ${errorMessage}${troubleshooting ? ' ' + troubleshooting : ''}`)
+    throw new Error(`Failed to connect to OpenAI API. ${errorMessage}${troubleshooting ? ' ' + troubleshooting : ''}`)
   }
   
   if (!response.ok) {
@@ -339,26 +284,6 @@ async function callGPT4ChatCompletionsAPI(
     }
     
     let errorMessage = error.error?.message || error.message || `OpenAI API error: ${response.status}`
-    
-    // Provide more helpful error messages for common Azure OpenAI issues
-    if (options.useAzure && options.azureEndpoint) {
-      const lowerErrorMessage = errorMessage.toLowerCase()
-      
-      // Handle "No Suitable backend" error specifically
-      if (lowerErrorMessage.includes('no suitable backend') || 
-          lowerErrorMessage.includes('throttled') || 
-          lowerErrorMessage.includes('filtered out')) {
-        errorMessage = `Azure OpenAI deployment "${model}" is unavailable. Possible causes: 1) Deployment name doesn't match exactly (case-sensitive), 2) Deployment is not in "Succeeded" state in Azure Portal, 3) Model capacity exhausted or region unavailable, 4) API version incompatibility. Please verify your deployment in Azure Portal and ensure it's running.`
-      } else if (response.status === 401) {
-        errorMessage = 'Azure OpenAI authentication failed. Please verify your API key is correct.'
-      } else if (response.status === 404) {
-        errorMessage = `Azure OpenAI deployment "${model}" not found. Please verify: 1) The deployment name matches exactly (case-sensitive), 2) The deployment exists in your Azure OpenAI resource, 3) You're using the correct endpoint URL.`
-      } else if (response.status === 400) {
-        errorMessage = `Azure OpenAI request invalid: ${errorMessage}. Please check your deployment configuration and API version.`
-      } else if (response.status === 503 || response.status === 502) {
-        errorMessage = `Azure OpenAI service unavailable. The deployment may be temporarily unavailable, throttled, or the backend is not ready. Please try again later or check Azure Portal for deployment status.`
-      }
-    }
     
     // Handle rate limit errors specifically
     if (response.status === 429) {
@@ -439,26 +364,9 @@ export async function callOpenAI(
   model: string = 'gpt-4o-mini',
   options: AdapterOptions = {}
 ): Promise<AdapterResponse> {
-  // Validate API key (only check format for OpenAI, Azure keys can have different formats)
-  if (options.useAzure && options.azureEndpoint) {
-    // Azure OpenAI doesn't support GPT-5 models
-    if (isGPT5Model(model)) {
-      throw new Error('Azure OpenAI does not support GPT-5 models. Please use GPT-4 models (e.g., gpt-4o, gpt-4o-mini, gpt-4, gpt-4-turbo) with Azure OpenAI.')
-    }
-    
-    // Azure OpenAI: validate endpoint is provided
-    if (!options.azureEndpoint || (!options.azureEndpoint.startsWith('http://') && !options.azureEndpoint.startsWith('https://'))) {
-      throw new Error('Invalid Azure OpenAI endpoint. Must be a valid URL starting with http:// or https://')
-    }
-    // Azure API keys don't need to start with 'sk-'
-    if (!openAiKey || openAiKey.trim().length < 10) {
-      throw new Error('Invalid Azure OpenAI API key. Key must be at least 10 characters')
-    }
-  } else {
-    // Standard OpenAI: keys must start with 'sk-'
-    if (!openAiKey || !openAiKey.startsWith('sk-')) {
-      throw new Error('Invalid OpenAI API key. Keys must start with "sk-"')
-    }
+  // Validate OpenAI API key
+  if (!openAiKey || !openAiKey.startsWith('sk-')) {
+    throw new Error('Invalid OpenAI API key. Keys must start with "sk-"')
   }
   
   // Default system prompt with security guidelines
@@ -552,6 +460,8 @@ export function validateModel(model: string): string {
     return normalized
   }
   
+  // For Azure OpenAI deployments, allow any deployment name (they're validated separately)
+  // This function is only called for OpenAI, not Azure, so we keep the default behavior
   // Default to gpt-4o-mini for unknown models
   console.warn(`Unknown model ${model}, defaulting to gpt-4o-mini`)
   return 'gpt-4o-mini'

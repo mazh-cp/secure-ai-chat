@@ -56,9 +56,9 @@
   --surface-1: 255, 255, 255; /* #FFFFFF - White */
   --surface-2: 240, 242, 245; /* #F0F2F5 - Light gray surface */
   
-  /* Text - Dark on light */
-  --text-1: 31, 41, 51; /* #1F2933 - Primary text */
-  --text-2: 95, 108, 123; /* #5F6C7B - Secondary text */
+  /* Text - Darker and more readable for light mode */
+  --text-1: 15, 23, 42; /* #0F172A - Darker primary text (was #1F2933) */
+  --text-2: 51, 65, 85; /* #334155 - Darker secondary text (was #5F6C7B) */
   
   /* Borders - Subtle */
   --border: 225, 229, 234; /* #E1E5EA - Light border */
@@ -86,17 +86,17 @@
   --input-bg: 255, 255, 255; /* #FFFFFF */
   --input-border: 225, 229, 234; /* #E1E5EA */
   --input-border-focus: 0, 111, 255; /* #006FFF */
-  --input-text: 31, 41, 51; /* #1F2933 */
-  --input-placeholder: 149, 162, 179; /* #95A2B3 - Muted */
+  --input-text: 15, 23, 42; /* #0F172A - Darker for better readability */
+  --input-placeholder: 100, 116, 139; /* #64748B - Darker placeholder (was #95A2B3) */
   
   /* Disabled States */
   --disabled-bg: 240, 242, 245; /* #F0F2F5 */
-  --disabled-text: 149, 162, 179; /* #95A2B3 */
+  --disabled-text: 100, 116, 139; /* #64748B - Darker disabled text */
   --disabled-border: 225, 229, 234; /* #E1E5EA */
   
   /* Code Blocks */
   --code-bg: 240, 242, 245; /* #F0F2F5 */
-  --code-text: 31, 41, 51; /* #1F2933 */
+  --code-text: 15, 23, 42; /* #0F172A - Darker code text */
   --code-border: 225, 229, 234; /* #E1E5EA */
 }
 

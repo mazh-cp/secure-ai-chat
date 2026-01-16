@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+# Upgrade existing installation in-place
+# Safe, idempotent, rollback-friendly
+
+set -euo pipefail
+
+# Source common utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
+
+# Parse arguments
+APP_DIR=""
+GIT_REF="main"
+BACKUP_DIR=""
+ROLLBACK_ON_FAILURE=true
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --app-dir)
+      APP_DIR="$2"
+      shift 2
+      ;;
+    --ref)
+      GIT_REF="$2"
+      shift 2
+      ;;
+    --backup-dir)
+      BACKUP_DIR="$2"
+      shift 2
+      ;;
+    --no-rollback)
+      ROLLBACK_ON_FAILURE=false
+      shift
+      ;;
+    *)
+      echo "Usage: $0 --app-dir /opt/secure-ai-chat --ref main [--backup-dir /backup] [--no-rollback]"
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$APP_DIR" ]; then
+  fail "--app-dir is required"
+  exit 1
+fi
+
+if [ ! -d "$APP_DIR" ]; then
+  fail "App directory does not exist: $APP_DIR"
+  exit 1
+fi
+
+# Main execution
+echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║         Upgrade Existing Installation (In-Place)            ║${NC}"
+echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+say "App directory: $APP_DIR"
+say "Git reference: $GIT_REF"
+echo ""
+
+cd "$APP_DIR"
+
+# Step 1: Validate git is clean or stash warning
+say "Step 1: Validating Git Repository"
+
+if [ ! -d ".git" ]; then
+  fail "Not a git repository: $APP_DIR"
+  exit 1
+fi
+
+# Check for uncommitted changes
+if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+  warn "Uncommitted changes detected"
+  warn "Stashing changes for upgrade..."
+  git stash push -m "Auto-stash before upgrade $(date +%Y%m%d_%H%M%S)" || true
+fi
+
+# Check for untracked files (warn but don't fail)
+if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  warn "Untracked files detected (will be preserved)"
+fi
+
+ok "Git repository validated"
+
+# Step 2: Fetch latest code
+say "Step 2: Fetching Latest Code"
+
+git fetch origin --tags -q || fail "Failed to fetch from origin"
+ok "Fetched latest code"
+
+# Get current commit (for rollback)
+CURRENT_REF=$(git rev-parse HEAD)
+say "Current commit: $(git rev-parse --short HEAD)"
+
+# Checkout target ref
+say "Checking out: $GIT_REF"
+if git checkout "$GIT_REF" -q; then
+  ok "Checked out $GIT_REF"
+else
+  fail "Failed to checkout $GIT_REF"
+  exit 1
+fi
+
+# Pull latest changes
+if git pull origin "$GIT_REF" -q; then
+  ok "Pulled latest changes"
+else
+  warn "Pull failed (may be on detached HEAD or tag)"
+fi
+
+NEW_REF=$(git rev-parse HEAD)
+say "New commit: $(git rev-parse --short HEAD)"
+
+# Step 3: Backup current build + config
+say "Step 3: Creating Backup"
+
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+if [ -z "$BACKUP_DIR" ]; then
+  BACKUP_DIR="${APP_DIR}/.backups"
+fi
+
+mkdir -p "$BACKUP_DIR"
+BACKUP_PATH="${BACKUP_DIR}/upgrade-${TIMESTAMP}"
+
+say "Backup directory: $BACKUP_PATH"
+
+# Backup .next (build output)
+if [ -d ".next" ]; then
+  mkdir -p "${BACKUP_PATH}"
+  cp -r .next "${BACKUP_PATH}/.next" 2>/dev/null || true
+  ok "Backed up .next directory"
+fi
+
+# Backup .secure-storage (API keys)
+if [ -d ".secure-storage" ]; then
+  mkdir -p "${BACKUP_PATH}"
+  cp -r .secure-storage "${BACKUP_PATH}/.secure-storage" 2>/dev/null || true
+  ok "Backed up .secure-storage directory"
+fi
+
+# Backup .env.local if exists
+if [ -f ".env.local" ]; then
+  cp .env.local "${BACKUP_PATH}/.env.local" 2>/dev/null || true
+  ok "Backed up .env.local"
+fi
+
+# Save git ref for rollback
+echo "$CURRENT_REF" > "${BACKUP_PATH}/.git-ref"
+ok "Backup created: $BACKUP_PATH"
+
+# Step 4: Install dependencies
+say "Step 4: Installing Dependencies"
+
+PM=$(detect_package_manager)
+INSTALL_CMD=$(get_install_cmd "$PM")
+RUN_CMD=$(get_run_cmd "$PM")
+
+say "Package manager: $PM"
+say "Running: $INSTALL_CMD"
+
+if eval "$INSTALL_CMD" > /tmp/upgrade-install.log 2>&1; then
+  ok "Dependencies installed"
+else
+  fail "Dependency installation failed"
+  cat /tmp/upgrade-install.log | tail -30 | redact
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back..."
+    git checkout "$CURRENT_REF" -q
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+    fi
+    restart_systemd_service
+    fail "Upgrade failed, rolled back to previous version"
+  fi
+  exit 1
+fi
+
+# Step 5: Run release gate
+say "Step 5: Running Release Gate"
+
+if bash scripts/release-gate.sh > /tmp/upgrade-release-gate.log 2>&1; then
+  ok "Release gate passed"
+else
+  fail "Release gate failed"
+  cat /tmp/upgrade-release-gate.log | tail -50 | redact
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back..."
+    git checkout "$CURRENT_REF" -q
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+    fi
+    restart_systemd_service
+    fail "Upgrade failed, rolled back to previous version"
+  fi
+  exit 1
+fi
+
+# Step 6: Build production
+say "Step 6: Building Production Bundle"
+
+if $RUN_CMD run build > /tmp/upgrade-build.log 2>&1; then
+  ok "Build completed"
+else
+  fail "Build failed"
+  cat /tmp/upgrade-build.log | tail -50 | redact
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back..."
+    git checkout "$CURRENT_REF" -q
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+    fi
+    restart_systemd_service
+    fail "Upgrade failed, rolled back to previous version"
+  fi
+  exit 1
+fi
+
+# Verify build output
+if [ ! -d ".next" ]; then
+  fail "Build output (.next) not found"
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back..."
+    git checkout "$CURRENT_REF" -q
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+    fi
+    restart_systemd_service
+    fail "Upgrade failed, rolled back to previous version"
+  fi
+  exit 1
+fi
+
+ok "Build output verified"
+
+# Step 7: Restart service
+say "Step 7: Restarting Service"
+
+if ! restart_systemd_service; then
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back..."
+    git checkout "$CURRENT_REF" -q
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+    fi
+    restart_systemd_service
+    fail "Service restart failed, rolled back to previous version"
+  fi
+  exit 1
+fi
+
+# Step 8: Run smoke tests
+say "Step 8: Running Smoke Tests"
+
+if run_smoke_test "http://localhost:3000"; then
+  ok "Smoke tests passed"
+else
+  fail "Smoke tests failed"
+  if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+    say "Rolling back..."
+    git checkout "$CURRENT_REF" -q
+    if [ -d "${BACKUP_PATH}/.next" ]; then
+      rm -rf .next
+      cp -r "${BACKUP_PATH}/.next" .next
+    fi
+    restart_systemd_service
+    fail "Smoke tests failed, rolled back to previous version"
+  fi
+  exit 1
+fi
+
+# Success
+echo ""
+echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║                    ✅ UPGRADE: SUCCESS                         ║${NC}"
+echo -e "${GREEN}║                                                               ║${NC}"
+echo -e "${GREEN}║  Application upgraded successfully.                          ║${NC}"
+echo -e "${GREEN}║  Backup saved to: $BACKUP_PATH${NC}"
+echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+say "Upgrade completed successfully!"
+say "Backup location: $BACKUP_PATH"
+say "To rollback manually: git checkout $CURRENT_REF && cp -r $BACKUP_PATH/.next .next && sudo systemctl restart secure-ai-chat"
+echo ""
+exit 0

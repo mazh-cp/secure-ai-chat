@@ -65,7 +65,7 @@ export default function ChatHeader() {
           <h2 className="text-3xl font-bold text-theme mb-2 drop-shadow-lg">
             {settings.pageHeading || 'Secure AI Chat'}
           </h2>
-          <p className="text-theme-muted text-sm">
+          <p className="text-theme-muted text-base">
             Powered by Lakera AI Security
           </p>
         </div>

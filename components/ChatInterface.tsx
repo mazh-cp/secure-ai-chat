@@ -14,8 +14,6 @@ interface ApiKeys {
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
-  azureOpenAiKey?: string
-  azureOpenAiEndpoint?: string
 }
 
 export default function ChatInterface() {
@@ -33,7 +31,6 @@ export default function ChatInterface() {
   const [inputScanEnabled, setInputScanEnabled] = useState(true)
   const [outputScanEnabled, setOutputScanEnabled] = useState(true)
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini') // Default model
-  const [provider, setProvider] = useState<'openai' | 'azure'>('openai') // Provider: OpenAI or Azure OpenAI
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load API keys from server-side storage (fallback to localStorage for backward compatibility)
@@ -47,8 +44,7 @@ export default function ChatInterface() {
           // Check if keys are configured (server returns configured status and keys object)
           // data.configured.openAiKey is boolean, data.keys.openAiKey is 'configured' or null
           // For endpoints, data.keys contains the actual URL value (safe to expose)
-          const hasAnyKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured' || 
-                           data.configured?.azureOpenAiKey === true || data.keys?.azureOpenAiKey === 'configured'
+          const hasAnyKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
           
           if (hasAnyKey) {
             // Use server-side keys - set a placeholder to indicate keys are configured
@@ -59,18 +55,6 @@ export default function ChatInterface() {
               lakeraAiKey: data.configured?.lakeraAiKey ? 'configured' : '',
               lakeraEndpoint: data.keys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
               lakeraProjectId: data.configured?.lakeraProjectId ? 'configured' : '',
-              azureOpenAiKey: data.configured?.azureOpenAiKey ? 'configured' : '',
-              // Endpoint URL is safe to return from server - use actual value if available
-              azureOpenAiEndpoint: data.keys?.azureOpenAiEndpoint || '',
-            })
-            console.log('✅ Keys loaded from server:', { 
-              configured: data.configured, 
-              keys: {
-                ...data.keys,
-                azureOpenAiEndpoint: data.keys?.azureOpenAiEndpoint ? `${data.keys.azureOpenAiEndpoint.substring(0, 30)}...` : 'null'
-              },
-              settingAzureKey: data.configured?.azureOpenAiKey ? 'configured' : 'not configured',
-              settingAzureEndpoint: data.keys?.azureOpenAiEndpoint ? 'has value' : 'empty'
             })
             return
           } else {
@@ -122,11 +106,6 @@ export default function ChatInterface() {
         setSelectedModel(modelStored)
       }
 
-      // Load provider preference from localStorage
-      const providerStored = localStorage.getItem('aiProvider')
-      if (providerStored === 'openai' || providerStored === 'azure') {
-        setProvider(providerStored)
-      }
     }
   }, [])
 
@@ -136,24 +115,6 @@ export default function ChatInterface() {
       localStorage.setItem('selectedModel', selectedModel)
     }
   }, [selectedModel])
-
-  // Save provider preference to localStorage when it changes
-  // When switching to Azure OpenAI, automatically select gpt-4o-mini
-  useEffect(() => {
-    if (typeof window !== 'undefined' && provider) {
-      localStorage.setItem('aiProvider', provider)
-      
-      // When switching to Azure OpenAI, automatically select gpt-4o-mini
-      if (provider === 'azure' && selectedModel !== 'gpt-4o-mini') {
-        // Check if current model is GPT-5 (not supported by Azure)
-        const isGPT5Model = selectedModel.startsWith('gpt-5')
-        if (isGPT5Model || !selectedModel) {
-          setSelectedModel('gpt-4o-mini')
-          console.log('Switched to Azure OpenAI provider - automatically selected gpt-4o-mini')
-        }
-      }
-    }
-  }, [provider, selectedModel])
 
   // Listen for changes to toggle states
   useEffect(() => {
@@ -193,32 +154,11 @@ export default function ChatInterface() {
 
     setError(null)
 
-    // Check if API key is configured for the selected provider
-    // Allow users to switch providers if one doesn't have keys
-    if (provider === 'azure') {
-      // Check Azure OpenAI key and endpoint
-      const hasAzureKey = apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
-      const hasAzureEndpoint = apiKeys?.azureOpenAiEndpoint === 'configured' || 
-                               (apiKeys?.azureOpenAiEndpoint && 
-                                apiKeys.azureOpenAiEndpoint !== '' && 
-                                (apiKeys.azureOpenAiEndpoint.startsWith('http://') || apiKeys.azureOpenAiEndpoint.startsWith('https://')))
-      
-      if (!hasAzureKey || !hasAzureEndpoint) {
-        const hasOpenAi = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-        setError(`Azure OpenAI API key and endpoint are not configured. ${hasOpenAi ? 'You can switch to OpenAI provider using the selector above, or ' : ''}Please go to Settings to add and validate your Azure OpenAI credentials.`)
-        return
-      }
-    } else {
-      // Check OpenAI key
-      const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-      if (!hasOpenAiKey) {
-        const hasAzure = (apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')) &&
-                         (apiKeys?.azureOpenAiEndpoint === 'configured' || 
-                          (apiKeys?.azureOpenAiEndpoint && apiKeys.azureOpenAiEndpoint !== '' &&
-                           (apiKeys.azureOpenAiEndpoint.startsWith('http://') || apiKeys.azureOpenAiEndpoint.startsWith('https://'))))
-        setError(`OpenAI API key is not configured. ${hasAzure ? 'You can switch to Azure OpenAI provider using the selector above, or ' : ''}Please go to Settings to add your API key.`)
-        return
-      }
+    // Check if OpenAI API key is configured
+    const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
+    if (!hasOpenAiKey) {
+      setError('OpenAI API key is not configured. Please go to Settings to add your API key.')
+      return
     }
 
     const userMessage: Message = {
@@ -252,7 +192,6 @@ export default function ChatInterface() {
           messages: chatMessages,
           apiKeys: apiKeys,
           model: selectedModel, // Include selected model
-          provider: provider, // Include provider (openai or azure)
           scanOptions: {
             scanInput: inputScanEnabled && !!apiKeys.lakeraAiKey,
             scanOutput: outputScanEnabled && !!apiKeys.lakeraAiKey,
@@ -384,23 +323,13 @@ export default function ChatInterface() {
     }
   }
 
-  // Check if API keys are configured for each provider
+  // Check if OpenAI API key is configured
   const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-  const hasAzureKey = (apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')) &&
-                      (apiKeys?.azureOpenAiEndpoint === 'configured' || 
-                       (apiKeys?.azureOpenAiEndpoint && apiKeys.azureOpenAiEndpoint !== '' &&
-                        (apiKeys.azureOpenAiEndpoint.startsWith('http://') || apiKeys.azureOpenAiEndpoint.startsWith('https://'))))
-  
-  // Check if currently selected provider has keys
-  const hasCurrentProviderKey = provider === 'azure' ? hasAzureKey : hasOpenAiKey
-  
-  // Check if at least one provider has keys (allows access to chat page)
-  const hasAnyProviderKey = hasOpenAiKey || hasAzureKey
 
   return (
     <div className="flex flex-col h-full">
-      {/* Provider-specific API Key Warning */}
-      {!hasCurrentProviderKey && (
+      {/* API Key Warning */}
+      {!hasOpenAiKey && (
         <div 
           className="glass-card rounded-xl p-4 border-yellow-400/30 mb-4"
           style={{
@@ -409,17 +338,12 @@ export default function ChatInterface() {
             boxShadow: "var(--card-shadow)",
           }}
         >
-          <p className="text-sm text-theme">
-            ⚠️ {provider === 'azure' ? 'Azure OpenAI API key and endpoint are' : 'OpenAI API key is'} not configured.{' '}
-            {hasAnyProviderKey && (
-              <span>
-                You can switch to {provider === 'azure' ? 'OpenAI' : 'Azure OpenAI'} provider using the selector below, or{' '}
-              </span>
-            )}
+          <p className="text-base text-theme">
+            ⚠️ OpenAI API key is not configured.{' '}
             <Link href="/settings" className="underline hover:text-brand-berry transition-colors">
               Go to Settings
             </Link>
-            {' '}to add your {provider === 'azure' ? 'Azure OpenAI credentials' : 'API key'}.
+            {' '}to add your API key.
           </p>
         </div>
       )}
@@ -434,76 +358,18 @@ export default function ChatInterface() {
             boxShadow: "var(--card-shadow)",
           }}
         >
-          <p className="text-sm text-theme">⚠️ {error}</p>
+          <p className="text-base text-theme">⚠️ {error}</p>
         </div>
       )}
 
-      {/* Provider and Model Selector - Always show to allow switching between providers */}
+      {/* Model Selector */}
       <div className="mb-4 flex justify-end items-center gap-4">
-          {/* Provider Selector */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="provider-select" className="text-sm font-medium text-theme-muted whitespace-nowrap">
-              Provider:
-            </label>
-            <select
-              id="provider-select"
-              value={provider}
-              onChange={(e) => {
-                const newProvider = e.target.value as 'openai' | 'azure'
-                setProvider(newProvider)
-                // Clear any previous errors when switching providers
-                setError(null)
-                // When switching to Azure, automatically select gpt-4o-mini
-                if (newProvider === 'azure') {
-                  // Check if current model is GPT-5 or not a GPT-4 model
-                  const isGPT5Model = selectedModel.startsWith('gpt-5')
-                  if (isGPT5Model || !['gpt-4o', 'gpt-4o-mini', 'gpt-4', 'gpt-4-turbo'].includes(selectedModel)) {
-                    setSelectedModel('gpt-4o-mini')
-                  }
-                }
-              }}
-              className="glass-input text-theme px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50 transition-all cursor-pointer"
-              style={{
-                background: "rgb(var(--surface-1))",
-                borderColor: "rgb(var(--border))",
-                color: "rgb(var(--text-1))",
-                borderWidth: '2px',
-                borderStyle: 'solid',
-                minWidth: '140px',
-              }}
-            >
-              <option 
-                value="openai" 
-                disabled={!hasOpenAiKey}
-                style={{ 
-                  background: "rgb(var(--surface-1))", 
-                  color: hasOpenAiKey ? "rgb(var(--text-1))" : "rgb(var(--text-3))",
-                  opacity: hasOpenAiKey ? 1 : 0.5
-                }}
-              >
-                OpenAI {!hasOpenAiKey && '(Not configured)'}
-              </option>
-              <option 
-                value="azure" 
-                disabled={!hasAzureKey}
-                style={{ 
-                  background: "rgb(var(--surface-1))", 
-                  color: hasAzureKey ? "rgb(var(--text-1))" : "rgb(var(--text-3))",
-                  opacity: hasAzureKey ? 1 : 0.5
-                }}
-              >
-                Azure OpenAI {!hasAzureKey && '(Not configured)'}
-              </option>
-            </select>
-          </div>
-          {/* Model Selector */}
-          <ModelSelector 
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            apiKey={provider === 'azure' ? (apiKeys?.azureOpenAiKey || null) : (apiKeys?.openAiKey || null)}
-            provider={provider}
-          />
-        </div>
+        <ModelSelector 
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          apiKey={apiKeys?.openAiKey || null}
+        />
+      </div>
 
       {/* Chat Messages - Always show, even if no keys configured */}
       <div className="flex-1 overflow-hidden rounded-xl border-2 p-4 mb-4" style={{ borderColor: "rgb(var(--border))", background: "rgba(var(--surface-2), 0.5)" }}>
@@ -511,12 +377,12 @@ export default function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input - Disable only if current provider doesn't have keys */}
+      {/* Message Input - Disable only if OpenAI key is not configured */}
       <div className="mt-4">
         <MessageInput 
           onSendMessage={handleSendMessage} 
           isLoading={isLoading} 
-          disabled={!hasCurrentProviderKey}
+          disabled={!hasOpenAiKey}
         />
       </div>
     </div>
