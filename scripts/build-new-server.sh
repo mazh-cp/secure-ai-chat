@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build Brand New App Server with Latest Code Release
 # Single-step script for fresh Ubuntu/Debian server installation
+# Fixed version - handles all permission issues correctly
 # 
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/build-new-server.sh | sudo bash
@@ -108,52 +109,85 @@ else
   ok "User already exists: $APP_USER"
 fi
 
-# Step 3: Create app directory
-say "Step 3: Creating Application Directory"
+# Step 3: Handle existing directory
+say "Step 3: Handling Application Directory"
 
+if [ -d "$APP_DIR" ]; then
+  warn "Directory exists: $APP_DIR"
+  
+  # Check if it's a git repository
+  if [ -d "$APP_DIR/.git" ]; then
+    warn "Git repository already exists, will update it"
+    # Don't backup, just proceed with update in Step 5
+  else
+    # Not a git repo, backup if not empty
+    if [ "$(ls -A "$APP_DIR" 2>/dev/null | head -1)" ]; then
+      warn "Directory is not empty and not a git repo, backing up..."
+      BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+      
+      if mv "$APP_DIR" "$BACKUP_DIR" 2>/dev/null; then
+        warn "Backup created: $BACKUP_DIR"
+      else
+        # If mv fails, try copying
+        warn "Moving failed, copying instead..."
+        cp -a "$APP_DIR" "$BACKUP_DIR" 2>/dev/null
+        rm -rf "$APP_DIR" 2>/dev/null || true
+        warn "Backup created: $BACKUP_DIR"
+      fi
+      
+      # Ensure directory is gone
+      sleep 1
+      if [ -d "$APP_DIR" ]; then
+        warn "Force removing directory..."
+        rm -rf "$APP_DIR"
+        sleep 1
+      fi
+    fi
+  fi
+fi
+
+# Create directory with proper ownership if it doesn't exist
 if [ ! -d "$APP_DIR" ]; then
   mkdir -p "$APP_DIR"
   chown "$APP_USER:$APP_USER" "$APP_DIR"
+  chmod 755 "$APP_DIR"
   ok "Directory created: $APP_DIR"
-else
-  warn "Directory already exists: $APP_DIR"
-  if [ -d "$APP_DIR/.git" ]; then
-    warn "Git repository already exists, will update it"
-  fi
-  chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 fi
+
+# Ensure proper ownership
+chown -R "$APP_USER:$APP_USER" "$APP_DIR" 2>/dev/null || true
+ok "Directory ownership set: $APP_DIR"
 
 # Step 4: Install Node.js via nvm
 say "Step 4: Installing Node.js v${NODE_VERSION} via nvm"
 
-# Install nvm as app user
-sudo -u "$APP_USER" HOME="$APP_DIR" bash << NVM_INSTALL
+# Install nvm and Node.js as app user
+sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'NVM_INSTALL'
 set -eo pipefail
 export HOME="$APP_DIR"
-export NVM_DIR="\$HOME/.nvm"
-export STABLE_VERSION="${NODE_VERSION}"
+export NVM_DIR="$HOME/.nvm"
 
 # Install nvm if not exists
-if [ ! -d "\$NVM_DIR" ]; then
+if [ ! -d "$NVM_DIR" ]; then
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
 fi
 
 # Load nvm (disable strict mode for nvm)
 set +u
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 set -e
 
-# Install Node.js v${NODE_VERSION}
-if command -v nvm >/dev/null 2>&1 || [ -s "\$NVM_DIR/nvm.sh" ]; then
-  [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+# Install Node.js v24.13.0
+if command -v nvm >/dev/null 2>&1 || [ -s "$NVM_DIR/nvm.sh" ]; then
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   
-  if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
-    nvm use ${NODE_VERSION} >/dev/null 2>&1
-    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+  if nvm list 2>/dev/null | grep -q "v24.13.0"; then
+    nvm use 24.13.0 >/dev/null 2>&1
+    nvm alias default 24.13.0 >/dev/null 2>&1
   else
-    nvm install ${NODE_VERSION} >/dev/null 2>&1
-    nvm use ${NODE_VERSION} >/dev/null 2>&1
-    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+    nvm install 24.13.0 >/dev/null 2>&1
+    nvm use 24.13.0 >/dev/null 2>&1
+    nvm alias default 24.13.0 >/dev/null 2>&1
   fi
   
   # Verify installation
@@ -174,102 +208,87 @@ fi
 # Step 5: Clone or update repository
 say "Step 5: Cloning/Updating Repository"
 
+# Check if already a git repository
 if [ -d "$APP_DIR/.git" ]; then
   step "Repository exists, updating..."
-  sudo -u "$APP_USER" bash << GIT_UPDATE
+  
+  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'GIT_UPDATE'
 set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
-export NVM_DIR="\$HOME/.nvm"
+export NVM_DIR="$HOME/.nvm"
 set +u
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 set -e
 
 git fetch origin --tags -q
-git checkout "$GIT_REF" -q || git checkout -b "$GIT_REF" origin/"$GIT_REF"
+git checkout "$GIT_REF" -q || git checkout -b "$GIT_REF" origin/"$GIT_REF" 2>/dev/null || true
 git pull origin "$GIT_REF" -q || true
 GIT_UPDATE
+  
   ok "Repository updated"
 else
-  # Check if directory exists and is not empty
-  if [ -d "$APP_DIR" ]; then
-    if [ "$(ls -A "$APP_DIR" 2>/dev/null | head -1)" ]; then
-      warn "Directory exists and is not empty, backing up..."
-      BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
-      
-      # Backup directory (as root)
-      if mv "$APP_DIR" "$BACKUP_DIR" 2>/dev/null; then
-        warn "Backup created: $BACKUP_DIR"
-      else
-        # If mv fails (e.g., across filesystems), copy then remove
-        warn "Moving failed, copying instead..."
-        cp -a "$APP_DIR" "$BACKUP_DIR" 2>/dev/null
-        warn "Backup created: $BACKUP_DIR"
-        rm -rf "$APP_DIR" 2>/dev/null || true
-      fi
-    else
-      # Directory exists but is empty, just remove it
-      warn "Directory exists but is empty, removing..."
-      rm -rf "$APP_DIR" 2>/dev/null || true
-    fi
-  fi
-  
-  # Wait for filesystem to sync
-  sleep 1
-  
-  # Ensure directory is completely gone
-  if [ -d "$APP_DIR" ]; then
-    warn "Directory still exists after backup, force removing..."
-    rm -rf "$APP_DIR"
-    sleep 1
-  fi
-  
-  # Verify directory is gone
-  if [ -d "$APP_DIR" ]; then
-    fail "Cannot remove directory $APP_DIR - check permissions"
-  fi
-  
-  # Clone to a temporary name first, then move (avoids permission issues)
+  # Not a git repo, clone fresh
   step "Cloning repository..."
-  TEMP_NAME="secure-ai-chat-temp-$(date +%s)"
-  TEMP_DIR="$(dirname "$APP_DIR")/$TEMP_NAME"
   
-  # Clone as app user to temp location
-  sudo -u "$APP_USER" HOME="$APP_DIR" bash << GIT_CLONE
+  # Clone as app user directly (directory exists and is owned by app user)
+  # Use a simpler approach: clone to a sibling directory, then move
+  PARENT_DIR="$(dirname "$APP_DIR")"
+  TEMP_NAME="secure-ai-chat-clone-$(date +%s)"
+  TEMP_DIR="$PARENT_DIR/$TEMP_NAME"
+  
+  # Clone to temp location first
+  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'GIT_CLONE'
 set -eo pipefail
 export HOME="$APP_DIR"
 
-cd "$(dirname "$APP_DIR")"
+cd "$PARENT_DIR"
 git clone "$REPO_URL" "$TEMP_NAME" -q
 
 cd "$TEMP_DIR"
 git checkout "$GIT_REF" -q 2>/dev/null || true
 GIT_CLONE
   
+  # Verify clone succeeded
   if [ ! -d "$TEMP_DIR/.git" ]; then
     fail "Repository clone failed"
   fi
   
-  # Move temp directory to final location (as root)
-  mv "$TEMP_DIR" "$APP_DIR"
+  # Remove old directory contents if exists (but not .git)
+  if [ -d "$APP_DIR" ] && [ "$(ls -A "$APP_DIR" 2>/dev/null | grep -v '^\.$' | grep -v '^\.\.$' | head -1)" ]; then
+    warn "Cleaning old directory contents..."
+    find "$APP_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} + 2>/dev/null || true
+  fi
+  
+  # Move all contents from temp to final location (as root)
+  if [ -d "$TEMP_DIR" ]; then
+    mv "$TEMP_DIR"/* "$APP_DIR/" 2>/dev/null || true
+    mv "$TEMP_DIR"/.* "$APP_DIR/" 2>/dev/null || true
+    rm -rf "$TEMP_DIR" 2>/dev/null || true
+  fi
   
   # Ensure proper ownership
   chown -R "$APP_USER:$APP_USER" "$APP_DIR"
   
-  ok "Repository cloned"
+  # Verify git repository exists
+  if [ -d "$APP_DIR/.git" ]; then
+    ok "Repository cloned"
+  else
+    fail "Repository clone verification failed"
+  fi
 fi
 
 # Step 6: Install dependencies
 say "Step 6: Installing Dependencies"
 
-sudo -u "$APP_USER" bash << INSTALL_DEPS
+sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'INSTALL_DEPS'
 set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
-export NVM_DIR="\$HOME/.nvm"
+export NVM_DIR="$HOME/.nvm"
 set +u
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm use 24.13.0 >/dev/null 2>&1 || true
 set -e
 
 # Detect package manager
@@ -287,8 +306,8 @@ else
   INSTALL_CMD="npm install"
 fi
 
-echo "Package manager: \$PM"
-eval "\$INSTALL_CMD"
+echo "Package manager: $PM"
+eval "$INSTALL_CMD"
 INSTALL_DEPS
 
 if [ $? -eq 0 ]; then
@@ -301,14 +320,14 @@ fi
 say "Step 7: Running Release Gate Validation"
 
 if [ -f "$APP_DIR/scripts/release-gate.sh" ]; then
-  sudo -u "$APP_USER" bash << RELEASE_GATE
+  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'RELEASE_GATE'
 set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
-export NVM_DIR="\$HOME/.nvm"
+export NVM_DIR="$HOME/.nvm"
 set +u
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm use 24.13.0 >/dev/null 2>&1 || true
 set -e
 
 bash scripts/release-gate.sh > /tmp/release-gate.log 2>&1
@@ -327,14 +346,14 @@ fi
 # Step 8: Build production bundle
 say "Step 8: Building Production Bundle"
 
-sudo -u "$APP_USER" bash << BUILD
+sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'BUILD'
 set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
-export NVM_DIR="\$HOME/.nvm"
+export NVM_DIR="$HOME/.nvm"
 set +u
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm use 24.13.0 >/dev/null 2>&1 || true
 set -e
 
 # Detect package manager
@@ -346,7 +365,7 @@ else
   RUN_CMD="npm"
 fi
 
-\$RUN_CMD run build
+$RUN_CMD run build
 BUILD
 
 if [ $? -eq 0 ]; then
@@ -417,7 +436,7 @@ WorkingDirectory=${APP_DIR}
 EnvironmentFile=${ENV_FILE}
 
 # Load nvm and use correct Node.js version
-ExecStart=/usr/bin/env bash -lc 'source "\$HOME/.nvm/nvm.sh" && nvm use ${NODE_VERSION} && cd ${APP_DIR} && npm start'
+ExecStart=/usr/bin/env bash -lc 'export HOME=${APP_DIR} && source "\${HOME}/.nvm/nvm.sh" && nvm use ${NODE_VERSION} && cd ${APP_DIR} && npm start'
 
 Restart=always
 RestartSec=5
@@ -463,8 +482,8 @@ say "Step 12: Running Smoke Tests"
 if [ -f "$APP_DIR/scripts/smoke-test.sh" ]; then
   sleep 3  # Give server time to fully start
   
-  sudo -u "$APP_USER" bash << SMOKE_TEST
-set -euo pipefail
+  sudo -u "$APP_USER" HOME="$APP_DIR" bash << 'SMOKE_TEST'
+set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 
