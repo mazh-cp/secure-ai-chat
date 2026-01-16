@@ -128,31 +128,41 @@ say "Step 4: Installing Node.js v${NODE_VERSION} via nvm"
 
 # Install nvm as app user
 sudo -u "$APP_USER" HOME="$APP_DIR" bash << NVM_INSTALL
-set -euo pipefail
+set -eo pipefail
 export HOME="$APP_DIR"
 export NVM_DIR="\$HOME/.nvm"
+export STABLE_VERSION="${NODE_VERSION}"
 
 # Install nvm if not exists
 if [ ! -d "\$NVM_DIR" ]; then
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
 fi
 
-# Load nvm
+# Load nvm (disable strict mode for nvm)
+set +u
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+set -e
 
 # Install Node.js v${NODE_VERSION}
-if nvm list | grep -q "v${NODE_VERSION}"; then
-  nvm use ${NODE_VERSION} >/dev/null 2>&1
-  nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+if command -v nvm >/dev/null 2>&1 || [ -s "\$NVM_DIR/nvm.sh" ]; then
+  [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+  
+  if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
+    nvm use ${NODE_VERSION} >/dev/null 2>&1
+    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+  else
+    nvm install ${NODE_VERSION} >/dev/null 2>&1
+    nvm use ${NODE_VERSION} >/dev/null 2>&1
+    nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+  fi
+  
+  # Verify installation
+  node -v
+  npm -v
 else
-  nvm install ${NODE_VERSION} >/dev/null 2>&1
-  nvm use ${NODE_VERSION} >/dev/null 2>&1
-  nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+  echo "nvm not found" >&2
+  exit 1
 fi
-
-# Verify installation
-node -v
-npm -v
 NVM_INSTALL
 
 if [ $? -eq 0 ]; then
@@ -167,11 +177,13 @@ say "Step 5: Cloning/Updating Repository"
 if [ -d "$APP_DIR/.git" ]; then
   step "Repository exists, updating..."
   sudo -u "$APP_USER" bash << GIT_UPDATE
-set -euo pipefail
+set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="\$HOME/.nvm"
+set +u
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+set -e
 
 git fetch origin --tags -q
 git checkout "$GIT_REF" -q || git checkout -b "$GIT_REF" origin/"$GIT_REF"
@@ -179,6 +191,14 @@ git pull origin "$GIT_REF" -q || true
 GIT_UPDATE
   ok "Repository updated"
 else
+  # Check if directory exists and is not empty
+  if [ -d "$APP_DIR" ] && [ "$(ls -A "$APP_DIR" 2>/dev/null | head -1)" ]; then
+    warn "Directory exists and is not empty, backing up..."
+    BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+    mv "$APP_DIR" "$BACKUP_DIR"
+    warn "Backup created: $BACKUP_DIR"
+  fi
+  
   step "Cloning repository..."
   sudo -u "$APP_USER" git clone "$REPO_URL" "$APP_DIR" -q
   cd "$APP_DIR"
@@ -190,12 +210,14 @@ fi
 say "Step 6: Installing Dependencies"
 
 sudo -u "$APP_USER" bash << INSTALL_DEPS
-set -euo pipefail
+set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="\$HOME/.nvm"
+set +u
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use ${NODE_VERSION} >/dev/null 2>&1
+nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
+set -e
 
 # Detect package manager
 if [ -f "pnpm-lock.yaml" ]; then
@@ -227,12 +249,14 @@ say "Step 7: Running Release Gate Validation"
 
 if [ -f "$APP_DIR/scripts/release-gate.sh" ]; then
   sudo -u "$APP_USER" bash << RELEASE_GATE
-set -euo pipefail
+set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="\$HOME/.nvm"
+set +u
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use ${NODE_VERSION} >/dev/null 2>&1
+nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
+set -e
 
 bash scripts/release-gate.sh > /tmp/release-gate.log 2>&1
 RELEASE_GATE
@@ -251,12 +275,14 @@ fi
 say "Step 8: Building Production Bundle"
 
 sudo -u "$APP_USER" bash << BUILD
-set -euo pipefail
+set -eo pipefail
 cd "$APP_DIR"
 export HOME="$APP_DIR"
 export NVM_DIR="\$HOME/.nvm"
+set +u
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use ${NODE_VERSION} >/dev/null 2>&1
+nvm use ${NODE_VERSION} >/dev/null 2>&1 || true
+set -e
 
 # Detect package manager
 if [ -f "pnpm-lock.yaml" ]; then
