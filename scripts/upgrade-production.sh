@@ -67,17 +67,33 @@ if [ ! -d "$APP_DIR" ]; then
     fi
   done
   
+  # Also check systemd service for path
+  if [ -z "$FOUND_PATH" ] && [ -f "/etc/systemd/system/secure-ai-chat.service" ]; then
+    SYSTEMD_PATH=$(grep "WorkingDirectory=" /etc/systemd/system/secure-ai-chat.service 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
+    if [ -n "$SYSTEMD_PATH" ] && [ -d "$SYSTEMD_PATH" ] && [ -f "$SYSTEMD_PATH/package.json" ]; then
+      FOUND_PATH="$SYSTEMD_PATH"
+    fi
+  fi
+  
   if [ -n "$FOUND_PATH" ]; then
     warn "Found installation at: $FOUND_PATH"
-    read -p "Use this path? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Auto-use found path (non-interactive mode)
+    if [ ! -t 0 ]; then
+      # Running via curl | bash (non-interactive)
       APP_DIR="$FOUND_PATH"
-      ok "Using installation at: $APP_DIR"
+      ok "Auto-using installation at: $APP_DIR"
     else
-      fail "Please specify correct app directory: APP_DIR=/path/to/app $0"
-      fail "Or run fresh install: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash"
-      exit 1
+      # Interactive mode - ask for confirmation
+      read -p "Use this path? (Y/n): " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        APP_DIR="$FOUND_PATH"
+        ok "Using installation at: $APP_DIR"
+      else
+        fail "Please specify correct app directory: APP_DIR=/path/to/app $0"
+        fail "Or run fresh install: curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash"
+        exit 1
+      fi
     fi
   else
     fail "App directory does not exist: $APP_DIR"
