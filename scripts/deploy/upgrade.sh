@@ -65,8 +65,47 @@ cd "$APP_DIR"
 say "Step 1: Validating Git Repository"
 
 if [ ! -d ".git" ]; then
-  fail "Not a git repository: $APP_DIR"
-  exit 1
+  warn "Not a git repository: $APP_DIR"
+  warn "Initializing git repository for future upgrades..."
+  
+  # Initialize git repository
+  if git init -q; then
+    ok "Git repository initialized"
+  else
+    fail "Failed to initialize git repository"
+    exit 1
+  fi
+  
+  # Add remote if not exists
+  if ! git remote | grep -q "^origin$"; then
+    git remote add origin https://github.com/mazh-cp/secure-ai-chat.git
+    ok "Git remote 'origin' added"
+  fi
+  
+  # Fetch latest code
+  say "Fetching latest code from origin..."
+  if git fetch origin main -q; then
+    ok "Fetched latest code"
+  else
+    warn "Failed to fetch from origin (may need network access)"
+  fi
+  
+  # Checkout main branch (detached HEAD is OK for upgrade)
+  if git checkout -b main origin/main 2>/dev/null || git checkout main 2>/dev/null || git checkout -b main 2>/dev/null; then
+    ok "Checked out main branch"
+  else
+    warn "Could not checkout main branch (will try to continue)"
+  fi
+  
+  # Stage current files
+  git add -A >/dev/null 2>&1 || true
+  
+  # Commit current state if not already committed
+  if ! git diff --quiet HEAD 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [ -z "$(git log --oneline -1 2>/dev/null)" ]; then
+    git commit -m "Pre-upgrade state: $(date +%Y%m%d_%H%M%S)" >/dev/null 2>&1 || true
+  fi
+  
+  warn "Git repository initialized. Future upgrades will use git pull."
 fi
 
 # Check for uncommitted changes
