@@ -192,61 +192,71 @@ GIT_UPDATE
   ok "Repository updated"
 else
   # Check if directory exists and is not empty
-  if [ -d "$APP_DIR" ] && [ "$(ls -A "$APP_DIR" 2>/dev/null | head -1)" ]; then
-    warn "Directory exists and is not empty, backing up..."
-    BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
-    
-    # Backup and remove directory
-    mv "$APP_DIR" "$BACKUP_DIR" 2>/dev/null || {
-      # If mv fails, try copying then removing
-      cp -r "$APP_DIR" "$BACKUP_DIR" 2>/dev/null
-      rm -rf "$APP_DIR" 2>/dev/null
-    }
-    warn "Backup created: $BACKUP_DIR"
-    
-    # Double-check directory is gone
-    sleep 1
-    if [ -d "$APP_DIR" ]; then
-      warn "Force removing directory..."
+  if [ -d "$APP_DIR" ]; then
+    if [ "$(ls -A "$APP_DIR" 2>/dev/null | head -1)" ]; then
+      warn "Directory exists and is not empty, backing up..."
+      BACKUP_DIR="${APP_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+      
+      # Backup directory (as root)
+      if mv "$APP_DIR" "$BACKUP_DIR" 2>/dev/null; then
+        warn "Backup created: $BACKUP_DIR"
+      else
+        # If mv fails (e.g., across filesystems), copy then remove
+        warn "Moving failed, copying instead..."
+        cp -a "$APP_DIR" "$BACKUP_DIR" 2>/dev/null
+        warn "Backup created: $BACKUP_DIR"
+        rm -rf "$APP_DIR" 2>/dev/null || true
+      fi
+    else
+      # Directory exists but is empty, just remove it
+      warn "Directory exists but is empty, removing..."
       rm -rf "$APP_DIR" 2>/dev/null || true
-      sleep 1
     fi
   fi
   
-  # Ensure directory doesn't exist before cloning
+  # Wait for filesystem to sync
+  sleep 1
+  
+  # Ensure directory is completely gone
   if [ -d "$APP_DIR" ]; then
-    warn "Directory still exists, force removing..."
+    warn "Directory still exists after backup, force removing..."
     rm -rf "$APP_DIR"
     sleep 1
   fi
   
-  # Create fresh directory with proper ownership
-  mkdir -p "$APP_DIR"
-  chown "$APP_USER:$APP_USER" "$APP_DIR"
-  chmod 755 "$APP_DIR"
+  # Verify directory is gone
+  if [ -d "$APP_DIR" ]; then
+    fail "Cannot remove directory $APP_DIR - check permissions"
+  fi
   
+  # Clone to a temporary name first, then move (avoids permission issues)
   step "Cloning repository..."
+  TEMP_NAME="secure-ai-chat-temp-$(date +%s)"
+  TEMP_DIR="$(dirname "$APP_DIR")/$TEMP_NAME"
   
-  # Clone directly as app user (directory is now empty and owned by app user)
+  # Clone as app user to temp location
   sudo -u "$APP_USER" HOME="$APP_DIR" bash << GIT_CLONE
 set -eo pipefail
 export HOME="$APP_DIR"
 
 cd "$(dirname "$APP_DIR")"
-git clone "$REPO_URL" "$(basename "$APP_DIR")" -q
+git clone "$REPO_URL" "$TEMP_NAME" -q
 
-cd "$APP_DIR"
+cd "$TEMP_DIR"
 git checkout "$GIT_REF" -q 2>/dev/null || true
 GIT_CLONE
   
-  # Ensure proper ownership after clone
-  chown -R "$APP_USER:$APP_USER" "$APP_DIR"
-  
-  if [ -d "$APP_DIR/.git" ]; then
-    ok "Repository cloned"
-  else
+  if [ ! -d "$TEMP_DIR/.git" ]; then
     fail "Repository clone failed"
   fi
+  
+  # Move temp directory to final location (as root)
+  mv "$TEMP_DIR" "$APP_DIR"
+  
+  # Ensure proper ownership
+  chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+  
+  ok "Repository cloned"
 fi
 
 # Step 6: Install dependencies
