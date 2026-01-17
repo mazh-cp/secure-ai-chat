@@ -46,6 +46,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 say "Starting inline production upgrade with stability hardening"
 info "Git reference: $GIT_REF"
+info "This upgrade includes Check Point TE API key saving fixes"
 echo ""
 
 # Step 1: Detect Installation Directory
@@ -328,6 +329,16 @@ if [ -d ".storage" ]; then
   ok "Storage permissions verified"
 fi
 
+# Ensure .secure-storage exists and has correct permissions for Check Point TE keys
+if [ ! -d ".secure-storage" ]; then
+  mkdir -p .secure-storage
+  chmod 700 .secure-storage 2>/dev/null || true
+  ok ".secure-storage directory created with correct permissions"
+else
+  chmod 700 .secure-storage 2>/dev/null || true
+  ok ".secure-storage permissions verified (700)"
+fi
+
 # Step 11: Restart Service
 say "Step 11: Restarting Service"
 
@@ -384,6 +395,34 @@ if [ -d ".storage" ]; then
   fi
 fi
 
+# Verify Check Point TE API key storage directory
+if [ -d ".secure-storage" ]; then
+  PERMS=$(stat -c%a .secure-storage 2>/dev/null || stat -f%OLp .secure-storage 2>/dev/null || echo "unknown")
+  if [ "$PERMS" = "700" ]; then
+    ok "Check Point TE key storage permissions correct (700)"
+  else
+    warn "Check Point TE key storage permissions: $PERMS (expected 700)"
+    info "Fixing permissions..."
+    chmod 700 .secure-storage 2>/dev/null || true
+  fi
+  
+  # Check if Check Point TE key file exists and has correct permissions
+  if [ -f ".secure-storage/checkpoint-te-key.enc" ]; then
+    KEY_PERMS=$(stat -c%a .secure-storage/checkpoint-te-key.enc 2>/dev/null || stat -f%OLp .secure-storage/checkpoint-te-key.enc 2>/dev/null || echo "unknown")
+    if [ "$KEY_PERMS" = "600" ]; then
+      ok "Check Point TE API key file permissions correct (600)"
+    else
+      warn "Check Point TE API key file permissions: $KEY_PERMS (expected 600)"
+      info "Fixing key file permissions..."
+      chmod 600 .secure-storage/checkpoint-te-key.enc 2>/dev/null || true
+    fi
+  else
+    info "Check Point TE API key file not found (this is OK if not configured yet)"
+  fi
+else
+  warn ".secure-storage directory not found (will be created on first key save)"
+fi
+
 # Summary
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
@@ -401,11 +440,18 @@ ok "  ✅ Environment validation"
 ok "  ✅ Storage migrations"
 ok "  ✅ Configurable storage path"
 ok "  ✅ Schema versioning"
+ok "  ✅ Check Point TE API key saving fixes (enhanced error handling & verification)"
 echo ""
 info "Next steps:"
-info "  1. Verify application functionality (chat, files, RAG)"
-info "  2. Check logs: sudo journalctl -u secure-ai-chat -f"
-info "  3. Test health: curl http://localhost:3000/api/health"
+info "  1. Test Check Point TE API key saving:"
+info "     - Go to Settings page"
+info "     - Paste Check Point TE API key"
+info "     - Click 'Save Key'"
+info "     - Verify it shows '✓ Configured' immediately"
+info "     - Go to Files page and verify sandboxing toggle is enabled"
+info "  2. Verify application functionality (chat, files, RAG)"
+info "  3. Check logs: sudo journalctl -u secure-ai-chat -f"
+info "  4. Test health: curl http://localhost:3000/api/health"
 echo ""
 info "To rollback if needed:"
 info "  See backup at: $BACKUP_PATH"
