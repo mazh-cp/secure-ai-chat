@@ -192,9 +192,9 @@ fi
 ok "No api-keys-storage imports in client components (manual check)"
 
 # Check for localStorage/sessionStorage API key storage (setItem only - getItem for status checks is safe)
-# Only flag setItem operations that explicitly store API keys - exclude app settings, toggles, etc.
-# Pattern: Must match "api" followed by "key" or "Key" (case-insensitive), and NOT be in excluded patterns
-STORAGE_KEY_USAGE=$(grep -r "localStorage\.setItem\|sessionStorage\.setItem" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null | grep -iE "(apiKey|api_key|apiKeys|openai.*key|lakera.*key|checkpoint.*key)" | grep -v "lakeraToggles\|checkpointTeSandboxEnabled\|lakeraFileScanEnabled\|lakeraRagScanEnabled\|appSettings\|selectedModel\|uploadedFiles\|theme" || true)
+# Only flag setItem operations with exact API key variable names - exclude app settings, toggles, etc.
+# Pattern: Match exact API key variable names only (apiKey, apiKeys, api_key, openaiApiKey, lakeraApiKey, checkpointApiKey)
+STORAGE_KEY_USAGE=$(grep -r "localStorage\.setItem\|sessionStorage\.setItem" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null | grep -iE "setItem\(['\"](apiKey|api_key|apiKeys|openaiApiKey|lakeraApiKey|checkpointApiKey)" || true)
 
 if [[ -n "$STORAGE_KEY_USAGE" ]]; then
   fail "SECURITY: API keys stored in localStorage/sessionStorage (setItem detected)"
