@@ -46,17 +46,53 @@ let keyLoaded = false
  */
 async function ensureStorageDir(): Promise<void> {
   try {
+    // Check if directory exists first
+    try {
+      const stats = await fs.stat(STORAGE_DIR)
+      if (!stats.isDirectory()) {
+        throw new Error(`Storage path exists but is not a directory: ${STORAGE_DIR}`)
+      }
+      // Directory exists - verify and fix permissions if needed
+      const currentMode = stats.mode & 0o777
+      if (currentMode !== 0o700) {
+        console.warn(`Storage directory has incorrect permissions (${currentMode.toString(8)}), expected 700. Attempting to fix...`)
+        try {
+          await fs.chmod(STORAGE_DIR, 0o700)
+          console.log(`Fixed storage directory permissions to 700`)
+        } catch (chmodError) {
+          console.warn(`Could not fix storage directory permissions: ${chmodError instanceof Error ? chmodError.message : String(chmodError)}`)
+        }
+      }
+      return // Directory exists with correct permissions
+    } catch (statError: unknown) {
+      // Directory doesn't exist or can't be accessed - will create below
+      if ((statError as { code?: string }).code !== 'ENOENT') {
+        throw statError // Re-throw if it's not a "not found" error
+      }
+    }
+    
+    // Directory doesn't exist - create it
     await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 })
+    
     // Verify directory was created and has correct permissions
     const stats = await fs.stat(STORAGE_DIR)
     if (!stats.isDirectory()) {
       throw new Error(`Storage directory exists but is not a directory: ${STORAGE_DIR}`)
     }
+    
+    const finalMode = stats.mode & 0o777
+    if (finalMode !== 0o700) {
+      // Try to fix permissions one more time
+      await fs.chmod(STORAGE_DIR, 0o700)
+    }
+    
+    console.log(`Storage directory created/verified: ${STORAGE_DIR} (permissions: 700)`)
   } catch (error) {
-    console.error('Failed to create storage directory:', error)
+    console.error('Failed to create/verify storage directory:', error)
     // Provide more details about the error
     const errorMessage = error instanceof Error ? error.message : String(error)
-    throw new Error(`Cannot create .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write to: ${process.cwd()}`)
+    const cwd = process.cwd()
+    throw new Error(`Cannot create/verify .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write to: ${cwd}`)
   }
 }
 
@@ -162,7 +198,25 @@ async function saveTeApiKey(key: string | null): Promise<void> {
       
       // Write with restrictive permissions (owner read/write only)
       try {
+        // Ensure directory exists and has correct permissions before writing
+        await ensureStorageDir()
+        
+        // Write the file
         await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
+        
+        // Force file system sync to ensure write completes before verification
+        // Open file descriptor and sync to ensure data is written to disk
+        try {
+          const fd = await fs.open(KEY_FILE_PATH, 'r+')
+          try {
+            await fd.sync()
+          } finally {
+            await fd.close()
+          }
+        } catch (syncError) {
+          // Sync failure is not critical - file write may have already completed
+          console.warn(`File sync warning (non-critical): ${syncError instanceof Error ? syncError.message : String(syncError)}`)
+        }
         
         // Verify file was written and has correct permissions
         const stats = await fs.stat(KEY_FILE_PATH)
@@ -173,17 +227,37 @@ async function saveTeApiKey(key: string | null): Promise<void> {
           throw new Error(`Key file is empty after write: ${KEY_FILE_PATH}`)
         }
         
-        console.log(`Check Point TE API key file saved: ${KEY_FILE_PATH} (${stats.size} bytes)`)
+        // Verify permissions
+        const fileMode = stats.mode & 0o777
+        if (fileMode !== 0o600) {
+          console.warn(`Key file has incorrect permissions (${fileMode.toString(8)}), expected 600. Fixing...`)
+          await fs.chmod(KEY_FILE_PATH, 0o600)
+        }
+        
+        console.log(`Check Point TE API key file saved: ${KEY_FILE_PATH} (${stats.size} bytes, permissions: 600)`)
         
         // Update cache after successful write verification
         teApiKey = key
         keyLoaded = true
       } catch (writeError) {
         const errorDetails = writeError instanceof Error ? writeError.message : String(writeError)
+        const errorCode = (writeError as { code?: string }).code || 'UNKNOWN'
         console.error(`Failed to write TE API key file to ${KEY_FILE_PATH}:`, errorDetails)
-        const dirExists = await fs.access(STORAGE_DIR).then(() => true).catch(() => false)
-        console.error(`Storage directory: ${STORAGE_DIR}, exists: ${dirExists}`)
-        throw new Error(`Cannot save Check Point TE API key: ${errorDetails}. Check directory permissions for: ${STORAGE_DIR}`)
+        
+        // Check directory status
+        let dirInfo = 'unknown'
+        try {
+          const dirStats = await fs.stat(STORAGE_DIR)
+          const dirMode = dirStats.mode & 0o777
+          dirInfo = `exists, mode: ${dirMode.toString(8)} (expected: 700)`
+        } catch {
+          dirInfo = 'does not exist or not accessible'
+        }
+        
+        console.error(`Storage directory: ${STORAGE_DIR}, status: ${dirInfo}`)
+        console.error(`Error code: ${errorCode}`)
+        
+        throw new Error(`Cannot save Check Point TE API key: ${errorDetails} (code: ${errorCode}). Check directory permissions for: ${STORAGE_DIR}. Directory status: ${dirInfo}`)
       }
     } else {
       // Remove key file if key is null

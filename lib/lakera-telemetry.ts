@@ -88,12 +88,25 @@ export async function sendLakeraTelemetry(
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
-      console.error('Lakera telemetry error:', response.status, errorText)
+      
+      // 404 errors are expected - telemetry endpoint may not be available for all accounts
+      // Only log as warning, not error, to reduce noise in logs
+      if (response.status === 404) {
+        // Suppress 404 errors - telemetry endpoint may not be available
+        // This is non-critical and shouldn't clutter logs
+        return {
+          success: false,
+          error: `Telemetry endpoint not available (404) - this is normal if telemetry is not configured for your Lakera account`,
+        }
+      }
+      
+      // Log other errors as warnings (non-critical)
+      console.warn(`Lakera telemetry warning (${response.status}): Telemetry endpoint may not be available - this is non-critical`)
       
       // Don't throw - telemetry failures shouldn't break the main flow
       return {
         success: false,
-        error: `Telemetry API error: ${response.status} ${errorText.substring(0, 100)}`,
+        error: `Telemetry API error: ${response.status}`,
       }
     }
 
