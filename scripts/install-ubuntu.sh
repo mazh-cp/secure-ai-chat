@@ -696,6 +696,10 @@ fi
 if [ "$SKIP_SYSTEMD" = false ] && [ -n "$NPM_PATH" ]; then
     print_info "Found npm at: $NPM_PATH"
     
+    # Get nvm Node.js bin directory for PATH (critical for systemd to find node)
+    NVM_BIN_DIR=$(dirname "$NODE_PATH")
+    print_info "NVM bin directory: $NVM_BIN_DIR"
+    
     # Get current user
     CURRENT_USER=$(whoami)
     SERVICE_FILE="/etc/systemd/system/secure-ai-chat.service"
@@ -714,8 +718,9 @@ WorkingDirectory=$FULL_PATH
 Environment="NODE_ENV=production"
 Environment="PORT=$APP_PORT"
 Environment="HOSTNAME=0.0.0.0"
+Environment="PATH=$NVM_BIN_DIR:/usr/local/bin:/usr/bin:/bin"
 
-# Use npm from nvm
+# Use full path to npm (which will use node from PATH above)
 ExecStart=$NPM_PATH start
 Restart=always
 RestartSec=5
