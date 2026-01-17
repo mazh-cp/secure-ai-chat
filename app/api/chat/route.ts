@@ -518,31 +518,31 @@ export async function POST(request: NextRequest) {
       keyPrefix: activeApiKey ? activeApiKey.substring(0, 5) + '...' : 'none',
     })
 
-    // Validate OpenAI credentials
-    if (!activeApiKey || 
-        activeApiKey === 'configured' ||
-        activeApiKey.includes('your_ope') || 
-        activeApiKey.includes('your-api-key') ||
-        activeApiKey.length < 20) {
+      // Validate OpenAI credentials
+      if (!activeApiKey || 
+          activeApiKey === 'configured' ||
+          activeApiKey.includes('your_ope') || 
+          activeApiKey.includes('your-api-key') ||
+          activeApiKey.length < 20) {
       console.error('OpenAI validation failed:', {
         hasKey: !!activeApiKey,
         isConfiguredPlaceholder: activeApiKey === 'configured',
         length: activeApiKey ? activeApiKey.length : 0,
         startsWithSk: activeApiKey ? activeApiKey.startsWith('sk-') : false,
       })
-      return NextResponse.json(
-        { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
-        { status: 400 }
-      )
-    }
-    
-    // Additional validation: OpenAI keys should start with 'sk-'
-    if (!activeApiKey.startsWith('sk-')) {
-      console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
-      return NextResponse.json(
-        { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
-        { status: 400 }
-      )
+        return NextResponse.json(
+          { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
+          { status: 400 }
+        )
+      }
+      
+      // Additional validation: OpenAI keys should start with 'sk-'
+      if (!activeApiKey.startsWith('sk-')) {
+        console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
+        return NextResponse.json(
+          { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
+          { status: 400 }
+        )
     }
 
     // Get the latest user message for security check and RAG
@@ -967,8 +967,8 @@ The file content will be provided in the user's message below. Search through it
     console.log('Pre-request status:', {
       model: validatedModel,
       rateLimit: {
-        remaining: rateLimitStatus.remaining,
-        limit: rateLimitStatus.limit,
+      remaining: rateLimitStatus.remaining,
+      limit: rateLimitStatus.limit,
       },
       tokenEstimation: {
         estimatedTotalTokens: tokenEstimation.estimatedTotalTokens,

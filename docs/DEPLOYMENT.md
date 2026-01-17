@@ -2,6 +2,32 @@
 
 Complete guide for deploying Secure AI Chat to production servers.
 
+## Quick Upgrade (One Command)
+
+For existing installations, upgrade with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-inline.sh | bash
+```
+
+Or with custom options:
+```bash
+APP_DIR=/opt/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-inline.sh | bash
+```
+
+**What it does:**
+- Auto-detects installation directory
+- Creates comprehensive backup (API keys, files, config, build)
+- Updates code from repository
+- Installs dependencies (`npm ci`)
+- Runs storage migrations
+- Builds application
+- Restarts service
+- Verifies upgrade
+- Includes automatic rollback on failure
+
+**Safe for production:** Includes backups, error handling, and rollback capability.
+
 ## Prerequisites
 
 ### System Requirements
@@ -85,6 +111,112 @@ Smoke tests verify:
 - Status endpoints don't expose secrets
 - List endpoints work
 - No secrets in responses or logs
+
+## Unified Installation Scripts (Recommended)
+
+### Fresh Install (Idempotent)
+
+**Usage:**
+```bash
+bash scripts/install.sh --app-dir /opt/secure-ai-chat --app-user appuser
+```
+
+**What it does:**
+1. Creates app user (if needed)
+2. Creates app directory with correct ownership
+3. Installs Node.js v24.13.0 via nvm
+4. Clones repository
+5. Runs `npm ci` (frozen install)
+6. Runs storage migrations (`npm run migrate`)
+7. Builds application
+8. Configures systemd service
+9. Starts service
+10. Runs health check
+
+**Idempotent:** Safe to run multiple times. Skips steps already completed.
+
+### In-Place Upgrade (Idempotent with Auto-Rollback)
+
+**Usage:**
+```bash
+bash scripts/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
+```
+
+**What it does:**
+1. Creates backup (`.secure-storage`, `.storage`, `.env.local`, `.next`)
+2. Pulls latest code from git
+3. Stops service
+4. Runs `npm ci` (frozen install)
+5. Runs storage migrations (`npm run migrate`)
+6. Builds application
+7. Restarts service
+8. Runs health check
+9. **Automatic rollback** if service fails or health check fails
+
+**Idempotent:** Safe to run multiple times. Creates new backup each time.
+
+### Manual Rollback
+
+If automatic rollback fails:
+
+```bash
+# 1. Stop service
+sudo systemctl stop secure-ai-chat
+
+# 2. Find latest backup
+ls -lt /opt/secure-ai-chat/.backups/
+
+# 3. Restore from backup
+cd /opt/secure-ai-chat
+BACKUP_PATH=/opt/secure-ai-chat/.backups/upgrade-YYYYMMDD-HHMMSS
+cp -r "$BACKUP_PATH/.secure-storage" .
+cp -r "$BACKUP_PATH/.storage" .
+cp "$BACKUP_PATH/.env.local" .
+cp -r "$BACKUP_PATH/.next" .
+
+# 4. Restore git state (if needed)
+git checkout $(cat "$BACKUP_PATH/.git-ref")
+
+# 5. Restart service
+sudo systemctl start secure-ai-chat
+sudo systemctl status secure-ai-chat
+```
+
+### Storage Configuration
+
+Storage path is configurable via `STORAGE_DIR` environment variable:
+
+```bash
+# Default: ./.storage (relative to project root)
+STORAGE_DIR=./.storage
+
+# Custom path: /var/lib/secure-ai-chat/storage
+STORAGE_DIR=/var/lib/secure-ai-chat/storage
+```
+
+**Important:** Storage directory should be:
+- Outside the repository (not in `.git`)
+- Writable by the app user
+- Persisted across upgrades (not deleted during upgrades)
+- Backed up regularly
+
+### Environment Validation
+
+The application validates environment variables at runtime (non-fatal):
+
+```bash
+# Check environment validation (logs warnings/errors but doesn't crash)
+# Validation runs automatically on first health check (/api/health)
+curl http://localhost:3000/api/health
+```
+
+**Validation checks:**
+- Required variables for production
+- Storage directory path safety
+- NEXT_PUBLIC_ variables don't leak secrets
+- Port number is valid
+
+Validation errors are logged but don't crash the application.
 
 ## Deployment Workflows
 

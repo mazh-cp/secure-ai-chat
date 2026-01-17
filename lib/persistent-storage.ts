@@ -8,10 +8,20 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
-// Storage directories
-const STORAGE_DIR = path.join(process.cwd(), '.storage')
-const FILES_DIR = path.join(STORAGE_DIR, 'files')
-const METADATA_FILE = path.join(STORAGE_DIR, 'files-metadata.json')
+// Storage directories (configurable via STORAGE_DIR env var, defaults to ./.storage)
+const STORAGE_BASE = process.env.STORAGE_DIR || path.join(process.cwd(), '.storage')
+const STORAGE_DIR = STORAGE_BASE
+const FILES_DIR = path.join(STORAGE_BASE, 'files')
+const METADATA_FILE = path.join(STORAGE_BASE, 'files-metadata.json')
+const SCHEMA_VERSION_FILE = path.join(STORAGE_BASE, 'schema-version.json')
+
+// Schema version for migrations
+const CURRENT_SCHEMA_VERSION = 1
+
+interface SchemaVersion {
+  version: number
+  lastMigrated: string // ISO date string
+}
 
 export interface StoredFileMetadata {
   id: string
@@ -343,5 +353,69 @@ export async function getStorageStats(): Promise<{
   } catch (error) {
     console.error('Failed to get storage stats:', error)
     return { fileCount: 0, totalSize: 0 }
+  }
+}
+
+/**
+ * Get current schema version (for migrations)
+ */
+async function getSchemaVersion(): Promise<number> {
+  try {
+    await ensureStorageDirs()
+    const data = await fs.readFile(SCHEMA_VERSION_FILE, 'utf-8')
+    const schema = JSON.parse(data) as SchemaVersion
+    return schema.version || 0
+  } catch {
+    // No schema version file = version 0 (pre-migration system)
+    return 0
+  }
+}
+
+/**
+ * Update schema version (called after successful migration)
+ */
+async function updateSchemaVersion(): Promise<void> {
+  try {
+    await ensureStorageDirs()
+    const schema: SchemaVersion = {
+      version: CURRENT_SCHEMA_VERSION,
+      lastMigrated: new Date().toISOString()
+    }
+    await fs.writeFile(SCHEMA_VERSION_FILE, JSON.stringify(schema, null, 2), 'utf-8')
+  } catch (error) {
+    console.error('Failed to update schema version:', error)
+  }
+}
+
+/**
+ * Run storage migrations (idempotent)
+ * This ensures storage directories have correct permissions and schema version
+ */
+export async function migrateStorage(): Promise<void> {
+  const currentVersion = await getSchemaVersion()
+  
+  if (currentVersion >= CURRENT_SCHEMA_VERSION) {
+    return // Already up to date
+  }
+
+  try {
+    await ensureStorageDirs()
+    
+    // Migration 1: Ensure correct directory permissions (0o755)
+    if (currentVersion < 1) {
+      const stats = await fs.stat(STORAGE_DIR).catch(() => null)
+      if (stats) {
+        await fs.chmod(STORAGE_DIR, 0o755)
+        await fs.chmod(FILES_DIR, 0o755).catch(() => {})
+        console.log('✅ Migration 1: Storage directory permissions updated')
+      }
+    }
+
+    // Update schema version after successful migration
+    await updateSchemaVersion()
+    console.log(`✅ Storage migrated from version ${currentVersion} to ${CURRENT_SCHEMA_VERSION}`)
+  } catch (error) {
+    console.error('❌ Storage migration failed:', error)
+    // Don't throw - allow app to continue with existing schema
   }
 }

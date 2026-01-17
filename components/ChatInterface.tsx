@@ -87,7 +87,7 @@ export default function ChatInterface() {
             // Clear any stale state if API says no keys
             if (apiKeys?.openAiKey === 'configured') {
               setApiKeys(null)
-            }
+          }
           }
         } else if (response) {
           // API responded but with error
@@ -196,10 +196,10 @@ export default function ChatInterface() {
     setError(null)
 
     // Check if OpenAI API key is configured
-    const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-    if (!hasOpenAiKey) {
+      const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
+      if (!hasOpenAiKey) {
       setError('OpenAI API key is not configured. Please go to Settings to add your API key.')
-      return
+        return
     }
 
     const userMessage: Message = {
@@ -405,12 +405,12 @@ export default function ChatInterface() {
 
       {/* Model Selector */}
       <div className="mb-4 flex justify-end items-center gap-4">
-        <ModelSelector 
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
+          <ModelSelector 
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
           apiKey={apiKeys?.openAiKey || null}
-        />
-      </div>
+          />
+        </div>
 
       {/* Chat Messages - Always show, even if no keys configured */}
       <div className="flex-1 overflow-hidden rounded-xl border-2 p-4 mb-4" style={{ borderColor: "rgb(var(--border))", background: "rgba(var(--surface-2), 0.5)" }}>

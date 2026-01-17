@@ -6,6 +6,7 @@
   "engines": {
     "node": "24.13.0"
   },
+  "packageManager": "npm@9.9.3",
   "scripts": {
     "verify-security": "bash scripts/verify-key-security.sh",
     "dev": "next dev -H 0.0.0.0",
@@ -18,13 +19,15 @@
     "format:check": "prettier . --check",
     "check": "npm run type-check && npm run lint",
     "check:ci": "npm run type-check && npm run lint && npm run format:check",
-    "check:node": "node -e \"const v=process.versions.node; if(v!=='25.2.1'){console.error('❌ Node 25.2.1 required. Current:', v); process.exit(1)} else {console.log('✅ Node OK:', v)}\"",
+    "check:node": "node -e \"const v=process.versions.node; if(v!=='24.13.0'){console.error('❌ Node 24.13.0 required. Current:', v); process.exit(1)} else {console.log('✅ Node OK:', v)}\"",
     "check:secrets": "node scripts/check-no-client-secrets.mjs",
     "validate:v1.0.10": "node scripts/validate-v1.0.10-features.mjs",
-    "pre-push": "npm run check:node && npm run lint && npm run build",
-    "smoke": "bash scripts/smoke.sh",
-    "release-gate": "bash scripts/release-gate.sh",
+    "doctor": "npm run check:node && npm run lint && npm run type-check && npm run test && npm run build",
+    "pre-push": "npm run doctor",
+    "smoke": "bash scripts/smoke-test.sh",
+    "release-gate": "npm run doctor",
     "validate-env": "bash scripts/validate-env.sh",
+    "migrate": "tsx scripts/migrate-storage.ts",
     "test": "echo 'No tests configured. Run npm run smoke for smoke tests.'"
   },
   "dependencies": {
@@ -49,7 +52,8 @@
     "eslint-config-prettier": "^9.1.2",
     "postcss": "^8.4.31",
     "prettier": "^3.7.4",
-    "tailwindcss": "^3.3.5"
+    "tailwindcss": "^3.3.5",
+    "tsx": "^4.21.0"
   },
   "overrides": {
     "rimraf": "^5.0.0",
