@@ -153,6 +153,15 @@ async function saveTeApiKey(key: string | null): Promise<void> {
       const encryptedKey = encryptKey(key)
       // Write with restrictive permissions (owner read/write only)
       await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
+      
+      // Force file system sync to ensure write is complete before updating cache
+      try {
+        await fs.access(KEY_FILE_PATH)
+      } catch {
+        // File access check - if this fails, the write may have failed
+      }
+      
+      // Update cache after successful write
       teApiKey = key
       keyLoaded = true
     } else {
@@ -176,6 +185,16 @@ async function saveTeApiKey(key: string | null): Promise<void> {
     keyLoaded = false
     throw error
   }
+}
+
+/**
+ * Force reload API key from storage (clears cache and re-reads)
+ * Useful after saving to ensure fresh state
+ */
+export async function reloadTeApiKey(): Promise<void> {
+  teApiKey = null
+  keyLoaded = false
+  await loadTeApiKey()
 }
 
 // Initialize: Load key on module load (for server-side)

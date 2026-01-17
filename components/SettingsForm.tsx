@@ -190,7 +190,13 @@ export default function SettingsForm() {
   const checkCheckpointTeStatus = async () => {
     setIsCheckingTeStatus(true)
     try {
-      const response = await fetch('/api/te/config')
+      // Add cache-busting to force fresh check
+      const response = await fetch(`/api/te/config?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setCheckpointTeConfigured(data.configured || false)

@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { setTeApiKey, isTeApiKeyConfiguredSync } from '@/lib/checkpoint-te'
+import { setTeApiKey, getTeApiKey, reloadTeApiKey } from '@/lib/checkpoint-te'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
 
 /**
  * GET - Check if Check Point TE API key is configured
  * Returns status without exposing the key
+ * Forces fresh check by reloading from storage (not using cached value)
  */
 export async function GET() {
   try {
-    const configured = isTeApiKeyConfiguredSync()
+    // Force fresh check by getting key directly (this will reload if not cached)
+    // This ensures we get the actual state from storage, not a stale cache
+    const key = await getTeApiKey()
+    const configured = !!key
     
     return NextResponse.json({
       configured,
       message: configured ? 'Check Point TE API key is configured' : 'Check Point TE API key is not configured',
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     })
   } catch (error) {
     console.error('Error checking TE API key status:', error)
@@ -66,6 +76,9 @@ export async function POST(request: NextRequest) {
 
     // Store the key (persists to encrypted file)
     await setTeApiKey(trimmedKey)
+    
+    // Force reload to ensure cache is updated and fresh state for subsequent GET requests
+    await reloadTeApiKey()
 
     console.log('Check Point TE API key configured and saved successfully')
 
@@ -73,6 +86,12 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Check Point TE API key configured successfully',
       configured: true,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     })
   } catch (error) {
     console.error('Error setting TE API key:', error)
@@ -122,12 +141,22 @@ export async function DELETE(request: NextRequest) {
 
     // PIN verified (or not configured), proceed with removal
     await setTeApiKey(null)
+    
+    // Force reload to ensure cache is cleared and fresh state for subsequent GET requests
+    await reloadTeApiKey()
+    
     console.log('Check Point TE API key removed')
 
     return NextResponse.json({
       success: true,
       message: 'Check Point TE API key removed successfully',
       configured: false,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     })
   } catch (error) {
     console.error('Error removing TE API key:', error)
