@@ -549,13 +549,21 @@ else
         fi
     fi
     
+    # Get full paths to node and npm (required for systemd)
+    NODE_PATH=$(which node 2>/dev/null || echo "")
     NPM_PATH=$(which npm 2>/dev/null || echo "")
     
-    if [ -z "$NPM_PATH" ]; then
-        print_warning "Could not find npm path. Skipping systemd service setup."
+    if [ -z "$NODE_PATH" ] || [ -z "$NPM_PATH" ]; then
+        print_warning "Could not find node/npm paths. Skipping systemd service setup."
     else
+        print_info "Found node at: $NODE_PATH"
         print_info "Found npm at: $NPM_PATH"
         
+        # Get nvm Node.js bin directory for PATH (critical for systemd to find node)
+        NVM_BIN_DIR=$(dirname "$NODE_PATH")
+        print_info "NVM bin directory: $NVM_BIN_DIR"
+        
+        CURRENT_USER=$(whoami)
         SERVICE_FILE="/etc/systemd/system/secure-ai-chat.service"
         
         print_info "Creating systemd service file..."
@@ -572,8 +580,9 @@ WorkingDirectory=$FULL_PATH
 Environment="NODE_ENV=production"
 Environment="PORT=$APP_PORT"
 Environment="HOSTNAME=0.0.0.0"
+Environment="PATH=$NVM_BIN_DIR:/usr/local/bin:/usr/bin:/bin"
 
-# Use npm from nvm
+# Use full path to npm (which will use node from PATH above)
 ExecStart=$NPM_PATH start
 Restart=always
 RestartSec=5
