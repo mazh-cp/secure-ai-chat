@@ -153,45 +153,27 @@ else
 fi
 
 # ============================================
-# 4. TypeScript Type Check
+# 4. Run npm run doctor (comprehensive validation)
 # ============================================
-CURRENT_STAGE="TypeScript Type Check"
-say "4. TypeScript Type Check"
+CURRENT_STAGE="npm run doctor"
+say "4. Running npm run doctor"
+say "   This runs: check:node + lint + type-check + test + build"
 
-if ${RUN_CMD} run type-check > /tmp/typecheck.log 2>&1; then
-  ok "TypeScript compilation: PASSED"
+if ${RUN_CMD} run doctor > /tmp/doctor.log 2>&1; then
+  ok "npm run doctor: PASSED"
 else
-  fail "TypeScript compilation: FAILED"
+  fail "npm run doctor: FAILED"
   echo ""
-  echo "TypeScript errors:"
-  cat /tmp/typecheck.log | grep -i "error" | head -20
-  exit 2
+  echo "Doctor script errors (last 50 lines):"
+  cat /tmp/doctor.log | tail -50
+  exit 1
 fi
 
 # ============================================
-# 5. ESLint Check
-# ============================================
-CURRENT_STAGE="ESLint Check"
-say "5. ESLint Check"
-
-if ${RUN_CMD} run lint > /tmp/lint.log 2>&1; then
-  ok "ESLint: PASSED"
-elif grep -q "error" /tmp/lint.log; then
-  fail "ESLint: FAILED (errors found)"
-  echo ""
-  echo "ESLint errors:"
-  cat /tmp/lint.log | grep -i "error" | head -20
-  exit 2
-else
-  # Only warnings (expected for img tags)
-  ok "ESLint: PASSED (warnings only)"
-fi
-
-# ============================================
-# 6. Security: Client-Side Key Leakage Check (Hard Gate)
+# 5. Security: Client-Side Key Leakage Check (Hard Gate)
 # ============================================
 CURRENT_STAGE="Security: Client-Side Key Leakage Check"
-say "6. Security: Client-Side Key Leakage Check (Hard Gate)"
+say "5. Security: Client-Side Key Leakage Check (Hard Gate)"
 
 # Run automated check-no-client-secrets script
 if node scripts/check-no-client-secrets.mjs > /tmp/secret-check.log 2>&1; then
@@ -205,7 +187,7 @@ else
 fi
 
 # Additional manual checks (redundant but explicit)
-say "6b. Additional Security Checks"
+say "5b. Additional Security Checks"
 
 # Check for checkpoint-te imports in client components (manual verification)
 # Only check for imports from @/lib (server-only), not @/types (types only - safe)
@@ -242,26 +224,10 @@ fi
 ok "No API keys stored in localStorage/sessionStorage (manual check)"
 
 # ============================================
-# 7. Build
-# ============================================
-CURRENT_STAGE="Production Build"
-say "7. Production Build"
-
-if ${RUN_CMD} run build > /tmp/build.log 2>&1; then
-  ok "Build: PASSED"
-else
-  fail "Build: FAILED"
-  echo ""
-  echo "Build errors:"
-  cat /tmp/build.log | grep -i "error" | head -30
-  exit 2
-fi
-
-# ============================================
-# 8. Security: Build Output Check
+# 6. Security: Build Output Check
 # ============================================
 CURRENT_STAGE="Security: Build Output Check"
-say "8. Security: Build Output Check"
+say "6. Security: Build Output Check"
 
 # Check for API keys in build output
 if [[ -d ".next/static" ]]; then
@@ -288,10 +254,10 @@ fi
 ok "No Check Point TE key patterns in build"
 
 # ============================================
-# 9. Validate v1.0.10 Features Not Revoked
+# 7. Validate v1.0.10 Features Not Revoked
 # ============================================
 CURRENT_STAGE="Validate v1.0.10 Features"
-say "9. Validate v1.0.10 Features Not Revoked"
+say "7. Validate v1.0.10 Features Not Revoked"
 
 # Run v1.0.10 feature validation
 if node scripts/validate-v1.0.10-features.mjs > /tmp/v1.0.10-validation.log 2>&1; then
@@ -305,10 +271,10 @@ else
 fi
 
 # ============================================
-# 10. Secret Leakage Scan (Git History)
+# 8. Secret Leakage Scan (Git History)
 # ============================================
 CURRENT_STAGE="Secret Leakage Scan (Git History)"
-say "10. Secret Leakage Scan (Git History)"
+say "8. Secret Leakage Scan (Git History)"
 
 # Check for API keys in tracked files (not in .gitignore)
 GIT_KEY_CHECK=$(git grep -i "sk-[a-zA-Z0-9]\{48\}" -- "*.ts" "*.tsx" "*.js" "*.jsx" "*.json" 2>/dev/null | grep -v ".next\|node_modules" || true)
@@ -335,7 +301,7 @@ fi
 ok "No Check Point TE keys in tracked files"
 
 # ============================================
-# 10. Summary
+# Summary
 # ============================================
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
