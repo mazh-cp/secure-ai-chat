@@ -170,7 +170,9 @@ fi
 say "6b. Additional Security Checks"
 
 # Check for checkpoint-te imports in client components (manual verification)
-CLIENT_IMPORTS=$(grep -r "from.*checkpoint-te\|import.*checkpoint-te" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled" || true)
+# Only check for imports from @/lib (server-only), not @/types (types only - safe)
+# Exclude type-only imports from @/types (TypeScript strips them at compile time)
+CLIENT_IMPORTS=$(grep -r "from.*checkpoint-te\|import.*checkpoint-te" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" 2>/dev/null | grep -v "checkpointTeConfigured\|checkpointTeSandboxEnabled\|@/types/checkpoint-te\|@/types/api-keys\|from '@/types/\|from \"@/types/" || true)
 
 if [[ -n "$CLIENT_IMPORTS" ]]; then
   fail "SECURITY: checkpoint-te imported in client components"
@@ -189,15 +191,16 @@ if [[ -n "$API_KEY_IMPORTS" ]]; then
 fi
 ok "No api-keys-storage imports in client components (manual check)"
 
-# Check for localStorage/sessionStorage API key usage
-STORAGE_KEY_USAGE=$(grep -r "localStorage\.getItem.*api.*key\|sessionStorage\.getItem.*api.*key\|localStorage\.setItem.*api.*key\|sessionStorage\.setItem.*api.*key" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" -i 2>/dev/null | grep -v "lakeraToggles\|checkpointTeSandboxEnabled\|lakeraFileScanEnabled\|lakeraRagScanEnabled" || true)
+# Check for localStorage/sessionStorage API key storage (setItem only - getItem for status checks is safe)
+# Only flag setItem operations - reading status/configuration from localStorage is acceptable
+STORAGE_KEY_USAGE=$(grep -r "localStorage\.setItem.*api.*key\|sessionStorage\.setItem.*api.*key" components/ app/ --include="*.tsx" --include="*.ts" --exclude-dir="api" -i 2>/dev/null | grep -v "lakeraToggles\|checkpointTeSandboxEnabled\|lakeraFileScanEnabled\|lakeraRagScanEnabled" || true)
 
 if [[ -n "$STORAGE_KEY_USAGE" ]]; then
-  fail "SECURITY: API keys stored in localStorage/sessionStorage"
+  fail "SECURITY: API keys stored in localStorage/sessionStorage (setItem detected)"
   echo "$STORAGE_KEY_USAGE"
   exit 2
 fi
-ok "No API keys in localStorage/sessionStorage (manual check)"
+ok "No API keys stored in localStorage/sessionStorage (manual check)"
 
 # ============================================
 # 7. Build

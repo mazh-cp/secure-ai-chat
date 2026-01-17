@@ -37,20 +37,49 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
 
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
+      // STABILITY: Validate file size before reading to prevent memory bloat
+      if (file.size > MAX_FILE_SIZE) {
+        reject(new Error(`File size exceeds ${MAX_FILE_SIZE / (1024 * 1024)} MB limit`))
+        return
+      }
+      
       const reader = new FileReader()
       
       reader.onload = (e) => {
-        const result = e.target?.result
-        if (typeof result === 'string') {
-          resolve(result)
-        } else if (result instanceof ArrayBuffer) {
-          // For binary files like PDF, convert to base64
-          const bytes = new Uint8Array(result)
-          let binary = ''
-          bytes.forEach(byte => binary += String.fromCharCode(byte))
-          resolve(btoa(binary))
-        } else {
-          reject(new Error('Failed to read file'))
+        try {
+          const result = e.target?.result
+          if (typeof result === 'string') {
+            resolve(result)
+          } else if (result instanceof ArrayBuffer) {
+            // STABILITY: Use chunked processing for large binary files to avoid blocking event loop
+            // For binary files like PDF, convert to base64 in chunks
+            const bytes = new Uint8Array(result)
+            const CHUNK_SIZE = 8192 // Process 8KB chunks to avoid blocking
+            let binary = ''
+            
+            // Process in chunks to prevent event-loop blocking
+            const processChunk = (offset: number) => {
+              const chunk = bytes.slice(offset, offset + CHUNK_SIZE)
+              if (chunk.length === 0) {
+                resolve(btoa(binary))
+                return
+              }
+              
+              // Convert chunk to string
+              for (let i = 0; i < chunk.length; i++) {
+                binary += String.fromCharCode(chunk[i])
+              }
+              
+              // Yield to event loop before processing next chunk
+              setTimeout(() => processChunk(offset + CHUNK_SIZE), 0)
+            }
+            
+            processChunk(0)
+          } else {
+            reject(new Error('Failed to read file'))
+          }
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('Failed to read file'))
         }
       }
       
