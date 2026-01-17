@@ -75,26 +75,56 @@ export async function POST(request: NextRequest) {
     }
 
     // Store the key (persists to encrypted file)
-    await setTeApiKey(trimmedKey)
-    
-    // Force reload to ensure cache is updated and fresh state for subsequent GET requests
-    await reloadTeApiKey()
+    try {
+      await setTeApiKey(trimmedKey)
+      
+      // Force reload to ensure cache is updated
+      await reloadTeApiKey()
+      
+      // Verify the key was actually saved by checking if file exists
+      const { promises: fs } = await import('fs')
+      const path = await import('path')
+      const keyFilePath = path.join(process.cwd(), '.secure-storage', 'checkpoint-te-key.enc')
+      
+      try {
+        const stats = await fs.stat(keyFilePath)
+        if (stats.size === 0) {
+          throw new Error('Key file is empty after save')
+        }
+        console.log(`Check Point TE API key verified: file exists (${stats.size} bytes)`)
+      } catch (verifyError) {
+        console.error('Key file verification failed after save:', verifyError)
+        throw new Error(`Key was saved but verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`)
+      }
 
-    console.log('Check Point TE API key configured and saved successfully')
+      console.log('Check Point TE API key configured and saved successfully')
 
-    return NextResponse.json({
-      success: true,
-      message: 'Check Point TE API key configured successfully',
-      configured: true,
-    }, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    })
+      return NextResponse.json({
+        success: true,
+        message: 'Check Point TE API key configured successfully',
+        configured: true,
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      })
+    } catch (saveError) {
+      const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error'
+      console.error('Error saving Check Point TE API key:', saveError)
+      
+      // Provide detailed error to client for debugging
+      return NextResponse.json(
+        { 
+          error: `Failed to save Check Point TE API key: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        },
+        { status: 500 }
+      )
+    }
   } catch (error) {
-    console.error('Error setting TE API key:', error)
+    console.error('Error in POST /api/te/config:', error)
     return NextResponse.json(
       { error: 'Failed to set API key' },
       { status: 500 }

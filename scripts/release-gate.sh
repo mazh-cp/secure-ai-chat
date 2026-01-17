@@ -2,7 +2,7 @@
 # Release Gate - Comprehensive Pre-Deployment Validation
 # Strict PASS/FAIL checklist that must pass before deployment
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -14,14 +14,38 @@ NC='\033[0m'
 
 PASS=true
 FAILED_CHECKS=()
+CURRENT_STAGE="Initialization"
 
 say() { printf "\n${BLUE}==>${NC} %s\n" "$*"; }
-fail() { echo "${RED}❌ FAIL:${NC} $*"; PASS=false; FAILED_CHECKS+=("$*"); }
+fail() { echo "${RED}❌ FAIL:${NC} $*"; PASS=false; FAILED_CHECKS+=("$CURRENT_STAGE: $*"); }
 ok() { echo "${GREEN}✅ PASS:${NC} $*"; }
 warn() { echo "${YELLOW}⚠️  WARN:${NC} $*"; }
 
-# Show failing line on error
-trap 'echo "${RED}❌ ERROR at line $LINENO${NC}"; exit 2' ERR
+# Enhanced error trap with diagnostic information
+trap 'handle_error $? $LINENO "$BASH_COMMAND"' ERR
+
+handle_error() {
+  local exit_code=$1
+  local line_no=$2
+  local command=$3
+  
+  echo ""
+  echo -e "${RED}╔═══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${RED}║                    ❌ RELEASE GATE FAILED                     ║${NC}"
+  echo -e "${RED}╚═══════════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "${RED}Exit Code:${NC} $exit_code"
+  echo -e "${RED}Failed at line:${NC} $line_no"
+  echo -e "${RED}Failed command:${NC} $command"
+  echo -e "${RED}Failed stage:${NC} $CURRENT_STAGE"
+  echo ""
+  echo -e "${YELLOW}Environment:${NC}"
+  echo "  Node.js: $(node -v 2>/dev/null || echo 'NOT FOUND')"
+  echo "  npm: $(npm -v 2>/dev/null || echo 'NOT FOUND')"
+  echo "  Working directory: $(pwd)"
+  echo ""
+  exit 1
+}
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -32,9 +56,18 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 say "Starting in: $ROOT"
 
+# Print environment information
+echo -e "${CYAN}Environment Information:${NC}"
+echo "  Node.js: $(node -v 2>/dev/null || echo 'NOT FOUND')"
+echo "  npm: $(npm -v 2>/dev/null || echo 'NOT FOUND')"
+echo "  OS: $(uname -s) $(uname -r)"
+echo "  Working directory: $(pwd)"
+echo ""
+
 # ============================================
 # 1. Repository Sanity Checks
 # ============================================
+CURRENT_STAGE="Repository Sanity Checks"
 say "1. Repository Sanity Checks"
 
 if ! command -v git >/dev/null 2>&1; then
@@ -65,6 +98,7 @@ fi
 # ============================================
 # 2. Detect Package Manager
 # ============================================
+CURRENT_STAGE="Detect Package Manager"
 say "2. Detecting Package Manager"
 
 PM=""
@@ -99,6 +133,7 @@ ok "Node.js: ${NODE_VERSION}"
 # ============================================
 # 3. Clean Install
 # ============================================
+CURRENT_STAGE="Clean Install"
 say "3. Clean Install"
 
 # Remove node_modules for clean install
@@ -120,6 +155,7 @@ fi
 # ============================================
 # 4. TypeScript Type Check
 # ============================================
+CURRENT_STAGE="TypeScript Type Check"
 say "4. TypeScript Type Check"
 
 if ${RUN_CMD} run type-check > /tmp/typecheck.log 2>&1; then
@@ -135,6 +171,7 @@ fi
 # ============================================
 # 5. ESLint Check
 # ============================================
+CURRENT_STAGE="ESLint Check"
 say "5. ESLint Check"
 
 if ${RUN_CMD} run lint > /tmp/lint.log 2>&1; then
@@ -153,6 +190,7 @@ fi
 # ============================================
 # 6. Security: Client-Side Key Leakage Check (Hard Gate)
 # ============================================
+CURRENT_STAGE="Security: Client-Side Key Leakage Check"
 say "6. Security: Client-Side Key Leakage Check (Hard Gate)"
 
 # Run automated check-no-client-secrets script
@@ -206,6 +244,7 @@ ok "No API keys stored in localStorage/sessionStorage (manual check)"
 # ============================================
 # 7. Build
 # ============================================
+CURRENT_STAGE="Production Build"
 say "7. Production Build"
 
 if ${RUN_CMD} run build > /tmp/build.log 2>&1; then
@@ -221,6 +260,7 @@ fi
 # ============================================
 # 8. Security: Build Output Check
 # ============================================
+CURRENT_STAGE="Security: Build Output Check"
 say "8. Security: Build Output Check"
 
 # Check for API keys in build output
@@ -250,6 +290,7 @@ ok "No Check Point TE key patterns in build"
 # ============================================
 # 9. Validate v1.0.10 Features Not Revoked
 # ============================================
+CURRENT_STAGE="Validate v1.0.10 Features"
 say "9. Validate v1.0.10 Features Not Revoked"
 
 # Run v1.0.10 feature validation
@@ -266,6 +307,7 @@ fi
 # ============================================
 # 10. Secret Leakage Scan (Git History)
 # ============================================
+CURRENT_STAGE="Secret Leakage Scan (Git History)"
 say "10. Secret Leakage Scan (Git History)"
 
 # Check for API keys in tracked files (not in .gitignore)

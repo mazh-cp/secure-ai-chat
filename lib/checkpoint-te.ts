@@ -46,9 +46,17 @@ let keyLoaded = false
  */
 async function ensureStorageDir(): Promise<void> {
   try {
-    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 }) // Only owner can read/write/execute
+    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 })
+    // Verify directory was created and has correct permissions
+    const stats = await fs.stat(STORAGE_DIR)
+    if (!stats.isDirectory()) {
+      throw new Error(`Storage directory exists but is not a directory: ${STORAGE_DIR}`)
+    }
   } catch (error) {
     console.error('Failed to create storage directory:', error)
+    // Provide more details about the error
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    throw new Error(`Cannot create .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write to: ${process.cwd()}`)
   }
 }
 
@@ -151,19 +159,32 @@ async function saveTeApiKey(key: string | null): Promise<void> {
 
     if (key) {
       const encryptedKey = encryptKey(key)
+      
       // Write with restrictive permissions (owner read/write only)
-      await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
-      
-      // Force file system sync to ensure write is complete before updating cache
       try {
-        await fs.access(KEY_FILE_PATH)
-      } catch {
-        // File access check - if this fails, the write may have failed
+        await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
+        
+        // Verify file was written and has correct permissions
+        const stats = await fs.stat(KEY_FILE_PATH)
+        if (!stats.isFile()) {
+          throw new Error(`Key file was not created as a file: ${KEY_FILE_PATH}`)
+        }
+        if (stats.size === 0) {
+          throw new Error(`Key file is empty after write: ${KEY_FILE_PATH}`)
+        }
+        
+        console.log(`Check Point TE API key file saved: ${KEY_FILE_PATH} (${stats.size} bytes)`)
+        
+        // Update cache after successful write verification
+        teApiKey = key
+        keyLoaded = true
+      } catch (writeError) {
+        const errorDetails = writeError instanceof Error ? writeError.message : String(writeError)
+        console.error(`Failed to write TE API key file to ${KEY_FILE_PATH}:`, errorDetails)
+        const dirExists = await fs.access(STORAGE_DIR).then(() => true).catch(() => false)
+        console.error(`Storage directory: ${STORAGE_DIR}, exists: ${dirExists}`)
+        throw new Error(`Cannot save Check Point TE API key: ${errorDetails}. Check directory permissions for: ${STORAGE_DIR}`)
       }
-      
-      // Update cache after successful write
-      teApiKey = key
-      keyLoaded = true
     } else {
       // Remove key file if key is null
       try {

@@ -16,30 +16,92 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout code (with full history)
         uses: actions/checkout@v4
-        
-      - name: Setup Node.js 24.x
+        with:
+          fetch-depth: 0
+          
+      - name: Normalize line endings
+        run: |
+          git config --global core.autocrlf input
+          git ls-files -z | xargs -0 dos2unix 2>/dev/null || true
+          if ! command -v dos2unix &> /dev/null; then
+            find . -type f \( -name "*.sh" -o -name "*.js" -o -name "*.ts" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
+              -exec sed -i 's/\r$//' {} \;
+          fi
+        continue-on-error: true
+          
+      - name: Auto-detect package manager
+        id: detect-pm
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "package-manager=pnpm" >> $GITHUB_OUTPUT
+            echo "lockfile=pnpm-lock.yaml" >> $GITHUB_OUTPUT
+            echo "cache-key=pnpm-store-$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          elif [ -f "yarn.lock" ]; then
+            echo "package-manager=yarn" >> $GITHUB_OUTPUT
+            echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
+            echo "cache-key=yarn-$(sha256sum yarn.lock | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          elif [ -f "package-lock.json" ]; then
+            echo "package-manager=npm" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+            echo "cache-key=npm-$(sha256sum package-lock.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          else
+            echo "package-manager=npm" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+            echo "cache-key=npm-default" >> $GITHUB_OUTPUT
+            echo "::warning::No lockfile found, defaulting to npm"
+          fi
+          echo "Detected package manager: ${{ steps.detect-pm.outputs.package-manager }}"
+          echo "Lockfile: ${{ steps.detect-pm.outputs.lockfile }}"
+          
+      - name: Setup Node.js v24.13.0 (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: '24.13.0'  # Pin to exact LTS version
+          cache: ${{ steps.detect-pm.outputs.package-manager }}
+          cache-dependency-path: ${{ steps.detect-pm.outputs.lockfile }}
           
-      - name: Enable corepack
+      - name: Enable corepack (for pnpm/yarn)
         run: corepack enable
-        
+        if: steps.detect-pm.outputs.package-manager != 'npm'
+          
       - name: Verify Node.js version
         run: |
-          node -v
-          npm -v
+          echo "Node.js version: $(node -v)"
+          echo "Expected: v24.13.0"
+          echo "Package manager: ${{ steps.detect-pm.outputs.package-manager }}"
+          echo "Lockfile: ${{ steps.detect-pm.outputs.lockfile }}"
+          ${{ steps.detect-pm.outputs.package-manager }} --version
           
-      - name: Run Release Gate
+      - name: Run Release Gate (strict mode with logging)
         run: |
           chmod +x scripts/release-gate.sh
-          bash scripts/release-gate.sh
+          # Run with -x for verbose output and tee to capture logs
+          bash -x scripts/release-gate.sh 2>&1 | tee release-gate.log
+          
+      - name: Upload release gate log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-log
+          path: release-gate.log
+          retention-days: 7
+          
+      - name: Show failure diagnostics
+        if: failure()
+        run: |
+          echo "::error::Release Gate failed. Showing last 200 lines of log:"
+          echo ""
+          if [ -f release-gate.log ]; then
+            tail -n 200 release-gate.log
+          else
+            echo "Log file not found"
+          fi
           
       - name: Report status
         if: failure()
         run: |
           echo "::error::Release Gate failed. Do not merge this PR."
+          echo "::error::Check the release-gate-log artifact for detailed diagnostics."
           exit 1
