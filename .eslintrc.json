@@ -3,6 +3,19 @@
     "next/core-web-vitals",
     "eslint-config-prettier"
   ],
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "build/",
+    "dist/",
+    "coverage/",
+    "data/",
+    "scripts/",
+    "*.config.js",
+    "*.config.mjs",
+    "*.config.cjs"
+  ],
   "rules": {
     "no-restricted-imports": [
       "error",

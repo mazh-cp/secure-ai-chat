@@ -11,14 +11,18 @@ interface FileListProps {
   lakeraScanEnabled?: boolean
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+function formatFileSize(bytes: number | undefined | null): string {
+  const n = Number(bytes)
+  if (Number.isNaN(n) || n < 0) return '—'
+  if (n < 1024) return n + ' B'
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB'
+  return (n / (1024 * 1024)).toFixed(2) + ' MB'
 }
 
-function formatDate(date: Date | string): string {
+function formatDate(date: Date | string | null | undefined): string {
+  if (date == null) return '—'
   const d = typeof date === 'string' ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -177,7 +181,7 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
             <div className={`mt-3 p-3 glass-card rounded-xl ${
               file.scanStatus === 'flagged' ? 'border-red-400/30' : 'border-blue-400/30'
             }`}>
-              {/* Check Point TE Details */}
+              {/* Check Point TE Details - use optional chaining so missing logFields does not throw */}
               {file.checkpointTeDetails && (
                 <div className="space-y-2">
                   <p className={`text-sm font-medium ${
@@ -188,155 +192,155 @@ export default function FileList({ files, onRemove, onClearAll, onScan, isScanni
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                     {/* Verdict and Status */}
-                    {file.checkpointTeDetails.logFields.verdict && (
+                    {file.checkpointTeDetails.logFields?.verdict && (
                       <div>
                         <span className="text-theme-subtle">Verdict:</span>{' '}
                         <span className={`font-medium ${
-                          file.checkpointTeDetails.logFields.verdict === 'Malicious' ? 'text-red-400' :
-                          file.checkpointTeDetails.logFields.verdict === 'Suspicious' ? 'text-yellow-400' :
+                          file.checkpointTeDetails.logFields?.verdict === 'Malicious' ? 'text-red-400' :
+                          file.checkpointTeDetails.logFields?.verdict === 'Suspicious' ? 'text-yellow-400' :
                           'text-green-400'
                         }`}>
-                          {file.checkpointTeDetails.logFields.verdict}
+                          {file.checkpointTeDetails.logFields?.verdict}
                         </span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.status && (
+                    {file.checkpointTeDetails.logFields?.status && (
                       <div>
                         <span className="text-theme-subtle">Status:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.status}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.status}</span>
                       </div>
                     )}
                     
                     {/* Severity and Confidence */}
-                    {file.checkpointTeDetails.logFields.severity && (
+                    {file.checkpointTeDetails.logFields?.severity && (
                       <div>
                         <span className="text-theme-subtle">Severity:</span>{' '}
                         <span className={`font-medium ${
-                          file.checkpointTeDetails.logFields.severity === 'Critical' ? 'text-red-400' :
-                          file.checkpointTeDetails.logFields.severity === 'High' ? 'text-orange-400' :
-                          file.checkpointTeDetails.logFields.severity === 'Medium' ? 'text-yellow-400' :
+                          file.checkpointTeDetails.logFields?.severity === 'Critical' ? 'text-red-400' :
+                          file.checkpointTeDetails.logFields?.severity === 'High' ? 'text-orange-400' :
+                          file.checkpointTeDetails.logFields?.severity === 'Medium' ? 'text-yellow-400' :
                           'text-blue-400'
                         }`}>
-                          {file.checkpointTeDetails.logFields.severity}
+                          {file.checkpointTeDetails.logFields?.severity}
                         </span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.confidence_level && (
+                    {file.checkpointTeDetails.logFields?.confidence_level && (
                       <div>
                         <span className="text-theme-subtle">Confidence:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.confidence_level}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.confidence_level}</span>
                       </div>
                     )}
                     
                     {/* Protection and Attack Info */}
-                    {file.checkpointTeDetails.logFields.protection_name && (
+                    {file.checkpointTeDetails.logFields?.protection_name && (
                       <div>
                         <span className="text-theme-subtle">Protection:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.protection_name}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.protection_name}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.protection_type && (
+                    {file.checkpointTeDetails.logFields?.protection_type && (
                       <div>
                         <span className="text-theme-subtle">Type:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.protection_type}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.protection_type}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.attack && (
+                    {file.checkpointTeDetails.logFields?.attack && (
                       <div className="md:col-span-2">
                         <span className="text-theme-subtle">Attack:</span>{' '}
-                        <span className="text-theme font-medium">{file.checkpointTeDetails.logFields.attack}</span>
+                        <span className="text-theme font-medium">{file.checkpointTeDetails.logFields?.attack}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.attack_info && (
+                    {file.checkpointTeDetails.logFields?.attack_info && (
                       <div className="md:col-span-2">
                         <span className="text-theme-subtle">Attack Info:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.attack_info}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.attack_info}</span>
                       </div>
                     )}
                     
                     {/* Action and Action Details */}
-                    {file.checkpointTeDetails.logFields.action && (
+                    {file.checkpointTeDetails.logFields?.action && (
                       <div>
                         <span className="text-theme-subtle">Action:</span>{' '}
-                        <span className="text-theme font-medium capitalize">{file.checkpointTeDetails.logFields.action}</span>
+                        <span className="text-theme font-medium capitalize">{file.checkpointTeDetails.logFields?.action}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.action_details && (
+                    {file.checkpointTeDetails.logFields?.action_details && (
                       <div className="md:col-span-2">
                         <span className="text-theme-subtle">Action Details:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.action_details}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.action_details}</span>
                       </div>
                     )}
                     
                     {/* Analyzed On and Determined By */}
-                    {file.checkpointTeDetails.logFields.analyzed_on && (
+                    {file.checkpointTeDetails.logFields?.analyzed_on && (
                       <div>
                         <span className="text-theme-subtle">Analyzed On:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.analyzed_on}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.analyzed_on}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.te_verdict_determined_by && (
+                    {file.checkpointTeDetails.logFields?.te_verdict_determined_by && (
                       <div className="md:col-span-2">
                         <span className="text-theme-subtle">Determined By:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.te_verdict_determined_by}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.te_verdict_determined_by}</span>
                       </div>
                     )}
                     
                     {/* Risk Scores */}
-                    {file.checkpointTeDetails.logFields.file_risk !== undefined && (
+                    {file.checkpointTeDetails.logFields?.file_risk !== undefined && (
                       <div>
                         <span className="text-theme-subtle">File Risk:</span>{' '}
                         <span className={`font-medium ${
-                          file.checkpointTeDetails.logFields.file_risk >= 7 ? 'text-red-400' :
-                          file.checkpointTeDetails.logFields.file_risk >= 4 ? 'text-yellow-400' :
+                          file.checkpointTeDetails.logFields?.file_risk >= 7 ? 'text-red-400' :
+                          file.checkpointTeDetails.logFields?.file_risk >= 4 ? 'text-yellow-400' :
                           'text-green-400'
                         }`}>
-                          {file.checkpointTeDetails.logFields.file_risk}/10
+                          {file.checkpointTeDetails.logFields?.file_risk}/10
                         </span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.confidence !== undefined && (
+                    {file.checkpointTeDetails.logFields?.confidence !== undefined && (
                       <div>
                         <span className="text-theme-subtle">Confidence Score:</span>{' '}
-                        <span className="text-theme">{Math.round((file.checkpointTeDetails.logFields.confidence || 0) * 100)}%</span>
+                        <span className="text-theme">{Math.round((file.checkpointTeDetails.logFields?.confidence || 0) * 100)}%</span>
                       </div>
                     )}
                     
                     {/* Triggered By and Vendor */}
-                    {file.checkpointTeDetails.logFields.triggered_by && (
+                    {file.checkpointTeDetails.logFields?.triggered_by && (
                       <div>
                         <span className="text-theme-subtle">Triggered By:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.triggered_by}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.triggered_by}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.vendor_list && (
+                    {file.checkpointTeDetails.logFields?.vendor_list && (
                       <div>
                         <span className="text-theme-subtle">Vendor:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.vendor_list}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.vendor_list}</span>
                       </div>
                     )}
                     
                     {/* Description and Reason */}
-                    {file.checkpointTeDetails.logFields.description && (
+                    {file.checkpointTeDetails.logFields?.description && (
                       <div className="md:col-span-2">
                         <span className="text-theme-subtle">Description:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.description}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.description}</span>
                       </div>
                     )}
                     
-                    {file.checkpointTeDetails.logFields.reason && (
+                    {file.checkpointTeDetails.logFields?.reason && (
                       <div className="md:col-span-2">
                         <span className="text-theme-subtle">Reason:</span>{' '}
-                        <span className="text-theme">{file.checkpointTeDetails.logFields.reason}</span>
+                        <span className="text-theme">{file.checkpointTeDetails.logFields?.reason}</span>
                       </div>
                     )}
                   </div>

@@ -897,6 +897,7 @@ export default function SettingsForm() {
             <h2 className="text-2xl font-semibold text-theme mb-4 pb-2 border-b-2" style={{ borderColor: "rgb(var(--border))" }}>
               API Keys
             </h2>
+            <p className="text-sm text-theme-muted mb-2">OpenAI (GPT), Anthropic (Claude), and Lakera (security scanning).</p>
             
             {/* OpenAI Key */}
           <div>

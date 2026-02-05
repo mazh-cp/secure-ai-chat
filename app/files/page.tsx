@@ -47,12 +47,14 @@ export default function FilesPage() {
       })
       if (response.ok) {
         const data = await response.json()
-        if (data.success && data.files) {
-          // Convert date strings back to Date objects
-          const filesWithDates = data.files.map((f: UploadedFile) => ({
-            ...f,
-            uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
-          }))
+        if (data.success && Array.isArray(data.files)) {
+          // Convert date strings back to Date objects; tolerate malformed entries
+          const filesWithDates = data.files
+            .filter((f: unknown): f is UploadedFile => f != null && typeof f === 'object' && 'id' in f && 'name' in f)
+            .map((f: UploadedFile) => ({
+              ...f,
+              uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+            }))
           setFiles(filesWithDates)
           // Also update localStorage as cache
           if (typeof window !== 'undefined') {
@@ -123,11 +125,17 @@ export default function FilesPage() {
         if (stored) {
           try {
             const parsed = JSON.parse(stored)
-            // Convert date strings back to Date objects
-            const filesWithDates = parsed.map((f: UploadedFile) => ({
-              ...f,
-              uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
-            }))
+            if (!Array.isArray(parsed)) {
+              console.warn('uploadedFiles in localStorage is not an array, skipping')
+              return
+            }
+            // Convert date strings back to Date objects; skip malformed entries
+            const filesWithDates = parsed
+              .filter((f: unknown): f is UploadedFile => f != null && typeof f === 'object' && 'id' in f && 'name' in f)
+              .map((f: UploadedFile) => ({
+                ...f,
+                uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+              }))
             setFiles(filesWithDates)
           } catch (e) {
             console.error('Failed to load files from localStorage:', e)

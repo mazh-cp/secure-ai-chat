@@ -418,8 +418,8 @@ export default function ChatInterface() {
         </div>
       )}
 
-      {/* Model Selector */}
-      <div className="mb-4 flex justify-end items-center gap-4">
+      {/* Provider & Model Selector (OpenAI or Anthropic) */}
+      <div className="mb-4 flex justify-end items-center gap-4 flex-wrap">
           <ModelSelector
             provider={provider}
             onProviderChange={setProvider}
