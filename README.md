@@ -106,17 +106,20 @@ See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instru
 **For fresh Ubuntu VM installation:**
 
 ```bash
-# Option 1: Install specific version (v1.0.11) - RECOMMENDED
-TAG=v1.0.11 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+# Option 1: Install v1.0.12 (recommended - Anthropic, RAG, local start)
+TAG=v1.0.12 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 
 # Option 2: Install latest from main branch
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 
-# Option 3: Using wget with specific version
-TAG=v1.0.11 wget -qO- https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+# Option 3: Install by branch (e.g. restore-local-stability)
+BRANCH=restore-local-stability curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 
-# Option 4: Local installation (if you have the script file)
-TAG=v1.0.11 bash scripts/install-ubuntu.sh
+# Option 4: Using wget with v1.0.12
+TAG=v1.0.12 wget -qO- https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
+
+# Option 5: Local (if you have the script)
+TAG=v1.0.12 bash scripts/install-ubuntu.sh
 ```
 
 This script will automatically:
@@ -128,6 +131,8 @@ This script will automatically:
 - Build the production application
 
 **If the script doesn't start**: The repository may not be on GitHub yet. See [INSTALLATION_TROUBLESHOOTING.md](INSTALLATION_TROUBLESHOOTING.md) for solutions.
+
+**New remote VM (v1.0.12):** See [docs/INSTALL_REMOTE_VM_v1.0.12.md](docs/INSTALL_REMOTE_VM_v1.0.12.md) for one-command install by tag or branch.
 
 **After installation:**
 1. Edit `.env.local` to add your API keys
