@@ -51,6 +51,7 @@ jobs:
         NODE_ENV: production
         # Dummy env vars for build - no real secrets required
         OPENAI_API_KEY: dummy_key_for_ci_build
+        ANTHROPIC_API_KEY: dummy_key_for_ci_build
         LAKERA_AI_KEY: dummy_key_for_ci_build
         LAKERA_ENDPOINT: https://api.lakera.ai/v2/guard
         LAKERA_PROJECT_ID: dummy_project_id
