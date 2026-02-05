@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import SecurityIndicator from '@/components/SecurityIndicator'
 import FileUploader from '@/components/FileUploader'
 import FileList from '@/components/FileList'
@@ -9,6 +9,27 @@ import { addLog } from '@/lib/logging'
 import { ownerHeaders, apiFetchOptions } from '@/lib/owner-client'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 import { CheckPointTEResponse } from '@/types/checkpoint-te'
+
+const VALID_SCAN_STATUSES: UploadedFile['scanStatus'][] = [
+  'pending', 'scanning', 'safe', 'flagged', 'error', 'not_scanned',
+]
+
+/** Type guard: validate all required UploadedFile properties so partial objects are filtered out. */
+function isUploadedFile(f: unknown): f is UploadedFile {
+  if (f == null || typeof f !== 'object') return false
+  const o = f as Record<string, unknown>
+  const scanStatus = o.scanStatus
+  return (
+    typeof o.id === 'string' &&
+    typeof o.name === 'string' &&
+    typeof o.size === 'number' &&
+    typeof o.type === 'string' &&
+    typeof o.content === 'string' &&
+    (o.uploadedAt !== undefined && (typeof o.uploadedAt === 'string' || o.uploadedAt instanceof Date)) &&
+    typeof scanStatus === 'string' &&
+    VALID_SCAN_STATUSES.includes(scanStatus as UploadedFile['scanStatus'])
+  )
+}
 
 /** Build JSON body for POST /api/files/store (v1.0.12 JSON-only store). */
 function buildStoreBody(
@@ -37,34 +58,30 @@ export default function FilesPage() {
   const [ragScanEnabled, setRagScanEnabled] = useState(true)
   const [checkpointTeSandboxEnabled, setCheckpointTeSandboxEnabled] = useState(false)
   const [checkpointTeConfigured, setCheckpointTeConfigured] = useState<boolean>(false)
+  const [serverSyncWarning, setServerSyncWarning] = useState<string | null>(null)
+  const [storeError, setStoreError] = useState<string | null>(null)
+  const filesCountRef = useRef(0)
 
-  // Load files from server
-  const loadFilesFromServer = useCallback(async () => {
+  // Load files from server; returns list or null (caller updates state to avoid wiping list when server returns empty but we have local files)
+  const loadFilesFromServer = useCallback(async (): Promise<UploadedFile[] | null> => {
     try {
       const response = await fetch('/api/files/list', {
         ...apiFetchOptions,
         headers: { ...ownerHeaders() },
       })
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && Array.isArray(data.files)) {
-          // Convert date strings back to Date objects; tolerate malformed entries
-          const filesWithDates = data.files
-            .filter((f: unknown): f is UploadedFile => f != null && typeof f === 'object' && 'id' in f && 'name' in f)
-            .map((f: UploadedFile) => ({
-              ...f,
-              uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-            }))
-          setFiles(filesWithDates)
-          // Also update localStorage as cache
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('uploadedFiles', JSON.stringify(filesWithDates))
-          }
-        }
-      }
+      if (!response.ok) return null
+      const data = await response.json()
+      if (!data.success || !Array.isArray(data.files)) return null
+      const filesWithDates = data.files
+        .filter(isUploadedFile)
+        .map((f: UploadedFile) => ({
+          ...f,
+          uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+        }))
+      return filesWithDates
     } catch (error) {
       console.error('Failed to load files from server:', error)
-      throw error
+      return null
     }
   }, [])
 
@@ -113,35 +130,60 @@ export default function FilesPage() {
     }
   }, [])
 
+  // Keep ref in sync for refetch logic
+  useEffect(() => {
+    filesCountRef.current = files.length
+  }, [files])
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsSecure(window.location.protocol === 'https:' || window.location.hostname === 'localhost')
       
       // Load files from server (persistent storage)
-      loadFilesFromServer().catch(err => {
-        console.error('Failed to load files from server:', err)
-        // Fallback to localStorage if server load fails
-        const stored = localStorage.getItem('uploadedFiles')
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored)
-            if (!Array.isArray(parsed)) {
-              console.warn('uploadedFiles in localStorage is not an array, skipping')
-              return
+      loadFilesFromServer()
+        .then(list => {
+          if (list !== null) {
+            setFiles(list)
+            setServerSyncWarning(null)
+            localStorage.setItem('uploadedFiles', JSON.stringify(list))
+          } else {
+            const stored = localStorage.getItem('uploadedFiles')
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored)
+                if (!Array.isArray(parsed)) return
+                const filesWithDates = parsed
+                  .filter(isUploadedFile)
+                  .map((f: UploadedFile) => ({
+                    ...f,
+                    uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+                  }))
+                setFiles(filesWithDates)
+              } catch (e) {
+                console.error('Failed to load files from localStorage:', e)
+              }
             }
-            // Convert date strings back to Date objects; skip malformed entries
-            const filesWithDates = parsed
-              .filter((f: unknown): f is UploadedFile => f != null && typeof f === 'object' && 'id' in f && 'name' in f)
-              .map((f: UploadedFile) => ({
-                ...f,
-                uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-              }))
-            setFiles(filesWithDates)
-          } catch (e) {
-            console.error('Failed to load files from localStorage:', e)
           }
-        }
-      })
+        })
+        .catch(err => {
+          console.error('Failed to load files from server:', err)
+          const stored = localStorage.getItem('uploadedFiles')
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored)
+              if (!Array.isArray(parsed)) return
+              const filesWithDates = parsed
+                .filter(isUploadedFile)
+                .map((f: UploadedFile) => ({
+                  ...f,
+                  uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+                }))
+              setFiles(filesWithDates)
+            } catch (e) {
+              console.error('Failed to load files from localStorage:', e)
+            }
+          }
+        })
 
       // Load Lakera scan toggle state from localStorage
       const scanToggle = localStorage.getItem('lakeraFileScanEnabled')
@@ -188,10 +230,25 @@ export default function FilesPage() {
     }
   }, [loadFilesFromServer, checkCheckpointTeStatus])
 
-  // Refetch file list when user returns to this tab/window so files stay visible after "changing screen"
+  // Refetch file list when user returns to this tab/window; do NOT overwrite with [] when server returns empty but we have local files (avoids "file vanished" when server storage fails)
   useEffect(() => {
     if (typeof document === 'undefined') return
-    const refetch = () => loadFilesFromServer().catch(() => {})
+    const refetch = async () => {
+      const list = await loadFilesFromServer().catch(() => null)
+      if (list === null) return
+      if (list.length > 0) {
+        setFiles(list)
+        setServerSyncWarning(null)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('uploadedFiles', JSON.stringify(list))
+        }
+      } else if (filesCountRef.current > 0) {
+        setServerSyncWarning('Files could not be loaded from server. Storage may be unavailable—check server data directory and permissions.')
+      } else {
+        setFiles([])
+        setServerSyncWarning(null)
+      }
+    }
     const onVisible = () => {
       if (document.visibilityState === 'visible') refetch()
     }
@@ -269,6 +326,7 @@ export default function FilesPage() {
     // 4. Only then allow RAG/embedding
 
     setFiles(prev => [...prev, newFile])
+    setStoreError(null)
 
     try {
       const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
@@ -279,12 +337,18 @@ export default function FilesPage() {
         body: buildStoreBody(newFile, 'pending'),
       })
 
-      if (!response.ok) {
+      if (response.ok) {
+        setStoreError(null)
+      } else {
         const errorData = await response.json().catch(() => ({}))
-        console.error('Failed to store file on server:', errorData.error || 'Unknown error')
+        const msg = errorData.error || 'Failed to save file to server'
+        console.error('Failed to store file on server:', msg)
+        setStoreError(msg)
       }
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save file to server'
       console.error('Error storing file on server:', error)
+      setStoreError(msg)
     }
 
     if (checkpointTeSandboxEnabled && checkpointTeConfigured) {
@@ -301,12 +365,17 @@ export default function FilesPage() {
     ))
     try {
       const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
-      await fetch('/api/files/store', {
+      const res = await fetch('/api/files/store', {
         ...apiFetchOptions,
         method: 'POST',
         headers,
         body: buildStoreBody(newFile, 'not_scanned'),
       })
+      if (res.ok) setStoreError(null)
+      else {
+        const err = await res.json().catch(() => ({}))
+        setStoreError(err.error || 'Failed to save file to server')
+      }
     } catch (error) {
       console.error('Error updating file metadata on server:', error)
     }
@@ -1111,6 +1180,23 @@ export default function FilesPage() {
 
   return (
     <div className="bento-grid">
+      {/* Sync / store error banners */}
+      {(serverSyncWarning || storeError) && (
+        <div className="bento-span-4 flex flex-col gap-2">
+          {serverSyncWarning && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-amber-400/50 bg-amber-500/10 px-4 py-3 text-amber-200">
+              <span className="text-sm">{serverSyncWarning}</span>
+              <button type="button" onClick={() => setServerSyncWarning(null)} className="shrink-0 rounded px-2 py-1 text-xs hover:bg-amber-500/20" aria-label="Dismiss">Dismiss</button>
+            </div>
+          )}
+          {storeError && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-red-400/50 bg-red-500/10 px-4 py-3 text-red-200">
+              <span className="text-sm">Save failed: {storeError}</span>
+              <button type="button" onClick={() => setStoreError(null)} className="shrink-0 rounded px-2 py-1 text-xs hover:bg-red-500/20" aria-label="Dismiss">Dismiss</button>
+            </div>
+          )}
+        </div>
+      )}
       {/* Header Card */}
       <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2" style={{ borderColor: "rgb(var(--border))" }}>
         <div className="flex items-center justify-between">
