@@ -2,20 +2,20 @@
 # Secure AI Chat - Curl one-liner upgrade for production VM
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 # Default path: /home/adminuser/secure-ai-chat (override with APP_DIR)
-# Default ref: v1.0.15 (override with GIT_REF)
+# Default ref: main (override with GIT_REF). Use main for latest; v1.0.15 has a known TypeScript build error.
 #
 # Usage (production VM via SSH):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #
 # With overrides:
-#   APP_DIR=/home/adminuser/secure-ai-chat GIT_REF=v1.0.15 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+#   APP_DIR=/home/adminuser/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #   GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 
 set -euo pipefail
 
-# Configuration (production VM defaults)
+# Configuration (production VM defaults; use main to avoid v1.0.15 build error)
 APP_DIR="${APP_DIR:-/home/adminuser/secure-ai-chat}"
-GIT_REF="${GIT_REF:-v1.0.15}"
+GIT_REF="${GIT_REF:-main}"
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
 
