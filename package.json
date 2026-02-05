@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -62,7 +62,7 @@
   "overrides": {
     "rimraf": "^5.0.0",
     "glob": "^10.3.0",
-    "@humanwhocodes/config-array": "npm:@eslint/config-array@^0.18.0",
-    "@humanwhocodes/object-schema": "npm:@eslint/object-schema@^2.1.0"
+    "@humanwhocodes/config-array": "npm:@eslint/config-array@0.18.0",
+    "@humanwhocodes/object-schema": "npm:@eslint/object-schema@2.1.0"
   }
 }
