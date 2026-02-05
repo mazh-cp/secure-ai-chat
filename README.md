@@ -89,15 +89,17 @@ To safely upgrade your remote installation to the latest version (e.g. v1.0.14 �
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
 
+Best for installs at `/opt/secure-ai-chat` (e.g. from `install_ubuntu_public.sh`). If the build fails, the script **retries with `main`** for a seamless upgrade.
+
 **If you get 404:** The URL must match where your code lives. Use your actual repo (e.g. `https://raw.githubusercontent.com/YOUR_ORG/YOUR_REPO/main/scripts/upgrade_remote.sh`). If the repo is private, the raw URL may 404; use the **in-place upgrade** below instead (from the app directory on the server, which already has the code).
 
-**Production VM (curl one-liner)** — Repo: `mazh-cp/secure-ai-chat`. Default path: `/home/adminuser/secure-ai-chat`, default ref: `v1.0.15`.
+**Production VM (curl one-liner)** — Repo: `mazh-cp/secure-ai-chat`. Default path: `/home/adminuser/secure-ai-chat`, default ref: `main`. If the build fails (e.g. due to an old tag), the script **automatically retries with `main`** so upgrades stay seamless.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 ```
 
-Override path or ref: `APP_DIR=/path/to/app GIT_REF=v1.0.15 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash`
+Override path or ref: `APP_DIR=/path/to/app GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash` (use `GIT_REF=v1.0.15` to pin a release).
 
 To upgrade using the in-place deploy script (on the server, no curl):
 
@@ -124,11 +126,12 @@ sudo bash scripts/deploy/upgrade.sh --app-dir "$APP_DIR" --ref main
 
 If `scripts/deploy/upgrade.sh` doesn’t exist in that directory, the app tree may be incomplete; clone the repo there or use the curl upgrade command with a valid repo URL instead.
 
-The curl script automatically:
-- Backs up all settings and API keys
-- Pulls latest code
-- Preserves all configurations
-- Rebuilds and restarts the service
+The curl scripts automatically:
+- Back up all settings and API keys
+- Pull latest code (or checkout the requested ref)
+- Preserve all configurations
+- Rebuild and restart the service
+- **Retry with `main`** if the build fails (so upgrades stay seamless)
 
 See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instructions.
 

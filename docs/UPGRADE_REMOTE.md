@@ -18,7 +18,7 @@ This script will:
 - ✅ Pull latest code from repository
 - ✅ Preserve all API keys (`.env.local` and `.secure-storage`)
 - ✅ Update dependencies
-- ✅ Rebuild application
+- ✅ Rebuild application (if build fails, **retries with `main`** for a seamless upgrade)
 - ✅ Restart service
 - ✅ Verify upgrade success
 

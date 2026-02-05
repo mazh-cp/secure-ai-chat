@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Secure AI Chat - Safe Remote Upgrade Script
-# Upgrades remote installation to latest version while preserving all settings
+# Upgrades remote installation to latest version while preserving all settings.
+# Retry with main: If the build fails and current branch is not main, the script
+# retries by checking out main, pulling, reinstalling deps, and building again.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
@@ -130,16 +132,55 @@ npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
 INSTALL_DEPS
 log_success "Dependencies installed"
 
-# Step 7: Build application
-log_info "Step 6: Building application..."
-cd "$INSTALL_DIR"
-sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << 'BUILD'
+# Step 7: Build application (retry with main if build fails)
+build_ok=false
+for attempt in 1 2; do
+  if [ "$attempt" -eq 2 ]; then
+    log_info "Step 6 (retry): Building application on main..."
+  else
+    log_info "Step 6: Building application..."
+  fi
+  cd "$INSTALL_DIR"
+  if sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << 'BUILD'
 set -e
 export HOME=/opt/secure-ai-chat
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 npm run build >/dev/null 2>&1
 BUILD
+  then
+    build_ok=true
+    break
+  fi
+  if [ "$attempt" -eq 1 ] && [ "$BRANCH" != "main" ]; then
+    log_warning "Build failed. Retrying with main (latest fixes)..."
+    sudo -u "$APP_USER" git fetch origin >/dev/null 2>&1 || true
+    sudo -u "$APP_USER" git checkout main >/dev/null 2>&1 || true
+    sudo -u "$APP_USER" git pull origin main >/dev/null 2>&1 || true
+    BRANCH=main
+    [ -f "$BACKUP_DIR/.env.local" ] && sudo cp -a "$BACKUP_DIR/.env.local" "$INSTALL_DIR/.env.local" && sudo chown "$APP_USER:$APP_USER" "$INSTALL_DIR/.env.local" || true
+    [ -d "$BACKUP_DIR/.secure-storage" ] && sudo cp -a "$BACKUP_DIR/.secure-storage" "$INSTALL_DIR/.secure-storage" && sudo chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/.secure-storage" || true
+    [ -d "$BACKUP_DIR/.storage" ] && sudo cp -a "$BACKUP_DIR/.storage" "$INSTALL_DIR/.storage" && sudo chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/.storage" || true
+    log_info "Reinstalling dependencies after checkout main..."
+    sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << 'INSTALL_DEPS'
+set -e
+export HOME=/opt/secure-ai-chat
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
+INSTALL_DEPS
+    NEW_VERSION=$(sudo cat "$INSTALL_DIR/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")
+  else
+    break
+  fi
+done
+if [ "$build_ok" = false ]; then
+  log_error "Build failed. Try checking out main and run this script again."
+  sudo cp -a "$BACKUP_DIR/.env.local" "$INSTALL_DIR/.env.local" 2>/dev/null || true
+  sudo cp -a "$BACKUP_DIR/.secure-storage" "$INSTALL_DIR/.secure-storage" 2>/dev/null || true
+  sudo systemctl start "$SERVICE_NAME" 2>/dev/null || true
+  exit 1
+fi
 log_success "Application built"
 
 # Step 8: Verify systemd service file (update if needed)

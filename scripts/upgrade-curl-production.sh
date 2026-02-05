@@ -2,18 +2,22 @@
 # Secure AI Chat - Curl one-liner upgrade for production VM
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 # Default path: /home/adminuser/secure-ai-chat (override with APP_DIR)
-# Default ref: main (override with GIT_REF). Use main for latest; v1.0.15 has a known TypeScript build error.
+# Default ref: main (override with GIT_REF). Use main for latest; tags (e.g. v1.0.15) are supported.
+#
+# Retry with main: If the build fails and GIT_REF is not main, the script automatically
+# retries by checking out main, reinstalling dependencies, and building again so upgrades
+# stay seamless even when a tag has a transient build issue.
 #
 # Usage (production VM via SSH):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #
 # With overrides:
 #   APP_DIR=/home/adminuser/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
-#   GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+#   GIT_REF=v1.0.15 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 
 set -euo pipefail
 
-# Configuration (production VM defaults; use main to avoid v1.0.15 build error)
+# Configuration (production VM defaults)
 APP_DIR="${APP_DIR:-/home/adminuser/secure-ai-chat}"
 GIT_REF="${GIT_REF:-main}"
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
@@ -105,13 +109,34 @@ else
 fi
 ok "Dependencies installed"
 
-# Build
-say "Building application"
-if [ "$(whoami)" = "$APP_USER" ]; then
-  (cd "$APP_DIR" && npm run build) || fail "Build failed"
-else
-  sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='${HOME}' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build" || fail "Build failed"
-fi
+# Build (retry with main if build fails, e.g. old tag had TypeScript error)
+build_ok=false
+for attempt in 1 2; do
+  if [ "$attempt" -eq 2 ]; then say "Building application (retry with main)"; else say "Building application"; fi
+  if [ "$(whoami)" = "$APP_USER" ]; then
+    if (cd "$APP_DIR" && npm run build); then build_ok=true; break; fi
+  else
+    if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='${HOME}' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
+  fi
+  if [ "$attempt" -eq 1 ] && [ "$GIT_REF" != "main" ]; then
+    warn "Build failed. Retrying with main (latest fixes)..."
+    cd "$APP_DIR" || true
+    git fetch origin 2>/dev/null || true
+    git checkout main 2>/dev/null || true
+    GIT_REF=main
+    [ -f "$BACKUP_DIR/.env.local" ] && cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" || true
+    [ -d "$BACKUP_DIR/.secure-storage" ] && cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" || true
+    say "Reinstalling dependencies after checkout main"
+    if [ "$(whoami)" = "$APP_USER" ]; then
+      (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
+    else
+      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='${HOME}' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
+    fi
+  else
+    break
+  fi
+done
+[ "$build_ok" = true ] || fail "Build failed. Try: GIT_REF=main curl -fsSL ... | bash"
 ok "Build complete"
 
 # Start service
