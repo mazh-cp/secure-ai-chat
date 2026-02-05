@@ -61,10 +61,10 @@ if [ -z "$APP_USER" ]; then
 fi
 say "App user: $APP_USER"
 
-# Backup
-BACKUP_DIR="${APP_DIR}/.backups/upgrade-$(date +%Y%m%d-%H%M%S)"
+# Backup (use /tmp to avoid permission issues inside APP_DIR)
+BACKUP_DIR="/tmp/secure-ai-chat-backup-$(date +%Y%m%d-%H%M%S)"
 say "Creating backup at $BACKUP_DIR"
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$BACKUP_DIR" || fail "Cannot create backup dir (try: sudo mkdir -p /tmp/secure-ai-chat-backups && sudo chown $(whoami) /tmp/secure-ai-chat-backups)"
 [ -f "$APP_DIR/.env.local" ] && cp -a "$APP_DIR/.env.local" "$BACKUP_DIR/" || true
 [ -d "$APP_DIR/.secure-storage" ] && cp -a "$APP_DIR/.secure-storage" "$BACKUP_DIR/" || true
 [ -d "$APP_DIR/.storage" ] && cp -a "$APP_DIR/.storage" "$BACKUP_DIR/" 2>/dev/null || true
@@ -129,6 +129,7 @@ NEW_VERSION=$(grep '"version"' "$APP_DIR/package.json" 2>/dev/null | head -1 | s
 say "Upgrade complete. Version: $NEW_VERSION"
 echo ""
 echo "  Backup: $BACKUP_DIR"
+echo "  (Backup is in /tmp; move it elsewhere if you need to keep it after reboot.)"
 echo "  Health: curl -s http://localhost:3000/api/health"
 echo "  Logs:   sudo journalctl -u $SERVICE_NAME -f"
 echo ""
