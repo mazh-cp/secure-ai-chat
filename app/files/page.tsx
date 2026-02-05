@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import SecurityIndicator from '@/components/SecurityIndicator'
 import FileUploader from '@/components/FileUploader'
 import FileList from '@/components/FileList'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { UploadedFile } from '@/types/files'
 import { addLog } from '@/lib/logging'
 import { ownerHeaders, apiFetchOptions } from '@/lib/owner-client'
+import { safeFetchJson } from '@/lib/safe-fetch'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 import { CheckPointTEResponse } from '@/types/checkpoint-te'
 
@@ -62,27 +64,20 @@ export default function FilesPage() {
   const [storeError, setStoreError] = useState<string | null>(null)
   const filesCountRef = useRef(0)
 
-  // Load files from server; returns list or null (caller updates state to avoid wiping list when server returns empty but we have local files)
+  // Load files from server; returns list or null. Uses safeFetchJson so non-JSON response never crashes.
   const loadFilesFromServer = useCallback(async (): Promise<UploadedFile[] | null> => {
-    try {
-      const response = await fetch('/api/files/list', {
-        ...apiFetchOptions,
-        headers: { ...ownerHeaders() },
-      })
-      if (!response.ok) return null
-      const data = await response.json()
-      if (!data.success || !Array.isArray(data.files)) return null
-      const filesWithDates = data.files
-        .filter(isUploadedFile)
-        .map((f: UploadedFile) => ({
-          ...f,
-          uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-        }))
-      return filesWithDates
-    } catch (error) {
-      console.error('Failed to load files from server:', error)
-      return null
-    }
+    const result = await safeFetchJson<{ success?: boolean; files?: unknown[] }>('/api/files/list', {
+      ...apiFetchOptions,
+      headers: { ...ownerHeaders() },
+    })
+    if (!result.ok || !result.data?.success || !Array.isArray(result.data.files)) return null
+    const filesWithDates = result.data.files
+      .filter(isUploadedFile)
+      .map((f: UploadedFile) => ({
+        ...f,
+        uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+      }))
+    return filesWithDates
   }, [])
 
   // Check Check Point TE API key configuration status
@@ -260,28 +255,21 @@ export default function FilesPage() {
     }
   }, [loadFilesFromServer])
 
-  // Update file metadata on server
+  // Update file metadata on server. Uses safeFetchJson so non-JSON response never crashes.
   const updateFileMetadataOnServer = async (file: UploadedFile) => {
-    try {
-      const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
-      const response = await fetch('/api/files/store', {
-        ...apiFetchOptions,
-        method: 'POST',
-        headers,
-        body: buildStoreBody(file, file.scanStatus, {
-          scanResult: file.scanResult,
-          scanDetails: file.scanDetails,
-          checkpointTeDetails: file.checkpointTeDetails,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Failed to update file metadata on server:', errorData.error || 'Unknown error')
-      }
-    } catch (error) {
-      console.error('Error updating file metadata on server:', error)
-      // Don't throw - this is a background operation
+    const res = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/store', {
+      ...apiFetchOptions,
+      method: 'POST',
+      headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
+      body: buildStoreBody(file, file.scanStatus, {
+        scanResult: file.scanResult,
+        scanDetails: file.scanDetails,
+        checkpointTeDetails: file.checkpointTeDetails,
+      }),
+    })
+    if (!res.ok) {
+      const msg = res.error?.message ?? (typeof res.data?.error === 'string' ? res.data.error : (res.data?.error && typeof res.data.error === 'object' && 'message' in res.data.error ? String((res.data.error as { message?: string }).message) : 'Unknown error'))
+      console.error('Failed to update file metadata on server:', msg)
     }
   }
 
@@ -328,26 +316,19 @@ export default function FilesPage() {
     setFiles(prev => [...prev, newFile])
     setStoreError(null)
 
-    try {
-      const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
-      const response = await fetch('/api/files/store', {
-        ...apiFetchOptions,
-        method: 'POST',
-        headers,
-        body: buildStoreBody(newFile, 'pending'),
-      })
-
-      if (response.ok) {
-        setStoreError(null)
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        const msg = errorData.error || 'Failed to save file to server'
-        console.error('Failed to store file on server:', msg)
-        setStoreError(msg)
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to save file to server'
-      console.error('Error storing file on server:', error)
+    const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
+    const storeResult = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/store', {
+      ...apiFetchOptions,
+      method: 'POST',
+      headers,
+      body: buildStoreBody(newFile, 'pending'),
+    })
+    if (storeResult.ok) {
+      setStoreError(null)
+    } else {
+      const dataErr = storeResult.data?.error
+      const msg = storeResult.error?.message ?? (typeof dataErr === 'string' ? dataErr : (dataErr && typeof dataErr === 'object' && 'message' in dataErr ? String((dataErr as { message?: string }).message) : 'Failed to save file to server'))
+      console.error('Failed to store file on server:', msg)
       setStoreError(msg)
     }
 
@@ -363,21 +344,16 @@ export default function FilesPage() {
     setFiles(prev => prev.map(f =>
       f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f
     ))
-    try {
-      const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
-      const res = await fetch('/api/files/store', {
-        ...apiFetchOptions,
-        method: 'POST',
-        headers,
-        body: buildStoreBody(newFile, 'not_scanned'),
-      })
-      if (res.ok) setStoreError(null)
-      else {
-        const err = await res.json().catch(() => ({}))
-        setStoreError(err.error || 'Failed to save file to server')
-      }
-    } catch (error) {
-      console.error('Error updating file metadata on server:', error)
+    const res = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/store', {
+      ...apiFetchOptions,
+      method: 'POST',
+      headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
+      body: buildStoreBody(newFile, 'not_scanned'),
+    })
+    if (res.ok) setStoreError(null)
+    else {
+      const dataErr = res.data?.error
+      setStoreError(res.error?.message ?? (typeof dataErr === 'string' ? dataErr : (dataErr && typeof dataErr === 'object' && 'message' in dataErr ? String((dataErr as { message?: string }).message) : 'Failed to save file to server')))
     }
   }
 
@@ -419,22 +395,17 @@ export default function FilesPage() {
     }
     
     try {
-      const response = await fetch('/api/files/clear', {
+      const result = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/clear', {
         ...apiFetchOptions,
         method: 'POST',
         headers: ownerHeaders(),
       })
-      
-      if (response.ok) {
-        // Successfully cleared - refresh files from server
+      if (result.ok) {
         await loadFilesFromServer()
-        // Also clear localStorage cache
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('uploadedFiles')
-        }
+        if (typeof window !== 'undefined') localStorage.removeItem('uploadedFiles')
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        alert(`Failed to clear all files: ${errorData.error || 'Unknown error'}`)
+        const msg = result.error?.message ?? (typeof result.data?.error === 'string' ? result.data.error : (result.data?.error && typeof result.data.error === 'object' && 'message' in result.data.error ? String((result.data.error as { message?: string }).message) : 'Unknown error'))
+        alert(`Failed to clear all files: ${msg}`)
       }
     } catch (error) {
       console.error('Error clearing all files:', error)
@@ -1178,7 +1149,18 @@ export default function FilesPage() {
     }
   }
 
+  const filesPageFallback = (
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
+      <div className="glass-card rounded-xl p-6 max-w-md w-full border-red-400/30">
+        <h2 className="text-xl font-semibold text-theme mb-4">File Upload error</h2>
+        <p className="text-theme-muted mb-4">Something went wrong on this page. Please refresh or try again. If the problem continues, check that the server is running and your session is valid.</p>
+        <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-brand-berry px-4 py-2 text-white hover:opacity-90">Reload page</button>
+      </div>
+    </div>
+  )
+
   return (
+    <ErrorBoundary fallback={filesPageFallback}>
     <div className="bento-grid">
       {/* Sync / store error banners */}
       {(serverSyncWarning || storeError) && (
@@ -1380,5 +1362,6 @@ export default function FilesPage() {
         </ul>
       </div>
     </div>
+    </ErrorBoundary>
   )
 }

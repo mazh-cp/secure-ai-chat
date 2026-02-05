@@ -21,12 +21,20 @@ export async function POST(request: NextRequest) {
     const MAX_REQUEST_SIZE = 55 * 1024 * 1024 // 55 MB
     if (contentLength && parseInt(contentLength, 10) > MAX_REQUEST_SIZE) {
       return NextResponse.json(
-        { error: `Request size exceeds ${MAX_REQUEST_SIZE / (1024 * 1024)} MB limit` },
+        { ok: false, error: { code: 'REQUEST_TOO_LARGE', message: `Request size exceeds ${MAX_REQUEST_SIZE / (1024 * 1024)} MB limit`, details: null } },
         { status: 413 }
       )
     }
 
-    const body = await request.json()
+    let body: Record<string, unknown>
+    try {
+      body = (await request.json()) as Record<string, unknown>
+    } catch (parseErr) {
+      return NextResponse.json(
+        { ok: false, error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON', details: null } },
+        { status: 400 }
+      )
+    }
     const {
       fileId,
       fileName,
@@ -41,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     if (!fileId || !fileName || fileContent === undefined || !fileType || fileSize === undefined) {
       return NextResponse.json(
-        { error: 'Missing required fields: fileId, fileName, fileContent, fileType, fileSize' },
+        { ok: false, error: { code: 'MISSING_FIELDS', message: 'Missing required fields: fileId, fileName, fileContent, fileType, fileSize', details: null } },
         { status: 400 }
       )
     }
@@ -49,14 +57,14 @@ export async function POST(request: NextRequest) {
     const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
     if (fileSize > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File size exceeds 50 MB limit. Current size: ${(fileSize / (1024 * 1024)).toFixed(2)} MB` },
+        { ok: false, error: { code: 'FILE_TOO_LARGE', message: `File size exceeds 50 MB limit. Current size: ${(fileSize / (1024 * 1024)).toFixed(2)} MB`, details: null } },
         { status: 400 }
       )
     }
 
     if (typeof fileContent === 'string' && fileContent.length > MAX_FILE_SIZE * 1.5) {
       return NextResponse.json(
-        { error: 'File content size exceeds allowed limit' },
+        { ok: false, error: { code: 'CONTENT_TOO_LARGE', message: 'File content size exceeds allowed limit', details: null } },
         { status: 400 }
       )
     }
@@ -66,7 +74,7 @@ export async function POST(request: NextRequest) {
     const fileExtension = '.' + fileName.split('.').pop()?.toLowerCase()
     if (!ALLOWED_TYPES.includes(fileType) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
-        { error: `File type not supported. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}` },
+        { ok: false, error: { code: 'FILE_TYPE_NOT_SUPPORTED', message: `File type not supported. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`, details: null } },
         { status: 400 }
       )
     }
@@ -82,8 +90,9 @@ export async function POST(request: NextRequest) {
       await writeOwnerFile(ownerId, fileId, content)
     } catch (writeErr) {
       console.error('Failed to write file to disk:', writeErr)
+      const msg = writeErr instanceof Error ? writeErr.message : 'Failed to write file to disk'
       return NextResponse.json(
-        { error: writeErr instanceof Error ? writeErr.message : 'Failed to write file to disk' },
+        { ok: false, error: { code: 'WRITE_FAILED', message: msg, details: null } },
         { status: 500 }
       )
     }
@@ -96,8 +105,9 @@ export async function POST(request: NextRequest) {
       console.log('[STORE] written', { ownerId, fileId, uploadsDir, bytes: buf.length, writtenBytes, absolutePath })
     } catch (statErr) {
       console.error('Failed to verify file on disk after write:', statErr)
+      const msg = statErr instanceof Error ? statErr.message : 'Failed to verify file on disk'
       return NextResponse.json(
-        { error: statErr instanceof Error ? statErr.message : 'Failed to verify file on disk' },
+        { ok: false, error: { code: 'VERIFY_FAILED', message: msg, details: null } },
         { status: 500 }
       )
     }
@@ -118,8 +128,9 @@ export async function POST(request: NextRequest) {
       })
     } catch (insertErr) {
       console.error('Failed to insert file into registry:', insertErr)
+      const msg = insertErr instanceof Error ? insertErr.message : 'Failed to register file'
       return NextResponse.json(
-        { error: insertErr instanceof Error ? insertErr.message : 'Failed to register file' },
+        { ok: false, error: { code: 'REGISTRY_FAILED', message: msg, details: null } },
         { status: 500 }
       )
     }
@@ -130,7 +141,9 @@ export async function POST(request: NextRequest) {
 
     const storagePathPreview = `data/uploads/${ownerId ?? ''}/${fileId}`
     return NextResponse.json({
+      ok: true,
       success: true,
+      file: { id: fileId, name: fileName, size: fileSize, mime: fileType, storagePath: storagePathPreview, createdAt: new Date().toISOString(), ownerId: ownerId ?? undefined },
       ownerId: ownerId ?? undefined,
       fileId,
       storagePathPreview,
@@ -138,8 +151,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Failed to store file:', error)
+    const msg = error instanceof Error ? error.message : 'Failed to store file'
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to store file' },
+      { ok: false, error: { code: 'STORE_FAILED', message: msg, details: null } },
       { status: 500 }
     )
   }

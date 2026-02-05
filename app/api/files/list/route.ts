@@ -46,8 +46,9 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Failed to list files:', error)
+    const msg = error instanceof Error ? error.message : 'Failed to list files'
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to list files' },
+      { ok: false, error: { code: 'LIST_FAILED', message: msg, details: null } },
       { status: 500 }
     )
   }

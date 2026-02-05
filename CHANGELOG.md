@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.15] - 2026-02-05
+
+Stable release: file upload, release notes, and production install fixes.
+
+### Fixed
+- **Production npm install**: Overrides use exact versions for npm alias compatibility (`npm:@eslint/config-array@0.18.0`, `npm:@eslint/object-schema@2.1.0`) so `npm ci` / `npm install` succeed on production VMs (fixes "Invalid comparator" error).
+- **Chat file read path**: Chat RAG file content now uses only `readOwnerFile(owner, fileId)` from persistent-storage (single source of truth). Removed fallback to file-storage key layout so uploaded files are always read from `data/uploads/<ownerId>/<fileId>`.
+
+### Changed
+- **Stable release baseline**: This version is the recommended production release after v1.0.11. Includes all v1.0.14 fixes (safeFetchJson, ErrorBoundary, JSON error contract, release notes cleanup) plus production install and chat read path fixes.
+
+## [1.0.14] - 2026-02-05
+
+### Fixed
+- **File upload blank screen (v1.0.13 regression)**: Upload and files list/store/clear now use a safe JSON fetch helper so non-JSON API responses (e.g. HTML error pages) never cause the UI to crash with a white screen.
+  - New `lib/safe-fetch.ts`: `safeFetchJson()` returns `{ ok, status, data?, error? }` and never throws on parse/network errors.
+  - Files page: all calls to `/api/files/list`, `/api/files/store`, and `/api/files/clear` use `safeFetchJson`; errors surface as a visible banner instead of crashing.
+  - Error boundary added around the Files page so any render error shows a friendly fallback instead of a blank screen.
+- **API error contract**: File store and list routes return consistent JSON on failure: `{ ok: false, error: { code, message, details: null } }` with appropriate HTTP status (4xx/5xx).
+
+### Added
+- **Regression test**: `scripts/smoke-upload.sh` — verifies store returns JSON (not HTML), file persists, and list returns the file (run with server at `BASE_URL`, e.g. `BASE_URL=http://localhost:3000 ./scripts/smoke-upload.sh`).
+
+### Changed
+- **Release notes cleanup**: Removed the last 5 lines under v1.0.12 "Added functionality" (Local server startup bullet) from CHANGELOG.
+
 ## [1.0.12] - 2026-02-05
 
 ### Added
@@ -12,11 +38,6 @@ All notable changes to this project will be documented in this file.
   - Anthropic Messages API adapter (`callAnthropic`) in `lib/aiAdapter.ts` with system prompt and RAG context
   - Chat API accepts `provider` in request body and routes to OpenAI or Anthropic with same RAG/file context
   - Settings: Anthropic API key field (paste-only, clear with PIN), status in keys retrieve API
-- **Local server startup**: Reliable local browser access
-  - `npm run start:local` – bind to 127.0.0.1 only
-  - `npm run start:local:safe` – free port 3000 then start at http://127.0.0.1:3000
-  - `scripts/start-local.sh` – script used by `start:local:safe`
-  - README: troubleshooting when http://localhost:3000 is not accessible (use system terminal, 127.0.0.1, free port, start:local:safe)
 
 ### Improved
 - **Build and npm**: Documentation for `npm warn Unknown env config "devdir"`

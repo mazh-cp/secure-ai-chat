@@ -601,7 +601,6 @@ export async function POST(request: NextRequest) {
 
         if (uploadedFiles.length > 0 && ragChunks.length === 0) {
           const { formatFileContentForRAG, validateFilePromptSecurity } = await import('@/lib/file-content-processor')
-          const fileStorage = await import('@/lib/storage/file-storage')
           const userQuery = latestUserMessage.content.toLowerCase()
           const relevantFiles: string[] = []
           const allSafeFiles: string[] = []
@@ -615,7 +614,7 @@ export async function POST(request: NextRequest) {
             if (threatLevel === 'critical' || threatLevel === 'high') continue
             if (fileMeta.size > 10 * 1024 * 1024) continue
             try {
-              const fileContent = await readOwnerFile(owner, fileMeta.id) ?? await fileStorage.readFile(fileMeta.storage_key)
+              const fileContent = await readOwnerFile(owner, fileMeta.id)
               if (!fileContent) continue
               
               availableFilesList.push(fileMeta.name)

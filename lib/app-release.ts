@@ -1,11 +1,11 @@
 /**
- * Single source of truth for app version and release notes (v1.0.12).
+ * Single source of truth for app version and release notes.
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.0.12'
+export const APP_VERSION = '1.0.15'
 
-export const RELEASE_DATE = '2026-01-19'
+export const RELEASE_DATE = '2026-02-05'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {

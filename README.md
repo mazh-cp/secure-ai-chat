@@ -82,13 +82,41 @@ See [docs/INSTALL_UBUNTU_VM.md](docs/INSTALL_UBUNTU_VM.md) for more details.
 
 ### Upgrade Remote Installation
 
-To safely upgrade your remote installation to the latest version:
+To safely upgrade your remote installation to the latest version (e.g. v1.0.14 — fixes file upload blank screen):
 
 ```bash
+# Replace mazh-cp/secure-ai-chat with YOUR GitHub org/repo if you use a fork or different repo
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
 
-This script automatically:
+**If you get 404:** The URL must match where your code lives. Use your actual repo (e.g. `https://raw.githubusercontent.com/YOUR_ORG/YOUR_REPO/main/scripts/upgrade_remote.sh`). If the repo is private, the raw URL may 404; use the **in-place upgrade** below instead (from the app directory on the server, which already has the code).
+
+To upgrade using the in-place deploy script (on the server, no curl):
+
+**Step 1 – Find your app directory** (if you don’t know it). On the VM run:
+
+```bash
+# Option A: from systemd (if the app runs as a service)
+sudo grep WorkingDirectory /etc/systemd/system/secure-ai-chat.service 2>/dev/null || true
+
+# Option B: search for the app
+sudo find /home /opt /var/www -name "package.json" -path "*secure*" 2>/dev/null | head -5
+# Use the directory that contains package.json (e.g. /home/ubuntu/secure-ai-chat).
+```
+
+**Step 2 – Run the upgrade** from that directory (replace `APP_DIR` with the path you found):
+
+```bash
+APP_DIR=/opt/secure-ai-chat   # ← use the path from Step 1
+cd "$APP_DIR" || { echo "Directory $APP_DIR not found. Find it with the commands in Step 1."; exit 1; }
+sudo bash scripts/deploy/upgrade.sh --app-dir "$APP_DIR" --ref v1.0.14
+# Or pull latest from main:
+sudo bash scripts/deploy/upgrade.sh --app-dir "$APP_DIR" --ref main
+```
+
+If `scripts/deploy/upgrade.sh` doesn’t exist in that directory, the app tree may be incomplete; clone the repo there or use the curl upgrade command with a valid repo URL instead.
+
+The curl script automatically:
 - Backs up all settings and API keys
 - Pulls latest code
 - Preserves all configurations

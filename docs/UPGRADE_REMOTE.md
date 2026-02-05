@@ -7,8 +7,11 @@ This guide explains how to safely upgrade your remote Secure AI Chat installatio
 **Single-command upgrade:**
 
 ```bash
+# Use YOUR GitHub org/repo if different (e.g. your fork)
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
+
+**Getting 404?** The URL must point to a repo that has this script on the given branch. Replace `mazh-cp/secure-ai-chat` with your actual `owner/repo`, and `main` with your default branch if different (e.g. `master`). For **private repos**, the raw URL often returns 404; use the in-place upgrade instead: SSH to the server, `cd` to the app directory, then run `sudo bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main` (see [Deployment](DEPLOYMENT.md) or README).
 
 This script will:
 - ✅ Create automatic backup of all settings
