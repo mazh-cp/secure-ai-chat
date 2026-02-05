@@ -91,6 +91,14 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 
 **If you get 404:** The URL must match where your code lives. Use your actual repo (e.g. `https://raw.githubusercontent.com/YOUR_ORG/YOUR_REPO/main/scripts/upgrade_remote.sh`). If the repo is private, the raw URL may 404; use the **in-place upgrade** below instead (from the app directory on the server, which already has the code).
 
+**Production VM (curl one-liner)** — Repo: `mazh-cp/secure-ai-chat`. Default path: `/home/adminuser/secure-ai-chat`, default ref: `v1.0.15`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+```
+
+Override path or ref: `APP_DIR=/path/to/app GIT_REF=v1.0.15 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash`
+
 To upgrade using the in-place deploy script (on the server, no curl):
 
 **Step 1 – Find your app directory** (if you don’t know it). On the VM run:
