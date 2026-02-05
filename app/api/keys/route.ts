@@ -20,6 +20,7 @@ export async function GET() {
     return NextResponse.json({
       configured: {
         openAiKey: !!keys.openAiKey,
+        anthropicApiKey: !!keys.anthropicApiKey,
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
         lakeraEndpoint: !!keys.lakeraEndpoint,
@@ -27,6 +28,7 @@ export async function GET() {
       // Indicate source (environment or storage)
       source: {
         openAiKey: process.env.OPENAI_API_KEY ? 'environment' : (keys.openAiKey ? 'storage' : 'none'),
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY ? 'environment' : (keys.anthropicApiKey ? 'storage' : 'none'),
         lakeraAiKey: process.env.LAKERA_AI_KEY ? 'environment' : (keys.lakeraAiKey ? 'storage' : 'none'),
         lakeraProjectId: process.env.LAKERA_PROJECT_ID ? 'environment' : (keys.lakeraProjectId ? 'storage' : 'none'),
         lakeraEndpoint: process.env.LAKERA_ENDPOINT ? 'environment' : (keys.lakeraEndpoint ? 'storage' : 'none'),
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
     
     console.log('Received keys to save:', {
       openAiKey: keys.openAiKey ? `${keys.openAiKey.substring(0, 10)}...` : 'empty',
+      anthropicApiKey: keys.anthropicApiKey ? `${keys.anthropicApiKey.substring(0, 10)}...` : 'empty',
       lakeraAiKey: keys.lakeraAiKey ? `${keys.lakeraAiKey.substring(0, 10)}...` : 'empty',
       lakeraProjectId: keys.lakeraProjectId || 'empty',
     })
@@ -88,7 +91,23 @@ export async function POST(request: NextRequest) {
         console.log('OpenAI key is empty, will not save')
       }
     }
-    
+
+    if (keys.anthropicApiKey !== undefined) {
+      if (keys.anthropicApiKey && typeof keys.anthropicApiKey === 'string' && keys.anthropicApiKey.trim()) {
+        const trimmedKey = keys.anthropicApiKey.trim()
+        // Anthropic keys typically start with sk-ant- and are at least 20 chars
+        if (trimmedKey.length >= 20) {
+          keysToSave.anthropicApiKey = trimmedKey
+          console.log('Anthropic API key validated and will be saved')
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Anthropic API key format. Key should be at least 20 characters.' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     if (keys.lakeraAiKey !== undefined) {
       if (keys.lakeraAiKey && typeof keys.lakeraAiKey === 'string' && keys.lakeraAiKey.trim()) {
         const trimmedKey = keys.lakeraAiKey.trim()
@@ -140,6 +159,7 @@ export async function POST(request: NextRequest) {
     const existingKeys = await getApiKeys()
     console.log('Existing keys before save:', {
       openAiKey: !!existingKeys.openAiKey,
+      anthropicApiKey: !!existingKeys.anthropicApiKey,
       lakeraAiKey: !!existingKeys.lakeraAiKey,
       lakeraProjectId: !!existingKeys.lakeraProjectId,
     })
@@ -150,6 +170,7 @@ export async function POST(request: NextRequest) {
     // We pass keysToSave directly to setApiKeys, which will merge with existing internally
     console.log('Keys to save (validated):', {
       openAiKey: !!keysToSave.openAiKey,
+      anthropicApiKey: !!keysToSave.anthropicApiKey,
       lakeraAiKey: !!keysToSave.lakeraAiKey,
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
@@ -164,6 +185,7 @@ export async function POST(request: NextRequest) {
     const savedKeys = await getApiKeys()
     console.log('Keys saved. Verification:', {
       openAiKey: !!savedKeys.openAiKey,
+      anthropicApiKey: !!savedKeys.anthropicApiKey,
       lakeraAiKey: !!savedKeys.lakeraAiKey,
       lakeraProjectId: !!savedKeys.lakeraProjectId,
       lakeraEndpoint: !!savedKeys.lakeraEndpoint,
@@ -197,6 +219,7 @@ export async function POST(request: NextRequest) {
       message: 'API keys configured successfully',
       configured: {
         openAiKey: !!(keysToSave.openAiKey || existingKeys.openAiKey || process.env.OPENAI_API_KEY),
+        anthropicApiKey: !!(keysToSave.anthropicApiKey || existingKeys.anthropicApiKey || process.env.ANTHROPIC_API_KEY),
         lakeraAiKey: !!(keysToSave.lakeraAiKey || existingKeys.lakeraAiKey || process.env.LAKERA_AI_KEY),
         lakeraProjectId: !!(keysToSave.lakeraProjectId || existingKeys.lakeraProjectId || process.env.LAKERA_PROJECT_ID),
         lakeraEndpoint: !!(keysToSave.lakeraEndpoint || existingKeys.lakeraEndpoint || process.env.LAKERA_ENDPOINT),

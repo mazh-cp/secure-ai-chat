@@ -2,26 +2,30 @@
 
 import { useState, useEffect } from 'react'
 
+export type ChatProvider = 'openai' | 'anthropic'
+
 interface Model {
   id: string
   name: string
-  created: number
-  owned_by: string
+  created?: number
+  owned_by?: string
 }
 
 interface ModelSelectorProps {
+  provider: ChatProvider
+  onProviderChange: (provider: ChatProvider) => void
   selectedModel: string
   onModelChange: (modelId: string) => void
   apiKey: string | null
 }
 
-export default function ModelSelector({ selectedModel, onModelChange, apiKey }: ModelSelectorProps) {
+export default function ModelSelector({ provider, onProviderChange, selectedModel, onModelChange, apiKey }: ModelSelectorProps) {
   const [models, setModels] = useState<Model[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
 
-  // Fetch available models dynamically
+  // Fetch available models for the selected provider
   useEffect(() => {
     const fetchModels = async () => {
       setIsLoading(true)
@@ -29,17 +33,15 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
       setWarning(null)
 
       try {
-        // Fetch models from the API
-        // The /api/models endpoint gets the API key from server-side storage
-        const response = await fetch('/api/models')
-        
+        const response = await fetch(`/api/models?provider=${provider}`, { credentials: 'include', cache: 'no-store' })
+
         if (!response.ok) {
           const data = await response.json().catch(() => ({}))
           const errorMsg = data.error || 'Failed to fetch models'
-          
-          // If API key is not configured, show a helpful message
           if (errorMsg.includes('API key') || response.status === 400) {
-            setError('OpenAI API key not configured. Please configure it in Settings.')
+            setError(provider === 'anthropic'
+              ? 'Anthropic API key not configured. Please configure it in Settings.'
+              : 'OpenAI API key not configured. Please configure it in Settings.')
           } else {
             throw new Error(errorMsg)
           }
@@ -48,14 +50,11 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
 
         const data = await response.json()
         const fetchedModels = data.models || []
-        
         setModels(fetchedModels)
-        
-        // If models are available and no model is selected, or current model is not in the list
+
         if (fetchedModels.length > 0) {
           const modelExists = fetchedModels.some((m: Model) => m.id === selectedModel)
           if (!selectedModel || !modelExists) {
-            // Select the first available model
             onModelChange(fetchedModels[0].id)
           }
         }
@@ -69,7 +68,7 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
     }
 
     fetchModels()
-  }, [selectedModel, onModelChange])
+  }, [provider, selectedModel, onModelChange])
 
   // Note: We no longer check apiKey prop since the API endpoint gets it from server-side storage
 
@@ -97,9 +96,31 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
     )
   }
 
+  const selectStyle = {
+    background: 'rgb(var(--surface-1))',
+    borderColor: 'rgb(var(--border))',
+    color: 'rgb(var(--text-1))',
+    borderWidth: '2px',
+    borderStyle: 'solid' as const,
+    minWidth: '140px',
+  }
+
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="provider-select" className="text-base font-medium text-theme-muted whitespace-nowrap">
+          Provider:
+        </label>
+        <select
+          id="provider-select"
+          value={provider}
+          onChange={(e) => onProviderChange(e.target.value as ChatProvider)}
+          className="glass-input text-theme px-3 py-2 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 cursor-pointer"
+          style={selectStyle}
+        >
+          <option value="openai" style={selectStyle}>OpenAI</option>
+          <option value="anthropic" style={selectStyle}>Anthropic</option>
+        </select>
         <label htmlFor="model-select" className="text-base font-medium text-theme-muted whitespace-nowrap">
           Model:
         </label>
@@ -109,21 +130,10 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
             value={selectedModel}
             onChange={(e) => onModelChange(e.target.value)}
             className="glass-input text-theme px-3 py-2 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50 transition-all cursor-pointer"
-            style={{
-              background: "rgb(var(--surface-1))",
-              borderColor: "rgb(var(--border))",
-              color: "rgb(var(--text-1))",
-              borderWidth: '2px',
-              borderStyle: 'solid',
-              minWidth: '180px',
-            }}
+            style={{ ...selectStyle, minWidth: '200px' }}
           >
             {models.map((model) => (
-              <option 
-                key={model.id} 
-                value={model.id} 
-                style={{ background: "rgb(var(--surface-1))", color: "rgb(var(--text-1))" }}
-              >
+              <option key={model.id} value={model.id} style={selectStyle}>
                 {model.name}
               </option>
             ))}
@@ -136,14 +146,7 @@ export default function ModelSelector({ selectedModel, onModelChange, apiKey }: 
             onChange={(e) => onModelChange(e.target.value)}
             placeholder="Enter model name"
             className="glass-input text-theme px-3 py-2 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50 transition-all"
-            style={{
-              background: "rgb(var(--surface-1))",
-              borderColor: "rgb(var(--border))",
-              color: "rgb(var(--text-1))",
-              borderWidth: '2px',
-              borderStyle: 'solid',
-              minWidth: '180px',
-            }}
+            style={{ ...selectStyle, minWidth: '200px' }}
           />
         )}
       </div>

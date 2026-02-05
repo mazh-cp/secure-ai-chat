@@ -1,9 +1,9 @@
+/* Import theme tokens (CSS variables) - must be first per CSS spec */
+@import '../lib/theme/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import theme tokens (CSS variables) - must be first */
-@import '../lib/theme/tokens.css';
 
 * {
   box-sizing: border-box;

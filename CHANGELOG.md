@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.12] - 2026-02-05
+
+### Added
+- **Anthropic (Claude) support**: Chat can use OpenAI or Anthropic as provider
+  - Server-side storage for Anthropic API key (Settings, encrypted storage, PIN protection)
+  - Provider selector in chat UI (OpenAI / Anthropic) with model dropdown per provider
+  - `/api/models?provider=anthropic` returns Claude models; existing `/api/models` remains default OpenAI
+  - Anthropic Messages API adapter (`callAnthropic`) in `lib/aiAdapter.ts` with system prompt and RAG context
+  - Chat API accepts `provider` in request body and routes to OpenAI or Anthropic with same RAG/file context
+  - Settings: Anthropic API key field (paste-only, clear with PIN), status in keys retrieve API
+- **Local server startup**: Reliable local browser access
+  - `npm run start:local` – bind to 127.0.0.1 only
+  - `npm run start:local:safe` – free port 3000 then start at http://127.0.0.1:3000
+  - `scripts/start-local.sh` – script used by `start:local:safe`
+  - README: troubleshooting when http://localhost:3000 is not accessible (use system terminal, 127.0.0.1, free port, start:local:safe)
+
+### Improved
+- **Build and npm**: Documentation for `npm warn Unknown env config "devdir"`
+  - README and docs/DATA_STORAGE_AND_REINSTALL.md explain one-time fix: `npm config delete devdir`
+  - Clarified that the warning comes from user config, not the project
+
+### Fixed
+- **ChatInterface**: `apiKeys` possibly null when building scanOptions (optional chaining for `apiKeys?.lakeraAiKey`)
+
 ## [1.0.11] - 2026-01-16
 
 ### Added

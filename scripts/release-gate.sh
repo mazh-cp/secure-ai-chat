@@ -301,6 +301,38 @@ fi
 ok "No Check Point TE keys in tracked files"
 
 # ============================================
+# 9. Persistence navigation smoke (file persists after list/chat/list)
+# ============================================
+CURRENT_STAGE="Persistence navigation smoke"
+if [[ "${SKIP_PERSIST_SMOKE:-0}" != "1" ]] && [[ -f scripts/persist-nav-smoke.sh ]]; then
+  say "9. Persistence navigation smoke (upload, list, chat, list again)"
+  PERSIST_PORT="${PERSIST_SMOKE_PORT:-3098}"
+  say "Starting production server on port $PERSIST_PORT..."
+  (PORT="$PERSIST_PORT" ${RUN_CMD} run start > /tmp/persist-smoke-server.log 2>&1) &
+  PERSIST_PID=$!
+  trap "kill $PERSIST_PID 2>/dev/null || true" EXIT
+  for i in $(seq 1 25); do
+    if curl -s --max-time 2 "http://127.0.0.1:${PERSIST_PORT}/api/health" >/dev/null 2>&1; then
+      ok "Server ready for persist smoke"
+      break
+    fi
+    [[ $i -eq 25 ]] && { fail "Server did not become ready for persist smoke"; kill $PERSIST_PID 2>/dev/null || true; exit 1; }
+    sleep 1
+  done
+  if BASE_URL="http://127.0.0.1:${PERSIST_PORT}" bash scripts/persist-nav-smoke.sh; then
+    ok "persist-nav-smoke PASSED (file visible after chat)"
+  else
+    fail "persist-nav-smoke FAILED - file persistence regression"
+    kill $PERSIST_PID 2>/dev/null || true
+    exit 1
+  fi
+  kill $PERSIST_PID 2>/dev/null || true
+  trap - EXIT
+else
+  say "9. Persistence navigation smoke (skipped: SKIP_PERSIST_SMOKE=1 or script missing)"
+fi
+
+# ============================================
 # Summary
 # ============================================
 echo ""

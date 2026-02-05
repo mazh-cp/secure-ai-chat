@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔑 /api/keys/retrieve - Keys status:', {
         hasOpenAiKey: !!keys.openAiKey,
+        hasAnthropicKey: !!keys.anthropicApiKey,
         hasLakeraKey: !!keys.lakeraAiKey,
         hasProjectId: !!keys.lakeraProjectId,
         endpoint: keys.lakeraEndpoint,
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
       keys: {
         // Return placeholder 'configured' instead of null to indicate key is set
         openAiKey: keys.openAiKey ? 'configured' : null,
+        anthropicApiKey: keys.anthropicApiKey ? 'configured' : null,
         lakeraAiKey: keys.lakeraAiKey ? 'configured' : null,
         lakeraProjectId: keys.lakeraProjectId ? 'configured' : null,
         lakeraEndpoint: keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
       // Also return configured status for easier checking
       configured: {
         openAiKey: !!keys.openAiKey,
+        anthropicApiKey: !!keys.anthropicApiKey,
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
         lakeraEndpoint: !!keys.lakeraEndpoint,
@@ -61,12 +64,14 @@ export async function GET(request: NextRequest) {
         error: 'Failed to retrieve API keys',
         configured: {
           openAiKey: false,
+          anthropicApiKey: false,
           lakeraAiKey: false,
           lakeraProjectId: false,
           lakeraEndpoint: false,
         },
         keys: {
           openAiKey: null,
+          anthropicApiKey: null,
           lakeraAiKey: null,
           lakeraProjectId: null,
           lakeraEndpoint: 'https://api.lakera.ai/v2/guard',

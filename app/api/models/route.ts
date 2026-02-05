@@ -15,22 +15,42 @@ interface OpenAIModelsResponse {
   data: OpenAIModel[]
 }
 
+/** Static list of Anthropic Claude models (Messages API compatible) */
+const ANTHROPIC_MODELS: { id: string; name: string }[] = [
+  { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4 (May 2025)' },
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
+  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
+  { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
+  { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+]
+
 /**
  * GET /api/models
- * Fetches available OpenAI models for the user's API key
- * 
- * Returns list of available chat models (filtered to only chat-compatible models)
+ * Fetches available models for the user's API key.
+ * Query: provider=openai (default) | provider=anthropic
+ * Returns list of available chat models.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get API keys from server-side storage
     const { getApiKeys } = await import('@/lib/api-keys-storage')
     const serverKeys = await getApiKeys()
-    
-    // Handle OpenAI only
     const { searchParams } = new URL(request.url)
-    const apiKey = serverKeys.openAiKey || request.headers.get('x-openai-key') || searchParams.get('key')
+    const provider = (searchParams.get('provider') || 'openai').toLowerCase()
 
+    if (provider === 'anthropic') {
+      const apiKey = serverKeys.anthropicApiKey
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: 'Anthropic API key is required' },
+          { status: 400 }
+        )
+      }
+      return NextResponse.json({ models: ANTHROPIC_MODELS })
+    }
+
+    // OpenAI (default)
+    const apiKey = serverKeys.openAiKey || request.headers.get('x-openai-key') || searchParams.get('key')
     if (!apiKey) {
       return NextResponse.json(
         { error: 'OpenAI API key is required' },

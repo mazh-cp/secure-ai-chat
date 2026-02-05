@@ -132,7 +132,7 @@ This script will automatically:
 **After installation:**
 1. Edit `.env.local` to add your API keys
 2. Run `npm run dev` for development or `npm start` for production
-3. Access at `http://localhost:3000`
+3. Open the exact URL printed by the dev server (e.g. `http://localhost:3000`; if it shows 3001, use that). Using the wrong port causes cookie/origin mismatch and files will not persist.
 
 ### Quick Setup (Manual - Unix/Linux/macOS)
 
@@ -190,7 +190,8 @@ yarn dev
 pnpm dev
 ```
 
-6. **Open [http://localhost:3000](http://localhost:3000) in your browser.**
+6. **Open the exact URL printed by the dev server in your browser.**  
+   Use the same host and port the terminal shows (e.g. `http://localhost:3000` or `http://localhost:3001` if port 3000 was in use). Do not change the host or port—cookies are scoped by origin; using a different port will cause files to appear to vanish. If the server prints a different port (e.g. 3001), always use that URL.
 
 ## Production Build
 
@@ -204,6 +205,14 @@ yarn build
 pnpm build
 ```
 
+**Build warnings (npm):** If you see `npm warn Unknown env config "devdir"`, that comes from your **user** npm config (not this project). It will stop working in a future major npm version. To fix it once, run:
+
+```bash
+npm config delete devdir
+```
+
+See [docs/DATA_STORAGE_AND_REINSTALL.md](docs/DATA_STORAGE_AND_REINSTALL.md#build-and-npm-warnings-stability) for details.
+
 ### Start Production Server
 
 ```bash
@@ -215,6 +224,18 @@ pnpm start
 ```
 
 The production server will start on port 3000 by default. You can change this by setting the `PORT` environment variable.
+
+**If http://localhost:3000 is not accessible in your browser:**
+
+1. **Run the server in your system terminal** (macOS **Terminal.app** or **iTerm**), not from Cursor’s Run/background. Close Cursor’s terminal for this and use a normal OS terminal.
+2. **Free port 3000 and start bound to 127.0.0.1** (recommended):
+   ```bash
+   cd "/Users/mhamayun/Downloads/Cursor Workbooks/Secure-Ai-Chat-V1.0.1/secure-ai-chat"
+   npm run start:local:safe
+   ```
+   This kills any process on port 3000, then starts the app at **http://127.0.0.1:3000**.
+3. In your browser open **http://127.0.0.1:3000** (prefer this over localhost if you have issues).
+4. If you prefer to keep an existing server and only restart: `lsof -ti :3000 | xargs kill -9` then `npm run start:local`.
 
 ### Production Deployment
 

@@ -57,7 +57,7 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     const loadVersion = async () => {
       try {
-        const response = await fetch('/api/version')
+        const response = await fetch('/api/version', { credentials: 'include', cache: 'no-store' })
         if (response.ok) {
           const data = await response.json()
           setAppVersion(data.version || '1.0.5')
@@ -89,6 +89,8 @@ export default function Layout({ children }: LayoutProps) {
 
         const response = await fetch('/api/health/openai', {
           method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ openAiKey: apiKeys.openAiKey }),
         })

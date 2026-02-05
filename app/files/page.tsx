@@ -6,8 +6,28 @@ import FileUploader from '@/components/FileUploader'
 import FileList from '@/components/FileList'
 import { UploadedFile } from '@/types/files'
 import { addLog } from '@/lib/logging'
+import { ownerHeaders, apiFetchOptions } from '@/lib/owner-client'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 import { CheckPointTEResponse } from '@/types/checkpoint-te'
+
+/** Build JSON body for POST /api/files/store (v1.0.12 JSON-only store). */
+function buildStoreBody(
+  file: UploadedFile,
+  scanStatus: string,
+  extra?: { scanResult?: string; scanDetails?: unknown; checkpointTeDetails?: unknown }
+): string {
+  return JSON.stringify({
+    fileId: file.id,
+    fileName: file.name,
+    fileContent: file.content,
+    fileType: file.type || 'text/plain',
+    fileSize: file.size,
+    scanStatus,
+    ...(extra?.scanResult != null && { scanResult: extra.scanResult }),
+    ...(extra?.scanDetails != null && { scanDetails: extra.scanDetails }),
+    ...(extra?.checkpointTeDetails != null && { checkpointTeDetails: extra.checkpointTeDetails }),
+  })
+}
 
 export default function FilesPage() {
   const [isSecure, setIsSecure] = useState(true)
@@ -21,7 +41,10 @@ export default function FilesPage() {
   // Load files from server
   const loadFilesFromServer = useCallback(async () => {
     try {
-      const response = await fetch('/api/files/list')
+      const response = await fetch('/api/files/list', {
+        ...apiFetchOptions,
+        headers: { ...ownerHeaders() },
+      })
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.files) {
@@ -48,6 +71,7 @@ export default function FilesPage() {
     try {
       // Add cache-busting to force fresh check
       const response = await fetch(`/api/te/config?t=${Date.now()}`, {
+        credentials: 'include',
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
@@ -156,21 +180,30 @@ export default function FilesPage() {
     }
   }, [loadFilesFromServer, checkCheckpointTeStatus])
 
+  // Refetch file list when user returns to this tab/window so files stay visible after "changing screen"
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const refetch = () => loadFilesFromServer().catch(() => {})
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refetch()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refetch)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refetch)
+    }
+  }, [loadFilesFromServer])
+
   // Update file metadata on server
   const updateFileMetadataOnServer = async (file: UploadedFile) => {
     try {
+      const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
       const response = await fetch('/api/files/store', {
+        ...apiFetchOptions,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileId: file.id,
-          fileName: file.name,
-          fileContent: file.content,
-          fileType: file.type,
-          fileSize: file.size,
-          scanStatus: file.scanStatus,
+        headers,
+        body: buildStoreBody(file, file.scanStatus, {
           scanResult: file.scanResult,
           scanDetails: file.scanDetails,
           checkpointTeDetails: file.checkpointTeDetails,
@@ -226,75 +259,45 @@ export default function FilesPage() {
     // 2. Malware scan (Check Point TE) - if enabled
     // 3. Content scan (Lakera) - if enabled
     // 4. Only then allow RAG/embedding
-    
-    // Add file with pending status first
+
     setFiles(prev => [...prev, newFile])
 
-    // Save file to server (persistent storage) with pending status
     try {
+      const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
       const response = await fetch('/api/files/store', {
+        ...apiFetchOptions,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileId: newFile.id,
-          fileName: newFile.name,
-          fileContent: newFile.content,
-          fileType: newFile.type,
-          fileSize: newFile.size,
-          scanStatus: 'pending', // Start as pending until security scans complete
-        }),
+        headers,
+        body: buildStoreBody(newFile, 'pending'),
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         console.error('Failed to store file on server:', errorData.error || 'Unknown error')
-        // Continue with local storage even if server storage fails
       }
     } catch (error) {
       console.error('Error storing file on server:', error)
-      // Continue with local storage even if server storage fails
     }
 
-    // STEP 1: Check Point TE Malware Scan (if enabled)
-    // This must complete before content scanning or RAG
     if (checkpointTeSandboxEnabled && checkpointTeConfigured) {
-      setTimeout(() => {
-        handleCheckpointTeSandbox(newFile.id)
-      }, 300)
-      return // Don't proceed with other scans until TE completes
+      setTimeout(() => handleCheckpointTeSandbox(newFile.id), 300)
+      return
     }
-
-    // STEP 2: Lakera Content Scan (if enabled)
-    // Only proceed if TE is disabled or completed successfully
     if (lakeraScanEnabled) {
-      setTimeout(() => {
-        handleFileScan(newFile.id)
-      }, 300)
+      setTimeout(() => handleFileScan(newFile.id), 300)
       return
     }
 
-    // If both scans are disabled, mark as not_scanned
-    // Files without security scans cannot be used in RAG
-    setFiles(prev => prev.map(f => 
+    setFiles(prev => prev.map(f =>
       f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f
     ))
-    // Update server metadata
     try {
+      const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
       await fetch('/api/files/store', {
+        ...apiFetchOptions,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileId: newFile.id,
-          fileName: newFile.name,
-          fileContent: newFile.content,
-          fileType: newFile.type,
-          fileSize: newFile.size,
-          scanStatus: 'not_scanned',
-        }),
+        headers,
+        body: buildStoreBody(newFile, 'not_scanned'),
       })
     } catch (error) {
       console.error('Error updating file metadata on server:', error)
@@ -302,10 +305,11 @@ export default function FilesPage() {
   }
 
   const handleFileRemove = async (fileId: string) => {
-    // Delete from server
     try {
       const response = await fetch(`/api/files/delete?fileId=${encodeURIComponent(fileId)}`, {
+        ...apiFetchOptions,
         method: 'DELETE',
+        headers: ownerHeaders(),
       })
 
       if (response.ok) {
@@ -339,7 +343,9 @@ export default function FilesPage() {
     
     try {
       const response = await fetch('/api/files/clear', {
-        method: 'DELETE',
+        ...apiFetchOptions,
+        method: 'POST',
+        headers: ownerHeaders(),
       })
       
       if (response.ok) {
@@ -441,6 +447,8 @@ export default function FilesPage() {
       // No need to send 'request' field - server handles it correctly
 
       const uploadResponse = await fetch('/api/te/upload', {
+        credentials: 'include',
+        cache: 'no-store',
         method: 'POST',
         body: formData,
       })
@@ -534,6 +542,8 @@ export default function FilesPage() {
         }
 
         const queryResponse = await fetch('/api/te/query', {
+          credentials: 'include',
+          cache: 'no-store',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -836,7 +846,7 @@ export default function FilesPage() {
       // Check if Lakera API key is configured (server-side)
       // The API route will use server-side keys if available
       // We just need to verify it's configured
-      const keysResponse = await fetch('/api/keys').catch(() => null)
+      const keysResponse = await fetch('/api/keys', apiFetchOptions).catch(() => null)
       let lakeraConfigured = false
       
       if (keysResponse?.ok) {
@@ -866,7 +876,7 @@ export default function FilesPage() {
         // Fix: Correct operator precedence - check if endpoint is configured OR source is storage
         const shouldFetchEndpoint = keysData.configured?.lakeraEndpoint || keysData.source?.lakeraEndpoint === 'storage'
         endpoint = shouldFetchEndpoint ? 
-          (await fetch('/api/keys/retrieve').then(r => r.json()).then(d => d.keys?.lakeraEndpoint || endpoint).catch(() => endpoint)) :
+          (await fetch('/api/keys/retrieve', apiFetchOptions).then(r => r.json()).then(d => d.keys?.lakeraEndpoint || endpoint).catch(() => endpoint)) :
           endpoint
       } else {
         // Fallback: check localStorage
@@ -887,6 +897,7 @@ export default function FilesPage() {
       // The API route will use server-side keys if available
       // We don't need to send keys from client (server-side keys take priority)
       const response = await fetch('/api/scan', {
+        ...apiFetchOptions,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

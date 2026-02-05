@@ -30,7 +30,7 @@ export default function DashboardPage() {
     
     // Load system logs
     try {
-      const response = await fetch('/api/logs/system?limit=100')
+      const response = await fetch('/api/logs/system?limit=100', { credentials: 'include', cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setSystemLogs(data.logs || [])
@@ -44,7 +44,7 @@ export default function DashboardPage() {
     if (filter === 'system') {
       if (confirm('Are you sure you want to clear all system logs? This action cannot be undone.')) {
         try {
-          const response = await fetch('/api/logs/system', { method: 'DELETE' })
+          const response = await fetch('/api/logs/system', { method: 'DELETE', credentials: 'include', cache: 'no-store' })
           if (response.ok) {
             setSystemLogs([])
             setRefreshKey(prev => prev + 1)

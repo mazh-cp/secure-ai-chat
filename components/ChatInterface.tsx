@@ -4,13 +4,14 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
-import ModelSelector from './ModelSelector'
+import ModelSelector, { type ChatProvider } from './ModelSelector'
 import { Message } from '@/types/chat'
 import { addLog } from '@/lib/logging'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 
 interface ApiKeys {
   openAiKey: string
+  anthropicApiKey?: string
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
@@ -30,7 +31,8 @@ export default function ChatInterface() {
   const [apiKeys, setApiKeys] = useState<ApiKeys | null>(null)
   const [inputScanEnabled, setInputScanEnabled] = useState(true)
   const [outputScanEnabled, setOutputScanEnabled] = useState(true)
-  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini') // Default model
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini')
+  const [provider, setProvider] = useState<ChatProvider>('openai')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load API keys from server-side storage (fallback to localStorage for backward compatibility)
@@ -41,6 +43,7 @@ export default function ChatInterface() {
         // Add cache-busting query parameter to ensure fresh data
         const cacheBuster = `?t=${Date.now()}`
         const response = await fetch(`/api/keys/retrieve${cacheBuster}`, {
+          credentials: 'include',
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -64,13 +67,12 @@ export default function ChatInterface() {
           // data.configured.openAiKey is boolean, data.keys.openAiKey is 'configured' or null
           // For endpoints, data.keys contains the actual URL value (safe to expose)
           const hasOpenAiKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
-          
-          if (hasOpenAiKey) {
-            // Use server-side keys - set a placeholder to indicate keys are configured
-            // The actual key is stored server-side and used by API routes
-            // For endpoints, use the actual URL value if available (endpoints are safe to expose)
+          const hasAnthropicKey = data.configured?.anthropicApiKey === true || data.keys?.anthropicApiKey === 'configured'
+
+          if (hasOpenAiKey || hasAnthropicKey) {
             setApiKeys({
-              openAiKey: data.configured?.openAiKey ? 'configured' : '', // Always set to 'configured' if key exists server-side
+              openAiKey: data.configured?.openAiKey ? 'configured' : '',
+              anthropicApiKey: data.configured?.anthropicApiKey ? 'configured' : '',
               lakeraAiKey: data.configured?.lakeraAiKey ? 'configured' : '',
               lakeraEndpoint: data.keys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
               lakeraProjectId: data.configured?.lakeraProjectId ? 'configured' : '',
@@ -141,21 +143,25 @@ export default function ChatInterface() {
         }
       }
 
-      // Load selected model from localStorage
       const modelStored = localStorage.getItem('selectedModel')
-      if (modelStored) {
-        setSelectedModel(modelStored)
-      }
+      if (modelStored) setSelectedModel(modelStored)
 
+      const providerStored = localStorage.getItem('selectedProvider') as ChatProvider | null
+      if (providerStored === 'openai' || providerStored === 'anthropic') setProvider(providerStored)
     }
   }, [])
 
-  // Save selected model to localStorage when it changes
   useEffect(() => {
     if (typeof window !== 'undefined' && selectedModel) {
       localStorage.setItem('selectedModel', selectedModel)
     }
   }, [selectedModel])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selectedProvider', provider)
+    }
+  }, [provider])
 
   // Listen for changes to toggle states
   useEffect(() => {
@@ -195,11 +201,14 @@ export default function ChatInterface() {
 
     setError(null)
 
-    // Check if OpenAI API key is configured
-      const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-      if (!hasOpenAiKey) {
-      setError('OpenAI API key is not configured. Please go to Settings to add your API key.')
-        return
+    const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
+    const hasAnthropicKey = apiKeys?.anthropicApiKey === 'configured' || (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+    const hasChatKey = provider === 'anthropic' ? hasAnthropicKey : hasOpenAiKey
+    if (!hasChatKey) {
+      setError(provider === 'anthropic'
+        ? 'Anthropic API key is not configured. Please go to Settings to add your API key.'
+        : 'OpenAI API key is not configured. Please go to Settings to add your API key.')
+      return
     }
 
     const userMessage: Message = {
@@ -224,20 +233,24 @@ export default function ChatInterface() {
         (localStorage.getItem('lakeraRagScanEnabled') !== null ? 
           JSON.parse(localStorage.getItem('lakeraRagScanEnabled') || 'true') : true) : true
 
+      const { ownerHeaders, apiFetchOptions } = await import('@/lib/owner-client')
       const response = await fetch('/api/chat', {
+        ...apiFetchOptions,
         method: 'POST',
         headers: {
+          ...ownerHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messages: chatMessages,
           apiKeys: apiKeys,
-          model: selectedModel, // Include selected model
+          provider,
+          model: selectedModel,
           scanOptions: {
-            scanInput: inputScanEnabled && !!apiKeys.lakeraAiKey,
-            scanOutput: outputScanEnabled && !!apiKeys.lakeraAiKey,
+            scanInput: inputScanEnabled && !!(apiKeys?.lakeraAiKey),
+            scanOutput: outputScanEnabled && !!(apiKeys?.lakeraAiKey),
           },
-          enableRAG: ragEnabled, // Enable RAG to access uploaded files
+          enableRAG: ragEnabled,
         }),
       })
 
@@ -330,10 +343,11 @@ export default function ChatInterface() {
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.content,
+        content: data.answer ?? data.content ?? '',
         role: 'assistant',
         timestamp: new Date(),
         scanResult: data.outputScanResult,
+        ragCitations: data.rag?.chunks,
       }
 
       setMessages((prev) => [...prev, aiMessage])
@@ -364,13 +378,14 @@ export default function ChatInterface() {
     }
   }
 
-  // Check if OpenAI API key is configured
   const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
+  const hasAnthropicKey = apiKeys?.anthropicApiKey === 'configured' || (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+  const hasChatKey = hasOpenAiKey || hasAnthropicKey
 
   return (
     <div className="flex flex-col h-full">
       {/* API Key Warning */}
-      {!hasOpenAiKey && (
+      {!hasChatKey && (
         <div 
           className="glass-card rounded-xl p-4 border-yellow-400/30 mb-4"
           style={{
@@ -380,11 +395,11 @@ export default function ChatInterface() {
           }}
         >
           <p className="text-base text-theme">
-            ⚠️ OpenAI API key is not configured.{' '}
+            ⚠️ No chat API key configured. Add an OpenAI or Anthropic key in{' '}
             <Link href="/settings" className="underline hover:text-brand-berry transition-colors">
-              Go to Settings
+              Settings
             </Link>
-            {' '}to add your API key.
+            .
           </p>
         </div>
       )}
@@ -405,10 +420,12 @@ export default function ChatInterface() {
 
       {/* Model Selector */}
       <div className="mb-4 flex justify-end items-center gap-4">
-          <ModelSelector 
+          <ModelSelector
+            provider={provider}
+            onProviderChange={setProvider}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
-          apiKey={apiKeys?.openAiKey || null}
+          apiKey={provider === 'anthropic' ? (apiKeys?.anthropicApiKey || null) : (apiKeys?.openAiKey || null)}
           />
         </div>
 
@@ -423,7 +440,7 @@ export default function ChatInterface() {
         <MessageInput 
           onSendMessage={handleSendMessage} 
           isLoading={isLoading} 
-          disabled={!hasOpenAiKey}
+          disabled={!hasChatKey}
         />
       </div>
     </div>

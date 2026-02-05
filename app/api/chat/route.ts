@@ -1,17 +1,20 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
-import { callOpenAI as callOpenAIAdapter, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
+import { callOpenAI as callOpenAIAdapter, callAnthropic, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
-import { 
-  validateTokenLimit, 
+import {
+  validateTokenLimit,
   validateTokenLimitAsync,
   truncateToTokenLimit,
   truncateToTokenLimitAsync,
   estimateRequestTokens,
   shouldThrottleByTokens,
-  getTokenLimitAsync
+  getTokenLimitAsync,
 } from '@/lib/token-counter'
+import { injectRagContext } from '@/lib/rag-context'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -472,7 +475,8 @@ async function callOpenAI(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG } = body
+    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG, provider: requestProvider } = body
+    const provider = (requestProvider === 'anthropic' ? 'anthropic' : 'openai') as 'openai' | 'anthropic'
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -499,50 +503,63 @@ export async function POST(request: NextRequest) {
     // IMPORTANT: Never use client keys that are "configured" placeholder - only use actual keys
     // Fall back to client keys only if they are actual keys (not "configured" placeholder)
     const apiKeys = {
-      openAiKey: serverKeys.openAiKey || 
+      openAiKey: serverKeys.openAiKey ||
                  (clientApiKeys?.openAiKey && clientApiKeys.openAiKey !== 'configured' ? clientApiKeys.openAiKey : null),
-      lakeraAiKey: serverKeys.lakeraAiKey || 
+      anthropicApiKey: serverKeys.anthropicApiKey ||
+                       (clientApiKeys?.anthropicApiKey && clientApiKeys.anthropicApiKey !== 'configured' ? clientApiKeys.anthropicApiKey : null),
+      lakeraAiKey: serverKeys.lakeraAiKey ||
                    (clientApiKeys?.lakeraAiKey && clientApiKeys.lakeraAiKey !== 'configured' ? clientApiKeys.lakeraAiKey : null),
-      lakeraProjectId: serverKeys.lakeraProjectId || 
+      lakeraProjectId: serverKeys.lakeraProjectId ||
                       (clientApiKeys?.lakeraProjectId && clientApiKeys.lakeraProjectId !== 'configured' ? clientApiKeys.lakeraProjectId : null),
       lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
     }
 
-    // Use OpenAI API key
-    const activeApiKey = apiKeys.openAiKey
+    const activeApiKey = provider === 'anthropic' ? apiKeys.anthropicApiKey : apiKeys.openAiKey
 
-    // Debug: Log active key status (without exposing actual key)
     console.log('Active API Key Status:', {
+      provider,
       hasKey: !!activeApiKey,
       keyLength: activeApiKey ? activeApiKey.length : 0,
-      keyPrefix: activeApiKey ? activeApiKey.substring(0, 5) + '...' : 'none',
+      keyPrefix: activeApiKey ? activeApiKey.substring(0, 8) + '...' : 'none',
     })
 
-      // Validate OpenAI credentials
-      if (!activeApiKey || 
+    if (provider === 'anthropic') {
+      if (!activeApiKey || activeApiKey === 'configured' || activeApiKey.length < 20) {
+        return NextResponse.json(
+          { error: 'Anthropic API key is not configured or is invalid. Please add a valid key in Settings.' },
+          { status: 400 }
+        )
+      }
+      if (!activeApiKey.startsWith('sk-ant-')) {
+        return NextResponse.json(
+          { error: 'Invalid Anthropic API key format. Keys should start with "sk-ant-". Please check your key in Settings.' },
+          { status: 400 }
+        )
+      }
+    } else {
+      if (!activeApiKey ||
           activeApiKey === 'configured' ||
-          activeApiKey.includes('your_ope') || 
+          activeApiKey.includes('your_ope') ||
           activeApiKey.includes('your-api-key') ||
           activeApiKey.length < 20) {
-      console.error('OpenAI validation failed:', {
-        hasKey: !!activeApiKey,
-        isConfiguredPlaceholder: activeApiKey === 'configured',
-        length: activeApiKey ? activeApiKey.length : 0,
-        startsWithSk: activeApiKey ? activeApiKey.startsWith('sk-') : false,
-      })
+        console.error('OpenAI validation failed:', {
+          hasKey: !!activeApiKey,
+          isConfiguredPlaceholder: activeApiKey === 'configured',
+          length: activeApiKey ? activeApiKey.length : 0,
+          startsWithSk: activeApiKey ? activeApiKey.startsWith('sk-') : false,
+        })
         return NextResponse.json(
           { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
           { status: 400 }
         )
       }
-      
-      // Additional validation: OpenAI keys should start with 'sk-'
       if (!activeApiKey.startsWith('sk-')) {
         console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
         return NextResponse.json(
           { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
           { status: 400 }
         )
+      }
     }
 
     // Get the latest user message for security check and RAG
@@ -550,59 +567,55 @@ export async function POST(request: NextRequest) {
       .filter((m: ChatMessage) => m.role === 'user')
       .pop()
 
-    // RAG: Retrieve relevant file content if enabled
-    // ENHANCEMENT: Always include all safe files, not just keyword-matched
-    // SECURITY: Only use files that have passed security scans
+    // RAG: Retrieve context from storage (ragRetrieveForChat), then inject into system message
     let fileContext = ''
     let availableFilesList: string[] = []
+    let ragChunks: Array<{ chunkId: string; fileId: string; text: string; citationLabel: string; source_type?: string; row_number?: number; sheet_name?: string; heading_path?: string[] }> = []
+    let ragContextFromRetrieve: Awaited<ReturnType<typeof import('@/lib/rag-context').buildRagContext>> | null = null
     if (enableRAG !== false && latestUserMessage) {
       try {
-        const { listFiles, getFileContent } = await import('@/lib/persistent-storage')
-        const { formatFileContentForRAG, validateFilePromptSecurity } = await import('@/lib/file-content-processor')
-        const uploadedFiles = await listFiles()
-        
-        if (uploadedFiles.length > 0) {
-          // Search for relevant content in uploaded files
+        const { getOwnerId } = await import('@/lib/owner')
+        const { listFiles } = await import('@/lib/registry/files-registry')
+        const { readOwnerFile, readOwnerFileBuffer } = await import('@/lib/persistent-storage')
+        const { buildRagContext } = await import('@/lib/rag-context')
+        const { buildForensicContext, logForensic } = await import('@/lib/forensic-log')
+        const { ownerId } = await getOwnerId(request)
+        const uploadedFiles = listFiles({ owner_id: ownerId })
+        const owner = ownerId ?? ''
+        ragContextFromRetrieve = await buildRagContext(latestUserMessage.content, {
+          userId: owner,
+          ipAddress: getUserIP(request),
+          source: 'chat',
+        }, {
+          listFiles: (opts) => listFiles(opts ?? { owner_id: owner }),
+          getFileContent: (fileId) => readOwnerFile(owner, fileId),
+          getFileBuffer: (fileId) => readOwnerFileBuffer(owner, fileId),
+        })
+        if (ragContextFromRetrieve.chunks.length > 0) {
+          ragChunks = ragContextFromRetrieve.chunks
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          const ctx = buildForensicContext(request, ownerId, uploadedFiles.length, uploadedFiles.map((f) => f.id))
+          logForensic('api/chat (RAG)', ctx)
+        }
+
+        if (uploadedFiles.length > 0 && ragChunks.length === 0) {
+          const { formatFileContentForRAG, validateFilePromptSecurity } = await import('@/lib/file-content-processor')
+          const fileStorage = await import('@/lib/storage/file-storage')
           const userQuery = latestUserMessage.content.toLowerCase()
           const relevantFiles: string[] = []
           const allSafeFiles: string[] = []
-          
-          // Check each file for relevant content
+
           for (const fileMeta of uploadedFiles) {
-            // SECURITY ENFORCEMENT: Only use files that passed security scans
-            // ENHANCEMENT: Allow 'safe' and 'not_scanned' files (not_scanned means user chose not to scan)
-            // Only block explicitly flagged/error/malicious files
             const scanStatus = fileMeta.scanStatus as string
-            
-            // Skip files with errors or that were flagged
-            if (scanStatus === 'error' || scanStatus === 'flagged') {
-              console.warn(`RAG: Skipping flagged file ${fileMeta.name} (security threat detected)`)
-              continue
-            }
-            
-            // Check Check Point TE verdict if available
-            if (fileMeta.checkpointTeDetails?.verdict === 'malicious') {
-              console.warn(`RAG: Skipping malicious file ${fileMeta.name} (Check Point TE verdict: malicious)`)
-              continue
-            }
-            
-            // Check threat level from scan details
+            if (scanStatus === 'error' || scanStatus === 'flagged') continue
+            if (fileMeta.checkpointTeDetails?.verdict === 'malicious') continue
             const scanDetails = fileMeta.scanDetails as { threatLevel?: 'low' | 'medium' | 'high' | 'critical'; categories?: Record<string, boolean>; score?: number } | undefined
-            const threatLevel = scanDetails?.threatLevel || 
-                               (fileMeta.scanStatus === 'flagged' ? 'high' as const : 'low' as const)
-            if (threatLevel === 'critical' || threatLevel === 'high') {
-              console.warn(`RAG: Skipping high-risk file ${fileMeta.name} (threat level: ${threatLevel})`)
-              continue
-            }
-            
-            // ENHANCEMENT: Include files up to 10MB (increased from 5MB)
-            if (fileMeta.size > 10 * 1024 * 1024) {
-              console.warn(`RAG: Skipping large file ${fileMeta.name} (size: ${(fileMeta.size / 1024 / 1024).toFixed(2)}MB)`)
-              continue
-            }
-            
+            const threatLevel = scanDetails?.threatLevel || (fileMeta.scanStatus === 'flagged' ? 'high' as const : 'low' as const)
+            if (threatLevel === 'critical' || threatLevel === 'high') continue
+            if (fileMeta.size > 10 * 1024 * 1024) continue
             try {
-              const fileContent = await getFileContent(fileMeta.id)
+              const fileContent = await readOwnerFile(owner, fileMeta.id) ?? await fileStorage.readFile(fileMeta.storage_key)
               if (!fileContent) continue
               
               availableFilesList.push(fileMeta.name)
@@ -779,16 +792,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Enhance messages with file context if RAG is enabled
-    const enhancedMessages = [...messages]
-    
-    // ENHANCEMENT: Add system message about file access if files are available
-    if (fileContext && availableFilesList.length > 0) {
-      // Check if system message already exists
-      const hasSystemMessage = enhancedMessages.some(m => m.role === 'system')
-      
+    // Enhance messages: RAG chunks (from storage) or legacy file context
+    let enhancedMessages: Array<{ role: string; content: string }> = [...messages]
+    if (ragContextFromRetrieve && ragContextFromRetrieve.chunks.length > 0) {
+      enhancedMessages = injectRagContext(
+        messages.map((m) => ({ role: m.role, content: m.content })),
+        ragContextFromRetrieve,
+        { groundedOnly: true }
+      )
+    } else if (fileContext && availableFilesList.length > 0) {
+      const hasSystemMessage = enhancedMessages.some((m) => m.role === 'system')
       if (!hasSystemMessage) {
-        // Add system message at the beginning
         enhancedMessages.unshift({
           role: 'system',
           content: `You are a helpful AI assistant with access to uploaded files containing user data, PII, and other information.
@@ -801,35 +815,35 @@ IMPORTANT INSTRUCTIONS:
 5. Always cite which file(s) you used when providing information from files
 6. For data queries, analyze the file structure and provide accurate information based on the actual data
 
-The file content will be provided in the user's message below. Search through it carefully to answer their questions.`
+The file content will be provided in the user's message below. Search through it carefully to answer their questions.`,
         })
       }
-    }
-    
-    if (fileContext && latestUserMessage) {
-      // Add file context to the latest user message
-      const lastIndex = enhancedMessages.length - 1
-      if (lastIndex >= 0 && enhancedMessages[lastIndex].role === 'user') {
-        enhancedMessages[lastIndex] = {
-          ...enhancedMessages[lastIndex],
-          content: enhancedMessages[lastIndex].content + fileContext
+      if (latestUserMessage) {
+        const lastIndex = enhancedMessages.length - 1
+        if (lastIndex >= 0 && enhancedMessages[lastIndex].role === 'user') {
+          enhancedMessages[lastIndex] = {
+            ...enhancedMessages[lastIndex],
+            content: enhancedMessages[lastIndex].content + fileContext,
+          }
         }
       }
     }
 
-    // Call OpenAI using the adapter (handles GPT-5.x Responses API and GPT-4 Chat Completions)
-    // Validate and normalize the model
-    const validatedModel = validateModel(model || 'gpt-4o-mini')
+    // Validate and normalize the model per provider
+    const validatedModel = provider === 'anthropic'
+      ? (typeof model === 'string' && model.trim() ? model.trim() : 'claude-3-5-sonnet-20241022')
+      : validateModel(model || 'gpt-4o-mini')
     
     // Convert messages to adapter format
     const adapterMessages: AdapterChatMessage[] = enhancedMessages.map(msg => ({
-      role: msg.role,
+      role: msg.role as 'system' | 'user' | 'assistant',
       content: msg.content,
     }))
     
     // Prepare adapter options
-    // Check if it's a GPT-5 model
-    const maxOutputTokens = validatedModel.startsWith('gpt-5') ? 2000 : 1000
+    const maxOutputTokens = provider === 'anthropic'
+      ? 1024
+      : (validatedModel.startsWith('gpt-5') ? 2000 : 1000)
     const adapterOptions = {
       maxTokens: maxOutputTokens,
       temperature: 0.7,
@@ -977,13 +991,15 @@ The file content will be provided in the user's message below. Search through it
       },
     })
     
-    // Call adapter with appropriate options
-    const adapterResult = await callOpenAIAdapter(
-      adapterMessages,
-      activeApiKey,
-      validatedModel,
-      adapterOptions
-    )
+    // Call adapter for the selected provider
+    const adapterResult = provider === 'anthropic'
+      ? await callAnthropic(adapterMessages, activeApiKey!, validatedModel, adapterOptions)
+      : await callOpenAIAdapter(
+          adapterMessages,
+          activeApiKey,
+          validatedModel,
+          adapterOptions
+        )
     
     // Log fallback if used
     if (adapterResult.usedFallback) {
@@ -1115,11 +1131,14 @@ The file content will be provided in the user's message below. Search through it
       })
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
+      success: true,
+      answer: aiResponse,
       content: aiResponse,
       inputScanResult,
       outputScanResult,
       logData,
+      rag: { chunks: ragChunks },
     })
   } catch (error) {
     console.error('Chat API error:', error)

@@ -14,6 +14,7 @@ const KEYS_FILE_PATH = path.join(STORAGE_DIR, 'api-keys.enc')
 
 export interface StoredApiKeys {
   openAiKey?: string
+  anthropicApiKey?: string
   lakeraAiKey?: string
   lakeraProjectId?: string
   lakeraEndpoint?: string
@@ -146,7 +147,16 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
       console.warn('LAKERA_ENDPOINT environment variable contains invalid value, ignoring')
     }
   }
-  
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    const envKey = process.env.ANTHROPIC_API_KEY.trim()
+    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 20) {
+      envKeys.anthropicApiKey = envKey
+    } else {
+      console.warn('ANTHROPIC_API_KEY environment variable contains placeholder or invalid value, ignoring')
+    }
+  }
+
   // If any env vars are set, merge them with file storage (env vars take priority)
   try {
     await ensureStorageDir()
@@ -159,6 +169,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
           const fileKeys = decryptKeys(encryptedData.trim())
           console.log('Loaded keys from file storage:', {
             openAiKey: !!fileKeys.openAiKey,
+            anthropicApiKey: !!fileKeys.anthropicApiKey,
             lakeraAiKey: !!fileKeys.lakeraAiKey,
             lakeraProjectId: !!fileKeys.lakeraProjectId,
             lakeraEndpoint: !!fileKeys.lakeraEndpoint,
@@ -168,6 +179,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
           keysLoaded = true
           console.log('Final merged keys after file load:', {
             openAiKey: !!cachedKeys.openAiKey,
+            anthropicApiKey: !!cachedKeys.anthropicApiKey,
             lakeraAiKey: !!cachedKeys.lakeraAiKey,
             lakeraProjectId: !!cachedKeys.lakeraProjectId,
             lakeraEndpoint: !!cachedKeys.lakeraEndpoint,
@@ -250,7 +262,18 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     } else if (existingKeys.lakeraProjectId && !process.env.LAKERA_PROJECT_ID) {
       keysToSave.lakeraProjectId = existingKeys.lakeraProjectId
     }
-    
+
+    // Handle Anthropic key
+    if (keys.anthropicApiKey !== undefined) {
+      if (keys.anthropicApiKey && keys.anthropicApiKey.trim() && !process.env.ANTHROPIC_API_KEY) {
+        keysToSave.anthropicApiKey = keys.anthropicApiKey.trim()
+      } else if (!keys.anthropicApiKey && existingKeys.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
+        keysToSave.anthropicApiKey = existingKeys.anthropicApiKey
+      }
+    } else if (existingKeys.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
+      keysToSave.anthropicApiKey = existingKeys.anthropicApiKey
+    }
+
     // Handle Lakera Endpoint
     if (keys.lakeraEndpoint !== undefined) {
       if (keys.lakeraEndpoint && keys.lakeraEndpoint.trim() && !process.env.LAKERA_ENDPOINT) {
@@ -315,6 +338,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     
     console.log('Keys saved successfully. Keys saved:', {
       openAiKey: !!keysToSave.openAiKey,
+      anthropicApiKey: !!keysToSave.anthropicApiKey,
       lakeraAiKey: !!keysToSave.lakeraAiKey,
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
@@ -322,6 +346,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     // Update cache with merged keys (env vars take priority)
     const envKeys: StoredApiKeys = {}
     if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
+    if (process.env.ANTHROPIC_API_KEY) envKeys.anthropicApiKey = process.env.ANTHROPIC_API_KEY.trim()
     if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
     if (process.env.LAKERA_PROJECT_ID) envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
     if (process.env.LAKERA_ENDPOINT) envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
@@ -354,6 +379,9 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
       return
     }
     if (keyName === 'lakeraEndpoint' && process.env.LAKERA_ENDPOINT) {
+      return
+    }
+    if (keyName === 'anthropicApiKey' && process.env.ANTHROPIC_API_KEY) {
       return
     }
     // Delete the key from existing keys
@@ -397,6 +425,9 @@ export async function deleteAllApiKeys(): Promise<void> {
     }
     if (!process.env.LAKERA_ENDPOINT) {
       keysToDelete.lakeraEndpoint = ''
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      keysToDelete.anthropicApiKey = ''
     }
     await saveApiKeys(keysToDelete)
     
@@ -477,7 +508,14 @@ export function getApiKeysSync(): StoredApiKeys {
       envKeys.lakeraEndpoint = envKey
     }
   }
-  
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    const envKey = process.env.ANTHROPIC_API_KEY.trim()
+    if (envKey && !envKey.includes('your') && envKey.length >= 20) {
+      envKeys.anthropicApiKey = envKey
+    }
+  }
+
   return envKeys
 }
 
@@ -499,7 +537,7 @@ export async function setApiKeys(keys: StoredApiKeys): Promise<void> {
  */
 export async function areApiKeysConfigured(): Promise<boolean> {
   const keys = await getApiKeys()
-  return !!(keys.openAiKey || keys.lakeraAiKey || keys.lakeraProjectId)
+  return !!(keys.openAiKey || keys.anthropicApiKey || keys.lakeraAiKey || keys.lakeraProjectId)
 }
 
 /**

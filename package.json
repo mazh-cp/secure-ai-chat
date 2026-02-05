@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -12,6 +12,8 @@
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
+    "start:local": "next start -H 127.0.0.1",
+    "start:local:safe": "bash scripts/start-local.sh",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
@@ -35,15 +37,17 @@
     "@types/node": "^20.8.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "better-sqlite3": "^11.6.0",
     "date-fns": "^2.30.0",
     "form-data": "^4.0.5",
-    "next": "^14.0.0",
+    "next": "^16.1.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "^5.2.2",
     "undici": "^7.18.2"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
     "autoprefixer": "^10.4.16",

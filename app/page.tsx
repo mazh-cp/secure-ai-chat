@@ -19,7 +19,7 @@ export default function Home() {
     const loadApiKeys = async () => {
       try {
         // Try to get keys from server-side storage first
-        const response = await fetch('/api/keys/retrieve').catch(() => null)
+        const response = await fetch('/api/keys/retrieve', { credentials: 'include', cache: 'no-store' }).catch(() => null)
         if (response?.ok) {
           const data = await response.json()
           if (data.keys) {

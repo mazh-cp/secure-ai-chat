@@ -1,9 +1,22 @@
+export interface RagCitationChunk {
+  chunkId: string
+  fileId: string
+  text: string
+  citationLabel: string
+  source_type?: string
+  row_number?: number
+  sheet_name?: string
+  heading_path?: string[]
+}
+
 export interface Message {
   id: string
   content: string
   role: 'user' | 'assistant'
   timestamp: Date
   scanResult?: ScanResult
+  /** RAG citation chunks returned from /api/chat for this response */
+  ragCitations?: RagCitationChunk[]
 }
 
 export interface ScanResult {

@@ -1,12 +1,18 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
-import { deleteFile } from '@/lib/persistent-storage'
+import { getOwnerId } from '@/lib/owner'
+import { getById, markDeleted } from '@/lib/registry/files-registry'
+import { deleteOwnerFile } from '@/lib/persistent-storage'
+import { removeDocumentFromRAG } from '@/lib/rag/index'
 
 /**
- * DELETE - Delete a file from the server
- * Query params: fileId
+ * DELETE - Delete one file (only if owned by current owner).
+ * Query params: fileId. Removes bytes, SQLite row, and RAG index.
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const { ownerId } = await getOwnerId(request)
     const { searchParams } = new URL(request.url)
     const fileId = searchParams.get('fileId')
 
@@ -17,14 +23,25 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const deleted = await deleteFile(fileId)
-
-    if (!deleted) {
+    const file = getById(fileId)
+    if (!file || file.owner_id !== ownerId) {
       return NextResponse.json(
         { error: 'File not found' },
         { status: 404 }
       )
     }
+
+    const ok = markDeleted(fileId)
+    if (!ok) {
+      return NextResponse.json(
+        { error: 'File not found' },
+        { status: 404 }
+      )
+    }
+
+    const owner = file.owner_id ?? ownerId ?? ''
+    await deleteOwnerFile(owner, fileId).catch(() => {})
+    await removeDocumentFromRAG(fileId).catch(() => {})
 
     return NextResponse.json({
       success: true,

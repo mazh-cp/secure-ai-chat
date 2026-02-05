@@ -66,3 +66,6 @@ Thumbs.db
 
 # Persistent file storage (uploaded files and metadata)
 .storage/
+
+# App data directory (uploads, registry DB) - do not commit
+data/

@@ -541,6 +541,30 @@ else
   fi
 fi
 
+# Create data/uploads for v1.0.12+ persistent file storage (RAG uploads)
+if [ ! -d "data/uploads" ]; then
+  say "Creating data/uploads directory (persistent file storage)..."
+  mkdir -p data/uploads
+  chmod 755 data
+  chmod 755 data/uploads
+  if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+    sudo chown -R "$APP_USER:$APP_USER" data
+  fi
+  ok "data/uploads created with permissions 755"
+else
+  PERMS=$(stat -c%a data 2>/dev/null || stat -f%OLp data 2>/dev/null || echo "unknown")
+  if [ "$PERMS" != "755" ]; then
+    chmod 755 data
+    [ -d "data/uploads" ] && chmod 755 data/uploads
+    if [ -n "$APP_USER" ] && [ "$APP_USER" != "$(whoami)" ]; then
+      sudo chown -R "$APP_USER:$APP_USER" data
+    fi
+    ok "data/ permissions fixed to 755"
+  else
+    ok "data/uploads exists with correct permissions"
+  fi
+fi
+
 # Print diagnostics (non-secret)
 say "Diagnostics"
 info "Node version: $(node -v 2>/dev/null || echo 'unknown')"
@@ -548,7 +572,7 @@ info "Package manager: $(detect_package_manager)"
 info "Git revision: $(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 info "Disk free: $(df -h . | tail -1 | awk '{print $4}' || echo 'unknown')"
 info "App user: $APP_USER"
-info "Required dirs perms: .secure-storage (700), .storage (755)"
+info "Required dirs perms: .secure-storage (700), .storage (755), data/uploads (755)"
 
 # Step 7: Restart service
 say "Step 7: Restarting Service"

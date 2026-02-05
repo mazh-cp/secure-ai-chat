@@ -1,329 +1,157 @@
 /**
- * Server-side persistent file storage utilities
- * This module handles storage and retrieval of uploaded files
- * Files are stored on disk with metadata in JSON
+ * Server-side persistent file storage under ./data/uploads/<ownerId>/<fileId>.
+ * Bytes on disk; metadata is in SQLite (registry) only.
+ * Paths are stable and absolute.
  */
 
 import { promises as fs } from 'fs'
 import path from 'path'
-import crypto from 'crypto'
 
-// Storage directories (configurable via STORAGE_DIR env var, defaults to ./.storage)
-const STORAGE_BASE = process.env.STORAGE_DIR || path.join(process.cwd(), '.storage')
-const STORAGE_DIR = STORAGE_BASE
-const FILES_DIR = path.join(STORAGE_BASE, 'files')
-const METADATA_FILE = path.join(STORAGE_BASE, 'files-metadata.json')
-const SCHEMA_VERSION_FILE = path.join(STORAGE_BASE, 'schema-version.json')
+const DATA_DIR = process.env.DATA_DIR
+  ? (path.isAbsolute(process.env.DATA_DIR) ? process.env.DATA_DIR : path.resolve(process.cwd(), process.env.DATA_DIR))
+  : path.resolve(process.cwd(), 'data')
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads')
 
-// Schema version for migrations
-const CURRENT_SCHEMA_VERSION = 1
-
-interface SchemaVersion {
-  version: number
-  lastMigrated: string // ISO date string
+function sanitize(segment: string): string {
+  return segment.replace(/[^a-zA-Z0-9_.-]/g, '_')
 }
 
-export interface StoredFileMetadata {
-  id: string
-  name: string
-  size: number
-  type: string
-  uploadedAt: string // ISO date string
-  scanStatus: 'pending' | 'scanning' | 'safe' | 'flagged' | 'error' | 'not_scanned'
-  scanResult?: string
-  scanDetails?: {
-    categories?: Record<string, boolean>
-    score?: number
-    threatLevel?: 'low' | 'medium' | 'high' | 'critical'
-  }
-  checkpointTeDetails?: {
-    logFields: Record<string, unknown>
-    verdict: 'safe' | 'malicious' | 'pending' | 'unknown'
-    status: string
-  }
+function ownerDir(ownerId: string): string {
+  return path.join(UPLOADS_DIR, sanitize(ownerId))
 }
 
-interface FilesMetadata {
-  files: Record<string, StoredFileMetadata>
+function filePath(ownerId: string, fileId: string): string {
+  return path.join(ownerDir(ownerId), sanitize(fileId))
+}
+
+/** Resolved DATA_DIR (absolute). For diagnostics only. */
+export function getDataDir(): string {
+  return DATA_DIR
+}
+
+/** Resolved UPLOADS_DIR (absolute). For diagnostics only. */
+export function getUploadsDir(): string {
+  return UPLOADS_DIR
+}
+
+/** Absolute path for owner/file (server-side verification only; do not send to client). */
+export function getOwnerFilePath(ownerId: string, fileId: string): string {
+  return path.resolve(UPLOADS_DIR, sanitize(ownerId), sanitize(fileId))
 }
 
 /**
- * Initialize storage directories if they don't exist
- * HOTFIX: Use 0o755 for directories to ensure persistence across restarts
- * Files themselves are still protected (content stored securely)
+ * Ensure directory ./data/uploads/<ownerId> exists.
  */
-async function ensureStorageDirs(): Promise<void> {
+export async function ensureOwnerDir(ownerId: string): Promise<void> {
+  const dir = ownerDir(ownerId)
+  await fs.mkdir(dir, { recursive: true, mode: 0o755 })
+}
+
+/**
+ * Write file bytes under ./data/uploads/<ownerId>/<fileId>.
+ */
+export async function writeOwnerFile(ownerId: string, fileId: string, data: Buffer | string): Promise<void> {
+  await ensureOwnerDir(ownerId)
+  const p = filePath(ownerId, fileId)
+  const buf = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data
+  await fs.writeFile(p, buf, { mode: 0o644 })
+}
+
+/**
+ * Read file bytes from ./data/uploads/<ownerId>/<fileId>. Returns null if not found.
+ */
+export async function readOwnerFile(ownerId: string, fileId: string): Promise<string | null> {
   try {
-    // Use 0o755 for directories (readable by app user, writable by owner)
-    // This ensures files persist across restarts and systemd service restarts
-    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o755 })
-    await fs.mkdir(FILES_DIR, { recursive: true, mode: 0o755 })
-  } catch (error) {
-    console.error('Failed to create storage directories:', error)
-    throw error
-  }
-}
-
-/**
- * Load metadata file
- */
-async function loadMetadata(): Promise<FilesMetadata> {
-  try {
-    await ensureStorageDirs()
-    const data = await fs.readFile(METADATA_FILE, 'utf-8')
-    return JSON.parse(data) as FilesMetadata
-  } catch (error) {
-    // If file doesn't exist, return empty metadata
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { files: {} }
-    }
-    
-    // If JSON parsing fails (corrupted file), backup and create new
-    if (error instanceof SyntaxError) {
-      console.error('Metadata file is corrupted (JSON parse error), backing up and resetting:', error)
-      try {
-        const backupPath = `${METADATA_FILE}.backup.${Date.now()}`
-        await fs.copyFile(METADATA_FILE, backupPath)
-        console.log(`Corrupted metadata backed up to: ${backupPath}`)
-        // Create new empty metadata file
-        await fs.writeFile(METADATA_FILE, JSON.stringify({ files: {} }, null, 2), 'utf-8')
-        return { files: {} }
-      } catch (backupError) {
-        console.error('Failed to backup corrupted metadata file:', backupError)
-        // Try to delete corrupted file and create new one
-        try {
-          await fs.unlink(METADATA_FILE)
-          await fs.writeFile(METADATA_FILE, JSON.stringify({ files: {} }, null, 2), 'utf-8')
-          return { files: {} }
-        } catch {
-          // If all else fails, return empty metadata
-          return { files: {} }
-        }
-      }
-    }
-    
-    console.error('Failed to load metadata:', error)
-    // Return empty metadata instead of throwing to prevent app crashes
-    return { files: {} }
-  }
-}
-
-/**
- * Save metadata file
- * HOTFIX: Use 0o644 for metadata file to ensure persistence
- */
-async function saveMetadata(metadata: FilesMetadata): Promise<void> {
-  try {
-    await ensureStorageDirs()
-    await fs.writeFile(METADATA_FILE, JSON.stringify(metadata, null, 2), { encoding: 'utf-8', mode: 0o644 })
-  } catch (error) {
-    console.error('Failed to save metadata:', error)
-    throw error
-  }
-}
-
-/**
- * Get file path for a given file ID
- */
-function getFilePath(fileId: string): string {
-  // Sanitize file ID to prevent directory traversal
-  const sanitizedId = fileId.replace(/[^a-zA-Z0-9_-]/g, '_')
-  return path.join(FILES_DIR, `${sanitizedId}.dat`)
-}
-
-/**
- * Store a file on the server
- */
-export async function storeFile(
-  fileId: string,
-  fileName: string,
-  fileContent: string,
-  fileType: string,
-  fileSize: number,
-  additionalMetadata?: Partial<StoredFileMetadata>
-): Promise<void> {
-  try {
-    await ensureStorageDirs()
-
-    // Store file content
-    // HOTFIX: Use 0o644 for files (readable by app user, writable by owner)
-    // This ensures files persist and are accessible after restarts
-    const filePath = getFilePath(fileId)
-    await fs.writeFile(filePath, fileContent, { encoding: 'utf-8', mode: 0o644 })
-
-    // Store metadata
-    const metadata = await loadMetadata()
-    metadata.files[fileId] = {
-      id: fileId,
-      name: fileName,
-      size: fileSize,
-      type: fileType,
-      uploadedAt: new Date().toISOString(),
-      scanStatus: 'pending',
-      ...additionalMetadata,
-    }
-
-    await saveMetadata(metadata)
-  } catch (error) {
-    console.error('Failed to store file:', error)
-    throw error
-  }
-}
-
-/**
- * Retrieve file content
- */
-export async function getFileContent(fileId: string): Promise<string | null> {
-  try {
-    const filePath = getFilePath(fileId)
-    const content = await fs.readFile(filePath, 'utf-8')
+    const p = filePath(ownerId, fileId)
+    const content = await fs.readFile(p, 'utf-8')
     return content
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return null
-    }
-    console.error('Failed to get file content:', error)
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
   }
 }
 
 /**
- * Get file metadata
+ * Read file as Buffer from ./data/uploads/<ownerId>/<fileId>. Returns null if not found.
  */
-export async function getFileMetadata(fileId: string): Promise<StoredFileMetadata | null> {
+export async function readOwnerFileBuffer(ownerId: string, fileId: string): Promise<Buffer | null> {
   try {
-    const metadata = await loadMetadata()
-    return metadata.files[fileId] || null
+    const p = filePath(ownerId, fileId)
+    return await fs.readFile(p)
   } catch (error) {
-    console.error('Failed to get file metadata:', error)
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
   }
 }
 
 /**
- * Update file metadata
+ * Delete file at ./data/uploads/<ownerId>/<fileId>. Returns true if deleted, false if not found.
  */
-export async function updateFileMetadata(
-  fileId: string,
-  updates: Partial<StoredFileMetadata>
-): Promise<void> {
+export async function deleteOwnerFile(ownerId: string, fileId: string): Promise<boolean> {
   try {
-    const metadata = await loadMetadata()
-    if (metadata.files[fileId]) {
-      metadata.files[fileId] = {
-        ...metadata.files[fileId],
-        ...updates,
-      }
-      await saveMetadata(metadata)
-    }
+    const p = filePath(ownerId, fileId)
+    await fs.unlink(p)
+    return true
   } catch (error) {
-    console.error('Failed to update file metadata:', error)
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
     throw error
   }
 }
 
 /**
- * List all stored files
+ * Delete all files under ./data/uploads/<ownerId>/.
  */
-export async function listFiles(): Promise<StoredFileMetadata[]> {
+export async function clearOwnerFiles(ownerId: string): Promise<number> {
+  const dir = ownerDir(ownerId)
+  let count = 0
   try {
-    const metadata = await loadMetadata()
-    return Object.values(metadata.files)
-  } catch (error) {
-    console.error('Failed to list files:', error)
-    throw error
-  }
-}
-
-/**
- * Delete a file
- */
-export async function deleteFile(fileId: string): Promise<boolean> {
-  try {
-    // Delete file content
-    const filePath = getFilePath(fileId)
-    try {
-      await fs.unlink(filePath)
-    } catch (error) {
-      // File might not exist, continue with metadata deletion
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        throw error
+    const entries = await fs.readdir(dir, { withFileTypes: true })
+    for (const e of entries) {
+      if (e.isFile()) {
+        await fs.unlink(path.join(dir, e.name))
+        count++
       }
     }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  return count
+}
 
-    // Delete metadata
-    const metadata = await loadMetadata()
-    if (metadata.files[fileId]) {
-      delete metadata.files[fileId]
-      await saveMetadata(metadata)
-      return true
+/**
+ * List files on disk for an owner (filenames + sizes). For diagnostics.
+ */
+export async function listOwnerFilesOnDisk(ownerId: string): Promise<Array<{ name: string; size: number }>> {
+  const dir = ownerDir(ownerId)
+  const out: Array<{ name: string; size: number }> = []
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true })
+    for (const e of entries) {
+      if (!e.isFile()) continue
+      const fp = path.join(dir, e.name)
+      const stat = await fs.stat(fp)
+      out.push({ name: e.name, size: stat.size })
     }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  return out
+}
 
+/**
+ * Check if UPLOADS_DIR exists on disk.
+ */
+export async function uploadsDirExists(): Promise<boolean> {
+  try {
+    await fs.access(UPLOADS_DIR)
+    return true
+  } catch {
     return false
-  } catch (error) {
-    console.error('Failed to delete file:', error)
-    throw error
   }
 }
 
 /**
- * Compute SHA256 hash of file content
- */
-export async function computeFileHash(fileContent: string): Promise<string> {
-  return crypto.createHash('sha256').update(fileContent).digest('hex')
-}
-
-/**
- * Clear all uploaded files and metadata
- * Used for health check cleanup (24-hour cache clearing)
- */
-export async function clearAllFiles(): Promise<{ deletedFiles: number; deletedMetadata: boolean }> {
-  try {
-    let deletedFiles = 0
-
-    // Delete all files in the files directory
-    try {
-      const files = await fs.readdir(FILES_DIR)
-      for (const file of files) {
-        if (file.endsWith('.dat')) {
-          try {
-            await fs.unlink(path.join(FILES_DIR, file))
-            deletedFiles++
-          } catch (error) {
-            console.error(`Failed to delete file ${file}:`, error)
-          }
-        }
-      }
-    } catch (error) {
-      // Directory might not exist, which is fine
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error('Failed to read files directory:', error)
-      }
-    }
-
-    // Clear metadata file
-    let deletedMetadata = false
-    try {
-      await fs.unlink(METADATA_FILE)
-      deletedMetadata = true
-    } catch (error) {
-      // File might not exist, which is fine
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error('Failed to delete metadata file:', error)
-      }
-      // If metadata file doesn't exist, we still consider it "cleared"
-      deletedMetadata = true
-    }
-
-    return { deletedFiles, deletedMetadata }
-  } catch (error) {
-    console.error('Failed to clear files:', error)
-    throw error
-  }
-}
-
-/**
- * Get storage statistics
+ * Storage stats for health/cache: walk ./data/uploads and count files / total size.
  */
 export async function getStorageStats(): Promise<{
   fileCount: number
@@ -331,91 +159,59 @@ export async function getStorageStats(): Promise<{
   oldestFile?: string
   newestFile?: string
 }> {
+  let fileCount = 0
+  let totalSize = 0
+  let oldestMs: number | null = null
+  let newestMs: number | null = null
   try {
-    const metadata = await loadMetadata()
-    const files = Object.values(metadata.files)
-    
-    if (files.length === 0) {
-      return { fileCount: 0, totalSize: 0 }
-    }
-
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0)
-    const sortedFiles = files.sort((a, b) => 
-      new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
-    )
-
-    return {
-      fileCount: files.length,
-      totalSize,
-      oldestFile: sortedFiles[0]?.uploadedAt,
-      newestFile: sortedFiles[sortedFiles.length - 1]?.uploadedAt,
-    }
-  } catch (error) {
-    console.error('Failed to get storage stats:', error)
-    return { fileCount: 0, totalSize: 0 }
-  }
-}
-
-/**
- * Get current schema version (for migrations)
- */
-async function getSchemaVersion(): Promise<number> {
-  try {
-    await ensureStorageDirs()
-    const data = await fs.readFile(SCHEMA_VERSION_FILE, 'utf-8')
-    const schema = JSON.parse(data) as SchemaVersion
-    return schema.version || 0
-  } catch {
-    // No schema version file = version 0 (pre-migration system)
-    return 0
-  }
-}
-
-/**
- * Update schema version (called after successful migration)
- */
-async function updateSchemaVersion(): Promise<void> {
-  try {
-    await ensureStorageDirs()
-    const schema: SchemaVersion = {
-      version: CURRENT_SCHEMA_VERSION,
-      lastMigrated: new Date().toISOString()
-    }
-    await fs.writeFile(SCHEMA_VERSION_FILE, JSON.stringify(schema, null, 2), 'utf-8')
-  } catch (error) {
-    console.error('Failed to update schema version:', error)
-  }
-}
-
-/**
- * Run storage migrations (idempotent)
- * This ensures storage directories have correct permissions and schema version
- */
-export async function migrateStorage(): Promise<void> {
-  const currentVersion = await getSchemaVersion()
-  
-  if (currentVersion >= CURRENT_SCHEMA_VERSION) {
-    return // Already up to date
-  }
-
-  try {
-    await ensureStorageDirs()
-    
-    // Migration 1: Ensure correct directory permissions (0o755)
-    if (currentVersion < 1) {
-      const stats = await fs.stat(STORAGE_DIR).catch(() => null)
-      if (stats) {
-        await fs.chmod(STORAGE_DIR, 0o755)
-        await fs.chmod(FILES_DIR, 0o755).catch(() => {})
-        console.log('✅ Migration 1: Storage directory permissions updated')
+    await fs.mkdir(UPLOADS_DIR, { recursive: true, mode: 0o755 })
+    const owners = await fs.readdir(UPLOADS_DIR, { withFileTypes: true })
+    for (const owner of owners) {
+      if (!owner.isDirectory()) continue
+      const ownerPath = path.join(UPLOADS_DIR, owner.name)
+      const files = await fs.readdir(ownerPath, { withFileTypes: true })
+      for (const f of files) {
+        if (!f.isFile()) continue
+        const fp = path.join(ownerPath, f.name)
+        const stat = await fs.stat(fp)
+        fileCount++
+        totalSize += stat.size
+        const m = stat.mtimeMs
+        if (oldestMs == null || m < oldestMs) oldestMs = m
+        if (newestMs == null || m > newestMs) newestMs = m
       }
     }
-
-    // Update schema version after successful migration
-    await updateSchemaVersion()
-    console.log(`✅ Storage migrated from version ${currentVersion} to ${CURRENT_SCHEMA_VERSION}`)
   } catch (error) {
-    console.error('❌ Storage migration failed:', error)
-    // Don't throw - allow app to continue with existing schema
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
+  return {
+    fileCount,
+    totalSize,
+    oldestFile: oldestMs != null ? new Date(oldestMs).toISOString() : undefined,
+    newestFile: newestMs != null ? new Date(newestMs).toISOString() : undefined,
+  }
+}
+
+/**
+ * No-op for backward compatibility with scripts that import migrateStorage.
+ */
+export async function migrateStorage(): Promise<void> {}
+
+/**
+ * Clear all file bytes under ./data/uploads (all owner dirs). Used by 24h cache cleanup.
+ * Does not touch registry or RAG index.
+ */
+export async function clearAllFiles(): Promise<{ deletedFiles: number; deletedMetadata: boolean }> {
+  let deletedFiles = 0
+  try {
+    const owners = await fs.readdir(UPLOADS_DIR, { withFileTypes: true })
+    for (const owner of owners) {
+      if (!owner.isDirectory()) continue
+      const n = await clearOwnerFiles(owner.name)
+      deletedFiles += n
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  return { deletedFiles, deletedMetadata: false }
 }

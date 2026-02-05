@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 interface ApiKeys {
   openAiKey: string
+  anthropicApiKey: string
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
@@ -19,6 +20,7 @@ interface AppSettings {
 export default function SettingsForm() {
   const [keys, setKeys] = useState<ApiKeys>({
     openAiKey: '',
+    anthropicApiKey: '',
     lakeraAiKey: '',
     lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
     lakeraProjectId: '',
@@ -38,6 +40,7 @@ export default function SettingsForm() {
   // Server-side API key status
   const [serverStatus, setServerStatus] = useState<{
     openAiKey?: boolean
+    anthropicApiKey?: boolean
     lakeraAiKey?: boolean
     lakeraProjectId?: boolean
     lakeraEndpoint?: string
@@ -56,23 +59,24 @@ export default function SettingsForm() {
   const [currentPin, setCurrentPin] = useState<string>('')
   const [pinForVerification, setPinForVerification] = useState<string>('')
   const [showPinDialog, setShowPinDialog] = useState<boolean>(false)
-  const [pinDialogAction, setPinDialogAction] = useState<'remove-te-key' | 'clear-all' | 'clear-openai' | 'clear-lakera-ai' | 'clear-lakera-project-id' | 'clear-lakera-endpoint' | null>(null)
+  const [pinDialogAction, setPinDialogAction] = useState<'remove-te-key' | 'clear-all' | 'clear-openai' | 'clear-anthropic' | 'clear-lakera-ai' | 'clear-lakera-project-id' | 'clear-lakera-endpoint' | null>(null)
   const [keyToClear, setKeyToClear] = useState<keyof ApiKeys | null>(null)
   const [isManagingPin, setIsManagingPin] = useState<boolean>(false)
 
   // Load keys from server-side storage and check status
   const loadApiKeys = async () => {
-    let statusData: { configured?: { openAiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
+    let statusData: { configured?: { openAiKey?: boolean; anthropicApiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
     let statusResponse: Response | null = null
     
     try {
       // Check server-side status first
-      statusResponse = await fetch('/api/keys').catch(() => null)
+      statusResponse = await fetch('/api/keys', { credentials: 'include', cache: 'no-store' }).catch(() => null)
       if (statusResponse?.ok) {
         statusData = await statusResponse.json()
         // Update server status
         setServerStatus({
           openAiKey: statusData?.configured?.openAiKey || false,
+          anthropicApiKey: statusData?.configured?.anthropicApiKey || false,
           lakeraAiKey: statusData?.configured?.lakeraAiKey || false,
           lakeraProjectId: statusData?.configured?.lakeraProjectId || false,
           lakeraEndpoint: statusData?.configured?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
@@ -154,8 +158,8 @@ export default function SettingsForm() {
     try {
       // Check both status endpoints
       const [statusResponse, keysResponse] = await Promise.all([
-        fetch('/api/settings/status').catch(() => null),
-        fetch('/api/keys').catch(() => null),
+        fetch('/api/settings/status', { credentials: 'include', cache: 'no-store' }).catch(() => null),
+        fetch('/api/keys', { credentials: 'include', cache: 'no-store' }).catch(() => null),
       ])
       
       if (statusResponse?.ok) {
@@ -163,6 +167,7 @@ export default function SettingsForm() {
         setServerStatus(prev => ({
           ...prev,
           openAiKey: statusData.hasOpenAiKey || false,
+          anthropicApiKey: statusData.hasAnthropicApiKey ?? prev.anthropicApiKey ?? false,
           lakeraAiKey: statusData.hasLakeraAiKey || false,
           lakeraProjectId: statusData.hasLakeraProjectId || false,
           lakeraEndpoint: statusData.status?.lakeraEndpoint?.value || 'https://api.lakera.ai/v2/guard',
@@ -175,6 +180,7 @@ export default function SettingsForm() {
         setServerStatus(prev => ({
           ...prev,
           openAiKey: keysData.configured?.openAiKey || prev.openAiKey,
+          anthropicApiKey: keysData.configured?.anthropicApiKey ?? prev.anthropicApiKey ?? false,
           lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
           lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
           lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
@@ -233,6 +239,8 @@ export default function SettingsForm() {
     try {
       const response = await fetch('/api/te/config', {
         method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -278,7 +286,7 @@ export default function SettingsForm() {
   // Check PIN configuration status
   const checkPinStatus = async () => {
     try {
-      const response = await fetch('/api/pin')
+      const response = await fetch('/api/pin', { credentials: 'include', cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setPinConfigured(data.configured || false)
@@ -293,6 +301,8 @@ export default function SettingsForm() {
     try {
       const response = await fetch('/api/pin', {
         method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -340,6 +350,8 @@ export default function SettingsForm() {
 
       const response = await fetch('/api/te/config', {
         method: 'DELETE',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -405,7 +417,7 @@ export default function SettingsForm() {
       await performRemoveCheckpointTeKey()
     } else if (pinDialogAction === 'clear-all') {
       await performClearAll()
-    } else if (              pinDialogAction === 'clear-openai' || pinDialogAction === 'clear-lakera-ai' || 
+    } else if (              pinDialogAction === 'clear-openai' || pinDialogAction === 'clear-anthropic' || pinDialogAction === 'clear-lakera-ai' || 
                pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
       // Clear individual key
       if (keyToClear) {
@@ -482,6 +494,8 @@ export default function SettingsForm() {
       // Save API keys to server-side storage (encrypted)
       const response = await fetch('/api/keys', {
         method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -522,6 +536,8 @@ export default function SettingsForm() {
       // Set appropriate dialog action based on field name
       if (fieldName === 'openAiKey') {
         setPinDialogAction('clear-openai')
+      } else if (fieldName === 'anthropicApiKey') {
+        setPinDialogAction('clear-anthropic')
       } else if (fieldName === 'lakeraAiKey') {
         setPinDialogAction('clear-lakera-ai')
       } else if (fieldName === 'lakeraProjectId') {
@@ -545,6 +561,7 @@ export default function SettingsForm() {
       // Map field names to server-side key names
       const serverKeyMap: Record<keyof ApiKeys, string> = {
         openAiKey: 'openAiKey',
+        anthropicApiKey: 'anthropicApiKey',
         lakeraAiKey: 'lakeraAiKey',
         lakeraProjectId: 'lakeraProjectId',
         lakeraEndpoint: 'lakeraEndpoint',
@@ -631,6 +648,8 @@ export default function SettingsForm() {
       
       const response = await fetch('/api/keys?all=true', {
         method: 'DELETE',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -641,6 +660,7 @@ export default function SettingsForm() {
         // Clear client-side state
         setKeys({
           openAiKey: '',
+          anthropicApiKey: '',
           lakeraAiKey: '',
           lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
           lakeraProjectId: '',
@@ -702,6 +722,8 @@ export default function SettingsForm() {
 
       const response = await fetch('/api/pin', {
         method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -746,6 +768,8 @@ export default function SettingsForm() {
     try {
       const response = await fetch('/api/pin', {
         method: 'DELETE',
+        credentials: 'include',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -931,6 +955,58 @@ export default function SettingsForm() {
               </p>
             )}
           </div>
+
+            {/* Anthropic API Key */}
+            <div>
+              <label htmlFor="anthropicApiKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>Anthropic API Key</span>
+                {serverStatus.anthropicApiKey || keys.anthropicApiKey ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{ boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)' }}
+                  />
+                ) : (
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{ boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}
+                  />
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  id="anthropicApiKey"
+                  name="anthropicApiKey"
+                  value={keys.anthropicApiKey}
+                  placeholder="Paste your Anthropic API key here (sk-ant-...) (Ctrl/Cmd + V)"
+                  {...secureInputProps}
+                />
+                {keys.anthropicApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => handleClear('anthropicApiKey')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-theme-subtle mt-1">
+                🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
+              </p>
+              {serverStatus.anthropicApiKey && !keys.anthropicApiKey && (
+                <p className="text-sm text-green-400 mt-1">
+                  ✓ Configured via environment variable (server-side)
+                </p>
+              )}
+              {!serverStatus.anthropicApiKey && !keys.anthropicApiKey && (
+                <p className="text-sm text-yellow-400 mt-1">
+                  ⚠ Optional - Set for Claude models or configure ANTHROPIC_API_KEY environment variable
+                </p>
+              )}
+            </div>
 
           {/* Lakera AI Key */}
           <div>
@@ -1417,6 +1493,8 @@ export default function SettingsForm() {
                     ? 'Please enter your PIN to clear all API keys.'
                     : pinDialogAction === 'clear-openai'
                     ? 'Please enter your PIN to clear the OpenAI API key.'
+                    : pinDialogAction === 'clear-anthropic'
+                    ? 'Please enter your PIN to clear the Anthropic API key.'
                     : pinDialogAction === 'clear-lakera-ai'
                     ? 'Please enter your PIN to clear the Lakera AI key.'
                     : pinDialogAction === 'clear-lakera-project-id'

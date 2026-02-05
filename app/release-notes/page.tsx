@@ -25,14 +25,14 @@ export default function ReleaseNotesPage() {
     const loadData = async () => {
       try {
         // Load app version
-        const versionResponse = await fetch('/api/version')
+        const versionResponse = await fetch('/api/version', { credentials: 'include', cache: 'no-store' })
         if (versionResponse.ok) {
           const versionData = await versionResponse.json()
           setAppVersion(versionData.version || '1.0.8')
         }
 
         // Load release notes from API
-        const notesResponse = await fetch('/api/release-notes')
+        const notesResponse = await fetch('/api/release-notes', { credentials: 'include', cache: 'no-store' })
         if (notesResponse.ok) {
           const notesData = await notesResponse.json()
           setReleaseNotes(notesData.releaseNotes || [])
@@ -130,7 +130,7 @@ export default function ReleaseNotesPage() {
         <div className="space-y-6">
           {releaseNotes.map((release, index) => (
             <div
-              key={release.version}
+              key={`${release.version}-${index}`}
               className="glass-card p-6 rounded-xl border-2"
               style={{
                 background: "rgb(var(--surface-2))",
