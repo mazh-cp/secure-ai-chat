@@ -122,14 +122,14 @@ if [[ "$OS_ID" =~ ^(ubuntu|debian)$ ]]; then
             print_warning "Debian version ${OS_VERSION} detected. Debian 11+ is recommended."
         fi
     fi
-    ok "OS detected: ${OS_ID} ${OS_VERSION}"
+    print_success "OS detected: ${OS_ID} ${OS_VERSION}"
 else
     print_warning "OS not recognized: ${OS_ID}. Continuing anyway..."
 fi
 
 print_info "Updating package list..."
 if sudo apt-get update -qq; then
-    ok "Package list updated"
+    print_success "Package list updated"
 else
     print_warning "Package update had issues, continuing..."
 fi
@@ -157,7 +157,7 @@ done
 if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
     print_info "Installing missing packages: ${MISSING_PKGS[*]}"
     if sudo apt-get install -y -qq "${MISSING_PKGS[@]}" > /dev/null 2>&1; then
-        ok "System packages installed: ${MISSING_PKGS[*]}"
+        print_success "System packages installed: ${MISSING_PKGS[*]}"
     else
         print_error "Failed to install some packages: ${MISSING_PKGS[*]}"
         print_info "Attempting individual package installation..."
@@ -170,7 +170,7 @@ if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
         done
     fi
 else
-    ok "All required packages already installed"
+    print_success "All required packages already installed"
 fi
 
 # Verify critical packages (build-essential is a meta-package, check via dpkg only)
@@ -236,7 +236,7 @@ export NVM_DIR="$HOME/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
     # shellcheck source=/dev/null
     . "$NVM_DIR/nvm.sh"
-    ok "nvm loaded"
+    print_success "nvm loaded"
 else
     print_error "nvm installation appears incomplete. $NVM_DIR/nvm.sh not found."
     exit 1
