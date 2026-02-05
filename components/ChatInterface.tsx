@@ -127,6 +127,8 @@ export default function ChatInterface() {
     }, 5000)
     
     return () => clearInterval(interval)
+    // Intentional: run on mount and every 5s only; adding apiKeys would re-run on every key change and duplicate intervals
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
   // Load toggle states from localStorage

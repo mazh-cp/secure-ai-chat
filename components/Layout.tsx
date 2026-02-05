@@ -129,8 +129,8 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex h-16 items-center justify-between border-b border-palette-border-default/20 pb-4 mb-6">
             {logoData ? (
               <div className="flex items-center flex-1">
+                {/* Using img for dynamic base64/data URL from localStorage; Next/Image requires static src */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {/* Using img instead of Next.js Image because logoData is a dynamic base64/data URL from localStorage */}
                 <img
                   src={logoData}
                   alt="Site Logo"

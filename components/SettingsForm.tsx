@@ -1329,8 +1329,8 @@ export default function SettingsForm() {
                     <div className="glass-card p-4 rounded-xl">
                       <p className="text-sm text-theme-subtle mb-2">Logo Preview:</p>
                       <div className="relative w-full h-32 bg-palette-bg-tertiary/10 rounded-lg overflow-hidden flex items-center justify-center">
+                        {/* Dynamic base64/data URL; Next/Image requires static src */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {/* Using img instead of Next.js Image because logoPreview is a dynamic base64/data URL */}
                         <img
                           src={logoPreview || settings.logoData}
                           alt="Logo preview"
