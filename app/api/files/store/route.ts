@@ -54,10 +54,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
-    if (fileSize > MAX_FILE_SIZE) {
+    const fileIdStr = typeof fileId === 'string' ? fileId : String(fileId)
+    const fileNameStr = typeof fileName === 'string' ? fileName : String(fileName)
+    const fileTypeStr = typeof fileType === 'string' ? fileType : String(fileType)
+    const fileSizeNum = typeof fileSize === 'number' && !Number.isNaN(fileSize) ? fileSize : Number(fileSize)
+    if (Number.isNaN(fileSizeNum) || fileSizeNum < 0) {
       return NextResponse.json(
-        { ok: false, error: { code: 'FILE_TOO_LARGE', message: `File size exceeds 50 MB limit. Current size: ${(fileSize / (1024 * 1024)).toFixed(2)} MB`, details: null } },
+        { ok: false, error: { code: 'INVALID_FIELDS', message: 'fileSize must be a non-negative number', details: null } },
+        { status: 400 }
+      )
+    }
+
+    const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+    if (fileSizeNum > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { ok: false, error: { code: 'FILE_TOO_LARGE', message: `File size exceeds 50 MB limit. Current size: ${(fileSizeNum / (1024 * 1024)).toFixed(2)} MB`, details: null } },
         { status: 400 }
       )
     }
@@ -71,23 +82,23 @@ export async function POST(request: NextRequest) {
 
     const ALLOWED_TYPES = ['text/plain', 'application/pdf', 'text/markdown', 'application/json', 'text/csv', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
     const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx']
-    const fileExtension = '.' + fileName.split('.').pop()?.toLowerCase()
-    if (!ALLOWED_TYPES.includes(fileType) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
+    const fileExtension = '.' + fileNameStr.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_TYPES.includes(fileTypeStr) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
         { ok: false, error: { code: 'FILE_TYPE_NOT_SUPPORTED', message: `File type not supported. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`, details: null } },
         { status: 400 }
       )
     }
 
-    const storageKey = `${ownerId}/${fileId}`
+    const storageKey = `${ownerId}/${fileIdStr}`
     const content = typeof fileContent === 'string' ? fileContent : String(fileContent)
     const buf = Buffer.from(content, 'utf-8')
     const uploadsDir = getUploadsDir()
 
-    console.log('[STORE]', { ownerId, fileId, uploadsDir, bytes: buf.length })
+    console.log('[STORE]', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length })
 
     try {
-      await writeOwnerFile(ownerId, fileId, content)
+      await writeOwnerFile(ownerId, fileIdStr, content)
     } catch (writeErr) {
       console.error('Failed to write file to disk:', writeErr)
       const msg = writeErr instanceof Error ? writeErr.message : 'Failed to write file to disk'
@@ -99,10 +110,10 @@ export async function POST(request: NextRequest) {
 
     let writtenBytes: number
     try {
-      const absolutePath = getOwnerFilePath(ownerId, fileId)
+      const absolutePath = getOwnerFilePath(ownerId, fileIdStr)
       const stat = await fs.stat(absolutePath)
       writtenBytes = stat.size
-      console.log('[STORE] written', { ownerId, fileId, uploadsDir, bytes: buf.length, writtenBytes, absolutePath })
+      console.log('[STORE] written', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length, writtenBytes, absolutePath })
     } catch (statErr) {
       console.error('Failed to verify file on disk after write:', statErr)
       const msg = statErr instanceof Error ? statErr.message : 'Failed to verify file on disk'
@@ -112,19 +123,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const scanStatusStr = typeof scanStatus === 'string' ? scanStatus : 'pending'
+    const scanResultVal = scanResult != null && typeof scanResult === 'string' ? scanResult : null
+    const scanDetailsVal = scanDetails != null && typeof scanDetails === 'object' ? scanDetails : null
+    const checkpointTeDetailsVal = checkpointTeDetails != null && typeof checkpointTeDetails === 'object' ? checkpointTeDetails : null
+
     try {
       insertFile({
-        id: fileId,
+        id: fileIdStr,
         storage_key: storageKey,
-        name: fileName,
-        size: fileSize,
-        type: fileType,
+        name: fileNameStr,
+        size: fileSizeNum,
+        type: fileTypeStr,
         owner_id: ownerId,
         session_id: null,
-        scan_status: scanStatus || 'pending',
-        scan_result: scanResult ?? null,
-        scan_details: scanDetails ?? null,
-        checkpoint_te_details: checkpointTeDetails ?? null,
+        scan_status: scanStatusStr,
+        scan_result: scanResultVal,
+        scan_details: scanDetailsVal,
+        checkpoint_te_details: checkpointTeDetailsVal,
       })
     } catch (insertErr) {
       console.error('Failed to insert file into registry:', insertErr)
@@ -139,13 +155,13 @@ export async function POST(request: NextRequest) {
     const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
     logForensic('files/store', ctx)
 
-    const storagePathPreview = `data/uploads/${ownerId ?? ''}/${fileId}`
+    const storagePathPreview = `data/uploads/${ownerId ?? ''}/${fileIdStr}`
     return NextResponse.json({
       ok: true,
       success: true,
-      file: { id: fileId, name: fileName, size: fileSize, mime: fileType, storagePath: storagePathPreview, createdAt: new Date().toISOString(), ownerId: ownerId ?? undefined },
+      file: { id: fileIdStr, name: fileNameStr, size: fileSizeNum, mime: fileTypeStr, storagePath: storagePathPreview, createdAt: new Date().toISOString(), ownerId: ownerId ?? undefined },
       ownerId: ownerId ?? undefined,
-      fileId,
+      fileId: fileIdStr,
       storagePathPreview,
       message: 'File stored successfully',
     })
