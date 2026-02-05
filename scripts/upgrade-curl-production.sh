@@ -61,10 +61,10 @@ if [ -z "$APP_USER" ]; then
 fi
 say "App user: $APP_USER"
 
-# Backup (use /tmp to avoid permission issues inside APP_DIR)
+# Backup (use /tmp to avoid permission issues inside APP_DIR; /tmp may be cleared on reboot)
 BACKUP_DIR="/tmp/secure-ai-chat-backup-$(date +%Y%m%d-%H%M%S)"
 say "Creating backup at $BACKUP_DIR"
-mkdir -p "$BACKUP_DIR" || fail "Cannot create backup dir (try: sudo mkdir -p /tmp/secure-ai-chat-backups && sudo chown $(whoami) /tmp/secure-ai-chat-backups)"
+mkdir -p "$BACKUP_DIR" || fail "Cannot create backup dir $BACKUP_DIR. Check: df /tmp (disk full?), ls -ld /tmp (writable?). Note: backups live in /tmp and may be cleared on reboot."
 [ -f "$APP_DIR/.env.local" ] && cp -a "$APP_DIR/.env.local" "$BACKUP_DIR/" || true
 [ -d "$APP_DIR/.secure-storage" ] && cp -a "$APP_DIR/.secure-storage" "$BACKUP_DIR/" || true
 [ -d "$APP_DIR/.storage" ] && cp -a "$APP_DIR/.storage" "$BACKUP_DIR/" 2>/dev/null || true

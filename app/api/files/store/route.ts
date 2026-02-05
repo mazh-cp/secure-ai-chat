@@ -35,29 +35,27 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const {
-      fileId,
-      fileName,
-      fileContent,
-      fileType,
-      fileSize,
-      scanStatus,
-      scanResult,
-      scanDetails,
-      checkpointTeDetails,
-    } = body
+    const fileId = body.fileId
+    const fileName = body.fileName
+    const fileContent = body.fileContent
+    const fileType = body.fileType
+    const fileSize = body.fileSize
+    const scanStatus = body.scanStatus
+    const scanResult = body.scanResult
+    const scanDetails = body.scanDetails
+    const checkpointTeDetails = body.checkpointTeDetails
 
-    if (!fileId || !fileName || fileContent === undefined || !fileType || fileSize === undefined) {
+    if (fileId == null || fileName == null || fileContent === undefined || fileType == null || fileSize == null) {
       return NextResponse.json(
         { ok: false, error: { code: 'MISSING_FIELDS', message: 'Missing required fields: fileId, fileName, fileContent, fileType, fileSize', details: null } },
         { status: 400 }
       )
     }
 
-    const fileIdStr = typeof fileId === 'string' ? fileId : String(fileId)
-    const fileNameStr = typeof fileName === 'string' ? fileName : String(fileName)
-    const fileTypeStr = typeof fileType === 'string' ? fileType : String(fileType)
-    const fileSizeNum = typeof fileSize === 'number' && !Number.isNaN(fileSize) ? fileSize : Number(fileSize)
+    const fileIdStr: string = typeof fileId === 'string' ? fileId : String(fileId)
+    const fileNameStr: string = typeof fileName === 'string' ? fileName : String(fileName)
+    const fileTypeStr: string = typeof fileType === 'string' ? fileType : String(fileType)
+    const fileSizeNum: number = typeof fileSize === 'number' && !Number.isNaN(fileSize) ? fileSize : Number(fileSize)
     if (Number.isNaN(fileSizeNum) || fileSizeNum < 0) {
       return NextResponse.json(
         { ok: false, error: { code: 'INVALID_FIELDS', message: 'fileSize must be a non-negative number', details: null } },
@@ -123,10 +121,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const scanStatusStr = typeof scanStatus === 'string' ? scanStatus : 'pending'
-    const scanResultVal = scanResult != null && typeof scanResult === 'string' ? scanResult : null
-    const scanDetailsVal = scanDetails != null && typeof scanDetails === 'object' ? scanDetails : null
-    const checkpointTeDetailsVal = checkpointTeDetails != null && typeof checkpointTeDetails === 'object' ? checkpointTeDetails : null
+    const scanStatusStr: string = typeof scanStatus === 'string' ? scanStatus : 'pending'
+    const scanResultVal: string | null = scanResult != null && typeof scanResult === 'string' ? scanResult : null
+    const scanDetailsVal: Record<string, unknown> | null = scanDetails != null && typeof scanDetails === 'object' && !Array.isArray(scanDetails) ? (scanDetails as Record<string, unknown>) : null
+    const checkpointTeDetailsVal: Record<string, unknown> | null = checkpointTeDetails != null && typeof checkpointTeDetails === 'object' && !Array.isArray(checkpointTeDetails) ? (checkpointTeDetails as Record<string, unknown>) : null
 
     try {
       insertFile({
@@ -135,7 +133,7 @@ export async function POST(request: NextRequest) {
         name: fileNameStr,
         size: fileSizeNum,
         type: fileTypeStr,
-        owner_id: ownerId,
+        owner_id: ownerId ?? null,
         session_id: null,
         scan_status: scanStatusStr,
         scan_result: scanResultVal,
