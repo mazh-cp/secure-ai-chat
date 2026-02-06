@@ -144,8 +144,11 @@ which node
 GET_NODE
 )
 NPM_PATH="${NODE_PATH%/node}/npm"
-[ -z "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ] && { log_error "Node.js not found after nvm install"; exit 1; }
-[ -z "$NPM_PATH" ] || [ ! -x "$NPM_PATH" ] && { log_error "npm not found"; exit 1; }
+# Verify as APP_USER (script user may not have execute permission on INSTALL_DIR)
+[ -z "$NODE_PATH" ] && { log_error "Node.js not found after nvm install"; exit 1; }
+sudo -u "$APP_USER" test -x "$NODE_PATH" || { log_error "Node.js not executable at $NODE_PATH"; exit 1; }
+[ -z "$NPM_PATH" ] && { log_error "npm not found"; exit 1; }
+sudo -u "$APP_USER" test -x "$NPM_PATH" || { log_error "npm not executable at $NPM_PATH"; exit 1; }
 log_success "Phase 3 done: Node and npm verified at $NODE_PATH"
 
 # --- Phase 4: Clone repository (keep .nvm from Phase 3) ---
