@@ -11,15 +11,17 @@
 # Usage (production VM via SSH):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #
-# With overrides:
-#   APP_DIR=/home/adminuser/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
-#   GIT_REF=v1.0.15 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+# With overrides (APP_DIR must be set for the bash process when using a pipe; use one of these):
+#   curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat bash
+#   curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat
+#   GIT_REF=v1.0.15 curl -fsSL .../upgrade-curl-production.sh | bash
 
 set -euo pipefail
 
-# Configuration (production VM defaults)
-# Auto-detect: if unset, try default then /opt/secure-ai-chat (from install_fresh_v1.0.16 / install_ubuntu_clean)
-if [ -z "${APP_DIR:-}" ]; then
+# Configuration: APP_DIR from env, or first argument (for "bash -s -- /path"), or auto-detect
+if [ -n "${1:-}" ] && [ -d "${1}" ]; then
+  APP_DIR="$1"
+elif [ -z "${APP_DIR:-}" ]; then
   if [ -d "/home/adminuser/secure-ai-chat" ] && [ -f "/home/adminuser/secure-ai-chat/package.json" ]; then
     APP_DIR="/home/adminuser/secure-ai-chat"
   elif [ -d "/opt/secure-ai-chat" ] && [ -f "/opt/secure-ai-chat/package.json" ]; then
@@ -56,8 +58,9 @@ echo ""
 if [ ! -d "$APP_DIR" ]; then
   fail "App directory not found: $APP_DIR"
   echo ""
-  echo "  If the app is installed elsewhere, set APP_DIR:"
-  echo "  APP_DIR=/opt/secure-ai-chat curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash"
+  echo "  If the app is installed elsewhere, use one of these (APP_DIR must be set for bash, not curl):"
+  echo "  curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat bash"
+  echo "  curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat"
   echo ""
   echo "  If this is a FRESH install (no existing app), use the install script instead:"
   echo "  curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash"
