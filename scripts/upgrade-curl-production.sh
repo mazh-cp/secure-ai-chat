@@ -174,8 +174,9 @@ if [ -d "$BACKUP_DIR/.secure-storage" ]; then
   sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" || true
 fi
 
-# npm install (with nvm if present)
+# npm install (with nvm if present). App user (secureai) has nvm in APP_DIR/.nvm, so set HOME=APP_DIR.
 say "Installing dependencies (npm install)"
+APP_HOME="$APP_DIR"
 export HOME="${HOME:-$APP_DIR}"
 if [ -d "$HOME/.nvm" ]; then
   export NVM_DIR="$HOME/.nvm"
@@ -184,7 +185,7 @@ fi
 if [ "$(whoami)" = "$APP_USER" ]; then
   (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || fail "npm install failed"
 else
-  sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='${HOME}' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || fail "npm install failed"
+  sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || fail "npm install failed"
 fi
 ok "Dependencies installed"
 
@@ -195,7 +196,7 @@ for attempt in 1 2; do
   if [ "$(whoami)" = "$APP_USER" ]; then
     if (cd "$APP_DIR" && npm run build); then build_ok=true; break; fi
   else
-    if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='${HOME}' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
+    if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
   fi
   if [ "$attempt" -eq 1 ] && [ "$GIT_REF" != "main" ]; then
     warn "Build failed. Retrying with main (latest fixes)..."
@@ -208,7 +209,7 @@ for attempt in 1 2; do
     if [ "$(whoami)" = "$APP_USER" ]; then
       (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
     else
-      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='${HOME}' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
+      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
     fi
   else
     break
