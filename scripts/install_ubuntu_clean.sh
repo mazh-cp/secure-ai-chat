@@ -189,9 +189,9 @@ else
     log_info "Retrying clone without branch (uses default)..."
     sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" || { log_error "Clone failed. Check network, REPO_URL=$REPO_URL BRANCH=$BRANCH"; exit 1; }
   fi
-  # Locate package.json (at root or in a subdir); use sudo test - TMP_CLONE is owned by secureai (700)
+  # Locate package.json (at root or in a subdir); if find returns a path, file exists (no -f test - dir is 700)
   _pj=$(sudo find "$TMP_CLONE" -maxdepth 2 -name "package.json" -type f 2>/dev/null | head -1)
-  if [ -z "$_pj" ] || ! sudo test -f "$_pj"; then
+  if [ -z "$_pj" ]; then
     log_error "Clone has no package.json. REPO_URL=$REPO_URL BRANCH=$BRANCH"
     log_error "Contents of clone dir:"
     sudo ls -la "$TMP_CLONE" 2>/dev/null | head -10
