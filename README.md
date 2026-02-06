@@ -71,6 +71,11 @@ For a **fresh Ubuntu VM**, use the clean-install script so nothing is missed (pr
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 ```
 
+**Force clean install** (wipes existing install, preserves API keys, fresh clone with latest fixes including RAG+Model chat):
+```bash
+FORCE_CLEAN=1 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+```
+
 **Standard install:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash

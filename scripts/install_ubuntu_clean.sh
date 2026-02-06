@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Secure AI Chat - Clean install on a fresh Ubuntu VM (from GitHub via curl)
 #
-# Use this on a brand-new Ubuntu VM. Ensures nothing is missed: prerequisites,
-# Node/npm, clone, clean build (no stale .next or cache), systemd, nginx, firewall.
+# Includes latest fixes: Chat uses both RAG (uploaded files) and model knowledge
+# for answers—general questions answered from model, file-related queries use RAG.
 #
 # --- ONE-LINER (run on the VM, not as root) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 #
+# --- CLEAN INSTALL (wipe existing + fresh clone, preserves API keys) ---
+#   FORCE_CLEAN=1 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+#
 # Overrides (optional):
 #   INSTALL_DIR=/opt/secure-ai-chat BRANCH=main curl -fsSL ... | bash
+#   FORCE_CLEAN=1 INSTALL_DIR=/opt/secure-ai-chat curl -fsSL ... | bash
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 #
@@ -35,6 +39,7 @@ set -euxo pipefail
 REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
+FORCE_CLEAN="${FORCE_CLEAN:-0}"
 APP_USER="${APP_USER:-secureai}"
 APP_GROUP="${APP_GROUP:-secureai}"
 NODE_VERSION="${NODE_VERSION:-24.13.0}"
@@ -88,6 +93,7 @@ log_info "=== Secure AI Chat: Clean install on fresh Ubuntu VM ==="
 log_info "Install directory: $INSTALL_DIR"
 log_info "Branch: $BRANCH"
 log_info "Node version: $NODE_VERSION"
+[ "$FORCE_CLEAN" = "1" ] && log_info "FORCE_CLEAN=1: will wipe existing install and do fresh clone"
 
 # --- Phase 1: System prerequisites ---
 is_pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
@@ -115,6 +121,24 @@ else
 fi
 sudo mkdir -p "$INSTALL_DIR"
 sudo chown "$APP_USER:$APP_USER" "$INSTALL_DIR" 2>/dev/null || true
+
+# --- FORCE_CLEAN: Wipe existing install (preserve config), force fresh clone ---
+if [ "$FORCE_CLEAN" = "1" ] && [ -d "$INSTALL_DIR" ] && { [ -d "$INSTALL_DIR/.git" ] || [ -f "$INSTALL_DIR/package.json" ]; }; then
+  log_info "FORCE_CLEAN: Wiping existing install, backing up config..."
+  sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+  _backup="/tmp/secure-ai-chat-force-clean-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$_backup"
+  [ -f "$INSTALL_DIR/.env.local" ] && sudo cp -a "$INSTALL_DIR/.env.local" "$_backup/" 2>/dev/null || true
+  [ -d "$INSTALL_DIR/.secure-storage" ] && sudo cp -a "$INSTALL_DIR/.secure-storage" "$_backup/" 2>/dev/null || true
+  log_info "Clearing $INSTALL_DIR (full wipe)..."
+  sudo find "$INSTALL_DIR" -mindepth 1 -delete 2>/dev/null || true
+  sudo mkdir -p "$INSTALL_DIR"
+  sudo chown "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
+  [ -f "$_backup/.env.local" ] && sudo cp -a "$_backup/.env.local" "$INSTALL_DIR/" 2>/dev/null || true
+  [ -d "$_backup/.secure-storage" ] && sudo cp -a "$_backup/.secure-storage" "$INSTALL_DIR/" 2>/dev/null || true
+  sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR" 2>/dev/null || true
+  log_success "Wiped. Config restored from $_backup"
+fi
 
 # --- Phase 3: Node.js + npm via nvm ---
 log_info "Phase 3: Installing Node.js $NODE_VERSION via nvm..."

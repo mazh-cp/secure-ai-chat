@@ -45,8 +45,12 @@ echo ""
 
 if [ ! -d "$APP_DIR" ]; then
   fail "App directory not found: $APP_DIR"
-  echo "  Set APP_DIR to your installation path, e.g.:"
-  echo "  APP_DIR=/path/to/secure-ai-chat curl -fsSL ... | bash"
+  echo ""
+  echo "  If the app is installed elsewhere, set APP_DIR:"
+  echo "  APP_DIR=/opt/secure-ai-chat curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash"
+  echo ""
+  echo "  If this is a FRESH install (no existing app), use the install script instead:"
+  echo "  curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash"
   exit 1
 fi
 

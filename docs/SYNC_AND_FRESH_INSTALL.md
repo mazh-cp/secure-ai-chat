@@ -57,6 +57,11 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 INSTALL_DIR=/opt/secure-ai-chat BRANCH=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 ```
 
+**Force clean install** (wipe existing, fresh clone with latest fixes; preserves `.env.local` and `.secure-storage`):
+```bash
+FORCE_CLEAN=1 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+```
+
 ### Alternative: Standard install script
 
 ```bash

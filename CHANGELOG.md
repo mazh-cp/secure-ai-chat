@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - **Async processing pipeline**: Status lifecycle backed by registry and derived status files; RAG ingest runs Lakera on chunks before embedding.
 - **Blank screen prevention**: All file API routes return JSON only; `lib/http/safe-fetch.ts` re-export and ErrorBoundary in place.
 - **Upgrade safety**: `scripts/upgrade.sh` (in-place upgrade to v1.0.16); never deletes or moves `DATA_DIR`. `scripts/preflight.sh` (Node version, DATA_DIR exists and writable, disk space). `scripts/storage-perms.sh` (ownership and safe chmod; no 777).
-- **Clean install script**: `scripts/install_ubuntu_clean.sh` — full VM install with prerequisites, nvm/Node, clone, flatten subdir, build. One-liner: `curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash`.
+- **Clean install script**: `scripts/install_ubuntu_clean.sh` — full VM install with prerequisites, nvm/Node, clone, flatten subdir, build. One-liner: `curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash`. **FORCE_CLEAN=1** wipes existing install (preserves API keys) and does fresh clone with latest fixes including RAG+Model chat.
 - **Next.js 16 proxy**: Migrated `middleware.ts` → `proxy.ts` for Next.js 16 compatibility.
 
 ### Fixed
