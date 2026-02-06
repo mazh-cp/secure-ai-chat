@@ -55,7 +55,8 @@ say "App directory: $APP_DIR"
 say "Git reference: $GIT_REF"
 echo ""
 
-if [ ! -d "$APP_DIR" ]; then
+# Use sudo for checks: APP_DIR may be owned by app user (e.g. secureai), script often runs as adminuser
+if ! sudo test -d "$APP_DIR"; then
   fail "App directory not found: $APP_DIR"
   echo ""
   echo "  If the app is installed elsewhere, use one of these (APP_DIR must be set for bash, not curl):"
@@ -67,8 +68,8 @@ if [ ! -d "$APP_DIR" ]; then
   exit 1
 fi
 
-if [ ! -f "$APP_DIR/package.json" ]; then
-  fail "Not a secure-ai-chat app directory (no package.json): $APP_DIR"
+if ! sudo test -f "$APP_DIR/package.json"; then
+  fail "Not a secure-ai-chat app directory (no package.json): $APP_DIR (may need read access; try: sudo ls $APP_DIR)"
   exit 1
 fi
 
@@ -78,7 +79,7 @@ if [ -z "$APP_USER" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; t
   APP_USER=$(grep "^User=" "/etc/systemd/system/${SERVICE_NAME}.service" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
 fi
 if [ -z "$APP_USER" ]; then
-  APP_USER=$(stat -c '%U' "$APP_DIR" 2>/dev/null || stat -f '%Su' "$APP_DIR" 2>/dev/null || echo "$(whoami)")
+  APP_USER=$(sudo stat -c '%U' "$APP_DIR" 2>/dev/null || sudo stat -f '%Su' "$APP_DIR" 2>/dev/null || echo "$(whoami)")
 fi
 say "App user: $APP_USER"
 
@@ -86,9 +87,9 @@ say "App user: $APP_USER"
 BACKUP_DIR="/tmp/secure-ai-chat-backup-$(date +%Y%m%d-%H%M%S)"
 say "Creating backup at $BACKUP_DIR"
 mkdir -p "$BACKUP_DIR" || fail "Cannot create backup dir $BACKUP_DIR. Check: df /tmp (disk full?), ls -ld /tmp (writable?). Note: backups live in /tmp and may be cleared on reboot."
-[ -f "$APP_DIR/.env.local" ] && cp -a "$APP_DIR/.env.local" "$BACKUP_DIR/" || true
-[ -d "$APP_DIR/.secure-storage" ] && cp -a "$APP_DIR/.secure-storage" "$BACKUP_DIR/" || true
-[ -d "$APP_DIR/.storage" ] && cp -a "$APP_DIR/.storage" "$BACKUP_DIR/" 2>/dev/null || true
+sudo test -f "$APP_DIR/.env.local" && sudo cp -a "$APP_DIR/.env.local" "$BACKUP_DIR/" || true
+sudo test -d "$APP_DIR/.secure-storage" && sudo cp -a "$APP_DIR/.secure-storage" "$BACKUP_DIR/" || true
+sudo test -d "$APP_DIR/.storage" && sudo cp -a "$APP_DIR/.storage" "$BACKUP_DIR/" 2>/dev/null || true
 ok "Backup done"
 
 # Stop service
@@ -101,24 +102,34 @@ else
   warn "Service not running"
 fi
 
-# Git fetch and checkout (ensure we get all remote changes)
+# Git fetch and checkout (run as APP_USER if script runs as different user, e.g. adminuser vs secureai)
 say "Fetching and checking out: $GIT_REF"
-cd "$APP_DIR" || fail "Cannot cd to $APP_DIR"
-git fetch origin --tags 2>/dev/null || true
-git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF (tag/branch may not exist)"
-if git show-ref -q "origin/$GIT_REF" 2>/dev/null; then
-  if ! git pull origin "$GIT_REF" 2>/dev/null; then
-    warn "Pull failed, resetting to origin/$GIT_REF to fetch all remote changes..."
-    git reset --hard "origin/$GIT_REF" 2>/dev/null || true
+run_in_app_dir() {
+  if [ "$(whoami)" = "$APP_USER" ]; then
+    (cd "$APP_DIR" && "$@")
+  else
+    sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && $*"
+  fi
+}
+if ! run_in_app_dir git fetch origin --tags 2>/dev/null; then run_in_app_dir git fetch origin 2>/dev/null || true; fi
+run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF (tag/branch may not exist)"
+if run_in_app_dir git show-ref -q "origin/$GIT_REF" 2>/dev/null; then
+  if ! run_in_app_dir git pull origin "$GIT_REF" 2>/dev/null; then
+    warn "Pull failed, resetting to origin/$GIT_REF..."
+    run_in_app_dir git reset --hard "origin/$GIT_REF" 2>/dev/null || true
   fi
   ok "Checked out $GIT_REF (latest from origin)"
 else
   ok "Checked out $GIT_REF (tag or ref)"
 fi
 
-# Restore backup over any changed config
-[ -f "$BACKUP_DIR/.env.local" ] && cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" || true
-[ -d "$BACKUP_DIR/.secure-storage" ] && cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" || true
+# Restore backup over any changed config (use sudo to write into APP_DIR if needed)
+if [ -f "$BACKUP_DIR/.env.local" ]; then
+  sudo cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" || true
+fi
+if [ -d "$BACKUP_DIR/.secure-storage" ]; then
+  sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" || true
+fi
 
 # npm install (with nvm if present)
 say "Installing dependencies (npm install)"
@@ -145,12 +156,11 @@ for attempt in 1 2; do
   fi
   if [ "$attempt" -eq 1 ] && [ "$GIT_REF" != "main" ]; then
     warn "Build failed. Retrying with main (latest fixes)..."
-    cd "$APP_DIR" || true
-    git fetch origin 2>/dev/null || true
-    git checkout main 2>/dev/null || true
+    run_in_app_dir git fetch origin 2>/dev/null || true
+    run_in_app_dir git checkout main 2>/dev/null || true
     GIT_REF=main
-    [ -f "$BACKUP_DIR/.env.local" ] && cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" || true
-    [ -d "$BACKUP_DIR/.secure-storage" ] && cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" || true
+    [ -f "$BACKUP_DIR/.env.local" ] && sudo cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" 2>/dev/null || true
+    [ -d "$BACKUP_DIR/.secure-storage" ] && sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || true
     say "Reinstalling dependencies after checkout main"
     if [ "$(whoami)" = "$APP_USER" ]; then
       (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
@@ -174,8 +184,8 @@ else
   warn "Service may not have started; check: sudo journalctl -u $SERVICE_NAME -n 30"
 fi
 
-# Version check
-NEW_VERSION=$(grep '"version"' "$APP_DIR/package.json" 2>/dev/null | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")
+# Version check (sudo in case APP_DIR is owned by app user)
+NEW_VERSION=$(sudo cat "$APP_DIR/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")
 say "Upgrade complete. Version: $NEW_VERSION"
 echo ""
 echo "  Backup: $BACKUP_DIR"
