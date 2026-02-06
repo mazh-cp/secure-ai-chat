@@ -408,7 +408,7 @@ export function injectRagContext(
 
   if (ragContext.chunks.length === 0) {
     if (ragContext.noContext) {
-      const sysContent = `You do not have access to the uploaded documents right now (RAG context missing). If the user asked about file content, respond: "I can't access the uploaded documents right now. Please re-index files or check RAG status."`
+      const sysContent = `You do not have access to the uploaded documents right now (RAG context missing). For questions about file content, respond: "I can't access the uploaded documents right now. Please re-index files or check RAG status." For general knowledge questions, answer normally from your knowledge.`
       if (!out.some((m) => m.role === 'system')) out.unshift({ role: 'system', content: sysContent })
     }
     return out
@@ -423,7 +423,12 @@ Rules:
 - Answer ONLY using facts from the provided RAG_CONTEXT. Include a citation (e.g. [filename]) for each factual claim.
 - If the answer is not in the uploaded files, say exactly: "Not found in the uploaded files."
 - Do not make up information. Return citations with every factual claim.`
-    : `You have access to uploaded file content in [RAG_CONTEXT]. When answering from files, cite the source. If information is not in the files, you may use general knowledge but state when it's not from the files.`
+    : `You are a helpful assistant. You have access to uploaded file content in [RAG_CONTEXT].
+Rules:
+- For general knowledge questions (e.g. "what is X?", "how does Y work?") — answer directly from your knowledge. Do NOT restrict answers to files.
+- When the user asks about file content or data — use the RAG_CONTEXT. Cite the source (e.g. [filename]) for factual claims from files.
+- If the user asked about file content but it's not in RAG_CONTEXT — say so, then you may use general knowledge if helpful.
+- Do not make up facts; cite sources when using file content.`
 
   if (!out.some((m) => m.role === 'system')) {
     out.unshift({ role: 'system', content: systemInstruction })

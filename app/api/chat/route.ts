@@ -797,24 +797,22 @@ export async function POST(request: NextRequest) {
       enhancedMessages = injectRagContext(
         messages.map((m) => ({ role: m.role, content: m.content })),
         ragContextFromRetrieve,
-        { groundedOnly: true }
+        { groundedOnly: false }
       )
     } else if (fileContext && availableFilesList.length > 0) {
       const hasSystemMessage = enhancedMessages.some((m) => m.role === 'system')
       if (!hasSystemMessage) {
         enhancedMessages.unshift({
           role: 'system',
-          content: `You are a helpful AI assistant with access to uploaded files containing user data, PII, and other information.
+          content: `You are a helpful AI assistant with access to uploaded files.
 
 IMPORTANT INSTRUCTIONS:
 1. You have access to ${availableFilesList.length} uploaded file(s): ${availableFilesList.join(', ')}
-2. When the user asks about users, data, records, or any information, FIRST search through the uploaded files
-3. If the information is found in the files, provide it directly from the file content
-4. If the information is NOT in the files, you can use your general knowledge to help, but clearly state that the information is not in the uploaded files
-5. Always cite which file(s) you used when providing information from files
-6. For data queries, analyze the file structure and provide accurate information based on the actual data
-
-The file content will be provided in the user's message below. Search through it carefully to answer their questions.`,
+2. For general knowledge questions (e.g. "what is Python?", "how does X work?", "hello") — answer directly from your knowledge. Do NOT restrict answers to files.
+3. When the user asks about data, records, users, or content that might be in the uploaded files — search through the file content first. If found, provide it and cite the file(s).
+4. If the user asked about file content but it is NOT in the files — say so clearly, then you may use general knowledge if helpful.
+5. Always cite which file(s) you used when providing information from files.
+6. The file content will be provided in the user's message below. Use it only when the question is about file content or data.`,
         })
       }
       if (latestUserMessage) {

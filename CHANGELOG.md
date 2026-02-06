@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - **Standalone start**: `scripts/start-standalone.js` selects `.next/standalone/server.js` when standalone build exists; systemd PATH fix for Node in nvm.
 - **Install scripts**: `dpkg-query` for package checks; prerequisites phase; chown temp dir before clone; flatten single subdir (e.g. `secure-ai-chat/`) into install dir; verify Node/npm as `secureai` user.
 - **Upgrade scripts**: Clear `node_modules/.cache` before build in upgrade flows.
+- **Chat general-knowledge fallback**: Chat no longer restricts answers to uploaded files only. General questions (e.g. "what is Python?", "hello") are answered from model knowledge; RAG/file context is used only when the question is about file content or data. Uses `groundedOnly: false` and updated system prompts.
 
 ### Changed
 - **Store route**: Writes to canonical layout (raw.bin + meta.json + status.json); registry gets `pipeline_status = uploaded`.
