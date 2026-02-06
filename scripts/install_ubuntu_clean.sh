@@ -162,7 +162,7 @@ else
   sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
   sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
-  rm -rf "$TMP_CLONE"
+  sudo rm -rf "$TMP_CLONE"
   log_success "Phase 4 done: Repository cloned (kept .nvm)"
 fi
 # Verify key files exist (nothing missed from repo)
