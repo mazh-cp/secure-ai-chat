@@ -94,10 +94,12 @@ log_info "User: $APP_USER"
 log_info "Node version: $NODE_VERSION (LTS)"
 
 # ========== Phase 1: System prerequisites (must complete before code fetch) ==========
+# Use dpkg-query for reliable "is installed" check (dpkg -l emits header lines and varies by locale)
+is_pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
 log_info "Phase 1: Installing and verifying system prerequisites..."
 sudo apt-get update -qq
 for pkg in "${REQUIRED_PACKAGES[@]}"; do
-    if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+    if ! is_pkg_installed "$pkg"; then
         log_info "Installing $pkg..."
         if ! sudo apt-get install -y -qq "$pkg" >/dev/null 2>&1; then
             log_error "Failed to install required package: $pkg"
@@ -112,7 +114,7 @@ for cmd in curl git; do
         exit 1
     fi
 done
-if ! dpkg -l 2>/dev/null | grep -q build-essential; then
+if ! is_pkg_installed build-essential; then
     log_error "Prerequisite not available: build-essential (needed for native npm modules)"
     exit 1
 fi
