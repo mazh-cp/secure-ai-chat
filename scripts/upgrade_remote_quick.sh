@@ -59,13 +59,17 @@ cd "$INSTALL_DIR"
 BRANCH=$(sudo -u "$APP_USER" git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 log_info "Current branch: $BRANCH"
 
-sudo -u "$APP_USER" git fetch origin >/dev/null 2>&1 || true
-sudo -u "$APP_USER" git pull origin "$BRANCH" >/dev/null 2>&1 || {
-    log_error "Failed to pull code. Restoring from backup..."
-    sudo cp -a "$BACKUP_DIR/.env.local" "$INSTALL_DIR/.env.local" 2>/dev/null || true
-    sudo systemctl start "$SERVICE_NAME" 2>/dev/null || true
-    exit 1
-}
+sudo -u "$APP_USER" git fetch origin --tags 2>/dev/null || true
+if ! sudo -u "$APP_USER" git -C "$INSTALL_DIR" pull origin "$BRANCH" 2>/dev/null; then
+    log_warning "Pull failed, resetting to origin/$BRANCH to fetch all remote changes..."
+    if ! sudo -u "$APP_USER" git -C "$INSTALL_DIR" reset --hard "origin/$BRANCH" 2>/dev/null; then
+        log_error "Failed to fetch latest code. Restoring from backup..."
+        sudo cp -a "$BACKUP_DIR/.env.local" "$INSTALL_DIR/.env.local" 2>/dev/null || true
+        sudo systemctl start "$SERVICE_NAME" 2>/dev/null || true
+        exit 1
+    fi
+    log_success "Reset to origin/$BRANCH (all remote changes applied)"
+fi
 
 NEW_VERSION=$(sudo cat "$INSTALL_DIR/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")
 log_success "Code updated (Version: $OLD_VERSION → $NEW_VERSION)"

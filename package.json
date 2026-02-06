@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -11,7 +11,7 @@
     "verify-security": "bash scripts/verify-key-security.sh",
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/start-standalone.js",
     "start:local": "next start -H 127.0.0.1",
     "start:local:safe": "bash scripts/start-local.sh",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",

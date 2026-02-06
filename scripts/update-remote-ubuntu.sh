@@ -51,11 +51,11 @@ if [ ! -d ".git" ]; then
 fi
 
 echo -e "${BLUE}Step 1: Fetch and pull from origin ($BRANCH)${NC}"
-git fetch origin
+git fetch origin --tags
 git stash 2>/dev/null || true
 git checkout "$BRANCH" 2>/dev/null || true
 if ! git pull origin "$BRANCH"; then
-  echo -e "${YELLOW}⚠️  Pull had conflicts, attempting reset to origin/$BRANCH...${NC}"
+  echo -e "${YELLOW}⚠️  Pull failed (e.g. conflicts/divergent), resetting to origin/$BRANCH to fetch all remote changes...${NC}"
   git fetch origin
   git reset --hard "origin/$BRANCH"
 fi
@@ -63,9 +63,14 @@ echo -e "${GREEN}✅ Code updated${NC}"
 echo ""
 
 echo -e "${BLUE}Step 2: Install dependencies (npm ci)${NC}"
-if [ -f "$HOME/.nvm/nvm.sh" ]; then
+# Load nvm from HOME or from APP_DIR (e.g. /opt/secure-ai-chat/.nvm) so npm uses correct Node
+if [ -n "${APP_DIR:-}" ] && [ -s "${APP_DIR}/.nvm/nvm.sh" ]; then
   # shellcheck source=/dev/null
-  source "$HOME/.nvm/nvm.sh"
+  . "${APP_DIR}/.nvm/nvm.sh"
+  nvm use 2>/dev/null || nvm use default || true
+elif [ -f "$HOME/.nvm/nvm.sh" ]; then
+  # shellcheck source=/dev/null
+  . "$HOME/.nvm/nvm.sh"
   nvm use 2>/dev/null || nvm use default || true
 fi
 npm ci --production=false

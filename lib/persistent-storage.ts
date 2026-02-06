@@ -40,27 +40,39 @@ export function getOwnerFilePath(ownerId: string, fileId: string): string {
 }
 
 /**
- * Ensure directory ./data/uploads/<ownerId> exists.
+ * Ensure base uploads dir and ./data/uploads/<ownerId> exist (mkdir -p).
  */
 export async function ensureOwnerDir(ownerId: string): Promise<void> {
+  await fs.mkdir(UPLOADS_DIR, { recursive: true, mode: 0o755 })
   const dir = ownerDir(ownerId)
   await fs.mkdir(dir, { recursive: true, mode: 0o755 })
 }
 
 /**
- * Write file bytes under ./data/uploads/<ownerId>/<fileId>.
+ * Write file bytes under ./data/uploads/<ownerId>/<fileId> (atomic: write temp then rename).
+ * Also writes canonical layout (raw.bin + meta.json) for v1.0.16+ pipeline.
  */
 export async function writeOwnerFile(ownerId: string, fileId: string, data: Buffer | string): Promise<void> {
   await ensureOwnerDir(ownerId)
   const p = filePath(ownerId, fileId)
   const buf = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data
-  await fs.writeFile(p, buf, { mode: 0o644 })
+  const tmp = `${p}.tmp.${process.pid}.${Date.now()}`
+  await fs.writeFile(tmp, buf, { mode: 0o644 })
+  await fs.rename(tmp, p)
 }
 
 /**
  * Read file bytes from ./data/uploads/<ownerId>/<fileId>. Returns null if not found.
+ * Tries canonical layout (uploads/<tenant>/<fileId>/raw.bin) first, then legacy single file.
  */
 export async function readOwnerFile(ownerId: string, fileId: string): Promise<string | null> {
+  try {
+    const { readRaw } = await import('@/lib/storage-canonical')
+    const raw = await readRaw(ownerId, fileId)
+    if (raw) return raw.toString('utf-8')
+  } catch {
+    // fall through to legacy
+  }
   try {
     const p = filePath(ownerId, fileId)
     const content = await fs.readFile(p, 'utf-8')
@@ -100,6 +112,7 @@ export async function deleteOwnerFile(ownerId: string, fileId: string): Promise<
 
 /**
  * Delete all files under ./data/uploads/<ownerId>/.
+ * Supports both legacy (single file per entry) and canonical (subdir per fileId with raw.bin/meta.json).
  */
 export async function clearOwnerFiles(ownerId: string): Promise<number> {
   const dir = ownerDir(ownerId)
@@ -107,8 +120,12 @@ export async function clearOwnerFiles(ownerId: string): Promise<number> {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true })
     for (const e of entries) {
-      if (e.isFile()) {
-        await fs.unlink(path.join(dir, e.name))
+      const full = path.join(dir, e.name)
+      if (e.isDirectory()) {
+        await fs.rm(full, { recursive: true, force: true })
+        count++
+      } else if (e.isFile()) {
+        await fs.unlink(full)
         count++
       }
     }

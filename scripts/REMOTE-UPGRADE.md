@@ -1,6 +1,10 @@
 # Remote upgrade one-liners
 
+**Repo:** https://github.com/mazh-cp/secure-ai-chat — **`main`** = latest code.
+
 Use these from your production VM (or any machine that can reach the app directory).
+
+**Fetching all changes:** All upgrade scripts now ensure the latest remote code is applied. If `git pull` fails (e.g. divergent history or conflicts), they automatically run `git fetch origin` and `git reset --hard origin/<branch>` so the installation matches the remote and gets every update. Config (`.env.local`, `.secure-storage`) is backed up and restored so you don’t lose settings.
 
 ## Production VM (`/home/adminuser/secure-ai-chat`)
 

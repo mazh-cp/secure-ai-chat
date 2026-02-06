@@ -1,8 +1,10 @@
 # Fix "Crypto.randomUUID is not a function" on Production
 
-If you still see this error after running the upgrade script, the server is likely using an old build. Use a **clean rebuild** and restart.
+The app fixes this in two places: **server** (`lib/owner.ts` → `lib/uuid.ts`, no `randomUUID`), and **client/SSR** (`lib/owner-client.ts` only uses `crypto.randomUUID` in the browser, never on Node). If you still see the error after deploying, the server is likely using an old build—do a **clean rebuild** and restart.
 
 ## Option 1: One-line upgrade (clean build)
+
+**Repo:** [https://github.com/mazh-cp/secure-ai-chat](https://github.com/mazh-cp/secure-ai-chat) — use `main` for latest code.
 
 From your **local machine**, push the latest code first:
 
@@ -11,7 +13,7 @@ cd /path/to/secure-ai-chat
 git push origin main
 ```
 
-On the **production server** (SSH), run:
+On the **production server** (SSH), run (fetches latest from main):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
@@ -51,3 +53,9 @@ sudo journalctl -u secure-ai-chat -n 50 --no-pager
 ```
 
 You should no longer see `Crypto.randomUUID is not a function`. If you do, confirm `lib/uuid.ts` exists and that the build completed without errors.
+
+---
+
+## Note: Standalone start
+
+This app uses `output: 'standalone'` in `next.config.js`. `npm start` runs `scripts/start-standalone.js`, which starts `node .next/standalone/server.js` (with static/public copied) when a standalone build exists, so you do **not** need to change the systemd service. If you see the warning *"next start" does not work with "output: standalone"*, ensure you have pulled the latest code (which uses the start-standalone script) and restarted the service.

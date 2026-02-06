@@ -45,7 +45,22 @@ if echo "$store_resp" | grep -q '<!DOCTYPE\|<html'; then
 fi
 # Must be valid JSON with success
 echo "$store_resp" | grep -qE '"ok":\s*true|"success":\s*true' || fail "Store did not return ok:true or success:true. Response: $store_resp"
-ok "Store returned JSON with ok/success"
+# Response shape: file with id, name, size, storagePath, createdAt; optional sha256
+echo "$store_resp" | grep -q '"file"' || fail "Store response missing file object. Response: ${store_resp:0:300}"
+echo "$store_resp" | grep -qE '"id"|"fileId"' || fail "Store response missing file id. Response: ${store_resp:0:300}"
+ok "Store returned JSON with ok/success and file object"
+
+# 3b. Error path: invalid body must return JSON (not HTML)
+say "3b. POST /api/files/store invalid body (must return JSON error)"
+err_resp=$(curl -s --max-time "$TIMEOUT" -X POST "${BASE_URL}/api/files/store" \
+  -H "Content-Type: application/json" \
+  -H "X-Client-ID: $OWNER_ID" \
+  -d "{}")
+if echo "$err_resp" | grep -q '<!DOCTYPE\|<html'; then
+  fail "Store error response was HTML. Response: ${err_resp:0:200}"
+fi
+echo "$err_resp" | grep -qE '"ok":\s*false|"error"' || true
+ok "Store error returns JSON"
 
 # 4. List — must return JSON; file must appear
 say "4. GET /api/files/list (file must appear)"

@@ -1,12 +1,14 @@
-# Upgrade Now - Remote Installation v1.0.7 → v1.0.8
+# Upgrade Now - Remote Installation
 
-## Quick Fix: Use Branch-Specific URL
+**Repo:** [https://github.com/mazh-cp/secure-ai-chat](https://github.com/mazh-cp/secure-ai-chat) — use `main` for latest code.
 
-Since the upgrade script is on `release/1.0.8` branch, use this URL:
+## Quick upgrade (latest code from main)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/1.0.8/scripts/upgrade_remote.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
+
+To pin a release tag instead of latest: the script retries with `main` if the build fails; for a specific version use the in-place upgrade with `--ref v1.0.x` (see README).
 
 ## Alternative: Manual Upgrade (Works Immediately)
 

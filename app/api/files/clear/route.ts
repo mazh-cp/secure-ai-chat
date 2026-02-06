@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOwnerId } from '@/lib/owner'
 import { listFiles, markDeleted } from '@/lib/registry/files-registry'
 import { clearOwnerFiles } from '@/lib/persistent-storage'
+import { clearDerivedForTenant } from '@/lib/storage-canonical'
 import { removeDocumentFromRAG } from '@/lib/rag/index'
 
 /**
@@ -20,6 +21,7 @@ async function handleClear(ownerId: string | null): Promise<NextResponse> {
     if (ok) deletedCount++
   }
   const bytesDeleted = await clearOwnerFiles(owner)
+  await clearDerivedForTenant(owner).catch(() => {})
   return NextResponse.json({
     success: true,
     message: 'All your files cleared successfully',

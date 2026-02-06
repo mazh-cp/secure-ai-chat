@@ -33,6 +33,20 @@ function isUploadedFile(f: unknown): f is UploadedFile {
   )
 }
 
+/** Trigger RAG indexing for file(s) after store/scan when safe. Server runs Lakera on extracted text before embedding. */
+async function triggerRagEmbed(fileIds: string[]): Promise<void> {
+  if (fileIds.length === 0) return
+  const res = await safeFetchJson<{ success?: boolean }>('/api/rag/embed', {
+    ...apiFetchOptions,
+    method: 'POST',
+    headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileIds }),
+  })
+  if (!res.ok) {
+    console.warn('RAG embed (indexing) request failed:', res.error?.message ?? res.data)
+  }
+}
+
 /** Build JSON body for POST /api/files/store (v1.0.12 JSON-only store). */
 function buildStoreBody(
   file: UploadedFile,
@@ -133,14 +147,49 @@ export default function FilesPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsSecure(window.location.protocol === 'https:' || window.location.hostname === 'localhost')
-      
-      // Load files from server (persistent storage)
-      loadFilesFromServer()
+
+      // Establish owner_id cookie from our X-Client-ID before list/store (same as smoke scripts; fixes list empty after nav)
+      const establishOwner = async () => {
+        await fetch('/api/owner', {
+          ...apiFetchOptions,
+          headers: ownerHeaders(),
+        }).catch(() => {})
+      }
+
+      establishOwner().then(() => {
+        // Load files from server (persistent storage)
+        return loadFilesFromServer()
         .then(list => {
           if (list !== null) {
-            setFiles(list)
-            setServerSyncWarning(null)
-            localStorage.setItem('uploadedFiles', JSON.stringify(list))
+            if (list.length > 0) {
+              setFiles(list)
+              setServerSyncWarning(null)
+              localStorage.setItem('uploadedFiles', JSON.stringify(list))
+            } else {
+              // Server returned empty list—preserve local cache so files don't vanish after navigation
+              const stored = localStorage.getItem('uploadedFiles')
+              if (stored) {
+                try {
+                  const parsed = JSON.parse(stored)
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    const filesWithDates = parsed
+                      .filter(isUploadedFile)
+                      .map((f: UploadedFile) => ({
+                        ...f,
+                        uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+                      }))
+                    setFiles(filesWithDates)
+                    setServerSyncWarning('Files loaded from local cache. Server list was empty—re-upload or check storage.')
+                    return
+                  }
+                } catch (e) {
+                  console.error('Failed to parse cached files:', e)
+                }
+              }
+              setFiles([])
+              setServerSyncWarning(null)
+              localStorage.setItem('uploadedFiles', JSON.stringify([]))
+            }
           } else {
             const stored = localStorage.getItem('uploadedFiles')
             if (stored) {
@@ -179,6 +228,7 @@ export default function FilesPage() {
             }
           }
         })
+      })
 
       // Load Lakera scan toggle state from localStorage
       const scanToggle = localStorage.getItem('lakeraFileScanEnabled')
@@ -325,6 +375,10 @@ export default function FilesPage() {
     })
     if (storeResult.ok) {
       setStoreError(null)
+      // Sync with server so list/store use same owner and file persists after navigation
+      loadFilesFromServer().then((list) => {
+        if (list !== null) setFiles(list)
+      })
     } else {
       const dataErr = storeResult.data?.error
       const msg = storeResult.error?.message ?? (typeof dataErr === 'string' ? dataErr : (dataErr && typeof dataErr === 'object' && 'message' in dataErr ? String((dataErr as { message?: string }).message) : 'Failed to save file to server'))
@@ -350,8 +404,14 @@ export default function FilesPage() {
       headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
       body: buildStoreBody(newFile, 'not_scanned'),
     })
-    if (res.ok) setStoreError(null)
-    else {
+    if (res.ok) {
+      setStoreError(null)
+      triggerRagEmbed([newFile.id]).catch(err => console.warn('RAG embed after store:', err))
+      // Sync with server so file list persists after navigation
+      loadFilesFromServer().then((list) => {
+        if (list !== null) setFiles(list)
+      })
+    } else {
       const dataErr = res.data?.error
       setStoreError(res.error?.message ?? (typeof dataErr === 'string' ? dataErr : (dataErr && typeof dataErr === 'object' && 'message' in dataErr ? String((dataErr as { message?: string }).message) : 'Failed to save file to server')))
     }
@@ -366,11 +426,16 @@ export default function FilesPage() {
       })
 
       if (response.ok) {
-        // Successfully deleted - refresh files from server to ensure consistency
-        await loadFilesFromServer()
-        // Also clear localStorage cache
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('uploadedFiles')
+        const list = await loadFilesFromServer()
+        if (list !== null) {
+          setFiles(list)
+          if (typeof window !== 'undefined') localStorage.setItem('uploadedFiles', JSON.stringify(list))
+        } else {
+          setFiles((prev) => prev.filter((f) => f.id !== fileId))
+          if (typeof window !== 'undefined') {
+            const rest = JSON.parse(localStorage.getItem('uploadedFiles') || '[]').filter((f: { id: string }) => f.id !== fileId)
+            localStorage.setItem('uploadedFiles', JSON.stringify(rest))
+          }
         }
       } else {
         const errorData = await response.json().catch(() => ({}))
@@ -401,8 +466,9 @@ export default function FilesPage() {
         headers: ownerHeaders(),
       })
       if (result.ok) {
-        await loadFilesFromServer()
-        if (typeof window !== 'undefined') localStorage.removeItem('uploadedFiles')
+        const list = await loadFilesFromServer()
+        setFiles(list !== null ? list : [])
+        if (typeof window !== 'undefined') localStorage.setItem('uploadedFiles', '[]')
       } else {
         const msg = result.error?.message ?? (typeof result.data?.error === 'string' ? result.data.error : (result.data?.error && typeof result.data.error === 'object' && 'message' in result.data.error ? String((result.data.error as { message?: string }).message) : 'Unknown error'))
         alert(`Failed to clear all files: ${msg}`)
@@ -809,11 +875,13 @@ export default function FilesPage() {
           success: true,
         })
 
-        // If RAG scan is enabled, continue with RAG scanning
+        // If RAG scan is enabled, continue with Lakera then RAG embed; else index for RAG now
         if (ragScanEnabled && lakeraScanEnabled) {
           setTimeout(() => {
             handleFileScan(fileId)
           }, 300)
+        } else {
+          triggerRagEmbed([fileId]).catch(err => console.warn('RAG embed after TE safe:', err))
         }
       }
     } catch (error) {
@@ -1094,6 +1162,10 @@ export default function FilesPage() {
           updateFileMetadataOnServer(updatedFile).catch(err => 
             console.error('Failed to update file metadata:', err)
           )
+          // RAG pipeline: index file when safe (Lakera runs again on extracted text server-side)
+          if (!data.flagged) {
+            triggerRagEmbed([fileId]).catch(err => console.warn('RAG embed after Lakera safe:', err))
+          }
           return updatedFile
         }
         return f

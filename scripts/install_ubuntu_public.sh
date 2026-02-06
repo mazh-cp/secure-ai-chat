@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # Secure AI Chat - Production Installation Script for Ubuntu VM
-# Single-step script that installs system deps, Node LTS 20.x, clones repo,
-# installs deps, builds, configures systemd + nginx reverse proxy
+#
+# Order of operations (prerequisites BEFORE code fetch):
+#   1. System prerequisites: apt update, install curl/git/build-essential/etc. and verify
+#   2. Create app user and install directory
+#   3. Install Node.js + npm via nvm (verify node/npm before proceeding)
+#   4. Clone repository (only after Node/npm are ready)
+#   5. npm ci, build, systemd, nginx, firewall
+#
+# Repo: https://github.com/mazh-cp/secure-ai-chat — main = latest code
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
@@ -18,6 +25,9 @@ APP_GROUP="secureai"
 NODE_VERSION="24.13.0"  # Use LTS 24.13.0 (stable version)
 NGINX_SITE="secure-ai-chat"
 SERVICE_NAME="secure-ai-chat"
+
+# System packages required before any repo clone (curl for nvm/script, git for clone, build-essential for native deps)
+REQUIRED_PACKAGES=(curl git build-essential ca-certificates gnupg lsb-release iproute2)
 
 # Colors
 RED='\033[0;31m'
@@ -83,12 +93,32 @@ log_info "Install directory: $INSTALL_DIR"
 log_info "User: $APP_USER"
 log_info "Node version: $NODE_VERSION (LTS)"
 
-# Step 1: Update system packages
-log_info "Updating system packages..."
+# ========== Phase 1: System prerequisites (must complete before code fetch) ==========
+log_info "Phase 1: Installing and verifying system prerequisites..."
 sudo apt-get update -qq
-sudo apt-get install -y -qq curl git build-essential ca-certificates gnupg lsb-release iproute2 >/dev/null
+for pkg in "${REQUIRED_PACKAGES[@]}"; do
+    if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+        log_info "Installing $pkg..."
+        if ! sudo apt-get install -y -qq "$pkg" >/dev/null 2>&1; then
+            log_error "Failed to install required package: $pkg"
+            exit 1
+        fi
+    fi
+done
+# Verify critical commands (needed for nvm install and git clone)
+for cmd in curl git; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        log_error "Prerequisite not available: $cmd (install failed or not in PATH)"
+        exit 1
+    fi
+done
+if ! dpkg -l 2>/dev/null | grep -q build-essential; then
+    log_error "Prerequisite not available: build-essential (needed for native npm modules)"
+    exit 1
+fi
+log_success "System prerequisites installed and verified"
 
-# Step 2: Create dedicated user if not exists
+# ========== Phase 2: App user and install directory ==========
 if ! id "$APP_USER" &>/dev/null; then
     log_info "Creating user: $APP_USER"
     sudo useradd -r -s /bin/bash -d "$INSTALL_DIR" "$APP_USER" 2>/dev/null || \
@@ -101,7 +131,7 @@ fi
 sudo mkdir -p "$INSTALL_DIR"
 sudo chown "$APP_USER:$APP_USER" "$INSTALL_DIR" 2>/dev/null || true
 
-# Step 3: Install/Upgrade Node.js to v24.13.0 (LTS) via nvm (as secureai user)
+# ========== Phase 3: Node.js and npm (must be ready before clone/install) ==========
 log_info "Installing/Upgrading Node.js to $NODE_VERSION (LTS) via nvm..."
 sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << NVM_SCRIPT
 set -e
@@ -135,12 +165,12 @@ else
     nvm alias default ${NODE_VERSION} >/dev/null 2>&1
 fi
 
-# Verify installation
+# Verify installation (must have node and npm before we clone or run npm ci)
 node -v
 npm -v
 NVM_SCRIPT
 
-# Get Node.js path for systemd
+# Get Node.js path for systemd and verify node/npm are available
 NODE_PATH=$(sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << 'GET_NODE'
 export HOME=/opt/secure-ai-chat
 export NVM_DIR="$HOME/.nvm"
@@ -150,9 +180,17 @@ GET_NODE
 )
 NPM_PATH="${NODE_PATH%/node}/npm"
 
-log_success "Node.js installed: $NODE_PATH"
+if [ -z "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ]; then
+    log_error "Node.js not found or not executable after nvm install. Cannot proceed."
+    exit 1
+fi
+if [ -z "$NPM_PATH" ] || [ ! -x "$NPM_PATH" ]; then
+    log_error "npm not found or not executable. Cannot proceed."
+    exit 1
+fi
+log_success "Node.js and npm verified: $NODE_PATH"
 
-# Step 4: Clone or update repository
+# ========== Phase 4: Clone or update repository (only after prerequisites) ==========
 BRANCH=$(detect_branch)
 log_info "Using branch: $BRANCH"
 

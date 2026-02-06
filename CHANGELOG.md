@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.16] - 2026-02-05
+
+### Added
+- **Local persistent storage architecture**: Canonical layout under `DATA_DIR`:
+  - `uploads/<tenant>/<fileId>/raw.bin` and `meta.json` (atomic writes: tmp → rename)
+  - `derived/<tenant>/<fileId>/status.json` for pipeline status
+  - Registry `pipeline_status` column: `uploaded` → `extracting` → `scanning` → `indexing` → `ready` or `blocked` / `failed`
+- **GET /api/files/status?fileId=**: Returns pipeline status for a file (JSON only: `{ ok: true, data: { fileId, status, updatedAt } }`).
+- **Async processing pipeline**: Status lifecycle backed by registry and derived status files; RAG ingest runs Lakera on chunks before embedding.
+- **Blank screen prevention**: All file API routes return JSON only; `lib/http/safe-fetch.ts` re-export and ErrorBoundary in place.
+- **Upgrade safety**: `scripts/upgrade.sh` (in-place upgrade to v1.0.16); never deletes or moves `DATA_DIR`. `scripts/preflight.sh` (Node version, DATA_DIR exists and writable, disk space). `scripts/storage-perms.sh` (ownership and safe chmod; no 777).
+
+### Changed
+- **Store route**: Writes to canonical layout (raw.bin + meta.json + status.json); registry gets `pipeline_status = uploaded`.
+- **Read path**: `readOwnerFile` tries canonical `raw.bin` first, then legacy single file for backward compatibility.
+- **Release notes**: Retain prior correction (last 5 lines under v1.0.12 "Added functionality" removed in CHANGELOG).
+
 ## [1.0.15] - 2026-02-05
 
 Stable release: file upload, release notes, and production install fixes.

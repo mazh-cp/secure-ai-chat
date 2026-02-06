@@ -17,6 +17,8 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-}"
 GIT_REF="${GIT_REF:-main}"
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
+# GitHub raw content base (required for curl download of scripts)
+RAW_BASE="https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/${GIT_REF}"
 APP_USER="${APP_USER:-}"
 
 # Colors
@@ -165,16 +167,16 @@ say "Step 4: Downloading Latest Upgrade Scripts"
 DEPLOY_DIR="$APP_DIR/scripts/deploy"
 sudo mkdir -p "$DEPLOY_DIR"
 
-# Download upgrade.sh
-if sudo curl -fsSL -o "$DEPLOY_DIR/upgrade.sh" "$REPO_URL/raw/$GIT_REF/scripts/deploy/upgrade.sh"; then
+# Download upgrade.sh (use raw.githubusercontent.com so remote installs fetch correct script)
+if sudo curl -fsSL -o "$DEPLOY_DIR/upgrade.sh" "${RAW_BASE}/scripts/deploy/upgrade.sh"; then
   ok "Downloaded upgrade.sh"
 else
-  fail "Failed to download upgrade.sh"
+  fail "Failed to download upgrade.sh from ${RAW_BASE}/scripts/deploy/upgrade.sh"
   exit 1
 fi
 
 # Download common.sh (required by upgrade.sh)
-if sudo curl -fsSL -o "$DEPLOY_DIR/common.sh" "$REPO_URL/raw/$GIT_REF/scripts/deploy/common.sh"; then
+if sudo curl -fsSL -o "$DEPLOY_DIR/common.sh" "${RAW_BASE}/scripts/deploy/common.sh"; then
   ok "Downloaded common.sh"
 else
   fail "Failed to download common.sh"
@@ -182,7 +184,7 @@ else
 fi
 
 # Download fix-storage-permissions.sh
-if sudo curl -fsSL -o "$APP_DIR/scripts/fix-storage-permissions.sh" "$REPO_URL/raw/$GIT_REF/scripts/fix-storage-permissions.sh"; then
+if sudo curl -fsSL -o "$APP_DIR/scripts/fix-storage-permissions.sh" "${RAW_BASE}/scripts/fix-storage-permissions.sh"; then
   ok "Downloaded fix-storage-permissions.sh"
 else
   warn "Failed to download fix-storage-permissions.sh (will apply fixes manually)"

@@ -36,26 +36,47 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 - npm, yarn, or pnpm
 - **Note**: For production server installs on Ubuntu VM, Node.js v24.13.0 (LTS) is automatically installed/upgraded by the install script
 
+## Local Storage Architecture (v1.0.16+)
+
+File storage uses a **DATA_DIR**-based canonical layout. All paths are under one root so upgrades and backups are predictable.
+
+**Environment**
+- `DATA_DIR` — Dev default: `./data`. Production recommended: `/var/lib/secure-ai-chat` (or leave unset to use `./data` inside the app directory).
+
+**Directory structure**
+```
+DATA_DIR/
+  uploads/<tenant>/<fileId>/raw.bin    # file bytes (atomic write)
+  uploads/<tenant>/<fileId>/meta.json  # file metadata
+  derived/<tenant>/<fileId>/status.json # pipeline status
+  derived/<tenant>/<fileId>/extracted.jsonl
+  derived/<tenant>/<fileId>/lakera.json
+  (registry: DATA_DIR/app.db or REGISTRY_DB_PATH)
+```
+
+**Status lifecycle**: `uploaded` → `extracting` → `scanning` → `indexing` → `ready` (or `blocked` / `failed`). Poll **GET /api/files/status?fileId=** until `ready`, `blocked`, or `failed`.
+
+**RAG + Lakera flow**: After upload, text is extracted, chunked, scanned by Lakera at ingestion, then only approved chunks are embedded. RAG retrieval uses only approved chunks.
+
+See [docs/DATA_STORAGE_AND_REINSTALL.md](docs/DATA_STORAGE_AND_REINSTALL.md) and [USER_GUIDE.md](USER_GUIDE.md) for configuration and troubleshooting.
+
 ## Installation
 
 ### Quick Install (Ubuntu VM)
 
-For a fresh Ubuntu VM installation with nginx reverse proxy:
+For a fresh Ubuntu VM installation with nginx reverse proxy. The script **installs and verifies all prerequisites (including Node.js and npm) before fetching any code** from the repo. See [docs/SYNC_AND_FRESH_INSTALL.md](docs/SYNC_AND_FRESH_INSTALL.md) to sync your changes to main and prepare for a fresh install.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
 ```
 
 **What it does:**
-- Installs system dependencies (curl, git, build tools, nginx)
-- Creates dedicated user (`secureai`)
-- Installs/Upgrades Node.js to v24.13.0 (LTS) via nvm (automatically upgrades if different version detected)
-- Clones repository to `/opt/secure-ai-chat`
-- Installs dependencies and builds application
-- Configures systemd service for auto-start
-- Configures nginx reverse proxy on port 80
+- **Phase 1:** Installs and verifies system packages (curl, git, build-essential, etc.); fails if any prerequisite is missing
+- **Phase 2:** Creates dedicated user (`secureai`) and install directory
+- **Phase 3:** Installs Node.js v24.13.0 (LTS) and npm via nvm; verifies before proceeding
+- **Phase 4:** Clones repository to `/opt/secure-ai-chat` (only after Node/npm are ready)
+- **Phase 5:** Installs dependencies, builds app, configures systemd, nginx, UFW
 - Auto-detects free port starting from 3000 (avoids EADDRINUSE)
-- Configures UFW firewall (SSH + Nginx)
 
 **Post-installation:**
 1. Add API keys: `sudo nano /opt/secure-ai-chat/.env.local`
@@ -82,10 +103,12 @@ See [docs/INSTALL_UBUNTU_VM.md](docs/INSTALL_UBUNTU_VM.md) for more details.
 
 ### Upgrade Remote Installation
 
-To safely upgrade your remote installation to the latest version (e.g. v1.0.14 — fixes file upload blank screen):
+**Repo:** [https://github.com/mazh-cp/secure-ai-chat](https://github.com/mazh-cp/secure-ai-chat) — branch **`main`** has the latest code and changes.
+
+To safely upgrade your remote installation to the latest version:
 
 ```bash
-# Replace mazh-cp/secure-ai-chat with YOUR GitHub org/repo if you use a fork or different repo
+# Latest code from main (replace mazh-cp/secure-ai-chat if you use a fork)
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
 
@@ -132,6 +155,18 @@ The curl scripts automatically:
 - Preserve all configurations
 - Rebuild and restart the service
 - **Retry with `main`** if the build fails (so upgrades stay seamless)
+
+**In-place upgrade (v1.0.16)** — From the app directory, run:
+```bash
+GIT_REF=v1.0.16 bash scripts/upgrade.sh
+```
+Upgrade **never** deletes or moves `DATA_DIR`; it only checks out code, runs `npm ci`, builds, and restarts the service. Run `scripts/preflight.sh` first to verify Node version and `DATA_DIR` writable.
+
+**Storage permissions** — After install or upgrade, enforce safe ownership and modes:
+```bash
+DATA_DIR=/path/to/data APP_USER=secureai sudo bash scripts/storage-perms.sh
+```
+No 777 permissions; dirs 755, files 644.
 
 See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instructions.
 

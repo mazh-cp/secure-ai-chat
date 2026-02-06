@@ -84,12 +84,20 @@ else
   warn "Service not running"
 fi
 
-# Git fetch and checkout
+# Git fetch and checkout (ensure we get all remote changes)
 say "Fetching and checking out: $GIT_REF"
 cd "$APP_DIR" || fail "Cannot cd to $APP_DIR"
-git fetch origin 2>/dev/null || true
+git fetch origin --tags 2>/dev/null || true
 git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF (tag/branch may not exist)"
-ok "Checked out $GIT_REF"
+if git show-ref -q "origin/$GIT_REF" 2>/dev/null; then
+  if ! git pull origin "$GIT_REF" 2>/dev/null; then
+    warn "Pull failed, resetting to origin/$GIT_REF to fetch all remote changes..."
+    git reset --hard "origin/$GIT_REF" 2>/dev/null || true
+  fi
+  ok "Checked out $GIT_REF (latest from origin)"
+else
+  ok "Checked out $GIT_REF (tag or ref)"
+fi
 
 # Restore backup over any changed config
 [ -f "$BACKUP_DIR/.env.local" ] && cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" || true

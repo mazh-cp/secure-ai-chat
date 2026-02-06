@@ -1,6 +1,8 @@
 # Safe Remote Upgrade Guide
 
-This guide explains how to safely upgrade your remote Secure AI Chat installation from version 1.0.7 to 1.0.8 (or any future version) without losing any settings or API keys.
+**Repo:** [https://github.com/mazh-cp/secure-ai-chat](https://github.com/mazh-cp/secure-ai-chat) — branch **`main`** has the latest code.
+
+This guide explains how to safely upgrade your remote Secure AI Chat installation to the latest version (or a specific release) without losing any settings or API keys.
 
 ## Quick Upgrade (Recommended)
 
@@ -15,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 
 This script will:
 - ✅ Create automatic backup of all settings
-- ✅ Pull latest code from repository
+- ✅ Fetch and apply **all** latest code (if `git pull` fails, resets to `origin/<branch>` so remote changes are never missed)
 - ✅ Preserve all API keys (`.env.local` and `.secure-storage`)
 - ✅ Update dependencies
 - ✅ Rebuild application (if build fails, **retries with `main`** for a seamless upgrade)

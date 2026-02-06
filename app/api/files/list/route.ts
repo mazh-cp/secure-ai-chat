@@ -14,6 +14,9 @@ import type { UploadedFile } from '@/types/files'
 export async function GET(request: NextRequest) {
   try {
     const { ownerId } = await getOwnerId(request)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[FILES/LIST] ownerId=', ownerId)
+    }
     const files = listFiles({ owner_id: ownerId })
     const owner = ownerId ?? ''
 

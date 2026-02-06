@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOwnerId } from '@/lib/owner'
 import { getById, markDeleted } from '@/lib/registry/files-registry'
 import { deleteOwnerFile } from '@/lib/persistent-storage'
+import { deleteFileDir } from '@/lib/storage-canonical'
 import { removeDocumentFromRAG } from '@/lib/rag/index'
 
 /**
@@ -41,6 +42,7 @@ export async function DELETE(request: NextRequest) {
 
     const owner = file.owner_id ?? ownerId ?? ''
     await deleteOwnerFile(owner, fileId).catch(() => {})
+    await deleteFileDir(owner, fileId).catch(() => {})
     await removeDocumentFromRAG(fileId).catch(() => {})
 
     return NextResponse.json({

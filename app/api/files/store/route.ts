@@ -1,21 +1,29 @@
 export const runtime = 'nodejs'
 
+import crypto from 'crypto'
 import { promises as fs } from 'fs'
 import { NextRequest, NextResponse } from 'next/server'
 import { getOwnerId } from '@/lib/owner'
 import { insertFile } from '@/lib/registry/files-registry'
-import { writeOwnerFile, getUploadsDir, getOwnerFilePath } from '@/lib/persistent-storage'
+import { getUploadsDir } from '@/lib/persistent-storage'
+import { writeRawAndMeta, writeStatus } from '@/lib/storage-canonical'
 import { buildForensicContext, logForensic } from '@/lib/forensic-log'
 import { listFiles } from '@/lib/registry/files-registry'
 
 /**
  * POST - Store a file on the server (canonical registry + disk).
  * Body: application/json with fileId, fileName, fileContent, fileType, fileSize, scanStatus?, scanResult?, scanDetails?, checkpointTeDetails?.
- * Writes bytes to ./data/uploads/<ownerId>/<fileId>; metadata in SQLite only (JSON-only store).
+ * Writes to DATA_DIR/uploads/<tenant>/<fileId>/raw.bin + meta.json and derived/.../status.json (uploaded). Registry gets pipeline_status = uploaded.
  */
 export async function POST(request: NextRequest) {
   try {
     const { ownerId } = await getOwnerId(request)
+    if (!ownerId || typeof ownerId !== 'string' || ownerId.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: { code: 'OWNER_REQUIRED', message: 'Owner ID is required (cookie or X-Client-ID)', details: null } },
+        { status: 400 }
+      )
+    }
 
     const contentLength = request.headers.get('content-length')
     const MAX_REQUEST_SIZE = 55 * 1024 * 1024 // 55 MB
@@ -92,11 +100,29 @@ export async function POST(request: NextRequest) {
     const content = typeof fileContent === 'string' ? fileContent : String(fileContent)
     const buf = Buffer.from(content, 'utf-8')
     const uploadsDir = getUploadsDir()
+    const createdAt = new Date().toISOString()
+    const sha256 = crypto.createHash('sha256').update(buf).digest('hex')
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[FILES/STORE] ownerId=', ownerId, 'fileId=', fileIdStr)
+    }
     console.log('[STORE]', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length })
 
     try {
-      await writeOwnerFile(ownerId, fileIdStr, content)
+      await writeRawAndMeta(ownerId, fileIdStr, buf, {
+        fileId: fileIdStr,
+        name: fileNameStr,
+        size: fileSizeNum,
+        type: fileTypeStr,
+        tenant: ownerId,
+        createdAt,
+        sha256,
+      })
+      await writeStatus(ownerId, fileIdStr, {
+        status: 'uploaded',
+        updatedAt: createdAt,
+        message: 'File stored',
+      })
     } catch (writeErr) {
       console.error('Failed to write file to disk:', writeErr)
       const msg = writeErr instanceof Error ? writeErr.message : 'Failed to write file to disk'
@@ -106,20 +132,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let writtenBytes: number
-    try {
-      const absolutePath = getOwnerFilePath(ownerId, fileIdStr)
-      const stat = await fs.stat(absolutePath)
-      writtenBytes = stat.size
-      console.log('[STORE] written', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length, writtenBytes, absolutePath })
-    } catch (statErr) {
-      console.error('Failed to verify file on disk after write:', statErr)
-      const msg = statErr instanceof Error ? statErr.message : 'Failed to verify file on disk'
-      return NextResponse.json(
-        { ok: false, error: { code: 'VERIFY_FAILED', message: msg, details: null } },
-        { status: 500 }
-      )
-    }
+    const writtenBytes = buf.length
+    console.log('[STORE] written', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length, writtenBytes })
 
     const scanStatusStr: string = typeof scanStatus === 'string' ? scanStatus : 'pending'
     const scanResultVal: string | null = scanResult != null && typeof scanResult === 'string' ? scanResult : null
@@ -153,12 +167,20 @@ export async function POST(request: NextRequest) {
     const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
     logForensic('files/store', ctx)
 
-    const storagePathPreview = `data/uploads/${ownerId ?? ''}/${fileIdStr}`
+    const storagePathPreview = `data/uploads/${ownerId}/${fileIdStr}`
     return NextResponse.json({
       ok: true,
       success: true,
-      file: { id: fileIdStr, name: fileNameStr, size: fileSizeNum, mime: fileTypeStr, storagePath: storagePathPreview, createdAt: new Date().toISOString(), ownerId: ownerId ?? undefined },
-      ownerId: ownerId ?? undefined,
+      file: {
+        id: fileIdStr,
+        name: fileNameStr,
+        size: fileSizeNum,
+        mime: fileTypeStr,
+        sha256,
+        storagePath: storagePathPreview,
+        createdAt,
+      },
+      ownerId,
       fileId: fileIdStr,
       storagePathPreview,
       message: 'File stored successfully',

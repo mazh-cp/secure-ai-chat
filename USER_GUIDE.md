@@ -1,8 +1,8 @@
 # Secure AI Chat - User Guide
 
-**Version 1.0.11**
+**Version 1.0.16**
 
-Welcome to Secure AI Chat! This guide will help you get the most out of the application's features, from secure conversations to file uploads and security scanning. This version includes full Azure OpenAI support, enhanced security features, and improved user experience.
+Welcome to Secure AI Chat! This guide will help you get the most out of the application's features, from secure conversations to file uploads and security scanning. This version includes local persistent storage (DATA_DIR), async processing pipeline with status lifecycle, Lakera chunk-level scanning, and blank-screen prevention.
 
 ---
 
@@ -138,13 +138,15 @@ The Files page allows you to upload documents for use with RAG (Retrieval-Augmen
    - Automatically scans files on upload
    - Requires Lakera Scan to be enabled
 
-**File Status Indicators:**
-- 🟡 **Pending**: File uploaded, waiting for processing
-- 🔵 **Scanning**: Currently being scanned
-- 🟢 **Safe**: File passed all security checks
-- 🔴 **Flagged**: Security threats detected
+**File Status Indicators (processing pipeline):**
+- 🟡 **Pending / uploaded**: File stored; pipeline not started
+- 🔵 **Scanning**: Check Point TE or Lakera scan in progress
+- 🟢 **Safe / ready**: File passed checks; RAG indexing complete (if applicable)
+- 🔴 **Flagged / blocked**: Security threats detected; file not used in RAG
 - ⚪ **Not Scanned**: Scanning was disabled
-- ⚠️ **Error**: Processing failed
+- ⚠️ **Error / failed**: Processing failed (check Settings and API keys)
+
+**Processing status (v1.0.16+):** The app uses a status lifecycle: `uploaded` → `extracting` → `scanning` → `indexing` → `ready` (or `blocked` / `failed`). You can poll **GET /api/files/status?fileId=** to see when a file reaches `ready`, `blocked`, or `failed`. The UI shows these states so you know when a file is safe to use in chat.
 
 ### Managing Files
 
@@ -459,10 +461,19 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
 - Verify key validation status (green dot)
 - Check network connectivity
 
-**Files Not Uploading:**
-- Verify file size (max 50 MB)
-- Check file format (PDF, TXT, MD, JSON, CSV, DOCX)
+**Upload fails:**
+- Verify file size (max 50 MB) and format (PDF, TXT, MD, JSON, CSV, DOCX)
 - Ensure stable internet connection
+- If you see a blank screen after upload, the app now shows an error banner instead (v1.0.14+); check the Files page for the message and ensure the server returns JSON (check server logs for 500 errors)
+
+**Permission errors:**
+- Ensure `DATA_DIR` (default `./data`) exists and is writable by the app user
+- On production, run `scripts/preflight.sh` then `scripts/storage-perms.sh` with correct `DATA_DIR` and `APP_USER` (e.g. `DATA_DIR=/var/lib/secure-ai-chat APP_USER=secureai sudo bash scripts/storage-perms.sh`)
+- Never use 777; use 755 for directories and 644 for files
+
+**Disk space errors:**
+- Run `scripts/preflight.sh` to check disk space (recommended ≥ 100 MB free under `DATA_DIR`)
+- Free space or set `DATA_DIR` to a volume with sufficient space
 
 **Security Scans Not Working:**
 - Verify Lakera API key is configured
@@ -485,15 +496,15 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
 
 ## Version Information
 
-**Current Version:** 1.0.5
+**Current Version:** 1.0.16
 
-**Recent Enhancements:**
-- ✅ Persistent file storage (files survive server restarts)
-- ✅ Multiple file upload (up to 5 files simultaneously)
-- ✅ Lakera Guard API v2 compliance
-- ✅ Automatic cache cleanup (24-hour interval)
-- ✅ Enhanced security scanning
-- ✅ Improved file management
+**Recent Enhancements (v1.0.16):**
+- ✅ Local persistent storage architecture (DATA_DIR with uploads/ and derived/)
+- ✅ Atomic file handling (tmp → rename); pipeline status lifecycle
+- ✅ Async processing pipeline; Lakera chunk-level scanning before RAG
+- ✅ GET /api/files/status for processing status
+- ✅ Blank screen prevention (JSON-only API responses; ErrorBoundary)
+- ✅ Upgrade safety (scripts/upgrade.sh never deletes DATA_DIR; preflight, storage-perms)
 
 **Version Display:**
 - Check the bottom left of the sidebar for the current version
@@ -512,4 +523,4 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
 
 **Need Help?** Check the Dashboard for logs, review the Risk Map for security insights, or verify your Settings configuration.
 
-**Last Updated:** Version 1.0.5 - January 2026
+**Last Updated:** Version 1.0.16 - February 2026

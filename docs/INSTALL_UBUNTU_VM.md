@@ -2,7 +2,13 @@
 
 Complete installation guide for Secure AI Chat on a fresh Ubuntu VM with nginx reverse proxy.
 
-## Prerequisites
+**Repo:** [https://github.com/mazh-cp/secure-ai-chat](https://github.com/mazh-cp/secure-ai-chat) — use **main** for latest code. To sync your changes to main before a fresh install, see **[SYNC_AND_FRESH_INSTALL.md](SYNC_AND_FRESH_INSTALL.md)**.
+
+**For a production build on Ubuntu in Azure** (including file storage persistence fixes), see **[PRODUCTION_UBUNTU_AZURE.md](PRODUCTION_UBUNTU_AZURE.md)**.
+
+## Prerequisites (handled by script)
+
+The install script installs and verifies all of these **before** fetching any code from the repo. You only need:
 
 - **Ubuntu 18.04+** or Debian 10+
 - **sudo privileges**
@@ -12,22 +18,18 @@ Complete installation guide for Secure AI Chat on a fresh Ubuntu VM with nginx r
 
 ## Quick Install
 
-Single-command installation:
+Single-command installation (run on the remote Ubuntu VM; script installs NPM and all requisites first, then fetches code):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
 ```
 
-**What the script does:**
-- Installs system dependencies (curl, git, build tools, nginx)
-- Creates dedicated user: `secureai`
-- Installs/Upgrades Node.js to v24.13.0 (LTS) via nvm (automatically upgrades if different version detected)
-- Clones repository to `/opt/secure-ai-chat`
-- Installs dependencies and builds application
-- Configures systemd service for auto-start
-- Configures nginx reverse proxy on port 80
-- Configures UFW firewall (SSH + Nginx)
-- Auto-detects free port starting from 3000 (avoids EADDRINUSE)
+**What the script does (order enforced):**
+1. **Phase 1 – System prerequisites:** Installs and verifies curl, git, build-essential, ca-certificates, gnupg, lsb-release, iproute2. Fails fast if any required package is missing.
+2. **Phase 2 – App user:** Creates user `secureai` and install directory.
+3. **Phase 3 – Node.js and npm:** Installs nvm and Node.js v24.13.0 (LTS); verifies `node` and `npm` before proceeding.
+4. **Phase 4 – Code fetch:** Clones repository from GitHub (only after prerequisites and Node/npm are ready).
+5. **Phase 5 – App:** Installs dependencies, builds application, configures systemd service, nginx reverse proxy on port 80, and UFW firewall. Auto-detects free port starting from 3000 (avoids EADDRINUSE).
 
 **Installation time**: ~10-15 minutes
 

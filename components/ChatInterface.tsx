@@ -68,8 +68,10 @@ export default function ChatInterface() {
           // For endpoints, data.keys contains the actual URL value (safe to expose)
           const hasOpenAiKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
           const hasAnthropicKey = data.configured?.anthropicApiKey === true || data.keys?.anthropicApiKey === 'configured'
+          const hasLakeraKey = data.configured?.lakeraAiKey === true || data.keys?.lakeraAiKey === 'configured'
 
-          if (hasOpenAiKey || hasAnthropicKey) {
+          // Set apiKeys when any chat or Lakera key is configured so UI can show correct provider/model options
+          if (hasOpenAiKey || hasAnthropicKey || hasLakeraKey) {
             setApiKeys({
               openAiKey: data.configured?.openAiKey ? 'configured' : '',
               anthropicApiKey: data.configured?.anthropicApiKey ? 'configured' : '',
@@ -85,11 +87,11 @@ export default function ChatInterface() {
               keys: data.keys,
               status: response.status,
             })
-            
+
             // Clear any stale state if API says no keys
             if (apiKeys?.openAiKey === 'configured') {
               setApiKeys(null)
-          }
+            }
           }
         } else if (response) {
           // API responded but with error
@@ -152,6 +154,18 @@ export default function ChatInterface() {
       if (providerStored === 'openai' || providerStored === 'anthropic') setProvider(providerStored)
     }
   }, [])
+
+  // When apiKeys loads: default to the provider that has a key so user can use OpenAI when only OpenAI is configured
+  useEffect(() => {
+    if (!apiKeys) return
+    const hasOpenAi = apiKeys.openAiKey === 'configured' || (apiKeys.openAiKey && apiKeys.openAiKey !== '')
+    const hasAnthropic = apiKeys.anthropicApiKey === 'configured' || (apiKeys.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+    setProvider((current) => {
+      if (current === 'anthropic' && !hasAnthropic && hasOpenAi) return 'openai'
+      if (current === 'openai' && !hasOpenAi && hasAnthropic) return 'anthropic'
+      return current
+    })
+  }, [apiKeys])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && selectedModel) {

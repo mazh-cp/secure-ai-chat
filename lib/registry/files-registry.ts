@@ -51,6 +51,15 @@ const globalForRegistry = globalThis as unknown as {
   __registryWarned?: boolean
 }
 
+export type PipelineStatus =
+  | 'uploaded'
+  | 'extracting'
+  | 'scanning'
+  | 'indexing'
+  | 'ready'
+  | 'blocked'
+  | 'failed'
+
 export interface RegistryFileRow {
   id: string
   storage_key: string
@@ -66,6 +75,7 @@ export interface RegistryFileRow {
   scan_details_json: string | null
   checkpoint_te_details_json: string | null
   rag_indexed_at: string | null
+  pipeline_status?: string | null
 }
 
 /** Shape compatible with StoredFileMetadata / UploadedFile for list and chat */
@@ -83,6 +93,7 @@ export interface RegistryFile {
   owner_id: string | null
   session_id: string | null
   rag_indexed_at: string | null
+  pipeline_status?: PipelineStatus | null
 }
 
 async function ensureDataDir(): Promise<void> {
@@ -126,10 +137,19 @@ function getDb(): Database.Database {
       scan_result TEXT,
       scan_details_json TEXT,
       checkpoint_te_details_json TEXT,
-      rag_indexed_at TEXT
+      rag_indexed_at TEXT,
+      pipeline_status TEXT DEFAULT 'uploaded'
     );
     CREATE INDEX IF NOT EXISTS idx_files_deleted_at ON files(deleted_at);
   `)
+  try {
+    const info = db.prepare('PRAGMA table_info(files)').all() as { name: string }[]
+    if (!info.some((c) => c.name === 'pipeline_status')) {
+      db.exec(`ALTER TABLE files ADD COLUMN pipeline_status TEXT DEFAULT 'uploaded'`)
+    }
+  } catch {
+    // ignore
+  }
   return db
 }
 
@@ -224,6 +244,7 @@ function rowToFile(row: RegistryFileRow): RegistryFile {
     owner_id: row.owner_id,
     session_id: row.session_id,
     rag_indexed_at: row.rag_indexed_at,
+    pipeline_status: (row.pipeline_status as RegistryFile['pipeline_status']) ?? 'uploaded',
   }
 }
 
@@ -242,6 +263,7 @@ export function updateFileMetadata(
     scan_details?: object | null
     checkpoint_te_details?: object | null
     rag_indexed_at?: string | null
+    pipeline_status?: PipelineStatus | string | null
   }
 ): boolean {
   const database = getDb()
@@ -266,6 +288,10 @@ export function updateFileMetadata(
   if (updates.rag_indexed_at !== undefined) {
     sets.push('rag_indexed_at = ?')
     values.push(updates.rag_indexed_at)
+  }
+  if (updates.pipeline_status !== undefined) {
+    sets.push('pipeline_status = ?')
+    values.push(updates.pipeline_status)
   }
   if (sets.length === 0) return false
   values.push(id)

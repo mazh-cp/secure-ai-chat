@@ -1,13 +1,15 @@
 /**
  * Client-side: stable X-Client-ID for list/store/status/chat.
  * Persisted in localStorage so identity does not change on re-render or navigation.
- * Uses crypto.randomUUID() when available, else a fallback (older browsers / no randomUUID).
+ * Uses crypto.randomUUID() only in the browser when available; never on server (SSR) to avoid
+ * "crypto.randomUUID is not a function" in Node/standalone.
  */
 
 const STORAGE_KEY = 'x-client-id'
 
 function generateClientId(): string {
-  if (typeof crypto !== 'undefined' && typeof (crypto as { randomUUID?: () => string }).randomUUID === 'function') {
+  // Only use crypto.randomUUID in the browser. On server (SSR/Node) it can be missing or different.
+  if (typeof window !== 'undefined' && typeof crypto !== 'undefined' && typeof (crypto as { randomUUID?: () => string }).randomUUID === 'function') {
     try {
       return (crypto as { randomUUID: () => string }).randomUUID()
     } catch {
