@@ -56,16 +56,31 @@ say "Git reference: $GIT_REF"
 echo ""
 
 # Directory must exist (use sudo for check; APP_DIR may be owned by app user e.g. secureai)
+# If default path missing, try common locations so upgrade works without setting APP_DIR
 if ! sudo test -d "$APP_DIR" 2>/dev/null && ! test -d "$APP_DIR" 2>/dev/null; then
-  fail "App directory not found: $APP_DIR"
-  echo ""
-  echo "  If the app is installed elsewhere, use one of these (APP_DIR must be set for bash, not curl):"
-  echo "  curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat bash"
-  echo "  curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat"
-  echo ""
-  echo "  If this is a FRESH install (no existing app), use the install script instead:"
-  echo "  curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash"
-  exit 1
+  FOUND=""
+  for try in /opt/secure-ai-chat "$HOME/secure-ai-chat" /var/lib/secure-ai-chat; do
+    if [ -n "$try" ] && { sudo test -d "$try" 2>/dev/null || test -d "$try" 2>/dev/null; } && { sudo test -f "$try/package.json" 2>/dev/null || test -f "$try/package.json" 2>/dev/null; }; then
+      FOUND="$try"
+      break
+    fi
+  done
+  if [ -n "$FOUND" ]; then
+    say "Default path not found; using detected app dir: $FOUND"
+    APP_DIR="$FOUND"
+  else
+    fail "App directory not found: $APP_DIR"
+    echo ""
+    echo "  If the app is installed elsewhere, set APP_DIR (for the bash process, not curl):"
+    echo "  curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | APP_DIR=/path/to/secure-ai-chat bash"
+    echo "  or:  curl -fsSL .../upgrade-curl-production.sh | bash -s -- /path/to/secure-ai-chat"
+    echo ""
+    echo "  If this is a FRESH install (no app yet), run the install script first:"
+    echo "  curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash"
+    echo ""
+    echo "  To look for an existing install: ls -la /opt/secure-ai-chat ~/secure-ai-chat 2>/dev/null"
+    exit 1
+  fi
 fi
 
 # Resolve app root (where package.json lives). Match fresh install: flat or one-level nested.
