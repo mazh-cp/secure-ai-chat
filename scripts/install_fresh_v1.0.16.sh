@@ -230,14 +230,13 @@ log_success "Phase 4: Key files verified"
 
 # --- Phase 5: Dependencies ---
 log_info "Phase 5: Installing dependencies (npm ci)..."
-sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << INSTALL_DEPS
-set -e
-cd "$INSTALL_DIR"
-export HOME="$INSTALL_DIR"
-export NVM_DIR="\$HOME/.nvm"
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
-INSTALL_DEPS
+sudo -u "$APP_USER" HOME="$INSTALL_DIR" env INSTALL_DIR="$INSTALL_DIR" bash -c '
+  set -e
+  cd "$INSTALL_DIR"
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
+'
 log_success "Phase 5 done: Dependencies installed"
 
 # --- Phase 6: Clean build ---
@@ -248,14 +247,13 @@ log_success "Phase 6: Clean slate for build"
 
 # --- Phase 7: Build ---
 log_info "Phase 7: Building application..."
-sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << BUILD
-set -e
-cd "$INSTALL_DIR"
-export HOME="$INSTALL_DIR"
-export NVM_DIR="\$HOME/.nvm"
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-npm run build >/dev/null 2>&1
-BUILD
+sudo -u "$APP_USER" HOME="$INSTALL_DIR" env INSTALL_DIR="$INSTALL_DIR" bash -c '
+  set -e
+  cd "$INSTALL_DIR"
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  npm run build >/dev/null 2>&1
+'
 log_success "Phase 7 done: Application built"
 
 # --- Port, DATA_DIR, and .env.local (v1.0.16) ---
