@@ -4,22 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.17] - 2026-02-06
 
+Production release: chat security, Lakera toggles, port 3000 only, no Sources list.
+
 ### Fixed
 - **Chat: general vs file questions (security)**  
-  - General knowledge questions (e.g. "what is depression") now use **model-only** answers: no RAG, no file context, no "Sources" section.  
-  - File/data questions (e.g. "who is dealing with depression", "list users with…") use RAG; answers are based on file content only.
-- **Chat: no file names or row numbers in responses**  
-  - RAG citations sent to the client are sanitized: labels show only "Source 1", "Source 2", etc. (no real file names or row numbers).  
-  - Chunk text is not sent to the client, so no PII is exposed in the Sources list.
+  - General knowledge questions (e.g. "what is depression") use **model-only** answers: no RAG, no file context, no "Sources" section.  
+  - File/data questions (e.g. "who is dealing with depression") use RAG; answers are based on file content only.
+- **Chat: no file names or row numbers**  
+  - RAG citations no longer expose file names, row numbers, or PII. API returns `rag: { chunks: [] }`; UI shows only the answer text (natural English).
 - **Chat: model instructions**  
-  - When RAG is used, the model is instructed not to mention file names, row numbers, or document identifiers; it only shares the substance of the content.
+  - When RAG is used, the model is instructed not to mention file names, row numbers, or document identifiers.
 - **Chat: fallback file context**  
-  - System message no longer lists actual file names; it refers only to "N uploaded file(s)" and instructs the model not to cite file names or row numbers.
-- **UI Sources**  
-  - MessageBubble shows only the citation label (e.g. "Source 1"); raw chunk text is never rendered.
+  - System message no longer lists actual file names; refers only to "N uploaded file(s)".
+- **UI**  
+  - Sources list removed from chat responses; only the answer text is shown.
 
 ### Changed
-- **Lakera**: Unchanged; when the Lakera key is configured, input/output scanning still runs for every chat request (same as v1.0.11 policy).
+- **Lakera toggles**  
+  - Input and output scan respect UI toggles: when toggles are off, Lakera is not run (no "Blocked by filter"); when on, scanning runs as before.
+- **Install & upgrade**  
+  - App runs on **port 3000 only**: nginx is not installed or started by the install script; UFW allows 22 and app port (3000). Upgrade script no longer reloads nginx.
+- **Check Point TE key**  
+  - Can be updated via CLI: `scripts/set-api-keys.sh --checkpoint-te-key "..."` or `curl -X POST .../api/te/config -d '{"apiKey":"..."}'`.
 
 ## [1.0.16] - 2026-02-05
 
