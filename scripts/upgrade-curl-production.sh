@@ -18,6 +18,16 @@
 set -euo pipefail
 
 # Configuration (production VM defaults)
+# Auto-detect: if unset, try default then /opt/secure-ai-chat (from install_fresh_v1.0.16 / install_ubuntu_clean)
+if [ -z "${APP_DIR:-}" ]; then
+  if [ -d "/home/adminuser/secure-ai-chat" ] && [ -f "/home/adminuser/secure-ai-chat/package.json" ]; then
+    APP_DIR="/home/adminuser/secure-ai-chat"
+  elif [ -d "/opt/secure-ai-chat" ] && [ -f "/opt/secure-ai-chat/package.json" ]; then
+    APP_DIR="/opt/secure-ai-chat"
+  else
+    APP_DIR="/home/adminuser/secure-ai-chat"
+  fi
+fi
 APP_DIR="${APP_DIR:-/home/adminuser/secure-ai-chat}"
 GIT_REF="${GIT_REF:-main}"
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
