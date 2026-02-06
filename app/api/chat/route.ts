@@ -21,6 +21,30 @@ interface ChatMessage {
   content: string
 }
 
+/**
+ * Returns true only when the user is clearly asking about data/documents (who, list, find, etc.).
+ * General knowledge questions (e.g. "what is depression") return false → model-only answer, no RAG, no Sources.
+ */
+function isFileOrDataQuestion(query: string): boolean {
+  if (!query || typeof query !== 'string') return false
+  const q = query.trim().toLowerCase()
+  // Explicit file/data intent: who, which people, list, find, in the file, from the data, users with, records, etc.
+  const fileDataPatterns = [
+    /\b(who|which\s+people|which\s+person|list|find|show|get)\s+(is|are|has|have|with|dealing|suffering|from)/i,
+    /\b(in\s+(the\s+)?(file|data|document|upload))/i,
+    /\b(from\s+(the\s+)?(file|data|document|upload))/i,
+    /\b(users?|people|persons?|records?|rows?)\s+(with|who|that|where)/i,
+    /\b(how\s+many)\s+(users?|people|records?)/i,
+    /\b(data|records?|file\s+content)\s+(about|for|from)/i,
+    /\b(search|look)\s+(in|through)\s+(the\s+)?(file|data|documents?)/i,
+  ]
+  if (fileDataPatterns.some((re) => re.test(q))) return true
+  // Purely general-knowledge phrasing: "what is X", "define X", "explain X" with no data cue
+  const generalOnly = /^(what\s+is|what\s+are|define|explain|how\s+does|why\s+do(es)?|when\s+did)\s+/i.test(q) &&
+    !/\b(file|data|document|upload|user|record|who|list|find)\b/i.test(q)
+  return !generalOnly
+}
+
 // Official Lakera Guard API v2 Response Structure
 // Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
 interface LakeraResponse {
@@ -572,7 +596,9 @@ export async function POST(request: NextRequest) {
     let availableFilesList: string[] = []
     let ragChunks: Array<{ chunkId: string; fileId: string; text: string; citationLabel: string; source_type?: string; row_number?: number; sheet_name?: string; heading_path?: string[] }> = []
     let ragContextFromRetrieve: Awaited<ReturnType<typeof import('@/lib/rag-context').buildRagContext>> | null = null
-    if (enableRAG !== false && latestUserMessage) {
+    // Only run RAG for file/data questions (e.g. "who is dealing with X"). General questions (e.g. "what is depression") use model only.
+    const useRAG = enableRAG !== false && latestUserMessage && isFileOrDataQuestion(latestUserMessage.content)
+    if (useRAG) {
       try {
         const { getOwnerId } = await import('@/lib/owner')
         const { listFiles } = await import('@/lib/registry/files-registry')
@@ -705,7 +731,7 @@ export async function POST(request: NextRequest) {
             fileContext = `\n\n[Context from uploaded files (${uploadedFiles.length} files available, ${relevantFiles.length} directly relevant):]\n${allFilesContext}\n\n[End of file context]`
           } else if (availableFilesList.length > 0) {
             // ENHANCEMENT: Even if no content included, tell LLM about available files
-            fileContext = `\n\n[Note: ${availableFilesList.length} uploaded file(s) are available: ${availableFilesList.join(', ')}. These files contain user data, PII, and other information that may be relevant to the user's query. Please search through these files when answering questions about users, data, or records.]\n\n`
+            fileContext = `\n\n[Note: ${availableFilesList.length} uploaded file(s) are available. They may contain data relevant to the user's query. Use the content below when answering questions about users, data, or records. Do not mention file names or row numbers in your answer.]\n\n`
           }
         }
       } catch (ragError) {
@@ -807,12 +833,11 @@ export async function POST(request: NextRequest) {
           content: `You are a helpful AI assistant with access to uploaded files.
 
 IMPORTANT INSTRUCTIONS:
-1. You have access to ${availableFilesList.length} uploaded file(s): ${availableFilesList.join(', ')}
+1. You have access to ${availableFilesList.length} uploaded file(s). The file content will be provided in the user's message below.
 2. For general knowledge questions (e.g. "what is Python?", "how does X work?", "hello") — answer directly from your knowledge. Do NOT restrict answers to files.
-3. When the user asks about data, records, users, or content that might be in the uploaded files — search through the file content first. If found, provide it and cite the file(s).
+3. When the user asks about data, records, users, or content that might be in the uploaded files — search through the file content and provide the relevant information. Do NOT mention file names, row numbers, or document identifiers in your answer; only share the substance of the content.
 4. If the user asked about file content but it is NOT in the files — say so clearly, then you may use general knowledge if helpful.
-5. Always cite which file(s) you used when providing information from files.
-6. The file content will be provided in the user's message below. Use it only when the question is about file content or data.`,
+5. Use the file content only when the question is about file content or data.`,
         })
       }
       if (latestUserMessage) {
@@ -1128,6 +1153,14 @@ IMPORTANT INSTRUCTIONS:
       })
     }
 
+    // Security: do not expose file names, row numbers, or PII in chat response. Send only generic labels and no raw chunk text.
+    const sanitizedRagChunks = ragChunks.map((c, i) => ({
+      chunkId: c.chunkId,
+      fileId: c.fileId,
+      citationLabel: `Source ${i + 1}`,
+      text: '',
+    }))
+
     return NextResponse.json({
       success: true,
       answer: aiResponse,
@@ -1135,7 +1168,7 @@ IMPORTANT INSTRUCTIONS:
       inputScanResult,
       outputScanResult,
       logData,
-      rag: { chunks: ragChunks },
+      rag: { chunks: sanitizedRagChunks },
     })
   } catch (error) {
     console.error('Chat API error:', error)

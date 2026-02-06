@@ -227,6 +227,11 @@ if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
 else
   warn "Service may not have started; check: sudo journalctl -u $SERVICE_NAME -n 30"
 fi
+# Reload nginx so proxy to app is active (port may be in .env.local)
+if command -v nginx >/dev/null 2>&1; then
+  sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx 2>/dev/null || true
+  ok "Nginx reloaded"
+fi
 
 # Version check (sudo in case APP_DIR is owned by app user)
 NEW_VERSION=$(sudo cat "$APP_DIR/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")

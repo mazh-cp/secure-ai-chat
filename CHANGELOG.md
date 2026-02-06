@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.17] - 2026-02-06
+
+### Fixed
+- **Chat: general vs file questions (security)**  
+  - General knowledge questions (e.g. "what is depression") now use **model-only** answers: no RAG, no file context, no "Sources" section.  
+  - File/data questions (e.g. "who is dealing with depression", "list users with…") use RAG; answers are based on file content only.
+- **Chat: no file names or row numbers in responses**  
+  - RAG citations sent to the client are sanitized: labels show only "Source 1", "Source 2", etc. (no real file names or row numbers).  
+  - Chunk text is not sent to the client, so no PII is exposed in the Sources list.
+- **Chat: model instructions**  
+  - When RAG is used, the model is instructed not to mention file names, row numbers, or document identifiers; it only shares the substance of the content.
+- **Chat: fallback file context**  
+  - System message no longer lists actual file names; it refers only to "N uploaded file(s)" and instructs the model not to cite file names or row numbers.
+- **UI Sources**  
+  - MessageBubble shows only the citation label (e.g. "Source 1"); raw chunk text is never rendered.
+
+### Changed
+- **Lakera**: Unchanged; when the Lakera key is configured, input/output scanning still runs for every chat request (same as v1.0.11 policy).
+
 ## [1.0.16] - 2026-02-05
 
 ### Added

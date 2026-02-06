@@ -33,11 +33,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 {message.ragCitations.map((c, i) => (
                   <li key={c.chunkId || i}>
                     <span className="font-medium">{c.citationLabel}</span>
-                    {c.text && (
-                      <span className="block truncate max-w-full" title={c.text}>
-                        {c.text.slice(0, 80)}{c.text.length > 80 ? '…' : ''}
-                      </span>
-                    )}
                   </li>
                 ))}
               </ul>
