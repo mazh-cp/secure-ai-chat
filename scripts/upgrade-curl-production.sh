@@ -134,7 +134,7 @@ else
   warn "Service not running"
 fi
 
-# Git fetch and checkout (run as APP_USER). Handle shallow clone (e.g. from tag): no local main until we fetch.
+# Git fetch and checkout (run as APP_USER). Handle shallow single-branch clone (e.g. from tag v1.0.16).
 say "Fetching and checking out: $GIT_REF"
 run_in_app_dir() {
   if [ "$(whoami)" = "$APP_USER" ]; then
@@ -143,20 +143,26 @@ run_in_app_dir() {
     sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && $*"
   fi
 }
+# Shallow clone with --branch tag has only that ref. Expand to fetch all branches so origin/main exists.
+run_in_app_dir git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*' 2>/dev/null || true
 run_in_app_dir git fetch origin --tags 2>/dev/null || true
 run_in_app_dir git fetch origin 2>/dev/null || true
-# Shallow clone (e.g. from tag) often has single-branch: fetch requested ref explicitly so origin/main exists
-run_in_app_dir git fetch origin "refs/heads/$GIT_REF:refs/remotes/origin/$GIT_REF" 2>/dev/null || true
-run_in_app_dir git fetch origin "$GIT_REF" 2>/dev/null || true
 # Checkout: branch (e.g. main) or tag.
 if run_in_app_dir git show-ref -q "origin/$GIT_REF" 2>/dev/null; then
-  run_in_app_dir git checkout -B "$GIT_REF" "origin/$GIT_REF" 2>/dev/null || run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF"
+  run_in_app_dir git checkout -B "$GIT_REF" "origin/$GIT_REF" 2>/dev/null || run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || {
+    warn "Checkout failed. Git status:"
+    run_in_app_dir git status 2>&1 || true
+    run_in_app_dir git branch -a 2>&1 || true
+    fail "Failed to checkout $GIT_REF"
+  }
   run_in_app_dir git pull origin "$GIT_REF" 2>/dev/null || true
   ok "Checked out $GIT_REF (latest from origin)"
 elif run_in_app_dir git rev-parse "$GIT_REF" 2>/dev/null; then
   run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF"
   ok "Checked out $GIT_REF (tag or ref)"
 else
+  echo ""
+  run_in_app_dir git branch -a 2>&1 || true
   fail "Ref $GIT_REF not found. Run: cd $APP_DIR && sudo -u $APP_USER git fetch origin && git branch -a"
 fi
 
