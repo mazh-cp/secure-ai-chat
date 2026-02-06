@@ -222,13 +222,18 @@ if [ "$(whoami)" != "$APP_USER" ]; then
     exit 1
   fi
   
-  # Pull latest changes
+  # Pull latest changes; if pull fails (e.g. divergent history), reset to origin to fetch all changes
   if sudo -u "$APP_USER" git -C "$APP_DIR" pull origin "$GIT_REF" -q; then
     ok "Pulled latest changes"
   else
-    warn "Pull failed (may be on detached HEAD or tag)"
+    warn "Pull failed, resetting to origin/$GIT_REF to fetch all remote changes..."
+    if sudo -u "$APP_USER" git -C "$APP_DIR" reset --hard "origin/$GIT_REF" -q; then
+      ok "Reset to origin/$GIT_REF (all remote changes applied)"
+    else
+      warn "Reset failed (may be on detached HEAD or tag)"
+    fi
   fi
-  
+
   NEW_REF=$(sudo -u "$APP_USER" git -C "$APP_DIR" rev-parse HEAD)
   say "New commit: $(sudo -u "$APP_USER" git -C "$APP_DIR" rev-parse --short HEAD)"
 else
@@ -248,13 +253,18 @@ else
     exit 1
   fi
   
-  # Pull latest changes
+  # Pull latest changes; if pull fails, reset to origin to fetch all changes
   if git pull origin "$GIT_REF" -q; then
     ok "Pulled latest changes"
   else
-    warn "Pull failed (may be on detached HEAD or tag)"
+    warn "Pull failed, resetting to origin/$GIT_REF to fetch all remote changes..."
+    if git reset --hard "origin/$GIT_REF" -q; then
+      ok "Reset to origin/$GIT_REF (all remote changes applied)"
+    else
+      warn "Reset failed (may be on detached HEAD or tag)"
+    fi
   fi
-  
+
   NEW_REF=$(git rev-parse HEAD)
   say "New commit: $(git rev-parse --short HEAD)"
 fi
@@ -427,6 +437,11 @@ if [ "$RELEASE_GATE_FAILED" = true ]; then
     exit 2
   fi
 fi
+
+# Step 5b: Remove old build for clean rebuild (ensures new code e.g. lib/uuid.ts is used)
+say "Step 5b: Removing old build (.next) for clean rebuild..."
+rm -rf .next 2>/dev/null || true
+ok "Old build removed"
 
 # Step 6: Build production
 say "Step 6: Building Production Bundle"

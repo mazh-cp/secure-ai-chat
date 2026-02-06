@@ -82,16 +82,22 @@ log_info "Step 3: Pulling latest code from repository..."
 BRANCH=$(sudo -u "$APP_USER" git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 log_info "Current branch: $BRANCH"
 
-sudo -u "$APP_USER" git fetch origin >/dev/null 2>&1 || true
-sudo -u "$APP_USER" git pull origin "$BRANCH" >/dev/null 2>&1 || {
-    log_error "Failed to pull latest code"
-    log_info "Restoring from backup..."
-    sudo cp -a "$BACKUP_DIR/.env.local" "$INSTALL_DIR/.env.local" 2>/dev/null || true
-    sudo cp -a "$BACKUP_DIR/.secure-storage" "$INSTALL_DIR/.secure-storage" 2>/dev/null || true
-    sudo systemctl start "$SERVICE_NAME" 2>/dev/null || true
-    exit 1
-}
-log_success "Code updated"
+sudo -u "$APP_USER" git fetch origin --tags 2>/dev/null || true
+if ! sudo -u "$APP_USER" git -C "$INSTALL_DIR" pull origin "$BRANCH" 2>/dev/null; then
+    log_warning "Pull failed (e.g. divergent history), resetting to origin/$BRANCH to fetch all remote changes..."
+    if sudo -u "$APP_USER" git -C "$INSTALL_DIR" reset --hard "origin/$BRANCH" 2>/dev/null; then
+        log_success "Reset to origin/$BRANCH (all remote changes applied)"
+    else
+        log_error "Failed to fetch latest code"
+        log_info "Restoring from backup..."
+        sudo cp -a "$BACKUP_DIR/.env.local" "$INSTALL_DIR/.env.local" 2>/dev/null || true
+        sudo cp -a "$BACKUP_DIR/.secure-storage" "$INSTALL_DIR/.secure-storage" 2>/dev/null || true
+        sudo systemctl start "$SERVICE_NAME" 2>/dev/null || true
+        exit 1
+    fi
+else
+    log_success "Code updated"
+fi
 
 # Get new version
 NEW_VERSION=$(sudo cat "$INSTALL_DIR/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")
@@ -132,7 +138,12 @@ npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
 INSTALL_DEPS
 log_success "Dependencies installed"
 
-# Step 7: Build application (retry with main if build fails)
+# Step 7: Clean build (remove .next so new code is used, fixes e.g. Crypto.randomUUID)
+log_info "Step 5b: Removing old build (.next) for clean rebuild..."
+sudo -u "$APP_USER" rm -rf "$INSTALL_DIR/.next" 2>/dev/null || true
+log_success "Old build removed"
+
+# Step 8: Build application (retry with main if build fails)
 build_ok=false
 for attempt in 1 2; do
   if [ "$attempt" -eq 2 ]; then
