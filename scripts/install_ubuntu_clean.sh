@@ -166,6 +166,16 @@ else
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
   sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
   sudo rm -rf "$TMP_CLONE"
+  # If repo root has a single subdir (e.g. secure-ai-chat/) with package.json, flatten so app is at INSTALL_DIR
+  if [ ! -f "$INSTALL_DIR/package.json" ]; then
+    SUBDIR=$(sudo find "$INSTALL_DIR" -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null | head -1)
+    if [ -n "$SUBDIR" ] && [ -f "$SUBDIR/package.json" ]; then
+      log_info "Flattening repo subdirectory into install dir..."
+      sudo rsync -a "$SUBDIR/" "$INSTALL_DIR/"
+      sudo rm -rf "$SUBDIR"
+      sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
+    fi
+  fi
   log_success "Phase 4 done: Repository cloned (kept .nvm)"
 fi
 # Verify key files exist (nothing missed from repo)
