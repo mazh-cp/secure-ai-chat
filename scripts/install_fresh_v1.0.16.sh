@@ -208,12 +208,12 @@ else
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
   sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
   sudo rm -rf "$TMP_CLONE"
-  if [ ! -f "$INSTALL_DIR/package.json" ]; then
+  if ! sudo test -f "$INSTALL_DIR/package.json"; then
     SUBDIR=""
     for d in $(sudo find "$INSTALL_DIR" -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null); do
-      if [ -f "$d/package.json" ]; then SUBDIR="$d"; break; fi
+      if sudo test -f "$d/package.json"; then SUBDIR="$d"; break; fi
     done
-    if [ -n "$SUBDIR" ] && [ -f "$SUBDIR/package.json" ]; then
+    if [ -n "$SUBDIR" ] && sudo test -f "$SUBDIR/package.json"; then
       log_info "Flattening repo subdirectory ($SUBDIR) into install dir..."
       sudo rsync -a "$SUBDIR/" "$INSTALL_DIR/"
       sudo rm -rf "$SUBDIR"
@@ -222,8 +222,9 @@ else
   fi
   log_success "Phase 4 done: Repository cloned at $GIT_REF (kept .nvm)"
 fi
+# Verify key files (use sudo: INSTALL_DIR may be owned by APP_USER, script runs as e.g. adminuser)
 for f in package.json lib/uuid.ts scripts/start-standalone.js; do
-  [ -f "$INSTALL_DIR/$f" ] || { log_error "Missing after clone: $f"; exit 1; }
+  sudo test -f "$INSTALL_DIR/$f" || { log_error "Missing after clone: $f"; exit 1; }
 done
 log_success "Phase 4: Key files verified"
 
