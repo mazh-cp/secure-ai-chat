@@ -161,16 +161,30 @@ if [ -d "$INSTALL_DIR/.git" ]; then
 else
   TMP_CLONE=$(mktemp -d)
   sudo chown "$APP_USER:$APP_GROUP" "$TMP_CLONE"
-  sudo -u "$APP_USER" git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1 || \
-  sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1
+  sudo -u "$APP_USER" git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$TMP_CLONE" 2>/dev/null || \
+  sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" 2>/dev/null
+  # Ensure we have package.json (at root or in a subdir)
+  if [ ! -f "$TMP_CLONE/package.json" ]; then
+    _pj=""
+    for _d in "$TMP_CLONE"/*/; do
+      [ -d "$_d" ] && [ -f "${_d}package.json" ] && _pj="${_d}package.json" && break
+    done
+    [ -z "$_pj" ] && { log_error "Clone failed or repo has no package.json. Check REPO_URL=$REPO_URL BRANCH=$BRANCH"; exit 1; }
+  fi
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
   sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
   sudo rm -rf "$TMP_CLONE"
-  # If repo root has a single subdir (e.g. secure-ai-chat/) with package.json, flatten so app is at INSTALL_DIR
+  # If repo root lacks package.json, look for a subdir that has it (e.g. secure-ai-chat/ or repo-name/) and flatten
   if [ ! -f "$INSTALL_DIR/package.json" ]; then
-    SUBDIR=$(sudo find "$INSTALL_DIR" -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null | head -1)
+    SUBDIR=""
+    for d in $(sudo find "$INSTALL_DIR" -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null); do
+      if [ -f "$d/package.json" ]; then
+        SUBDIR="$d"
+        break
+      fi
+    done
     if [ -n "$SUBDIR" ] && [ -f "$SUBDIR/package.json" ]; then
-      log_info "Flattening repo subdirectory into install dir..."
+      log_info "Flattening repo subdirectory ($SUBDIR) into install dir..."
       sudo rsync -a "$SUBDIR/" "$INSTALL_DIR/"
       sudo rm -rf "$SUBDIR"
       sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
