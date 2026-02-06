@@ -294,6 +294,8 @@ else
 fi
 
 # --- systemd (ReadWritePaths include DATA_DIR for v1.0.16) ---
+# Ensure PATH includes node/npm dir so "npm start" can find node (exit 127 otherwise)
+NVM_BIN_DIR="${NODE_PATH%/node}"
 log_info "Creating systemd service..."
 sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null << EOF
 [Unit]
@@ -305,6 +307,7 @@ Type=simple
 User=$APP_USER
 Group=$APP_USER
 WorkingDirectory=$INSTALL_DIR
+Environment="PATH=$NVM_BIN_DIR:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
 Environment="PORT=$APP_PORT"
 Environment="HOSTNAME=0.0.0.0"
