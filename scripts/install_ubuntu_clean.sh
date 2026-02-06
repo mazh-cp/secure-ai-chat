@@ -185,15 +185,17 @@ if [ -d "$INSTALL_DIR/.git" ]; then
 else
   TMP_CLONE=$(mktemp -d)
   sudo chown "$APP_USER:$APP_GROUP" "$TMP_CLONE"
-  sudo -u "$APP_USER" git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$TMP_CLONE" 2>/dev/null || \
-  sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" 2>/dev/null
-  # Ensure we have package.json (at root or in a subdir)
-  if [ ! -f "$TMP_CLONE/package.json" ]; then
-    _pj=""
-    for _d in "$TMP_CLONE"/*/; do
-      [ -d "$_d" ] && [ -f "${_d}package.json" ] && _pj="${_d}package.json" && break
-    done
-    [ -z "$_pj" ] && { log_error "Clone failed or repo has no package.json. Check REPO_URL=$REPO_URL BRANCH=$BRANCH"; exit 1; }
+  if ! sudo -u "$APP_USER" git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$TMP_CLONE"; then
+    log_info "Retrying clone without branch (uses default)..."
+    sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" || { log_error "Clone failed. Check network, REPO_URL=$REPO_URL BRANCH=$BRANCH"; exit 1; }
+  fi
+  # Locate package.json (at root or in a subdir)
+  _pj=$(sudo find "$TMP_CLONE" -maxdepth 2 -name "package.json" -type f 2>/dev/null | head -1)
+  if [ -z "$_pj" ] || [ ! -f "$_pj" ]; then
+    log_error "Clone has no package.json. REPO_URL=$REPO_URL BRANCH=$BRANCH"
+    log_error "Contents of clone dir:"
+    sudo ls -la "$TMP_CLONE" 2>/dev/null | head -10
+    exit 1
   fi
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
   sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
