@@ -157,6 +157,7 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   log_success "Phase 4 done: Repository updated"
 else
   TMP_CLONE=$(mktemp -d)
+  sudo chown "$APP_USER:$APP_GROUP" "$TMP_CLONE"
   sudo -u "$APP_USER" git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1 || \
   sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
