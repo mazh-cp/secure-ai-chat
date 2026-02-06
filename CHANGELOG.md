@@ -13,6 +13,14 @@ All notable changes to this project will be documented in this file.
 - **Async processing pipeline**: Status lifecycle backed by registry and derived status files; RAG ingest runs Lakera on chunks before embedding.
 - **Blank screen prevention**: All file API routes return JSON only; `lib/http/safe-fetch.ts` re-export and ErrorBoundary in place.
 - **Upgrade safety**: `scripts/upgrade.sh` (in-place upgrade to v1.0.16); never deletes or moves `DATA_DIR`. `scripts/preflight.sh` (Node version, DATA_DIR exists and writable, disk space). `scripts/storage-perms.sh` (ownership and safe chmod; no 777).
+- **Clean install script**: `scripts/install_ubuntu_clean.sh` — full VM install with prerequisites, nvm/Node, clone, flatten subdir, build. One-liner: `curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash`.
+- **Next.js 16 proxy**: Migrated `middleware.ts` → `proxy.ts` for Next.js 16 compatibility.
+
+### Fixed
+- **Crypto.randomUUID in production**: Removed `crypto.randomUUID` usage from `lib/owner-client.ts` (Node 14 compatibility). Uses timestamp + Math.random fallback for client IDs.
+- **Standalone start**: `scripts/start-standalone.js` selects `.next/standalone/server.js` when standalone build exists; systemd PATH fix for Node in nvm.
+- **Install scripts**: `dpkg-query` for package checks; prerequisites phase; chown temp dir before clone; flatten single subdir (e.g. `secure-ai-chat/`) into install dir; verify Node/npm as `secureai` user.
+- **Upgrade scripts**: Clear `node_modules/.cache` before build in upgrade flows.
 
 ### Changed
 - **Store route**: Writes to canonical layout (raw.bin + meta.json + status.json); registry gets `pipeline_status = uploaded`.
