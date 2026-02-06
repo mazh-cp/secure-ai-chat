@@ -200,27 +200,24 @@ else
   sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
   sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
   sudo rm -rf "$TMP_CLONE"
-  # If repo root lacks package.json, look for a subdir that has it (e.g. secure-ai-chat/ or repo-name/) and flatten
-  if [ ! -f "$INSTALL_DIR/package.json" ]; then
-    SUBDIR=""
-    for d in $(sudo find "$INSTALL_DIR" -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null); do
-      if [ -f "$d/package.json" ]; then
-        SUBDIR="$d"
-        break
+  # If repo root lacks package.json, find the subdir that has it (use sudo - script may run as different user)
+  if ! sudo test -f "$INSTALL_DIR/package.json" 2>/dev/null; then
+    _pj_dir=$(sudo find "$INSTALL_DIR" -maxdepth 2 -name "package.json" -type f 2>/dev/null | head -1)
+    if [ -n "$_pj_dir" ]; then
+      SUBDIR=$(sudo dirname "$_pj_dir")
+      if [ "$SUBDIR" != "$INSTALL_DIR" ]; then
+        log_info "Flattening repo subdirectory ($SUBDIR) into install dir..."
+        sudo rsync -a "${SUBDIR}/" "$INSTALL_DIR/"
+        sudo rm -rf "$SUBDIR"
+        sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
       fi
-    done
-    if [ -n "$SUBDIR" ] && [ -f "$SUBDIR/package.json" ]; then
-      log_info "Flattening repo subdirectory ($SUBDIR) into install dir..."
-      sudo rsync -a "$SUBDIR/" "$INSTALL_DIR/"
-      sudo rm -rf "$SUBDIR"
-      sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
     fi
   fi
   log_success "Phase 4 done: Repository cloned (kept .nvm)"
 fi
-# Verify key files exist (nothing missed from repo)
+# Verify key files exist (use sudo - INSTALL_DIR may be owned by APP_USER)
 for f in package.json lib/uuid.ts scripts/start-standalone.js; do
-  [ -f "$INSTALL_DIR/$f" ] || { log_error "Missing after clone: $f"; exit 1; }
+  sudo test -f "$INSTALL_DIR/$f" 2>/dev/null || { log_error "Missing after clone: $f"; exit 1; }
 done
 log_success "Phase 4: Key files verified"
 
