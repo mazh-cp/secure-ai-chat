@@ -64,19 +64,19 @@ See [docs/DATA_STORAGE_AND_REINSTALL.md](docs/DATA_STORAGE_AND_REINSTALL.md) and
 
 ### Quick Install (Ubuntu VM)
 
-For a fresh Ubuntu VM installation with nginx reverse proxy. The script **installs and verifies all prerequisites (including Node.js and npm) before fetching any code** from the repo. See [docs/SYNC_AND_FRESH_INSTALL.md](docs/SYNC_AND_FRESH_INSTALL.md) to sync your changes to main and prepare for a fresh install.
+For a **fresh Ubuntu VM**, use the clean-install script so nothing is missed (prerequisites, Node/npm, clone, clean build, systemd, nginx). See [docs/SYNC_AND_FRESH_INSTALL.md](docs/SYNC_AND_FRESH_INSTALL.md) to sync your changes to main first.
 
+**Clean install (recommended):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+```
+
+**Standard install:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
 ```
 
-**What it does:**
-- **Phase 1:** Installs and verifies system packages (curl, git, build-essential, etc.); fails if any prerequisite is missing
-- **Phase 2:** Creates dedicated user (`secureai`) and install directory
-- **Phase 3:** Installs Node.js v24.13.0 (LTS) and npm via nvm; verifies before proceeding
-- **Phase 4:** Clones repository to `/opt/secure-ai-chat` (only after Node/npm are ready)
-- **Phase 5:** Installs dependencies, builds app, configures systemd, nginx, UFW
-- Auto-detects free port starting from 3000 (avoids EADDRINUSE)
+**What the scripts do:** Prerequisites (curl, git, build-essential, etc.) → user `secureai` and `/opt/secure-ai-chat` → Node.js v24.13.0 and npm via nvm → clone repo → dependencies → clean build (clean script also removes `.next` and `node_modules/.cache`) → systemd, nginx, UFW. Auto-detect free port from 3000.
 
 **Post-installation:**
 1. Add API keys: `sudo nano /opt/secure-ai-chat/.env.local`

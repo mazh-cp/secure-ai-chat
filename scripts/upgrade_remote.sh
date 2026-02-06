@@ -138,10 +138,11 @@ npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
 INSTALL_DEPS
 log_success "Dependencies installed"
 
-# Step 7: Clean build (remove .next so new code is used, fixes e.g. Crypto.randomUUID)
-log_info "Step 5b: Removing old build (.next) for clean rebuild..."
+# Step 7: Clean build (remove .next and node_modules cache so new code is used, fixes e.g. Crypto.randomUUID)
+log_info "Step 5b: Removing old build and caches (.next, node_modules/.cache) for clean rebuild..."
 sudo -u "$APP_USER" rm -rf "$INSTALL_DIR/.next" 2>/dev/null || true
-log_success "Old build removed"
+sudo -u "$APP_USER" rm -rf "$INSTALL_DIR/node_modules/.cache" 2>/dev/null || true
+log_success "Old build and caches removed"
 
 # Step 8: Build application (retry with main if build fails)
 build_ok=false

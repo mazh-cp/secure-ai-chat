@@ -1,0 +1,317 @@
+#!/usr/bin/env bash
+# Secure AI Chat - Clean install on a fresh Ubuntu VM (from GitHub via curl)
+#
+# Use this on a brand-new Ubuntu VM. Ensures nothing is missed: prerequisites,
+# Node/npm, clone, clean build (no stale .next or cache), systemd, nginx, firewall.
+#
+# --- ONE-LINER (run on the VM, not as root) ---
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+#
+# Overrides (optional):
+#   INSTALL_DIR=/opt/secure-ai-chat BRANCH=main curl -fsSL ... | bash
+#
+# Repo: https://github.com/mazh-cp/secure-ai-chat
+#
+# Checklist (all done by this script):
+#   1. System prerequisites (apt update, curl/git/build-essential/...)
+#   2. App user and install directory
+#   3. Node.js + npm via nvm (verified before clone)
+#   4. Clone repository from GitHub (main or BRANCH)
+#   5. npm ci
+#   6. Remove .next and node_modules/.cache for clean build
+#   7. npm run build
+#   8. .env.local (create or update PORT)
+#   9. systemd service
+#  10. nginx reverse proxy
+#  11. UFW firewall (SSH + Nginx)
+#  12. Start service + nginx, smoke checks, final instructions
+#
+# Usage (local):
+#   bash scripts/install_ubuntu_clean.sh
+
+set -euxo pipefail
+
+# Configuration (override with env)
+REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
+INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
+BRANCH="${BRANCH:-main}"
+APP_USER="${APP_USER:-secureai}"
+APP_GROUP="${APP_GROUP:-secureai}"
+NODE_VERSION="${NODE_VERSION:-24.13.0}"
+NGINX_SITE="${NGINX_SITE:-secure-ai-chat}"
+SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
+
+REQUIRED_PACKAGES=(curl git build-essential ca-certificates gnupg lsb-release iproute2)
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() { echo -e "${BLUE}ℹ${NC} $*"; }
+log_success() { echo -e "${GREEN}✓${NC} $*"; }
+log_warning() { echo -e "${YELLOW}⚠${NC} $*"; }
+log_error() { echo -e "${RED}✗${NC} $*"; }
+
+find_free_port() {
+  local start_port=${1:-3000}
+  local port=$start_port
+  while [ $port -lt 4000 ]; do
+    if command -v ss >/dev/null 2>&1; then
+      if ! ss -tuln 2>/dev/null | grep -q ":$port "; then
+        echo $port
+        return 0
+      fi
+    elif command -v netstat >/dev/null 2>&1; then
+      if ! netstat -tuln 2>/dev/null | grep -q ":$port "; then
+        echo $port
+        return 0
+      fi
+    else
+      log_warning "Cannot check port availability, using $port"
+      echo $port
+      return 0
+    fi
+    port=$((port + 1))
+  done
+  log_error "Could not find free port in range 3000-3999"
+  exit 1
+}
+
+if [ "$EUID" -eq 0 ]; then
+  log_error "Do not run as root. Script uses sudo when needed."
+  exit 1
+fi
+
+log_info "=== Secure AI Chat: Clean install on fresh Ubuntu VM ==="
+log_info "Install directory: $INSTALL_DIR"
+log_info "Branch: $BRANCH"
+log_info "Node version: $NODE_VERSION"
+
+# --- Phase 1: System prerequisites ---
+is_pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+log_info "Phase 1: System prerequisites..."
+sudo apt-get update -qq
+for pkg in "${REQUIRED_PACKAGES[@]}"; do
+  if ! is_pkg_installed "$pkg"; then
+    log_info "Installing $pkg..."
+    sudo apt-get install -y -qq "$pkg" >/dev/null 2>&1 || { log_error "Failed to install $pkg"; exit 1; }
+  fi
+done
+for cmd in curl git; do
+  command -v "$cmd" >/dev/null 2>&1 || { log_error "Prerequisite not available: $cmd"; exit 1; }
+done
+is_pkg_installed build-essential || { log_error "build-essential not installed"; exit 1; }
+log_success "Phase 1 done: prerequisites installed and verified"
+
+# --- Phase 2: App user and directory ---
+if ! id "$APP_USER" &>/dev/null; then
+  log_info "Phase 2: Creating user $APP_USER..."
+  sudo useradd -r -s /bin/bash -d "$INSTALL_DIR" "$APP_USER" 2>/dev/null || \
+  sudo useradd -s /bin/bash -d "$INSTALL_DIR" "$APP_USER"
+else
+  log_success "Phase 2: User $APP_USER already exists"
+fi
+sudo mkdir -p "$INSTALL_DIR"
+sudo chown "$APP_USER:$APP_USER" "$INSTALL_DIR" 2>/dev/null || true
+
+# --- Phase 3: Node.js + npm via nvm ---
+log_info "Phase 3: Installing Node.js $NODE_VERSION via nvm..."
+sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << NVM_SCRIPT
+set -e
+export HOME=$INSTALL_DIR
+export NVM_DIR="\$HOME/.nvm"
+[ ! -d "\$NVM_DIR" ] && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash >/dev/null 2>&1
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+if nvm list 2>/dev/null | grep -q "v${NODE_VERSION}"; then
+  nvm use ${NODE_VERSION} >/dev/null 2>&1
+  nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+else
+  nvm install ${NODE_VERSION} >/dev/null 2>&1
+  nvm use ${NODE_VERSION} >/dev/null 2>&1
+  nvm alias default ${NODE_VERSION} >/dev/null 2>&1
+fi
+node -v
+npm -v
+NVM_SCRIPT
+
+NODE_PATH=$(sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << GET_NODE
+export HOME="$INSTALL_DIR"
+export NVM_DIR="\$HOME/.nvm"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+which node
+GET_NODE
+)
+NPM_PATH="${NODE_PATH%/node}/npm"
+[ -z "$NODE_PATH" ] || [ ! -x "$NODE_PATH" ] && { log_error "Node.js not found after nvm install"; exit 1; }
+[ -z "$NPM_PATH" ] || [ ! -x "$NPM_PATH" ] && { log_error "npm not found"; exit 1; }
+log_success "Phase 3 done: Node and npm verified at $NODE_PATH"
+
+# --- Phase 4: Clone repository (keep .nvm from Phase 3) ---
+log_info "Phase 4: Cloning repository (branch: $BRANCH)..."
+if [ -d "$INSTALL_DIR/.git" ]; then
+  sudo -u "$APP_USER" git -C "$INSTALL_DIR" fetch origin >/dev/null 2>&1 || true
+  sudo -u "$APP_USER" git -C "$INSTALL_DIR" checkout "$BRANCH" >/dev/null 2>&1 || true
+  sudo -u "$APP_USER" git -C "$INSTALL_DIR" pull origin "$BRANCH" >/dev/null 2>&1 || true
+  log_success "Phase 4 done: Repository updated"
+else
+  TMP_CLONE=$(mktemp -d)
+  sudo -u "$APP_USER" git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1 || \
+  sudo -u "$APP_USER" git clone --depth 1 "$REPO_URL" "$TMP_CLONE" >/dev/null 2>&1
+  sudo rsync -a "$TMP_CLONE/" "$INSTALL_DIR/"
+  sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR"
+  rm -rf "$TMP_CLONE"
+  log_success "Phase 4 done: Repository cloned (kept .nvm)"
+fi
+# Verify key files exist (nothing missed from repo)
+for f in package.json lib/uuid.ts scripts/start-standalone.js; do
+  [ -f "$INSTALL_DIR/$f" ] || { log_error "Missing after clone: $f"; exit 1; }
+done
+log_success "Phase 4: Key files verified"
+
+# --- Phase 5: Dependencies ---
+log_info "Phase 5: Installing dependencies (npm ci)..."
+cd "$INSTALL_DIR"
+sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << INSTALL_DEPS
+set -e
+export HOME="$INSTALL_DIR"
+export NVM_DIR="\$HOME/.nvm"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+npm ci >/dev/null 2>&1 || npm install >/dev/null 2>&1
+INSTALL_DEPS
+log_success "Phase 5 done: Dependencies installed"
+
+# --- Phase 6: Clean build (no stale .next or cache) ---
+log_info "Phase 6: Removing any stale build and caches..."
+sudo -u "$APP_USER" rm -rf "$INSTALL_DIR/.next" 2>/dev/null || true
+sudo -u "$APP_USER" rm -rf "$INSTALL_DIR/node_modules/.cache" 2>/dev/null || true
+log_success "Phase 6: Clean slate for build"
+
+# --- Phase 7: Build ---
+log_info "Phase 7: Building application..."
+cd "$INSTALL_DIR"
+sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << BUILD
+set -e
+export HOME="$INSTALL_DIR"
+export NVM_DIR="\$HOME/.nvm"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+npm run build >/dev/null 2>&1
+BUILD
+log_success "Phase 7 done: Application built"
+
+# --- Port and .env.local ---
+APP_PORT=$(find_free_port 3000)
+if [ ! -f "$INSTALL_DIR/.env.local" ]; then
+  sudo -u "$APP_USER" tee "$INSTALL_DIR/.env.local" >/dev/null << EOF
+# Secure AI Chat - add your API keys
+OPENAI_API_KEY=
+LAKERA_AI_KEY=
+LAKERA_ENDPOINT=https://api.lakera.ai/v2/guard
+LAKERA_PROJECT_ID=
+NEXT_PUBLIC_APP_NAME=Secure AI Chat
+NEXT_PUBLIC_APP_VERSION=1.0.0
+PORT=$APP_PORT
+HOSTNAME=0.0.0.0
+NODE_ENV=production
+EOF
+  log_success ".env.local created"
+else
+  sudo sed -i "s/^PORT=.*/PORT=$APP_PORT/" "$INSTALL_DIR/.env.local" 2>/dev/null || echo "PORT=$APP_PORT" | sudo -u "$APP_USER" tee -a "$INSTALL_DIR/.env.local" >/dev/null
+  log_success ".env.local exists, PORT=$APP_PORT"
+fi
+log_warning "IMPORTANT: Add your API keys to $INSTALL_DIR/.env.local and restart the service"
+
+# --- systemd ---
+log_info "Creating systemd service..."
+sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null << EOF
+[Unit]
+Description=Secure AI Chat Application
+After=network.target
+
+[Service]
+Type=simple
+User=$APP_USER
+Group=$APP_USER
+WorkingDirectory=$INSTALL_DIR
+Environment="NODE_ENV=production"
+Environment="PORT=$APP_PORT"
+Environment="HOSTNAME=0.0.0.0"
+EnvironmentFile=$INSTALL_DIR/.env.local
+ExecStart=$NPM_PATH start
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=$SERVICE_NAME
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=$INSTALL_DIR/.secure-storage $INSTALL_DIR/.next
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+log_success "systemd service created"
+
+# --- nginx ---
+log_info "Installing and configuring nginx..."
+sudo apt-get install -y -qq nginx >/dev/null
+sudo tee "/etc/nginx/sites-available/${NGINX_SITE}" >/dev/null << EOF
+server {
+    listen 80;
+    server_name _;
+    location / {
+        proxy_pass http://127.0.0.1:$APP_PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+sudo ln -sf "/etc/nginx/sites-available/${NGINX_SITE}" "/etc/nginx/sites-enabled/${NGINX_SITE}"
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t >/dev/null 2>&1
+log_success "nginx configured"
+
+# --- UFW ---
+log_info "Configuring firewall..."
+sudo ufw allow 22/tcp >/dev/null 2>&1 || true
+sudo ufw allow 'Nginx Full' >/dev/null 2>&1 || true
+echo "y" | sudo ufw --force enable >/dev/null 2>&1 || true
+log_success "Firewall configured"
+
+# --- Start and verify ---
+log_info "Starting services..."
+sudo systemctl enable "$SERVICE_NAME" >/dev/null 2>&1
+sudo systemctl restart "$SERVICE_NAME"
+sudo systemctl restart nginx
+sleep 3
+
+if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+  log_error "Service failed to start"
+  sudo systemctl status "$SERVICE_NAME" --no-pager -l
+  exit 1
+fi
+log_success "Service is running"
+
+curl -sf http://localhost:$APP_PORT/api/health >/dev/null 2>&1 && log_success "Health endpoint OK" || log_warning "Health check failed (may still be starting)"
+curl -sf http://localhost/api/health >/dev/null 2>&1 && log_success "Nginx proxy OK" || log_warning "Nginx proxy check failed"
+
+PUBLIC_IP=$(curl -s --max-time 3 ifconfig.me 2>/dev/null || curl -s --max-time 3 ipinfo.io/ip 2>/dev/null || echo "YOUR_VM_IP")
+echo ""
+log_success "=== Clean install complete ==="
+echo ""
+echo "  App:    http://$PUBLIC_IP (port 80)"
+echo "  Internal: http://localhost:$APP_PORT"
+echo ""
+echo "Next steps:"
+echo "  1. Add API keys:  sudo nano $INSTALL_DIR/.env.local"
+echo "  2. Restart:       sudo systemctl restart $SERVICE_NAME"
+echo "  3. Logs:          sudo journalctl -u $SERVICE_NAME -f"
+echo ""

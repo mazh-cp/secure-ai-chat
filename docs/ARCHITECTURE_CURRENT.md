@@ -98,7 +98,7 @@ No relational DB or S3; all persistence is filesystem under `.storage` and `.sec
 
 - **Lakera:** Inline in `app/api/chat/route.ts` (user message + model output) and `app/api/scan/route.ts` (file content). No shared client module; no 3-layer (ingestion / retrieval / generation) design.
 - **File upload:** Client calls `/api/scan` then `/api/files/store`. Server does **not** re-run Lakera before storing; no hard “Lakera-before-index” gate on the server.
-- **Middleware:** `middleware.ts` — Check Point WAF request logging only.
+- **Proxy:** `proxy.ts` — Check Point WAF request logging only (Next.js 16+ proxy; formerly middleware).
 - **LLM:** `lib/aiAdapter.ts` — model-agnostic OpenAI calls; no security layer inside adapter.
 - **File prompt check:** `lib/file-content-processor.ts` — `validateFilePromptSecurity()` when combining user prompt + file content (no Lakera call).
 
@@ -123,5 +123,5 @@ lib/
   aiAdapter.ts
   file-content-processor.ts
   system-logging.ts
-middleware.ts
+proxy.ts
 ```

@@ -438,10 +438,11 @@ if [ "$RELEASE_GATE_FAILED" = true ]; then
   fi
 fi
 
-# Step 5b: Remove old build for clean rebuild (ensures new code e.g. lib/uuid.ts is used)
-say "Step 5b: Removing old build (.next) for clean rebuild..."
+# Step 5b: Remove old build and caches for clean rebuild (ensures new code e.g. lib/uuid.ts is used)
+say "Step 5b: Removing old build and caches (.next, node_modules/.cache) for clean rebuild..."
 rm -rf .next 2>/dev/null || true
-ok "Old build removed"
+rm -rf node_modules/.cache 2>/dev/null || true
+ok "Old build and caches removed"
 
 # Step 6: Build production
 say "Step 6: Building Production Bundle"

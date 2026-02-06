@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Check Point WAF Integration Middleware
- * 
- * This middleware:
+ * Check Point WAF Integration Proxy
+ *
+ * This proxy:
  * 1. Captures request metadata for Check Point WAF logging
  * 2. Extracts Check Point WAF-specific headers
  * 3. Logs API calls for WAF security monitoring
@@ -34,7 +34,7 @@ interface WAFResponseMetadata {
  */
 function extractCheckPointHeaders(headers: Headers): Record<string, string> {
   const cpHeaders: Record<string, string> = {}
-  
+
   // Check Point WAF may set custom headers
   const cpHeaderPrefixes = [
     'x-checkpoint-',
@@ -45,7 +45,7 @@ function extractCheckPointHeaders(headers: Headers): Record<string, string> {
     'x-real-ip',
     'x-client-ip',
   ]
-  
+
   headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase()
     if (cpHeaderPrefixes.some(prefix => lowerKey.startsWith(prefix))) {
@@ -57,7 +57,7 @@ function extractCheckPointHeaders(headers: Headers): Record<string, string> {
       }
     }
   })
-  
+
   return cpHeaders
 }
 
@@ -68,20 +68,20 @@ function getClientIP(request: NextRequest): string {
   // Check Point WAF typically sets these headers
   const cpIP = request.headers.get('x-checkpoint-client-ip')
   if (cpIP) return cpIP
-  
+
   // Standard reverse proxy headers
   const forwarded = request.headers.get('x-forwarded-for')
   if (forwarded) {
     // Take first IP in chain (original client)
     return forwarded.split(',')[0].trim()
   }
-  
+
   const realIP = request.headers.get('x-real-ip')
   if (realIP) return realIP
-  
+
   const cfConnectingIP = request.headers.get('cf-connecting-ip')
   if (cfConnectingIP) return cfConnectingIP
-  
+
   // Fallback to connection remote address (if available)
   return 'unknown'
 }
@@ -101,15 +101,15 @@ function isSecurityBlocked(response: NextResponse): boolean {
   return false
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const startTime = Date.now()
   const url = request.nextUrl.clone()
-  
+
   // Only process API routes (for WAF logging)
   if (!url.pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
-  
+
   // Extract request metadata
   const metadata: WAFRequestMetadata = {
     method: request.method,
@@ -120,31 +120,31 @@ export async function middleware(request: NextRequest) {
     checkPointHeaders: extractCheckPointHeaders(request.headers),
     timestamp: new Date().toISOString(),
   }
-  
+
   // Get request size if available
   const contentLength = request.headers.get('content-length')
   if (contentLength) {
     metadata.requestSize = parseInt(contentLength, 10)
   }
-  
+
   // Process request and capture response
   const response = NextResponse.next()
-  
+
   // Add Check Point WAF response headers (if needed)
   // These help Check Point WAF track the application
   response.headers.set('X-Application-Name', 'secure-ai-chat')
   response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0')
-  
+
   // Log API call asynchronously (non-blocking)
   const duration = Date.now() - startTime
-  
+
   // Get response status
   const statusCode = response.status
-  
+
   // Determine if security threat was detected
   const blocked = isSecurityBlocked(response)
   const threatDetected = statusCode === 403 || statusCode === 401
-  
+
   // Log to system logs for Check Point WAF to read
   // Note: System logging uses Node.js APIs which aren't available in Edge Runtime
   // So we'll use a dynamic import that only runs when needed (server-side only)
@@ -164,15 +164,15 @@ export async function middleware(request: NextRequest) {
         })
       }
     } catch (error) {
-      // Silently fail - logging is non-critical in middleware
+      // Silently fail - logging is non-critical in proxy
     }
   }
-  
+
   return response
 }
 
 /**
- * Configure which routes this middleware applies to
+ * Configure which routes this proxy applies to
  */
 export const config = {
   matcher: [

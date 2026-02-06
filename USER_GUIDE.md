@@ -341,7 +341,7 @@ curl -X POST http://localhost:3000/api/health/cache \
 **Check Point WAF Integration:**
 - `GET /api/waf/health` - WAF integration health check
   - Returns WAF middleware status and endpoint information
-  - Verifies middleware is running and capturing requests
+  - Verifies proxy (WAF layer) is running and capturing requests
 - `GET /api/waf/logs` - Retrieve security logs for Check Point WAF
   - Query parameters: `level`, `service`, `startTime`, `endTime`, `clientIP`, `endpoint`, `blocked`, `threatDetected`, `limit`
   - Returns structured logs in JSON format
@@ -355,7 +355,7 @@ curl -X POST http://localhost:3000/api/health/cache \
 
 The application integrates with Check Point Web Application Firewall (WAF) for enterprise-grade security monitoring:
 
-1. **Middleware Integration** (`middleware.ts`):
+1. **Proxy Integration** (`proxy.ts`):
    - Automatically captures all API request metadata
    - Extracts Check Point WAF-specific headers (`x-checkpoint-*`, `x-cp-*`, `cp-waf-*`)
    - Detects client IP from Check Point WAF headers

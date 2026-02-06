@@ -31,6 +31,8 @@ const SERVER_ONLY_PATHS = [
   'pages/api',
   'lib/server',
   'server',
+  'proxy.ts',
+  'proxy.js',
   'middleware.ts',
   'middleware.js',
 ]

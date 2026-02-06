@@ -32,15 +32,32 @@ git push origin main
 
 ## 2. Fresh install on a remote Ubuntu VM
 
-The install script **installs and verifies all prerequisites before fetching any code** from the repo. Order of operations:
+### Recommended: Clean install script (ensures nothing is missed)
 
-1. **Phase 1 – System prerequisites:** `apt-get update`, install and verify: `curl`, `git`, `build-essential`, `ca-certificates`, `gnupg`, `lsb-release`, `iproute2`. Exits with an error if any required package fails.
-2. **Phase 2 – App user:** Create user `secureai` and install directory `/opt/secure-ai-chat`.
-3. **Phase 3 – Node.js and npm:** Install nvm and Node.js v24.13.0 (LTS); verify `node` and `npm` are available before proceeding.
-4. **Phase 4 – Code fetch:** Clone (or update) the repository from GitHub.
-5. **Phase 5 – App install:** `npm ci`, create `.env.local`, `npm run build`, systemd service, nginx, UFW.
+Use this on a **brand-new Ubuntu VM**. It runs all steps in order and clears build caches so the app builds from a clean state.
 
-**One-liner (run on the remote Ubuntu VM via SSH):**
+**One-liner (run on the VM via SSH; do not run as root):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+```
+
+**What it does (full checklist):**
+1. **Phase 1 – System prerequisites:** `apt-get update`, install and verify `curl`, `git`, `build-essential`, `ca-certificates`, `gnupg`, `lsb-release`, `iproute2`.
+2. **Phase 2 – App user:** Create user `secureai` and directory `/opt/secure-ai-chat`.
+3. **Phase 3 – Node.js and npm:** Install nvm and Node.js v24.13.0 (LTS); verify `node` and `npm` before proceeding.
+4. **Phase 4 – Clone:** Clone repository from GitHub (keeps `.nvm` if re-running); verify `package.json`, `lib/uuid.ts`, `scripts/start-standalone.js`.
+5. **Phase 5 – Dependencies:** `npm ci`.
+6. **Phase 6 – Clean build:** Remove `.next` and `node_modules/.cache` so the build is not stale.
+7. **Phase 7 – Build:** `npm run build`.
+8. **Phase 8+ – Config:** `.env.local`, systemd service, nginx, UFW, start service, smoke checks.
+
+**Override install path or branch (optional):**
+```bash
+INSTALL_DIR=/opt/secure-ai-chat BRANCH=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
+```
+
+### Alternative: Standard install script
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
