@@ -1155,14 +1155,7 @@ IMPORTANT INSTRUCTIONS:
       })
     }
 
-    // Security: do not expose file names, row numbers, or PII in chat response. Send only generic labels and no raw chunk text.
-    const sanitizedRagChunks = ragChunks.map((c, i) => ({
-      chunkId: c.chunkId,
-      fileId: c.fileId,
-      citationLabel: `Source ${i + 1}`,
-      text: '',
-    }))
-
+    // Do not send citation/source list to client - chat shows only the answer text (natural English).
     return NextResponse.json({
       success: true,
       answer: aiResponse,
@@ -1170,7 +1163,7 @@ IMPORTANT INSTRUCTIONS:
       inputScanResult,
       outputScanResult,
       logData,
-      rag: { chunks: sanitizedRagChunks },
+      rag: { chunks: [] },
     })
   } catch (error) {
     console.error('Chat API error:', error)

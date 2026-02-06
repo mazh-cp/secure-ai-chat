@@ -26,18 +26,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           <p className="text-base whitespace-pre-wrap break-words">
             {message.content}
           </p>
-          {!isUser && message.ragCitations && message.ragCitations.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-palette-border-default/10">
-              <p className="text-xs font-medium text-theme/80 mb-1">Sources</p>
-              <ul className="text-xs text-theme/70 space-y-0.5">
-                {message.ragCitations.map((c, i) => (
-                  <li key={c.chunkId || i}>
-                    <span className="font-medium">{c.citationLabel}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Sources list removed - show only answer text (natural English) */}
           {/* Scan Result Indicator */}
           {scanResult && scanResult.scanned && (
             <div className={`mt-2 pt-2 border-t ${
