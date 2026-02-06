@@ -134,7 +134,7 @@ else
   warn "Service not running"
 fi
 
-# Git fetch and checkout (run as APP_USER if script runs as different user, e.g. adminuser vs secureai)
+# Git fetch and checkout (run as APP_USER). Handle shallow clone (e.g. from tag): no local main until we fetch.
 say "Fetching and checking out: $GIT_REF"
 run_in_app_dir() {
   if [ "$(whoami)" = "$APP_USER" ]; then
@@ -143,16 +143,21 @@ run_in_app_dir() {
     sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && $*"
   fi
 }
-if ! run_in_app_dir git fetch origin --tags 2>/dev/null; then run_in_app_dir git fetch origin 2>/dev/null || true; fi
-run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF (tag/branch may not exist)"
+run_in_app_dir git fetch origin --tags 2>/dev/null || true
+run_in_app_dir git fetch origin 2>/dev/null || true
+# Shallow clone (e.g. from tag) often has single-branch: fetch requested ref explicitly so origin/main exists
+run_in_app_dir git fetch origin "refs/heads/$GIT_REF:refs/remotes/origin/$GIT_REF" 2>/dev/null || true
+run_in_app_dir git fetch origin "$GIT_REF" 2>/dev/null || true
+# Checkout: branch (e.g. main) or tag.
 if run_in_app_dir git show-ref -q "origin/$GIT_REF" 2>/dev/null; then
-  if ! run_in_app_dir git pull origin "$GIT_REF" 2>/dev/null; then
-    warn "Pull failed, resetting to origin/$GIT_REF..."
-    run_in_app_dir git reset --hard "origin/$GIT_REF" 2>/dev/null || true
-  fi
+  run_in_app_dir git checkout -B "$GIT_REF" "origin/$GIT_REF" 2>/dev/null || run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF"
+  run_in_app_dir git pull origin "$GIT_REF" 2>/dev/null || true
   ok "Checked out $GIT_REF (latest from origin)"
-else
+elif run_in_app_dir git rev-parse "$GIT_REF" 2>/dev/null; then
+  run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF"
   ok "Checked out $GIT_REF (tag or ref)"
+else
+  fail "Ref $GIT_REF not found. Run: cd $APP_DIR && sudo -u $APP_USER git fetch origin && git branch -a"
 fi
 
 # Restore backup over any changed config (use sudo to write into APP_DIR if needed)
