@@ -55,8 +55,8 @@ say "App directory: $APP_DIR"
 say "Git reference: $GIT_REF"
 echo ""
 
-# Use sudo for checks: APP_DIR may be owned by app user (e.g. secureai), script often runs as adminuser
-if ! sudo test -d "$APP_DIR"; then
+# Directory must exist (use sudo for check; APP_DIR may be owned by app user e.g. secureai)
+if ! sudo test -d "$APP_DIR" 2>/dev/null && ! test -d "$APP_DIR" 2>/dev/null; then
   fail "App directory not found: $APP_DIR"
   echo ""
   echo "  If the app is installed elsewhere, use one of these (APP_DIR must be set for bash, not curl):"
@@ -68,9 +68,41 @@ if ! sudo test -d "$APP_DIR"; then
   exit 1
 fi
 
-if ! sudo test -f "$APP_DIR/package.json"; then
-  fail "Not a secure-ai-chat app directory (no package.json): $APP_DIR (may need read access; try: sudo ls $APP_DIR)"
+# Resolve app root (where package.json lives). Match fresh install: flat or one-level nested.
+# Use multiple probes: sudo test, test, sudo cat (some environments break sudo test -f).
+APP_ROOT=""
+if sudo test -f "$APP_DIR/package.json" 2>/dev/null || test -f "$APP_DIR/package.json" 2>/dev/null; then
+  APP_ROOT="$APP_DIR"
+fi
+if [ -z "$APP_ROOT" ] && sudo cat "$APP_DIR/package.json" >/dev/null 2>&1; then
+  APP_ROOT="$APP_DIR"
+fi
+if [ -z "$APP_ROOT" ]; then
+  for sub in "$APP_DIR/secure-ai-chat" "$APP_DIR/app" "$APP_DIR/repo"; do
+    if sudo test -f "$sub/package.json" 2>/dev/null || test -f "$sub/package.json" 2>/dev/null; then
+      APP_ROOT="$sub"
+      break
+    fi
+  done
+fi
+if [ -z "$APP_ROOT" ]; then
+  for d in $(sudo find "$APP_DIR" -maxdepth 1 -mindepth 1 -type d ! -name '.*' 2>/dev/null); do
+    if sudo test -f "$d/package.json" 2>/dev/null; then
+      APP_ROOT="$d"
+      break
+    fi
+  done
+fi
+if [ -z "$APP_ROOT" ]; then
+  echo ""
+  echo "  Contents of $APP_DIR (sudo ls):"
+  sudo ls -la "$APP_DIR" 2>/dev/null | head -20
+  fail "Not a secure-ai-chat app directory (no package.json in $APP_DIR or one level down). Check path or run: sudo ls $APP_DIR"
   exit 1
+fi
+if [ "$APP_ROOT" != "$APP_DIR" ]; then
+  say "Using app root: $APP_ROOT (package.json found one level under $APP_DIR)"
+  APP_DIR="$APP_ROOT"
 fi
 
 # Detect app user (systemd User= or owner of APP_DIR)
