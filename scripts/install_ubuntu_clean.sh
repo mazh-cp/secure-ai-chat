@@ -26,9 +26,8 @@
 #   7. npm run build
 #   8. .env.local (create or update PORT)
 #   9. systemd service
-#  10. nginx reverse proxy
-#  11. UFW firewall (SSH + Nginx)
-#  12. Start service + nginx, smoke checks, final instructions
+#  10. UFW firewall (SSH + port 3000 only; no nginx / no port 80)
+#  11. Start service, smoke check, final instructions (app on port 3000 only)
 #
 # Usage (local):
 #   bash scripts/install_ubuntu_clean.sh
@@ -305,43 +304,17 @@ EOF
 sudo systemctl daemon-reload
 log_success "systemd service created"
 
-# --- nginx ---
-log_info "Installing and configuring nginx..."
-sudo apt-get install -y -qq nginx >/dev/null
-sudo tee "/etc/nginx/sites-available/${NGINX_SITE}" >/dev/null << EOF
-server {
-    listen 80;
-    server_name _;
-    location / {
-        proxy_pass http://127.0.0.1:$APP_PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-    }
-}
-EOF
-sudo ln -sf "/etc/nginx/sites-available/${NGINX_SITE}" "/etc/nginx/sites-enabled/${NGINX_SITE}"
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t >/dev/null 2>&1
-log_success "nginx configured"
-
-# --- UFW ---
-log_info "Configuring firewall..."
+# --- UFW (port 3000 only; no nginx / no port 80) ---
+log_info "Configuring firewall (SSH + app port $APP_PORT only)..."
 sudo ufw allow 22/tcp >/dev/null 2>&1 || true
-sudo ufw allow 'Nginx Full' >/dev/null 2>&1 || true
+sudo ufw allow ${APP_PORT}/tcp >/dev/null 2>&1 || true
 echo "y" | sudo ufw --force enable >/dev/null 2>&1 || true
-log_success "Firewall configured"
+log_success "Firewall configured (app on port $APP_PORT only)"
 
 # --- Start and verify ---
-log_info "Starting services..."
+log_info "Starting service..."
 sudo systemctl enable "$SERVICE_NAME" >/dev/null 2>&1
 sudo systemctl restart "$SERVICE_NAME"
-sudo systemctl restart nginx
 sleep 3
 
 if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
@@ -351,14 +324,13 @@ if ! sudo systemctl is-active --quiet "$SERVICE_NAME"; then
 fi
 log_success "Service is running"
 
-curl -sf http://localhost:$APP_PORT/api/health >/dev/null 2>&1 && log_success "Health endpoint OK" || log_warning "Health check failed (may still be starting)"
-curl -sf http://localhost/api/health >/dev/null 2>&1 && log_success "Nginx proxy OK" || log_warning "Nginx proxy check failed"
+curl -sf http://localhost:$APP_PORT/api/health >/dev/null 2>&1 && log_success "Health endpoint OK (port $APP_PORT)" || log_warning "Health check failed (may still be starting)"
 
 PUBLIC_IP=$(curl -s --max-time 3 ifconfig.me 2>/dev/null || curl -s --max-time 3 ipinfo.io/ip 2>/dev/null || echo "YOUR_VM_IP")
 echo ""
 log_success "=== Clean install complete ==="
 echo ""
-echo "  App:    http://$PUBLIC_IP (port 80)"
+echo "  App:      http://$PUBLIC_IP:$APP_PORT (port $APP_PORT only; no nginx/80)"
 echo "  Internal: http://localhost:$APP_PORT"
 echo ""
 echo "Next steps:"
