@@ -1,10 +1,35 @@
 # One-Step Production Upgrade Commands
 
-**Version**: 1.0.4  
-**Branch**: `release/unifi-theme-safe-final`  
-**Last Updated**: 2026-01-XX
+**Latest**: v1.0.17 (main)  
+**Last Updated**: 2026-02-06
 
-## 🚀 Quick Start - One Command
+## 🚀 Upgrade remote VM to v1.0.17 (recommended)
+
+SSH into your production VM (e.g. `ssh adminuser@57.151.99.6`) and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+```
+
+This script:
+- Uses app dir `/home/adminuser/secure-ai-chat` by default (or pass path: `curl ... | bash -s -- /opt/secure-ai-chat`)
+- Backs up `.env.local` and `.secure-storage` to `/tmp`
+- Fetches `main`, runs `npm install`, builds, restarts `secure-ai-chat` and reloads nginx
+
+**Custom app directory:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat bash
+# or
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat
+```
+
+---
+
+## 📋 Legacy / Alternative
+
+**Version**: 1.0.4  
+**Branch**: `release/unifi-theme-safe-final`
 
 SSH into your production VM and run:
 
