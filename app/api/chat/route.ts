@@ -720,8 +720,8 @@ export async function POST(request: NextRequest) {
 
     let inputScanResult: ScanResult = { scanned: false, flagged: false }
 
-    // Check input with Lakera if enabled and configured
-    if (latestUserMessage && scanOptions?.scanInput && apiKeys.lakeraAiKey) {
+    // Lakera input scan: always run when key is configured (prompt injection / security validation)
+    if (latestUserMessage && apiKeys.lakeraAiKey) {
       inputScanResult = await checkWithLakera(
         latestUserMessage.content,
         apiKeys.lakeraAiKey,
@@ -1011,8 +1011,8 @@ IMPORTANT INSTRUCTIONS:
 
     let outputScanResult: ScanResult = { scanned: false, flagged: false }
 
-    // Check output with Lakera if enabled and configured
-    if (scanOptions?.scanOutput && apiKeys.lakeraAiKey) {
+    // Lakera output scan: always run when key is configured (security validation)
+    if (apiKeys.lakeraAiKey) {
       outputScanResult = await checkWithLakera(
         aiResponse,
         apiKeys.lakeraAiKey,

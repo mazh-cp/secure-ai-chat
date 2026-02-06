@@ -322,6 +322,7 @@ export async function buildRagContext(
   }
 
   let safeChunks = chunks
+  // When Lakera is enabled (LAKERA_AI_KEY/LAKERA_API_KEY in env), always scan retrieved chunks for security
   if (lakeraRetrievalScan && chunks.length > 0) {
     const scanMeta: ScanMeta & { layer?: 'ingestion' | 'retrieval' } = {
       userId: scope.userId ?? undefined,
@@ -414,7 +415,10 @@ export function injectRagContext(
     return out
   }
 
-  const contextBlock = `\n\n[RAG_CONTEXT - Answer only from these uploaded documents; cite source for each fact.]\n${ragContext.chunks.map((c) => `[${c.citationLabel}]\n${c.text}`).join('\n\n---\n\n')}\n\n[End RAG_CONTEXT]`
+  const contextLabel = groundedOnly
+    ? 'RAG_CONTEXT - Answer only from these uploaded documents; cite source for each fact.'
+    : 'RAG_CONTEXT - Relevant document excerpts. Use for file/data questions and cite when used; for general knowledge questions answer from your knowledge.'
+  const contextBlock = `\n\n[${contextLabel}]\n${ragContext.chunks.map((c) => `[${c.citationLabel}]\n${c.text}`).join('\n\n---\n\n')}\n\n[End RAG_CONTEXT]`
 
   const systemInstruction = groundedOnly
     ? `You are a helpful assistant. You have access to uploaded file content provided in the user message under [RAG_CONTEXT].

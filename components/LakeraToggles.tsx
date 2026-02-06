@@ -129,7 +129,7 @@ export default function LakeraToggles({
         </div>
       </div>
       <p className="text-xs text-theme-subtle mt-3">
-        Scans messages for prompt injection, jailbreak attempts, and other security threats
+        When Lakera is configured, the server always scans input and output for prompt injection, jailbreak attempts, and other security threats.
       </p>
     </div>
   )
