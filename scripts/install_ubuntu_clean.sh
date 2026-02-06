@@ -223,9 +223,9 @@ log_success "Phase 4: Key files verified"
 
 # --- Phase 5: Dependencies ---
 log_info "Phase 5: Installing dependencies (npm ci)..."
-cd "$INSTALL_DIR"
 sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << INSTALL_DEPS
 set -e
+cd "$INSTALL_DIR"
 export HOME="$INSTALL_DIR"
 export NVM_DIR="\$HOME/.nvm"
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
@@ -241,9 +241,9 @@ log_success "Phase 6: Clean slate for build"
 
 # --- Phase 7: Build ---
 log_info "Phase 7: Building application..."
-cd "$INSTALL_DIR"
 sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << BUILD
 set -e
+cd "$INSTALL_DIR"
 export HOME="$INSTALL_DIR"
 export NVM_DIR="\$HOME/.nvm"
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
