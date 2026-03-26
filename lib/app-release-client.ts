@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.0.16'
-export const RELEASE_DATE = '2026-02-05'
+export const APP_VERSION = '1.0.18'
+export const RELEASE_DATE = '2026-03-26'
 
 export interface ReleaseNoteItem {
   title: string

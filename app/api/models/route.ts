@@ -25,6 +25,11 @@ const ANTHROPIC_MODELS: { id: string; name: string }[] = [
   { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
 ]
 
+interface AzureDeployment {
+  id?: string
+  name?: string
+}
+
 /**
  * GET /api/models
  * Fetches available models for the user's API key.
@@ -47,6 +52,62 @@ export async function GET(request: NextRequest) {
         )
       }
       return NextResponse.json({ models: ANTHROPIC_MODELS })
+    }
+
+    if (provider === 'azure') {
+      const apiKey = serverKeys.azureOpenAiKey
+      const endpoint = serverKeys.azureOpenAiEndpoint
+      const apiVersion = serverKeys.azureOpenAiApiVersion || '2025-04-01-preview'
+
+      if (!apiKey || !endpoint) {
+        return NextResponse.json(
+          { error: 'Azure OpenAI API key and endpoint are required' },
+          { status: 400 }
+        )
+      }
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+
+      try {
+        const url = `${endpoint}/openai/deployments?api-version=${encodeURIComponent(apiVersion)}`
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': apiKey,
+          },
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          const errorMessage = errorData?.error?.message || errorData?.message || 'Failed to fetch Azure deployments'
+          const sanitizedError = errorMessage.toLowerCase().includes('invalid')
+            ? 'Invalid Azure OpenAI credentials'
+            : errorMessage
+          return NextResponse.json({ error: sanitizedError }, { status: response.status })
+        }
+
+        const data = (await response.json()) as { data?: AzureDeployment[] }
+        const deployments = data.data || []
+        const models = deployments
+          .map((d) => {
+            const id = d.id || d.name
+            return id ? { id, name: id } : null
+          })
+          .filter((x): x is { id: string; name: string } => x != null)
+
+        return NextResponse.json({ models })
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          return NextResponse.json({ error: 'Request timeout' }, { status: 408 })
+        }
+        return NextResponse.json({ error: 'Failed to fetch Azure deployments' }, { status: 500 })
+      }
     }
 
     // OpenAI (default)

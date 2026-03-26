@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.0.16'
+export const APP_VERSION = '1.0.18'
 
-export const RELEASE_DATE = '2026-02-05'
+export const RELEASE_DATE = '2026-03-26'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {

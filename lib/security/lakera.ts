@@ -91,8 +91,9 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
   const endpoint = process.env.LAKERA_ENDPOINT || process.env.LAKERA_ENDPOINT_URL || LAKERA_ENDPOINT
 
   try {
+    const role = input.context === 'output' || input.context === 'generation' ? 'assistant' : 'user'
     const body = {
-      messages: [{ role: 'user', content: input.text }],
+      messages: [{ role, content: input.text }],
       project_id: projectId || undefined,
       payload: true,
       breakdown: true,

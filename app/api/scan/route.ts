@@ -307,15 +307,17 @@ export async function POST(request: NextRequest) {
       'Authorization': `Bearer ${apiKeys.lakeraAiKey.trim()}`,
     }
 
-    console.log('Scanning with Lakera (API v2 compliant):', {
-      endpoint: lakeraEndpoint,
-      contentLength: contentToScan.length,
-      projectId: apiKeys.lakeraProjectId ? 'configured' : 'not configured',
-      fileType: isBase64 ? 'binary' : 'text',
-      preScanDetected: preScan.detected,
-      preScanPatterns: preScan.patterns,
-      requestId,
-    })
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Scanning with Lakera (API v2 compliant):', {
+        endpoint: lakeraEndpoint,
+        contentLength: contentToScan.length,
+        projectId: apiKeys.lakeraProjectId ? 'configured' : 'not configured',
+        fileType: isBase64 ? 'binary' : 'text',
+        preScanDetected: preScan.detected,
+        preScanPatterns: preScan.patterns,
+        requestId,
+      })
+    }
 
     const response = await fetch(lakeraEndpoint, {
       method: 'POST',
@@ -513,30 +515,33 @@ export async function POST(request: NextRequest) {
       breakdown = data.breakdown
     }
     
-    // Log breakdown information for debugging
-    if (breakdown && breakdown.length > 0) {
-      console.log('Lakera Guard Breakdown:', {
-        totalDetectors: breakdown.length,
-        detectedCount: breakdown.filter(d => d.detected).length,
-        detectors: breakdown.map(d => ({
-          id: d.detector_id,
-          type: d.detector_type,
-          detected: d.detected,
-        })),
-      })
-    }
-    
-    // Log payload information for debugging
-    if (payload && payload.length > 0) {
-      console.log('Lakera Guard Payload (Detected Threats):', {
-        totalMatches: payload.length,
-        matches: payload.map(p => ({
-          text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
-          detector: p.detector_type,
-          labels: p.labels,
-          position: `${p.start}-${p.end}`,
-        })),
-      })
+    if (process.env.NODE_ENV !== 'production') {
+      // Debug logging only (avoid exposing sensitive payload contents in production)
+      // Log breakdown information for debugging
+      if (breakdown && breakdown.length > 0) {
+        console.log('Lakera Guard Breakdown:', {
+          totalDetectors: breakdown.length,
+          detectedCount: breakdown.filter(d => d.detected).length,
+          detectors: breakdown.map(d => ({
+            id: d.detector_id,
+            type: d.detector_type,
+            detected: d.detected,
+          })),
+        })
+      }
+      
+      // Log payload information for debugging (text is truncated)
+      if (payload && payload.length > 0) {
+        console.log('Lakera Guard Payload (Detected Threats):', {
+          totalMatches: payload.length,
+          matches: payload.map(p => ({
+            text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
+            detector: p.detector_type,
+            labels: p.labels,
+            position: `${p.start}-${p.end}`,
+          })),
+        })
+      }
     }
 
     // Combine pre-scan results with Lakera results

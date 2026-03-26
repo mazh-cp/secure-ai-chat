@@ -12,6 +12,9 @@ import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 interface ApiKeys {
   openAiKey: string
   anthropicApiKey?: string
+  azureOpenAiKey?: string
+  azureOpenAiEndpoint?: string
+  azureOpenAiApiVersion?: string
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
@@ -68,13 +71,17 @@ export default function ChatInterface() {
           // For endpoints, data.keys contains the actual URL value (safe to expose)
           const hasOpenAiKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
           const hasAnthropicKey = data.configured?.anthropicApiKey === true || data.keys?.anthropicApiKey === 'configured'
+          const hasAzureKey = data.configured?.azureOpenAiKey === true || data.keys?.azureOpenAiKey === 'configured'
           const hasLakeraKey = data.configured?.lakeraAiKey === true || data.keys?.lakeraAiKey === 'configured'
 
           // Set apiKeys when any chat or Lakera key is configured so UI can show correct provider/model options
-          if (hasOpenAiKey || hasAnthropicKey || hasLakeraKey) {
+          if (hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasLakeraKey) {
             setApiKeys({
               openAiKey: data.configured?.openAiKey ? 'configured' : '',
               anthropicApiKey: data.configured?.anthropicApiKey ? 'configured' : '',
+              azureOpenAiKey: data.configured?.azureOpenAiKey ? 'configured' : '',
+              azureOpenAiEndpoint: data.keys?.azureOpenAiEndpoint || '',
+              azureOpenAiApiVersion: data.keys?.azureOpenAiApiVersion || '2025-04-01-preview',
               lakeraAiKey: data.configured?.lakeraAiKey ? 'configured' : '',
               lakeraEndpoint: data.keys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
               lakeraProjectId: data.configured?.lakeraProjectId ? 'configured' : '',
@@ -151,7 +158,7 @@ export default function ChatInterface() {
       if (modelStored) setSelectedModel(modelStored)
 
       const providerStored = localStorage.getItem('selectedProvider') as ChatProvider | null
-      if (providerStored === 'openai' || providerStored === 'anthropic') setProvider(providerStored)
+      if (providerStored === 'openai' || providerStored === 'anthropic' || providerStored === 'azure') setProvider(providerStored)
     }
   }, [])
 
@@ -160,9 +167,11 @@ export default function ChatInterface() {
     if (!apiKeys) return
     const hasOpenAi = apiKeys.openAiKey === 'configured' || (apiKeys.openAiKey && apiKeys.openAiKey !== '')
     const hasAnthropic = apiKeys.anthropicApiKey === 'configured' || (apiKeys.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+    const hasAzure = apiKeys.azureOpenAiKey === 'configured' || (apiKeys.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
     setProvider((current) => {
-      if (current === 'anthropic' && !hasAnthropic && hasOpenAi) return 'openai'
-      if (current === 'openai' && !hasOpenAi && hasAnthropic) return 'anthropic'
+      if (current === 'anthropic' && !hasAnthropic && (hasOpenAi || hasAzure)) return hasOpenAi ? 'openai' : 'azure'
+      if (current === 'openai' && !hasOpenAi && (hasAnthropic || hasAzure)) return hasAnthropic ? 'anthropic' : 'azure'
+      if (current === 'azure' && !hasAzure && (hasOpenAi || hasAnthropic)) return hasOpenAi ? 'openai' : 'anthropic'
       return current
     })
   }, [apiKeys])
@@ -219,11 +228,17 @@ export default function ChatInterface() {
 
     const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
     const hasAnthropicKey = apiKeys?.anthropicApiKey === 'configured' || (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
-    const hasChatKey = provider === 'anthropic' ? hasAnthropicKey : hasOpenAiKey
+    const hasAzureKey = apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+    const hasChatKey =
+      provider === 'anthropic' ? hasAnthropicKey
+      : provider === 'azure' ? hasAzureKey
+      : hasOpenAiKey
     if (!hasChatKey) {
       setError(provider === 'anthropic'
         ? 'Anthropic API key is not configured. Please go to Settings to add your API key.'
-        : 'OpenAI API key is not configured. Please go to Settings to add your API key.')
+        : provider === 'azure'
+          ? 'Azure OpenAI API key/endpoint is not configured. Please go to Settings to add your Azure credentials.'
+          : 'OpenAI API key is not configured. Please go to Settings to add your API key.')
       return
     }
 

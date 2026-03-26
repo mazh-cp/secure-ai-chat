@@ -21,6 +21,7 @@ export async function GET() {
       configured: {
         openAiKey: !!keys.openAiKey,
         anthropicApiKey: !!keys.anthropicApiKey,
+        azureOpenAiKey: !!keys.azureOpenAiKey,
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
         lakeraEndpoint: !!keys.lakeraEndpoint,
@@ -29,6 +30,7 @@ export async function GET() {
       source: {
         openAiKey: process.env.OPENAI_API_KEY ? 'environment' : (keys.openAiKey ? 'storage' : 'none'),
         anthropicApiKey: process.env.ANTHROPIC_API_KEY ? 'environment' : (keys.anthropicApiKey ? 'storage' : 'none'),
+        azureOpenAiKey: process.env.AZURE_OPENAI_API_KEY ? 'environment' : (keys.azureOpenAiKey ? 'storage' : 'none'),
         lakeraAiKey: process.env.LAKERA_AI_KEY ? 'environment' : (keys.lakeraAiKey ? 'storage' : 'none'),
         lakeraProjectId: process.env.LAKERA_PROJECT_ID ? 'environment' : (keys.lakeraProjectId ? 'storage' : 'none'),
         lakeraEndpoint: process.env.LAKERA_ENDPOINT ? 'environment' : (keys.lakeraEndpoint ? 'storage' : 'none'),
@@ -66,6 +68,9 @@ export async function POST(request: NextRequest) {
     console.log('Received keys to save:', {
       openAiKey: keys.openAiKey ? `${keys.openAiKey.substring(0, 10)}...` : 'empty',
       anthropicApiKey: keys.anthropicApiKey ? `${keys.anthropicApiKey.substring(0, 10)}...` : 'empty',
+      azureOpenAiKey: keys.azureOpenAiKey ? `${keys.azureOpenAiKey.substring(0, 10)}...` : 'empty',
+      azureOpenAiEndpoint: keys.azureOpenAiEndpoint ? `${keys.azureOpenAiEndpoint.substring(0, 30)}...` : 'empty',
+      azureOpenAiApiVersion: keys.azureOpenAiApiVersion || 'empty',
       lakeraAiKey: keys.lakeraAiKey ? `${keys.lakeraAiKey.substring(0, 10)}...` : 'empty',
       lakeraProjectId: keys.lakeraProjectId || 'empty',
     })
@@ -89,6 +94,53 @@ export async function POST(request: NextRequest) {
         }
       } else if (!keys.openAiKey || !keys.openAiKey.trim()) {
         console.log('OpenAI key is empty, will not save')
+      }
+    }
+
+    if (keys.azureOpenAiKey !== undefined) {
+      if (keys.azureOpenAiKey && typeof keys.azureOpenAiKey === 'string' && keys.azureOpenAiKey.trim()) {
+        const trimmedKey = keys.azureOpenAiKey.trim()
+        // Azure OpenAI keys are not guaranteed to use the "sk-" prefix; validate by length and placeholder filtering.
+        if (!trimmedKey.toLowerCase().includes('your') && !trimmedKey.toLowerCase().includes('placeholder') && trimmedKey.length >= 10) {
+          keysToSave.azureOpenAiKey = trimmedKey
+          console.log('Azure OpenAI key validated and will be saved')
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Azure OpenAI API key format' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
+    if (keys.azureOpenAiEndpoint !== undefined) {
+      if (keys.azureOpenAiEndpoint && typeof keys.azureOpenAiEndpoint === 'string' && keys.azureOpenAiEndpoint.trim()) {
+        const trimmedEndpoint = keys.azureOpenAiEndpoint.trim()
+        if (trimmedEndpoint.startsWith('http://') || trimmedEndpoint.startsWith('https://')) {
+          keysToSave.azureOpenAiEndpoint = trimmedEndpoint.replace(/\/+$/, '')
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Azure OpenAI endpoint format. Must be a valid URL (https://...)' },
+            { status: 400 }
+          )
+        }
+      } else if (!keys.azureOpenAiEndpoint) {
+        // Allow empty string to reset endpoint (deletion may still require explicit reset via UI)
+        // No-op here; storage logic will keep existing if env vars are set.
+      }
+    }
+
+    if (keys.azureOpenAiApiVersion !== undefined) {
+      if (keys.azureOpenAiApiVersion && typeof keys.azureOpenAiApiVersion === 'string' && keys.azureOpenAiApiVersion.trim()) {
+        const trimmed = keys.azureOpenAiApiVersion.trim()
+        if (!trimmed.toLowerCase().includes('your') && !trimmed.toLowerCase().includes('placeholder')) {
+          keysToSave.azureOpenAiApiVersion = trimmed
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Azure OpenAI API version format' },
+            { status: 400 }
+          )
+        }
       }
     }
 
@@ -171,6 +223,9 @@ export async function POST(request: NextRequest) {
     console.log('Keys to save (validated):', {
       openAiKey: !!keysToSave.openAiKey,
       anthropicApiKey: !!keysToSave.anthropicApiKey,
+      azureOpenAiKey: !!keysToSave.azureOpenAiKey,
+      azureOpenAiEndpoint: !!keysToSave.azureOpenAiEndpoint,
+      azureOpenAiApiVersion: !!keysToSave.azureOpenAiApiVersion,
       lakeraAiKey: !!keysToSave.lakeraAiKey,
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
@@ -186,6 +241,7 @@ export async function POST(request: NextRequest) {
     console.log('Keys saved. Verification:', {
       openAiKey: !!savedKeys.openAiKey,
       anthropicApiKey: !!savedKeys.anthropicApiKey,
+      azureOpenAiKey: !!savedKeys.azureOpenAiKey,
       lakeraAiKey: !!savedKeys.lakeraAiKey,
       lakeraProjectId: !!savedKeys.lakeraProjectId,
       lakeraEndpoint: !!savedKeys.lakeraEndpoint,
@@ -220,6 +276,8 @@ export async function POST(request: NextRequest) {
       configured: {
         openAiKey: !!(keysToSave.openAiKey || existingKeys.openAiKey || process.env.OPENAI_API_KEY),
         anthropicApiKey: !!(keysToSave.anthropicApiKey || existingKeys.anthropicApiKey || process.env.ANTHROPIC_API_KEY),
+        azureOpenAiKey: !!(keysToSave.azureOpenAiKey || existingKeys.azureOpenAiKey || process.env.AZURE_OPENAI_API_KEY),
+        azureOpenAiEndpoint: !!(keysToSave.azureOpenAiEndpoint || existingKeys.azureOpenAiEndpoint || process.env.AZURE_OPENAI_ENDPOINT),
         lakeraAiKey: !!(keysToSave.lakeraAiKey || existingKeys.lakeraAiKey || process.env.LAKERA_AI_KEY),
         lakeraProjectId: !!(keysToSave.lakeraProjectId || existingKeys.lakeraProjectId || process.env.LAKERA_PROJECT_ID),
         lakeraEndpoint: !!(keysToSave.lakeraEndpoint || existingKeys.lakeraEndpoint || process.env.LAKERA_ENDPOINT),

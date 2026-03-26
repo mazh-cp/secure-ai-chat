@@ -1,9 +1,9 @@
 # One-Step Production Upgrade Commands
 
-**Latest**: v1.0.17 (main)  
-**Last Updated**: 2026-02-06
+**Latest**: v1.0.18 (main)  
+**Last Updated**: 2026-03-26
 
-## 🚀 Upgrade remote VM to v1.0.17 (recommended)
+## 🚀 Upgrade remote VM to v1.0.18 (recommended)
 
 SSH into your production VM (e.g. `ssh adminuser@57.151.99.6`) and run:
 

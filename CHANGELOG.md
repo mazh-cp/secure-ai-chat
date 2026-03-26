@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.18] - 2026-03-26
+
+### Added
+- Azure OpenAI connector (`provider=azure`):
+  - Settings UI fields for `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`
+  - `/api/models?provider=azure` to list available Azure OpenAI deployments
+  - `/api/chat` routes to Azure OpenAI using the selected deployment name
+
+### Changed
+- Model/provider selector now includes Azure OpenAI alongside OpenAI and Anthropic
+
+### Security (Lakera Guard)
+- Output/generation scans send the screened line as `role: assistant` (input scans remain `user`) so Guard evaluates the last interaction correctly per Lakera docs
+- Production logs no longer print Lakera `breakdown` / `payload` details (dev-only debug)
+- Guard requests include stable `metadata.user_id` (from app owner id) for Lakera Platform analytics alongside existing telemetry
+
 ## [1.0.17] - 2026-02-06
 
 Production release: chat security, Lakera toggles, port 3000 only, no Sources list.
