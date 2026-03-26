@@ -262,7 +262,8 @@ async function checkWithLakera(
     } = {
       messages: [
         {
-          role: 'user',
+          // Guard uses message roles to interpret the last interaction; output should be screened as assistant.
+          role: context === 'output' ? 'assistant' : 'user',
           content: message,
         },
       ],
@@ -354,30 +355,33 @@ async function checkWithLakera(
       breakdown = data.breakdown
     }
     
-    // Log breakdown information for debugging
-    if (breakdown && breakdown.length > 0) {
-      console.log('Lakera Guard Breakdown:', {
-        totalDetectors: breakdown.length,
-        detectedCount: breakdown.filter(d => d.detected).length,
-        detectors: breakdown.map(d => ({
-          id: d.detector_id,
-          type: d.detector_type,
-          detected: d.detected,
-        })),
-      })
-    }
-    
-    // Log payload information for debugging
-    if (payload && payload.length > 0) {
-      console.log('Lakera Guard Payload (Detected Threats):', {
-        totalMatches: payload.length,
-        matches: payload.map(p => ({
-          text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
-          detector: p.detector_type,
-          labels: p.labels,
-          position: `${p.start}-${p.end}`,
-        })),
-      })
+    // Debug logging (never include sensitive payload text in production)
+    if (process.env.NODE_ENV !== 'production') {
+      // Log breakdown information for debugging
+      if (breakdown && breakdown.length > 0) {
+        console.log('Lakera Guard Breakdown:', {
+          totalDetectors: breakdown.length,
+          detectedCount: breakdown.filter(d => d.detected).length,
+          detectors: breakdown.map(d => ({
+            id: d.detector_id,
+            type: d.detector_type,
+            detected: d.detected,
+          })),
+        })
+      }
+      
+      // Log payload information for debugging (text is truncated)
+      if (payload && payload.length > 0) {
+        console.log('Lakera Guard Payload (Detected Threats):', {
+          totalMatches: payload.length,
+          matches: payload.map(p => ({
+            text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
+            detector: p.detector_type,
+            labels: p.labels,
+            position: `${p.start}-${p.end}`,
+          })),
+        })
+      }
     }
 
     // Combine pre-scan results with Lakera results
@@ -775,6 +779,14 @@ export async function POST(request: NextRequest) {
     // Get user IP for metadata
     const userIP = getUserIP(request)
     const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    // Use stable owner_id as user_id for Lakera metadata (improves attribution in Lakera analytics).
+    let guardUserId: string | undefined
+    try {
+      const { getOwnerId } = await import('@/lib/owner')
+      guardUserId = (await getOwnerId(request)).ownerId
+    } catch {
+      guardUserId = undefined
+    }
 
     let inputScanResult: ScanResult = { scanned: false, flagged: false }
 
@@ -788,6 +800,7 @@ export async function POST(request: NextRequest) {
         apiKeys.lakeraProjectId,
         'input',
         {
+          user_id: guardUserId,
           ip_address: userIP,
           internal_request_id: requestId,
         }
@@ -1090,6 +1103,7 @@ IMPORTANT INSTRUCTIONS:
         apiKeys.lakeraProjectId,
         'output',
         {
+          user_id: guardUserId,
           ip_address: userIP,
           internal_request_id: `${requestId}-output`,
         }
