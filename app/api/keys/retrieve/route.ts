@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       console.log('🔑 /api/keys/retrieve - Keys status:', {
         hasOpenAiKey: !!keys.openAiKey,
         hasAnthropicKey: !!keys.anthropicApiKey,
+        hasAzureOpenAiKey: !!keys.azureOpenAiKey,
         hasLakeraKey: !!keys.lakeraAiKey,
         hasProjectId: !!keys.lakeraProjectId,
         endpoint: keys.lakeraEndpoint,
@@ -35,6 +36,9 @@ export async function GET(request: NextRequest) {
         // Return placeholder 'configured' instead of null to indicate key is set
         openAiKey: keys.openAiKey ? 'configured' : null,
         anthropicApiKey: keys.anthropicApiKey ? 'configured' : null,
+        azureOpenAiKey: keys.azureOpenAiKey ? 'configured' : null,
+        azureOpenAiEndpoint: keys.azureOpenAiEndpoint || null,
+        azureOpenAiApiVersion: keys.azureOpenAiApiVersion || '2025-04-01-preview',
         lakeraAiKey: keys.lakeraAiKey ? 'configured' : null,
         lakeraProjectId: keys.lakeraProjectId ? 'configured' : null,
         lakeraEndpoint: keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
@@ -43,6 +47,7 @@ export async function GET(request: NextRequest) {
       configured: {
         openAiKey: !!keys.openAiKey,
         anthropicApiKey: !!keys.anthropicApiKey,
+        azureOpenAiKey: !!keys.azureOpenAiKey,
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
         lakeraEndpoint: !!keys.lakeraEndpoint,
@@ -65,6 +70,7 @@ export async function GET(request: NextRequest) {
         configured: {
           openAiKey: false,
           anthropicApiKey: false,
+          azureOpenAiKey: false,
           lakeraAiKey: false,
           lakeraProjectId: false,
           lakeraEndpoint: false,
@@ -72,6 +78,9 @@ export async function GET(request: NextRequest) {
         keys: {
           openAiKey: null,
           anthropicApiKey: null,
+          azureOpenAiKey: null,
+          azureOpenAiEndpoint: null,
+          azureOpenAiApiVersion: '2025-04-01-preview',
           lakeraAiKey: null,
           lakeraProjectId: null,
           lakeraEndpoint: 'https://api.lakera.ai/v2/guard',

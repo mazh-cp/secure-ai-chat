@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
-import { callOpenAI as callOpenAIAdapter, callAnthropic, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
+import { callOpenAI as callOpenAIAdapter, callAnthropic, callAzureOpenAI, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
 import {
   validateTokenLimit,
@@ -500,7 +500,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG, provider: requestProvider } = body
-    const provider = (requestProvider === 'anthropic' ? 'anthropic' : 'openai') as 'openai' | 'anthropic'
+    const provider = (requestProvider === 'anthropic'
+      ? 'anthropic'
+      : requestProvider === 'azure'
+        ? 'azure'
+        : 'openai') as 'openai' | 'anthropic' | 'azure'
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -529,6 +533,10 @@ export async function POST(request: NextRequest) {
     const apiKeys = {
       openAiKey: serverKeys.openAiKey ||
                  (clientApiKeys?.openAiKey && clientApiKeys.openAiKey !== 'configured' ? clientApiKeys.openAiKey : null),
+      azureOpenAiKey: serverKeys.azureOpenAiKey ||
+                       (clientApiKeys?.azureOpenAiKey && clientApiKeys.azureOpenAiKey !== 'configured' ? clientApiKeys.azureOpenAiKey : null),
+      azureOpenAiEndpoint: serverKeys.azureOpenAiEndpoint || clientApiKeys?.azureOpenAiEndpoint || null,
+      azureOpenAiApiVersion: serverKeys.azureOpenAiApiVersion || clientApiKeys?.azureOpenAiApiVersion || '2025-04-01-preview',
       anthropicApiKey: serverKeys.anthropicApiKey ||
                        (clientApiKeys?.anthropicApiKey && clientApiKeys.anthropicApiKey !== 'configured' ? clientApiKeys.anthropicApiKey : null),
       lakeraAiKey: serverKeys.lakeraAiKey ||
@@ -538,7 +546,12 @@ export async function POST(request: NextRequest) {
       lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
     }
 
-    const activeApiKey = provider === 'anthropic' ? apiKeys.anthropicApiKey : apiKeys.openAiKey
+    const activeApiKey =
+      provider === 'anthropic'
+        ? apiKeys.anthropicApiKey
+        : provider === 'azure'
+          ? apiKeys.azureOpenAiKey
+          : apiKeys.openAiKey
 
     console.log('Active API Key Status:', {
       provider,
@@ -557,6 +570,25 @@ export async function POST(request: NextRequest) {
       if (!activeApiKey.startsWith('sk-ant-')) {
         return NextResponse.json(
           { error: 'Invalid Anthropic API key format. Keys should start with "sk-ant-". Please check your key in Settings.' },
+          { status: 400 }
+        )
+      }
+    } else if (provider === 'azure') {
+      if (!activeApiKey || activeApiKey === 'configured' || (typeof activeApiKey !== 'string') || activeApiKey.length < 10) {
+        return NextResponse.json(
+          { error: 'Azure OpenAI API key is not configured or is invalid. Please add a valid Azure key in Settings.' },
+          { status: 400 }
+        )
+      }
+      if (!apiKeys.azureOpenAiEndpoint || typeof apiKeys.azureOpenAiEndpoint !== 'string' || !apiKeys.azureOpenAiEndpoint.startsWith('http')) {
+        return NextResponse.json(
+          { error: 'Azure OpenAI endpoint is not configured. Please add a valid Azure endpoint in Settings.' },
+          { status: 400 }
+        )
+      }
+      if (!apiKeys.azureOpenAiApiVersion || typeof apiKeys.azureOpenAiApiVersion !== 'string') {
+        return NextResponse.json(
+          { error: 'Azure OpenAI API version is missing. Please add it in Settings.' },
           { status: 400 }
         )
       }
@@ -855,7 +887,9 @@ IMPORTANT INSTRUCTIONS:
     // Validate and normalize the model per provider
     const validatedModel = provider === 'anthropic'
       ? (typeof model === 'string' && model.trim() ? model.trim() : 'claude-3-5-sonnet-20241022')
-      : validateModel(model || 'gpt-4o-mini')
+      : provider === 'azure'
+        ? (typeof model === 'string' && model.trim() ? model.trim() : 'gpt-4o')
+        : validateModel(model || 'gpt-4o-mini')
     
     // Convert messages to adapter format
     const adapterMessages: AdapterChatMessage[] = enhancedMessages.map(msg => ({
@@ -1017,12 +1051,21 @@ IMPORTANT INSTRUCTIONS:
     // Call adapter for the selected provider
     const adapterResult = provider === 'anthropic'
       ? await callAnthropic(adapterMessages, activeApiKey!, validatedModel, adapterOptions)
-      : await callOpenAIAdapter(
-          adapterMessages,
-          activeApiKey,
-          validatedModel,
-          adapterOptions
-        )
+      : provider === 'azure'
+        ? await callAzureOpenAI(
+            adapterMessages,
+            apiKeys.azureOpenAiKey!,
+            validatedModel,
+            adapterOptions,
+            apiKeys.azureOpenAiEndpoint!,
+            apiKeys.azureOpenAiApiVersion || '2025-04-01-preview'
+          )
+        : await callOpenAIAdapter(
+            adapterMessages,
+            activeApiKey,
+            validatedModel,
+            adapterOptions
+          )
     
     // Log fallback if used
     if (adapterResult.usedFallback) {

@@ -6,6 +6,9 @@ import Link from 'next/link'
 interface ApiKeys {
   openAiKey: string
   anthropicApiKey: string
+  azureOpenAiKey: string
+  azureOpenAiEndpoint: string
+  azureOpenAiApiVersion: string
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
@@ -21,6 +24,9 @@ export default function SettingsForm() {
   const [keys, setKeys] = useState<ApiKeys>({
     openAiKey: '',
     anthropicApiKey: '',
+    azureOpenAiKey: '',
+    azureOpenAiEndpoint: '',
+    azureOpenAiApiVersion: '2025-04-01-preview',
     lakeraAiKey: '',
     lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
     lakeraProjectId: '',
@@ -41,6 +47,7 @@ export default function SettingsForm() {
   const [serverStatus, setServerStatus] = useState<{
     openAiKey?: boolean
     anthropicApiKey?: boolean
+    azureOpenAiKey?: boolean
     lakeraAiKey?: boolean
     lakeraProjectId?: boolean
     lakeraEndpoint?: string
@@ -65,7 +72,7 @@ export default function SettingsForm() {
 
   // Load keys from server-side storage and check status
   const loadApiKeys = async () => {
-    let statusData: { configured?: { openAiKey?: boolean; anthropicApiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
+    let statusData: { configured?: { openAiKey?: boolean; anthropicApiKey?: boolean; azureOpenAiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
     let statusResponse: Response | null = null
     
     try {
@@ -77,6 +84,7 @@ export default function SettingsForm() {
         setServerStatus({
           openAiKey: statusData?.configured?.openAiKey || false,
           anthropicApiKey: statusData?.configured?.anthropicApiKey || false,
+          azureOpenAiKey: statusData?.configured?.azureOpenAiKey || false,
           lakeraAiKey: statusData?.configured?.lakeraAiKey || false,
           lakeraProjectId: statusData?.configured?.lakeraProjectId || false,
           lakeraEndpoint: statusData?.configured?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
@@ -181,6 +189,7 @@ export default function SettingsForm() {
           ...prev,
           openAiKey: keysData.configured?.openAiKey || prev.openAiKey,
           anthropicApiKey: keysData.configured?.anthropicApiKey ?? prev.anthropicApiKey ?? false,
+          azureOpenAiKey: keysData.configured?.azureOpenAiKey ?? prev.azureOpenAiKey ?? false,
           lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
           lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
           lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
@@ -471,7 +480,7 @@ export default function SettingsForm() {
     if (!pastedText) return
     
     // For endpoints, only allow valid URLs
-    if (fieldName === 'lakeraEndpoint') {
+    if (fieldName === 'lakeraEndpoint' || fieldName === 'azureOpenAiEndpoint') {
       if (pastedText.startsWith('http://') || pastedText.startsWith('https://')) {
         setKeys(prev => ({ ...prev, [fieldName]: pastedText }))
       }
@@ -562,6 +571,9 @@ export default function SettingsForm() {
       const serverKeyMap: Record<keyof ApiKeys, string> = {
         openAiKey: 'openAiKey',
         anthropicApiKey: 'anthropicApiKey',
+        azureOpenAiKey: 'azureOpenAiKey',
+        azureOpenAiEndpoint: 'azureOpenAiEndpoint',
+        azureOpenAiApiVersion: 'azureOpenAiApiVersion',
         lakeraAiKey: 'lakeraAiKey',
         lakeraProjectId: 'lakeraProjectId',
         lakeraEndpoint: 'lakeraEndpoint',
@@ -661,6 +673,9 @@ export default function SettingsForm() {
         setKeys({
           openAiKey: '',
           anthropicApiKey: '',
+          azureOpenAiKey: '',
+          azureOpenAiEndpoint: '',
+          azureOpenAiApiVersion: '2025-04-01-preview',
           lakeraAiKey: '',
           lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
           lakeraProjectId: '',
@@ -956,6 +971,95 @@ export default function SettingsForm() {
               </p>
             )}
           </div>
+
+            {/* Azure OpenAI Key */}
+            <div>
+              <label htmlFor="azureOpenAiKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>Azure OpenAI Key</span>
+                {/* Status Dot */}
+                {serverStatus.azureOpenAiKey || keys.azureOpenAiKey ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                    }}
+                  />
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  id="azureOpenAiKey"
+                  name="azureOpenAiKey"
+                  value={keys.azureOpenAiKey}
+                  placeholder="Paste your Azure OpenAI API key here (Ctrl/Cmd + V)"
+                  {...secureInputProps}
+                />
+              </div>
+              <p className="text-sm text-theme-subtle mt-1">
+                🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
+              </p>
+              {serverStatus.azureOpenAiKey && !keys.azureOpenAiKey && (
+                <p className="text-sm text-green-400 mt-1">
+                  ✓ Configured via environment variable (server-side)
+                </p>
+              )}
+            </div>
+
+            {/* Azure OpenAI Endpoint */}
+            <div>
+              <label htmlFor="azureOpenAiEndpoint" className={`${labelClass} flex items-center gap-2`}>
+                <span>Azure OpenAI Endpoint</span>
+                <div
+                  className={
+                    (keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.startsWith('http'))
+                      ? 'h-2 w-2 rounded-full bg-green-500 transition-all'
+                      : 'h-2 w-2 rounded-full bg-red-500 transition-all'
+                  }
+                  title={keys.azureOpenAiEndpoint ? 'Endpoint provided' : 'Endpoint not provided'}
+                  style={{
+                    boxShadow: (keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.startsWith('http'))
+                      ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                      : '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}
+                />
+              </label>
+              <input
+                type="text"
+                id="azureOpenAiEndpoint"
+                name="azureOpenAiEndpoint"
+                value={keys.azureOpenAiEndpoint}
+                placeholder="https://your-resource.openai.azure.com"
+                {...secureInputProps}
+              />
+              <p className="text-sm text-theme-subtle mt-1">
+                e.g. resource URL without `/openai/deployments`
+              </p>
+            </div>
+
+            {/* Azure OpenAI API Version */}
+            <div>
+              <label htmlFor="azureOpenAiApiVersion" className={`${labelClass} flex items-center gap-2`}>
+                <span>Azure OpenAI API Version</span>
+              </label>
+              <input
+                type="text"
+                id="azureOpenAiApiVersion"
+                name="azureOpenAiApiVersion"
+                value={keys.azureOpenAiApiVersion}
+                placeholder="2025-04-01-preview"
+                {...secureInputProps}
+              />
+            </div>
 
             {/* Anthropic API Key */}
             <div>

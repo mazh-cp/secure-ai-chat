@@ -15,6 +15,9 @@ const KEYS_FILE_PATH = path.join(STORAGE_DIR, 'api-keys.enc')
 export interface StoredApiKeys {
   openAiKey?: string
   anthropicApiKey?: string
+  azureOpenAiKey?: string
+  azureOpenAiEndpoint?: string
+  azureOpenAiApiVersion?: string
   lakeraAiKey?: string
   lakeraProjectId?: string
   lakeraEndpoint?: string
@@ -157,6 +160,36 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
     }
   }
 
+  // Azure OpenAI
+  if (process.env.AZURE_OPENAI_API_KEY) {
+    const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    // Azure keys are not guaranteed to have a fixed prefix; validate by length and placeholder filtering.
+    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder') && envKey.length >= 10) {
+      envKeys.azureOpenAiKey = envKey
+    } else {
+      console.warn('AZURE_OPENAI_API_KEY environment variable contains placeholder or invalid value, ignoring')
+    }
+  }
+
+  if (process.env.AZURE_OPENAI_ENDPOINT) {
+    const envKey = process.env.AZURE_OPENAI_ENDPOINT.trim()
+    if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+      envKeys.azureOpenAiEndpoint = envKey.replace(/\/+$/, '') // trim trailing slashes
+    } else {
+      console.warn('AZURE_OPENAI_ENDPOINT environment variable contains invalid value, ignoring')
+    }
+  }
+
+  if (process.env.AZURE_OPENAI_API_VERSION) {
+    const envKey = process.env.AZURE_OPENAI_API_VERSION.trim()
+    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder')) {
+      envKeys.azureOpenAiApiVersion = envKey
+    }
+  } else if (envKeys.azureOpenAiEndpoint) {
+    // Sensible default for Azure OpenAI SDK examples
+    envKeys.azureOpenAiApiVersion = envKeys.azureOpenAiApiVersion || '2025-04-01-preview'
+  }
+
   // If any env vars are set, merge them with file storage (env vars take priority)
   try {
     await ensureStorageDir()
@@ -240,6 +273,39 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       // No new key provided, keep existing
       keysToSave.openAiKey = existingKeys.openAiKey
     }
+
+    // Handle Azure OpenAI key/endpoint/api-version
+    if (keys.azureOpenAiKey !== undefined) {
+      if (keys.azureOpenAiKey && keys.azureOpenAiKey.trim() && !process.env.AZURE_OPENAI_API_KEY) {
+        keysToSave.azureOpenAiKey = keys.azureOpenAiKey.trim()
+      } else if (!keys.azureOpenAiKey && existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+        keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
+      }
+    } else if (existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+      keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
+    }
+
+    if (keys.azureOpenAiEndpoint !== undefined) {
+      const endpoint = keys.azureOpenAiEndpoint?.trim()
+      if (endpoint && (endpoint.startsWith('http://') || endpoint.startsWith('https://')) && !process.env.AZURE_OPENAI_ENDPOINT) {
+        keysToSave.azureOpenAiEndpoint = endpoint.replace(/\/+$/, '')
+      } else if (!endpoint && existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+        keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
+      }
+    } else if (existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+      keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
+    }
+
+    if (keys.azureOpenAiApiVersion !== undefined) {
+      const apiVersion = keys.azureOpenAiApiVersion?.trim()
+      if (apiVersion && !apiVersion.toLowerCase().includes('your') && !apiVersion.toLowerCase().includes('placeholder') && !process.env.AZURE_OPENAI_API_VERSION) {
+        keysToSave.azureOpenAiApiVersion = apiVersion
+      } else if (!apiVersion && existingKeys.azureOpenAiApiVersion && !process.env.AZURE_OPENAI_API_VERSION) {
+        keysToSave.azureOpenAiApiVersion = existingKeys.azureOpenAiApiVersion
+      }
+    } else if (existingKeys.azureOpenAiApiVersion && !process.env.AZURE_OPENAI_API_VERSION) {
+      keysToSave.azureOpenAiApiVersion = existingKeys.azureOpenAiApiVersion
+    }
     
     // Handle Lakera AI key
     if (keys.lakeraAiKey !== undefined) {
@@ -305,6 +371,28 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
           envKeys.openAiKey = envKey
         }
       }
+
+      if (process.env.AZURE_OPENAI_API_KEY) {
+        const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
+        if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder') && envKey.length >= 10) {
+          envKeys.azureOpenAiKey = envKey
+        }
+      }
+      if (process.env.AZURE_OPENAI_ENDPOINT) {
+        const envKey = process.env.AZURE_OPENAI_ENDPOINT.trim()
+        if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+          envKeys.azureOpenAiEndpoint = envKey.replace(/\/+$/, '')
+        }
+      }
+      if (process.env.AZURE_OPENAI_API_VERSION) {
+        const envKey = process.env.AZURE_OPENAI_API_VERSION.trim()
+        if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder')) {
+          envKeys.azureOpenAiApiVersion = envKey
+        }
+      } else if (envKeys.azureOpenAiEndpoint) {
+        envKeys.azureOpenAiApiVersion = '2025-04-01-preview'
+      }
+
       if (process.env.LAKERA_AI_KEY) {
         const envKey = process.env.LAKERA_AI_KEY.trim()
         if (envKey && !envKey.includes('your') && envKey.length >= 20) {
@@ -347,6 +435,9 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     const envKeys: StoredApiKeys = {}
     if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
     if (process.env.ANTHROPIC_API_KEY) envKeys.anthropicApiKey = process.env.ANTHROPIC_API_KEY.trim()
+    if (process.env.AZURE_OPENAI_API_KEY) envKeys.azureOpenAiKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    if (process.env.AZURE_OPENAI_ENDPOINT) envKeys.azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT.trim().replace(/\/+$/, '')
+    if (process.env.AZURE_OPENAI_API_VERSION) envKeys.azureOpenAiApiVersion = process.env.AZURE_OPENAI_API_VERSION.trim()
     if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
     if (process.env.LAKERA_PROJECT_ID) envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
     if (process.env.LAKERA_ENDPOINT) envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
@@ -379,6 +470,15 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
       return
     }
     if (keyName === 'lakeraEndpoint' && process.env.LAKERA_ENDPOINT) {
+      return
+    }
+    if (keyName === 'azureOpenAiKey' && process.env.AZURE_OPENAI_API_KEY) {
+      return
+    }
+    if (keyName === 'azureOpenAiEndpoint' && process.env.AZURE_OPENAI_ENDPOINT) {
+      return
+    }
+    if (keyName === 'azureOpenAiApiVersion' && process.env.AZURE_OPENAI_API_VERSION) {
       return
     }
     if (keyName === 'anthropicApiKey' && process.env.ANTHROPIC_API_KEY) {
@@ -416,6 +516,15 @@ export async function deleteAllApiKeys(): Promise<void> {
     
     if (!process.env.OPENAI_API_KEY) {
       keysToDelete.openAiKey = ''
+    }
+    if (!process.env.AZURE_OPENAI_API_KEY) {
+      keysToDelete.azureOpenAiKey = ''
+    }
+    if (!process.env.AZURE_OPENAI_ENDPOINT) {
+      keysToDelete.azureOpenAiEndpoint = ''
+    }
+    if (!process.env.AZURE_OPENAI_API_VERSION) {
+      keysToDelete.azureOpenAiApiVersion = ''
     }
     if (!process.env.LAKERA_AI_KEY) {
       keysToDelete.lakeraAiKey = ''
@@ -484,6 +593,29 @@ export function getApiKeysSync(): StoredApiKeys {
       envKeys.openAiKey = envKey
     }
   }
+
+  if (process.env.AZURE_OPENAI_API_KEY) {
+    const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder') && envKey.length >= 10) {
+      envKeys.azureOpenAiKey = envKey
+    }
+  }
+
+  if (process.env.AZURE_OPENAI_ENDPOINT) {
+    const envKey = process.env.AZURE_OPENAI_ENDPOINT.trim()
+    if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
+      envKeys.azureOpenAiEndpoint = envKey.replace(/\/+$/, '')
+    }
+  }
+
+  if (process.env.AZURE_OPENAI_API_VERSION) {
+    const envKey = process.env.AZURE_OPENAI_API_VERSION.trim()
+    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder')) {
+      envKeys.azureOpenAiApiVersion = envKey
+    }
+  } else if (envKeys.azureOpenAiEndpoint) {
+    envKeys.azureOpenAiApiVersion = '2025-04-01-preview'
+  }
   
   if (process.env.LAKERA_AI_KEY) {
     const envKey = process.env.LAKERA_AI_KEY.trim()
@@ -537,7 +669,7 @@ export async function setApiKeys(keys: StoredApiKeys): Promise<void> {
  */
 export async function areApiKeysConfigured(): Promise<boolean> {
   const keys = await getApiKeys()
-  return !!(keys.openAiKey || keys.anthropicApiKey || keys.lakeraAiKey || keys.lakeraProjectId)
+  return !!(keys.openAiKey || keys.anthropicApiKey || keys.azureOpenAiKey || keys.lakeraAiKey || keys.lakeraProjectId)
 }
 
 /**

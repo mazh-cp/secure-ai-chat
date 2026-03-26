@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-export type ChatProvider = 'openai' | 'anthropic'
+export type ChatProvider = 'openai' | 'anthropic' | 'azure'
 
 interface Model {
   id: string
@@ -41,7 +41,9 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
           if (errorMsg.includes('API key') || response.status === 400) {
             setError(provider === 'anthropic'
               ? 'Anthropic API key not configured. Please configure it in Settings.'
-              : 'OpenAI API key not configured. Please configure it in Settings.')
+              : provider === 'azure'
+                ? 'Azure OpenAI API key/endpoint not configured. Please configure it in Settings.'
+                : 'OpenAI API key not configured. Please configure it in Settings.')
           } else {
             throw new Error(errorMsg)
           }
@@ -119,6 +121,7 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
           style={selectStyle}
         >
           <option value="openai" style={selectStyle}>OpenAI</option>
+          <option value="azure" style={selectStyle}>Azure OpenAI</option>
           <option value="anthropic" style={selectStyle}>Anthropic</option>
         </select>
         <label htmlFor="model-select" className="text-base font-medium text-theme-muted whitespace-nowrap">

@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
