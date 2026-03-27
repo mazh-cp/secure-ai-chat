@@ -8,6 +8,11 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
+import {
+  LAKERA_GUARD_URL_DEFAULT,
+  resolveLakeraGuardEndpoint,
+} from '@/lib/lakera-guard-endpoint'
+
 // Storage file path
 const STORAGE_DIR = path.join(process.cwd(), '.secure-storage')
 const KEYS_FILE_PATH = path.join(STORAGE_DIR, 'api-keys.enc')
@@ -145,7 +150,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
     const envKey = process.env.LAKERA_ENDPOINT.trim()
     // Validate it's a valid URL
     if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
-      envKeys.lakeraEndpoint = envKey
+      envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(envKey)
     } else {
       console.warn('LAKERA_ENDPOINT environment variable contains invalid value, ignoring')
     }
@@ -200,6 +205,9 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
       if (encryptedData.trim()) {
         try {
           const fileKeys = decryptKeys(encryptedData.trim())
+          if (fileKeys.lakeraEndpoint?.trim()) {
+            fileKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(fileKeys.lakeraEndpoint)
+          }
           console.log('Loaded keys from file storage:', {
             openAiKey: !!fileKeys.openAiKey,
             anthropicApiKey: !!fileKeys.anthropicApiKey,
@@ -343,18 +351,17 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     // Handle Lakera Endpoint
     if (keys.lakeraEndpoint !== undefined) {
       if (keys.lakeraEndpoint && keys.lakeraEndpoint.trim() && !process.env.LAKERA_ENDPOINT) {
-        keysToSave.lakeraEndpoint = keys.lakeraEndpoint.trim()
+        keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(keys.lakeraEndpoint.trim())
       } else if (!keys.lakeraEndpoint && existingKeys.lakeraEndpoint && !process.env.LAKERA_ENDPOINT) {
-        keysToSave.lakeraEndpoint = existingKeys.lakeraEndpoint
+        keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(existingKeys.lakeraEndpoint)
       } else if (!keys.lakeraEndpoint) {
         // Default endpoint
-        keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
+        keysToSave.lakeraEndpoint = LAKERA_GUARD_URL_DEFAULT
       }
     } else if (existingKeys.lakeraEndpoint && !process.env.LAKERA_ENDPOINT) {
-      keysToSave.lakeraEndpoint = existingKeys.lakeraEndpoint
+      keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(existingKeys.lakeraEndpoint)
     } else {
-      // Default endpoint if nothing exists
-      keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
+      keysToSave.lakeraEndpoint = LAKERA_GUARD_URL_DEFAULT
     }
     
     // Check if we have any keys to save
@@ -408,7 +415,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       if (process.env.LAKERA_ENDPOINT) {
         const envKey = process.env.LAKERA_ENDPOINT.trim()
         if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
-          envKeys.lakeraEndpoint = envKey
+          envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(envKey)
         }
       }
       cachedKeys = { ...existingKeys, ...envKeys }
@@ -440,7 +447,9 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     if (process.env.AZURE_OPENAI_API_VERSION) envKeys.azureOpenAiApiVersion = process.env.AZURE_OPENAI_API_VERSION.trim()
     if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
     if (process.env.LAKERA_PROJECT_ID) envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
-    if (process.env.LAKERA_ENDPOINT) envKeys.lakeraEndpoint = process.env.LAKERA_ENDPOINT.trim()
+    if (process.env.LAKERA_ENDPOINT) {
+      envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(process.env.LAKERA_ENDPOINT.trim())
+    }
     cachedKeys = { ...keysToSave, ...envKeys }
   } catch (error) {
     console.error('Error saving API keys:', error)
@@ -637,7 +646,7 @@ export function getApiKeysSync(): StoredApiKeys {
     const envKey = process.env.LAKERA_ENDPOINT.trim()
     // Validate it's a valid URL
     if (envKey && (envKey.startsWith('http://') || envKey.startsWith('https://'))) {
-      envKeys.lakeraEndpoint = envKey
+      envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(envKey)
     }
   }
 

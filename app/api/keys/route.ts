@@ -8,6 +8,10 @@ import {
   type StoredApiKeys 
 } from '@/lib/api-keys-storage'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
+import {
+  LAKERA_GUARD_URL_DEFAULT,
+  resolveLakeraGuardEndpoint,
+} from '@/lib/lakera-guard-endpoint'
 
 /**
  * GET - Get API keys configuration status
@@ -194,7 +198,7 @@ export async function POST(request: NextRequest) {
       if (keys.lakeraEndpoint && typeof keys.lakeraEndpoint === 'string' && keys.lakeraEndpoint.trim()) {
         const trimmedEndpoint = keys.lakeraEndpoint.trim()
         if (trimmedEndpoint.startsWith('http://') || trimmedEndpoint.startsWith('https://')) {
-          keysToSave.lakeraEndpoint = trimmedEndpoint
+          keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(trimmedEndpoint)
         } else {
           return NextResponse.json(
             { error: 'Invalid Lakera endpoint format. Must be a valid URL' },
@@ -203,7 +207,7 @@ export async function POST(request: NextRequest) {
         }
       } else if (!keys.lakeraEndpoint) {
         // Allow empty string to reset to default
-        keysToSave.lakeraEndpoint = 'https://api.lakera.ai/v2/guard'
+        keysToSave.lakeraEndpoint = LAKERA_GUARD_URL_DEFAULT
       }
     }
     

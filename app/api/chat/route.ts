@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
+import { screenChatWithLakera, type GuardChatScanResult } from '@/lib/lakera/guard-client'
 import { callOpenAI as callOpenAIAdapter, callAnthropic, callAzureOpenAI, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
 import {
@@ -37,427 +38,28 @@ function isFileOrDataQuestion(query: string): boolean {
     /\b(how\s+many)\s+(users?|people|records?)/i,
     /\b(data|records?|file\s+content)\s+(about|for|from)/i,
     /\b(search|look)\s+(in|through)\s+(the\s+)?(file|data|documents?)/i,
+    /\b(tell\s+me\s+about|what\s+do\s+you\s+know\s+about|information\s+about|details?\s+(on|for|about))\b/i,
+    /\b(who\s+is|who\s+are|who\s+works|which\s+company|which\s+companies)\b/i,
+    /\b(uploaded|my\s+upload|I\s+uploaded)\b.*\b(file|document|csv|data|spreadsheet|txt)\b/i,
+    /\b(file|document|csv|spreadsheet)\b.*\b(uploaded|I\s+uploaded|my\s+upload)\b/i,
+    /\b(according\s+to|based\s+on)\s+(the\s+)?(file|document|upload|csv|data|spreadsheet)\b/i,
+    /\b(summarize|outline|parse)\b.*\b(file|document|upload|csv|spreadsheet)\b/i,
+    /\bwhat(?:'s|s|\s+is)\s+in\s+(the\s+)?(file|document|upload|csv|spreadsheet)\b/i,
   ]
   if (fileDataPatterns.some((re) => re.test(q))) return true
+  const entityOrOrgCue =
+    /\b(company|companies|corporation|corporate|business|firm|organization|org|individual|individuals|employee|employees|person|people|customer|client|vendor|supplier|contact|profile|stakeholder|director|manager|executive|founder|ceo|cfo|corp\.?|inc\.?|llc|ltd\.?)\b/i.test(
+      q,
+    )
+  if (entityOrOrgCue) return true
   // Purely general-knowledge phrasing: "what is X", "define X", "explain X" with no data cue
-  const generalOnly = /^(what\s+is|what\s+are|define|explain|how\s+does|why\s+do(es)?|when\s+did)\s+/i.test(q) &&
+  const generalOnly =
+    /^(what\s+is|what\s+are|define|explain|how\s+does|why\s+do(es)?|when\s+did)\s+/i.test(q) &&
     !/\b(file|data|document|upload|user|record|who|list|find)\b/i.test(q)
   return !generalOnly
 }
 
-// Official Lakera Guard API v2 Response Structure
-// Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
-interface LakeraResponse {
-  flagged: boolean
-  
-  // Official fields (when payload=true)
-  payload?: Array<{
-    start: number
-    end: number
-    text: string
-    detector_type: string
-    labels: string[]
-    message_id: number
-  }>
-  
-  // Official fields (when breakdown=true)
-  breakdown?: Array<{
-    project_id: string
-    policy_id: string
-    detector_id: string
-    detector_type: string
-    detected: boolean
-    message_id: number
-  }>
-  
-  // Official fields (when dev_info=true)
-  dev_info?: {
-    git_revision: string
-    git_timestamp: string
-    model_version: string
-    version: string
-  }
-  
-  // Official fields (metadata)
-  metadata?: {
-    request_uuid: string
-  }
-  
-  // Legacy/custom fields (may still be present for backward compatibility)
-  categories?: Record<string, boolean>
-  payload_scores?: Record<string, number>
-  results?: Array<{
-    flagged: boolean
-    categories?: Record<string, boolean>
-    payload_scores?: Record<string, number>
-    payload?: Array<{
-      start: number
-      end: number
-      text: string
-      detector_type: string
-      labels: string[]
-      message_id: number
-    }>
-    breakdown?: Array<{
-      project_id: string
-      policy_id: string
-      detector_id: string
-      detector_type: string
-      detected: boolean
-      message_id: number
-    }>
-  }>
-  message?: string
-  error?: string
-}
-
-interface ScanResult {
-  scanned: boolean
-  flagged: boolean
-  categories?: Record<string, boolean>
-  scores?: Record<string, number>
-  message?: string
-  threatLevel?: 'low' | 'medium' | 'high' | 'critical'
-  // Official payload data (detected threats with locations)
-  payload?: Array<{
-    start: number
-    end: number
-    text: string
-    detector_type: string
-    labels: string[]
-    message_id: number
-  }>
-  // Official breakdown data (detector results)
-  breakdown?: Array<{
-    project_id: string
-    policy_id: string
-    detector_id: string
-    detector_type: string
-    detected: boolean
-    message_id: number
-  }>
-}
-
-// Pre-scan validation for common prompt injection patterns
-function detectCommonInjectionPatterns(content: string): {
-  detected: boolean
-  patterns: string[]
-  severity: 'low' | 'medium' | 'high'
-} {
-  const patterns: Array<{ pattern: RegExp; name: string; severity: 'low' | 'medium' | 'high' }> = [
-    // System override attempts
-    { pattern: /ignore\s+(previous|all|above|prior)\s+(instructions?|prompts?|rules?)/i, name: 'System Override', severity: 'high' },
-    { pattern: /forget\s+(previous|all|above|prior)\s+(instructions?|prompts?|rules?)/i, name: 'Memory Override', severity: 'high' },
-    { pattern: /you\s+are\s+now\s+(a|an)\s+/i, name: 'Role Manipulation', severity: 'high' },
-    { pattern: /act\s+as\s+(if|though)\s+/i, name: 'Role Playing', severity: 'medium' },
-    
-    // Instruction manipulation
-    { pattern: /new\s+(instructions?|prompts?|rules?|directives?)/i, name: 'New Instructions', severity: 'high' },
-    { pattern: /override\s+(the|your|system)\s+/i, name: 'Override Command', severity: 'high' },
-    { pattern: /system\s*:\s*/, name: 'System Prefix', severity: 'medium' },
-    { pattern: /#\s*(system|instructions?|prompt)/i, name: 'System Comment', severity: 'medium' },
-    
-    // Jailbreak attempts
-    { pattern: /jailbreak|bypass|hack|exploit/i, name: 'Jailbreak Attempt', severity: 'high' },
-    { pattern: /developer\s+mode|admin\s+mode|debug\s+mode/i, name: 'Privilege Escalation', severity: 'high' },
-    { pattern: /(do|say|write)\s+anything/i, name: 'Unrestricted Request', severity: 'medium' },
-    
-    // Context manipulation
-    { pattern: /pretend\s+(that|you|to)/i, name: 'Context Manipulation', severity: 'medium' },
-    { pattern: /hypothetically|imagine\s+(that|if)/i, name: 'Hypothetical Bypass', severity: 'low' },
-    { pattern: /in\s+a\s+(fictional|hypothetical|fictional)\s+/i, name: 'Fictional Context', severity: 'low' },
-    
-    // Encoding attempts
-    { pattern: /base64|hex|unicode|encoded/i, name: 'Encoding Attempt', severity: 'medium' },
-    { pattern: /\\x[0-9a-f]{2}/i, name: 'Hex Escape', severity: 'medium' },
-    
-    // Prompt extraction
-    { pattern: /(show|reveal|display|print|output)\s+(your|the|system)\s+(prompt|instructions?|system\s+message)/i, name: 'Prompt Extraction', severity: 'high' },
-    { pattern: /what\s+(are|were)\s+(your|the)\s+(initial|original|system)\s+(instructions?|prompts?)/i, name: 'Prompt Discovery', severity: 'high' },
-    
-    // Multi-stage attacks
-    { pattern: /step\s+\d+|first|then|next|finally/i, name: 'Multi-Stage Attack', severity: 'medium' },
-    { pattern: /task\s+\d+|part\s+\d+/i, name: 'Task Decomposition', severity: 'low' },
-  ]
-
-  const detectedPatterns: string[] = []
-  let maxSeverity: 'low' | 'medium' | 'high' = 'low'
-
-  for (const { pattern, name, severity } of patterns) {
-    if (pattern.test(content)) {
-      detectedPatterns.push(name)
-      if (severity === 'high' || (severity === 'medium' && maxSeverity === 'low')) {
-        maxSeverity = severity
-      }
-    }
-  }
-
-  return {
-    detected: detectedPatterns.length > 0,
-    patterns: detectedPatterns,
-    severity: maxSeverity,
-  }
-}
-
-// Enhanced Lakera scanning with comprehensive threat detection
-// Compliant with official Lakera Guard API v2 specification
-async function checkWithLakera(
-  message: string,
-  lakeraKey: string,
-  lakeraEndpoint: string,
-  lakeraProjectId: string,
-  context?: 'input' | 'output',
-  metadata?: {
-    user_id?: string
-    session_id?: string
-    ip_address?: string
-    internal_request_id?: string
-  }
-): Promise<ScanResult> {
-  if (!lakeraKey) {
-    return { scanned: false, flagged: false }
-  }
-
-  // Pre-scan validation for common patterns
-  const preScan = detectCommonInjectionPatterns(message)
-  
-  // If high-severity patterns detected, flag immediately
-  if (preScan.detected && preScan.severity === 'high') {
-    return {
-      scanned: true,
-      flagged: true,
-      categories: {
-        prompt_injection: true,
-        system_override: true,
-        ...preScan.patterns.reduce((acc, pattern) => {
-          acc[pattern.toLowerCase().replace(/\s+/g, '_')] = true
-          return acc
-        }, {} as Record<string, boolean>),
-      },
-      message: `Security threat detected: ${preScan.patterns.join(', ')}. Message blocked.`,
-      threatLevel: 'high',
-    }
-  }
-
-  try {
-    // Headers - only Authorization, no project ID header
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${lakeraKey}`,
-    }
-
-    // Request body compliant with official Lakera Guard API v2 spec
-    // Reference: https://docs.lakera.ai/api-reference/lakera-api/guard/screen-content
-    const requestBody: {
-      messages: Array<{ role: string; content: string }>
-      project_id?: string
-      payload?: boolean
-      breakdown?: boolean
-      metadata?: {
-        user_id?: string
-        session_id?: string
-        ip_address?: string
-        internal_request_id?: string
-      }
-    } = {
-      messages: [
-        {
-          // Guard uses message roles to interpret the last interaction; output should be screened as assistant.
-          role: context === 'output' ? 'assistant' : 'user',
-          content: message,
-        },
-      ],
-      // ✅ FIX: project_id in request body (not header)
-      project_id: lakeraProjectId || undefined,
-      // ✅ ENHANCEMENT: Optional parameters for enhanced responses
-      payload: true,      // Get PII/profanity matches with locations
-      breakdown: true,    // Get detector breakdown
-    }
-
-    // ✅ FIX: Use official metadata structure instead of custom context
-    if (metadata) {
-      requestBody.metadata = {
-        user_id: metadata.user_id,
-        session_id: metadata.session_id,
-        ip_address: metadata.ip_address,
-        internal_request_id: metadata.internal_request_id,
-      }
-    }
-
-    const response = await fetch(lakeraEndpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody),
-    })
-
-    if (!response.ok) {
-      console.error('Lakera API error:', response.status)
-      // If API fails but pre-scan detected medium severity, still flag
-      if (preScan.detected && preScan.severity === 'medium') {
-        return {
-          scanned: true,
-          flagged: true,
-          categories: {
-            prompt_injection: true,
-            ...preScan.patterns.reduce((acc, pattern) => {
-              acc[pattern.toLowerCase().replace(/\s+/g, '_')] = true
-              return acc
-            }, {} as Record<string, boolean>),
-          },
-          message: `Potential security threat detected: ${preScan.patterns.join(', ')}. Message blocked.`,
-          threatLevel: 'medium',
-        }
-      }
-      return { 
-        scanned: false, 
-        flagged: false,
-        message: `Lakera API error: ${response.status}`
-      }
-    }
-
-    const data: LakeraResponse = await response.json()
-    
-    // Handle different response formats
-    let flagged = false
-    let categories: Record<string, boolean> | undefined
-    let scores: Record<string, number> | undefined
-    let payload: Array<{
-      start: number
-      end: number
-      text: string
-      detector_type: string
-      labels: string[]
-      message_id: number
-    }> | undefined
-    let breakdown: Array<{
-      project_id: string
-      policy_id: string
-      detector_id: string
-      detector_type: string
-      detected: boolean
-      message_id: number
-    }> | undefined
-
-    if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-      flagged = data.results.some(r => r.flagged === true)
-      const firstResult = data.results[0]
-      categories = firstResult?.categories
-      scores = firstResult?.payload_scores
-      // Extract official payload and breakdown from results array
-      payload = firstResult?.payload
-      breakdown = firstResult?.breakdown
-    } else {
-      flagged = data.flagged === true
-      categories = data.categories
-      scores = data.payload_scores
-      // Extract official payload and breakdown from root level
-      payload = data.payload
-      breakdown = data.breakdown
-    }
-    
-    // Debug logging (never include sensitive payload text in production)
-    if (process.env.NODE_ENV !== 'production') {
-      // Log breakdown information for debugging
-      if (breakdown && breakdown.length > 0) {
-        console.log('Lakera Guard Breakdown:', {
-          totalDetectors: breakdown.length,
-          detectedCount: breakdown.filter(d => d.detected).length,
-          detectors: breakdown.map(d => ({
-            id: d.detector_id,
-            type: d.detector_type,
-            detected: d.detected,
-          })),
-        })
-      }
-      
-      // Log payload information for debugging (text is truncated)
-      if (payload && payload.length > 0) {
-        console.log('Lakera Guard Payload (Detected Threats):', {
-          totalMatches: payload.length,
-          matches: payload.map(p => ({
-            text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
-            detector: p.detector_type,
-            labels: p.labels,
-            position: `${p.start}-${p.end}`,
-          })),
-        })
-      }
-    }
-
-    // Combine pre-scan results with Lakera results
-    if (preScan.detected && !flagged) {
-      // If pre-scan detected something but Lakera didn't, still flag for medium/high
-      if (preScan.severity === 'high' || preScan.severity === 'medium') {
-        flagged = true
-        categories = {
-          ...categories,
-          prompt_injection: true,
-          ...preScan.patterns.reduce((acc, pattern) => {
-            acc[pattern.toLowerCase().replace(/\s+/g, '_')] = true
-            return acc
-          }, {} as Record<string, boolean>),
-        }
-      }
-    }
-
-    const threatCategories = categories 
-      ? Object.entries(categories).filter(([, value]) => value).map(([key]) => key)
-      : []
-
-    // Determine threat level
-    let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
-    if (flagged) {
-      const hasHighRiskCategories = threatCategories.some(cat => 
-        ['prompt_injection', 'jailbreak', 'system_override', 'pii'].includes(cat.toLowerCase())
-      )
-      const maxScore = scores ? Math.max(...Object.values(scores)) : 0
-      
-      if (hasHighRiskCategories || maxScore > 0.8) {
-        threatLevel = 'critical'
-      } else if (maxScore > 0.6 || preScan.severity === 'high') {
-        threatLevel = 'high'
-      } else if (maxScore > 0.4 || preScan.severity === 'medium') {
-        threatLevel = 'medium'
-      }
-    }
-
-    return {
-      scanned: true,
-      flagged,
-      categories,
-      scores,
-      message: flagged 
-        ? `Security threat detected (${threatLevel}): ${threatCategories.join(', ')}` 
-        : 'No threats detected',
-      threatLevel,
-      payload,      // Include official payload data (detected threats with locations)
-      breakdown,    // Include official breakdown data (detector results)
-    }
-  } catch (error) {
-    console.error('Lakera check failed:', error)
-    // If pre-scan detected high severity, still block even if API fails
-    if (preScan.detected && preScan.severity === 'high') {
-      return {
-        scanned: true,
-        flagged: true,
-        categories: {
-          prompt_injection: true,
-          ...preScan.patterns.reduce((acc, pattern) => {
-            acc[pattern.toLowerCase().replace(/\s+/g, '_')] = true
-            return acc
-          }, {} as Record<string, boolean>),
-        },
-        message: `Security threat detected: ${preScan.patterns.join(', ')}. Message blocked.`,
-        threatLevel: 'high',
-      }
-    }
-    return { 
-      scanned: false, 
-      flagged: false,
-      message: error instanceof Error ? error.message : 'Scan failed'
-    }
-  }
-}
+type ScanResult = GuardChatScanResult
 
 /**
  * Legacy callOpenAI function - now uses the adapter
@@ -503,7 +105,16 @@ async function callOpenAI(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, apiKeys: clientApiKeys, scanOptions, model, enableRAG, provider: requestProvider } = body
+    const {
+      messages,
+      apiKeys: clientApiKeys,
+      scanOptions,
+      model,
+      enableRAG,
+      lakeraRetrievalScan: lakeraRetrievalScanBody,
+      provider: requestProvider,
+    } = body
+    const lakeraRetrievalScan = lakeraRetrievalScanBody !== false
     const provider = (requestProvider === 'anthropic'
       ? 'anthropic'
       : requestProvider === 'azure'
@@ -547,7 +158,8 @@ export async function POST(request: NextRequest) {
                    (clientApiKeys?.lakeraAiKey && clientApiKeys.lakeraAiKey !== 'configured' ? clientApiKeys.lakeraAiKey : null),
       lakeraProjectId: serverKeys.lakeraProjectId ||
                       (clientApiKeys?.lakeraProjectId && clientApiKeys.lakeraProjectId !== 'configured' ? clientApiKeys.lakeraProjectId : null),
-      lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+      lakeraEndpoint:
+        serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || undefined,
     }
 
     const activeApiKey =
@@ -640,18 +252,26 @@ export async function POST(request: NextRequest) {
         const { listFiles } = await import('@/lib/registry/files-registry')
         const { readOwnerFile, readOwnerFileBuffer } = await import('@/lib/persistent-storage')
         const { buildRagContext } = await import('@/lib/rag-context')
+        const { extractTextFromBinaryForRag } = await import('@/lib/extract-text-for-rag')
         const { buildForensicContext, logForensic } = await import('@/lib/forensic-log')
+        const { getApiKeys } = await import('@/lib/api-keys-storage')
         const { ownerId } = await getOwnerId(request)
         const uploadedFiles = listFiles({ owner_id: ownerId })
         const owner = ownerId ?? ''
+        const ragKeys = await getApiKeys()
         ragContextFromRetrieve = await buildRagContext(latestUserMessage.content, {
           userId: owner,
           ipAddress: getUserIP(request),
           source: 'chat',
+          lakeraApiKey: ragKeys.lakeraAiKey ?? undefined,
+          lakeraEndpoint: ragKeys.lakeraEndpoint ?? undefined,
+          lakeraProjectId: ragKeys.lakeraProjectId ?? undefined,
         }, {
           listFiles: (opts) => listFiles(opts ?? { owner_id: owner }),
           getFileContent: (fileId) => readOwnerFile(owner, fileId),
           getFileBuffer: (fileId) => readOwnerFileBuffer(owner, fileId),
+          lakeraRetrievalScan,
+          maxChunks: 56,
         })
         if (ragContextFromRetrieve.chunks.length > 0) {
           ragChunks = ragContextFromRetrieve.chunks
@@ -669,14 +289,30 @@ export async function POST(request: NextRequest) {
 
           for (const fileMeta of uploadedFiles) {
             const scanStatus = fileMeta.scanStatus as string
-            if (scanStatus === 'error' || scanStatus === 'flagged') continue
+            if (scanStatus === 'flagged') continue
             if (fileMeta.checkpointTeDetails?.verdict === 'malicious') continue
             const scanDetails = fileMeta.scanDetails as { threatLevel?: 'low' | 'medium' | 'high' | 'critical'; categories?: Record<string, boolean>; score?: number } | undefined
             const threatLevel = scanDetails?.threatLevel || (fileMeta.scanStatus === 'flagged' ? 'high' as const : 'low' as const)
             if (threatLevel === 'critical' || threatLevel === 'high') continue
             if (fileMeta.size > 10 * 1024 * 1024) continue
             try {
-              const fileContent = await readOwnerFile(owner, fileMeta.id)
+              const nameLower = fileMeta.name.toLowerCase()
+              const typeLower = (fileMeta.type || '').toLowerCase()
+              const needsBinaryText =
+                typeLower.includes('pdf') ||
+                typeLower.includes('wordprocessing') ||
+                typeLower.includes('msword') ||
+                nameLower.endsWith('.docx') ||
+                nameLower.endsWith('.doc') ||
+                nameLower.endsWith('.pdf')
+              let fileContent: string | null = null
+              if (needsBinaryText) {
+                const buf = await readOwnerFileBuffer(owner, fileMeta.id)
+                fileContent = await extractTextFromBinaryForRag(fileMeta, buf)
+              }
+              if (fileContent == null) {
+                fileContent = await readOwnerFile(owner, fileMeta.id)
+              }
               if (!fileContent) continue
               
               availableFilesList.push(fileMeta.name)
@@ -687,11 +323,17 @@ export async function POST(request: NextRequest) {
               // 1. Always include data files (CSV, JSON, TXT) if they're safe
               // 2. Check for keyword matches (more lenient)
               // 3. Check for common data patterns (names, emails, IDs, etc.)
-              const isDataFile = fileMeta.type.includes('csv') || 
-                               fileMeta.type.includes('json') || 
-                               fileMeta.name.endsWith('.csv') ||
-                               fileMeta.name.endsWith('.json') ||
-                               fileMeta.name.endsWith('.txt')
+              const isDataFile =
+                fileMeta.type.includes('csv') ||
+                fileMeta.type.includes('json') ||
+                fileMeta.type.includes('wordprocessing') ||
+                fileMeta.type.includes('pdf') ||
+                fileMeta.name.endsWith('.csv') ||
+                fileMeta.name.endsWith('.json') ||
+                fileMeta.name.endsWith('.txt') ||
+                fileMeta.name.endsWith('.docx') ||
+                fileMeta.name.endsWith('.doc') ||
+                fileMeta.name.endsWith('.pdf')
               
               // Enhanced keyword matching
               const queryWords = userQuery.split(/\s+/).filter((w: string) => w.length > 2)
@@ -790,79 +432,6 @@ export async function POST(request: NextRequest) {
 
     let inputScanResult: ScanResult = { scanned: false, flagged: false }
 
-    // Lakera input scan: only when key is configured and client has input scan enabled (toggles off = no scan)
-    const runInputScan = apiKeys.lakeraAiKey && (scanOptions?.scanInput !== false)
-    if (latestUserMessage && runInputScan) {
-      inputScanResult = await checkWithLakera(
-        latestUserMessage.content,
-        apiKeys.lakeraAiKey,
-        apiKeys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
-        apiKeys.lakeraProjectId,
-        'input',
-        {
-          user_id: guardUserId,
-          ip_address: userIP,
-          internal_request_id: requestId,
-        }
-      )
-
-      // If input is flagged, block it immediately
-      if (inputScanResult.flagged) {
-        // Log security block for Check Point WAF
-        const { addSystemLog } = await import('@/lib/system-logging')
-        addSystemLog(
-          'warning',
-          'checkpoint-waf',
-          `Security threat detected in chat input - message blocked`,
-          {
-            endpoint: '/api/chat',
-            method: 'POST',
-            statusCode: 403,
-            error: 'Security block',
-            requestBody: {
-              messagePreview: latestUserMessage.content.substring(0, 100),
-            },
-          },
-          {
-            waf: {
-              clientIP: userIP,
-              blocked: true,
-              threatDetected: true,
-            },
-            security: {
-              threatLevel: inputScanResult.threatLevel,
-              categories: inputScanResult.categories,
-              scores: inputScanResult.scores,
-              payload: inputScanResult.payload,
-            },
-          }
-        ).catch((error) => {
-          console.error('Failed to log WAF security block:', error)
-        })
-
-        return NextResponse.json(
-          { 
-            error: inputScanResult.message || 'Message blocked by security filter',
-            scanResult: inputScanResult,
-            logData: {
-              userIP,
-              type: 'chat',
-              action: 'blocked',
-              source: 'chat',
-              requestDetails: {
-                message: latestUserMessage.content,
-                threatLevel: inputScanResult.threatLevel,
-                detectedPatterns: inputScanResult.categories,
-              },
-              lakeraDecision: inputScanResult,
-              success: false,
-            },
-          },
-          { status: 403 }
-        )
-      }
-    }
-
     // Enhance messages: RAG chunks (from storage) or legacy file context
     let enhancedMessages: Array<{ role: string; content: string }> = [...messages]
     if (ragContextFromRetrieve && ragContextFromRetrieve.chunks.length > 0) {
@@ -894,6 +463,87 @@ IMPORTANT INSTRUCTIONS:
             content: enhancedMessages[lastIndex].content + fileContext,
           }
         }
+      }
+    }
+
+    // Lakera input scan AFTER RAG/file injection: screen what the model actually receives (user text + file/RAG context) for PII/DLP and prompt attacks.
+    const runInputScan = apiKeys.lakeraAiKey && (scanOptions?.scanInput !== false)
+    if (latestUserMessage && runInputScan) {
+      let inputTextForGuard = latestUserMessage.content
+      for (let i = enhancedMessages.length - 1; i >= 0; i--) {
+        if (enhancedMessages[i].role === 'user') {
+          inputTextForGuard = enhancedMessages[i].content
+          break
+        }
+      }
+
+      inputScanResult = await screenChatWithLakera(
+        inputTextForGuard,
+        apiKeys.lakeraAiKey,
+        apiKeys.lakeraEndpoint,
+        apiKeys.lakeraProjectId,
+        'input',
+        {
+          user_id: guardUserId,
+          ip_address: userIP,
+          internal_request_id: requestId,
+        },
+        { inputUserQuestionPrefix: latestUserMessage.content },
+      )
+
+      if (inputScanResult.flagged) {
+        const { addSystemLog } = await import('@/lib/system-logging')
+        addSystemLog(
+          'warning',
+          'checkpoint-waf',
+          `Security threat detected in chat input (including RAG/file context if present) - message blocked`,
+          {
+            endpoint: '/api/chat',
+            method: 'POST',
+            statusCode: 403,
+            error: 'Security block',
+            requestBody: {
+              messagePreview: latestUserMessage.content.substring(0, 100),
+              scanIncludedAugmentedContext: inputTextForGuard.length > latestUserMessage.content.length,
+            },
+          },
+          {
+            waf: {
+              clientIP: userIP,
+              blocked: true,
+              threatDetected: true,
+            },
+            security: {
+              threatLevel: inputScanResult.threatLevel,
+              categories: inputScanResult.categories,
+              scores: inputScanResult.scores,
+              payload: inputScanResult.payload,
+            },
+          }
+        ).catch((error) => {
+          console.error('Failed to log WAF security block:', error)
+        })
+
+        return NextResponse.json(
+          {
+            error: inputScanResult.message || 'Message blocked by security filter',
+            scanResult: inputScanResult,
+            logData: {
+              userIP,
+              type: 'chat',
+              action: 'blocked',
+              source: 'chat',
+              requestDetails: {
+                message: latestUserMessage.content,
+                threatLevel: inputScanResult.threatLevel,
+                detectedPatterns: inputScanResult.categories,
+              },
+              lakeraDecision: inputScanResult,
+              success: false,
+            },
+          },
+          { status: 403 }
+        )
       }
     }
 
@@ -1096,17 +746,20 @@ IMPORTANT INSTRUCTIONS:
     // Lakera output scan: only when key is configured and client has output scan enabled (toggles off = no scan)
     const runOutputScan = apiKeys.lakeraAiKey && (scanOptions?.scanOutput !== false)
     if (runOutputScan) {
-      outputScanResult = await checkWithLakera(
+      outputScanResult = await screenChatWithLakera(
         aiResponse,
         apiKeys.lakeraAiKey,
-        apiKeys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+        apiKeys.lakeraEndpoint,
         apiKeys.lakeraProjectId,
         'output',
         {
           user_id: guardUserId,
           ip_address: userIP,
           internal_request_id: `${requestId}-output`,
-        }
+        },
+        latestUserMessage?.content
+          ? { outputPairedUserContent: latestUserMessage.content }
+          : undefined,
       )
 
       // If output is flagged, block it

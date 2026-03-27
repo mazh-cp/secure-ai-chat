@@ -3,6 +3,8 @@
 import { useState, useEffect, FormEvent, KeyboardEvent, ClipboardEvent } from 'react'
 import Link from 'next/link'
 
+import { LAKERA_GUARD_URL_DEFAULT } from '@/lib/lakera-guard-endpoint'
+
 interface ApiKeys {
   openAiKey: string
   anthropicApiKey: string
@@ -28,7 +30,7 @@ export default function SettingsForm() {
     azureOpenAiEndpoint: '',
     azureOpenAiApiVersion: '2025-04-01-preview',
     lakeraAiKey: '',
-    lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
+    lakeraEndpoint: LAKERA_GUARD_URL_DEFAULT,
     lakeraProjectId: '',
   })
 
@@ -87,7 +89,7 @@ export default function SettingsForm() {
           azureOpenAiKey: statusData?.configured?.azureOpenAiKey || false,
           lakeraAiKey: statusData?.configured?.lakeraAiKey || false,
           lakeraProjectId: statusData?.configured?.lakeraProjectId || false,
-          lakeraEndpoint: statusData?.configured?.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+          lakeraEndpoint: statusData?.configured?.lakeraEndpoint || LAKERA_GUARD_URL_DEFAULT,
           checkpointTeApiKey: false, // Handled separately
         })
       }
@@ -178,7 +180,7 @@ export default function SettingsForm() {
           anthropicApiKey: statusData.hasAnthropicApiKey ?? prev.anthropicApiKey ?? false,
           lakeraAiKey: statusData.hasLakeraAiKey || false,
           lakeraProjectId: statusData.hasLakeraProjectId || false,
-          lakeraEndpoint: statusData.status?.lakeraEndpoint?.value || 'https://api.lakera.ai/v2/guard',
+          lakeraEndpoint: statusData.status?.lakeraEndpoint?.value || LAKERA_GUARD_URL_DEFAULT,
           checkpointTeApiKey: statusData.hasCheckpointTeApiKey || false,
         }))
       }
@@ -192,7 +194,7 @@ export default function SettingsForm() {
           azureOpenAiKey: keysData.configured?.azureOpenAiKey ?? prev.azureOpenAiKey ?? false,
           lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
           lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
-          lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+          lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || LAKERA_GUARD_URL_DEFAULT,
         }))
       }
     } catch (error) {
@@ -598,7 +600,7 @@ export default function SettingsForm() {
       if (response.ok) {
         // Clear client-side state
         if (fieldName === 'lakeraEndpoint') {
-          setKeys(prev => ({ ...prev, [fieldName]: 'https://api.lakera.ai/v2/guard' }))
+          setKeys(prev => ({ ...prev, [fieldName]: LAKERA_GUARD_URL_DEFAULT }))
         } else {
           setKeys(prev => ({ ...prev, [fieldName]: '' }))
         }
@@ -677,7 +679,7 @@ export default function SettingsForm() {
           azureOpenAiEndpoint: '',
           azureOpenAiApiVersion: '2025-04-01-preview',
           lakeraAiKey: '',
-          lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
+          lakeraEndpoint: LAKERA_GUARD_URL_DEFAULT,
           lakeraProjectId: '',
         })
         
@@ -1042,7 +1044,9 @@ export default function SettingsForm() {
                 {...secureInputProps}
               />
               <p className="text-sm text-theme-subtle mt-1">
-                e.g. resource URL without `/openai/deployments`
+                Base URL only (no <code className="text-xs">/openai/deployments/...</code>). Native Azure:{' '}
+                <code className="text-xs">https://&lt;resource&gt;.openai.azure.com</code>. API Management:{' '}
+                <code className="text-xs break-all">https://staging-openai.azure-api.net/openai-gw-proxy-dev</code>
               </p>
             </div>
 
@@ -1189,10 +1193,10 @@ export default function SettingsForm() {
                 id="lakeraEndpoint"
                 name="lakeraEndpoint"
                 value={keys.lakeraEndpoint}
-                placeholder="https://api.lakera.ai/v2/guard"
+                placeholder={LAKERA_GUARD_URL_DEFAULT}
                 {...secureInputProps}
               />
-              {keys.lakeraEndpoint !== 'https://api.lakera.ai/v2/guard' && (
+              {keys.lakeraEndpoint !== LAKERA_GUARD_URL_DEFAULT && (
                 <button
                   type="button"
                   onClick={() => handleClear('lakeraEndpoint')}
@@ -1203,7 +1207,11 @@ export default function SettingsForm() {
               )}
             </div>
             <p className="text-sm text-theme-subtle mt-1">
-              🔒 Paste only (Ctrl/Cmd + V) - Default: https://api.lakera.ai/v2/guard
+              🔒 Paste only (Ctrl/Cmd + V). POST target is <code className="text-xs">/v2/guard</code> per{' '}
+              <a href="https://docs.lakera.ai/docs/api/guard" className="underline" target="_blank" rel="noreferrer">
+                Lakera Guard API
+              </a>
+              . You can paste <code className="text-xs">https://api.lakera.ai/v2</code> or the full guard URL; both work.
             </p>
           </div>
 
@@ -1250,7 +1258,11 @@ export default function SettingsForm() {
               )}
             </div>
             <p className="text-sm text-theme-subtle mt-1">
-              📋 Visible for verification - Ensure correct policy is established from Lakera Platform
+              Required for your project&apos;s policy: Guard reads <code className="text-xs">project_id</code> from this app&apos;s JSON body (not a separate policy download). If empty, Lakera uses the{' '}
+              <a href="https://docs.lakera.ai/docs/api/guard" className="underline" target="_blank" rel="noreferrer">
+                default policy
+              </a>
+              .
             </p>
             {keys.lakeraProjectId && (
               <p className="text-sm text-theme-muted mt-1">

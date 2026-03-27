@@ -1,14 +1,16 @@
 export const runtime = 'nodejs'
 
 import crypto from 'crypto'
-import { promises as fs } from 'fs'
 import { NextRequest, NextResponse } from 'next/server'
+import { getUserIP } from '@/lib/logging'
+import { getApiKeys } from '@/lib/api-keys-storage'
 import { getOwnerId } from '@/lib/owner'
 import { insertFile } from '@/lib/registry/files-registry'
 import { getUploadsDir } from '@/lib/persistent-storage'
 import { writeRawAndMeta, writeStatus } from '@/lib/storage-canonical'
 import { buildForensicContext, logForensic } from '@/lib/forensic-log'
 import { listFiles } from '@/lib/registry/files-registry'
+import { decodeUploadBodyToBuffer } from '@/lib/upload-body-buffer'
 
 /**
  * POST - Store a file on the server (canonical registry + disk).
@@ -98,10 +100,84 @@ export async function POST(request: NextRequest) {
 
     const storageKey = `${ownerId}/${fileIdStr}`
     const content = typeof fileContent === 'string' ? fileContent : String(fileContent)
-    const buf = Buffer.from(content, 'utf-8')
+    const buf = decodeUploadBodyToBuffer(fileContent, fileNameStr, fileTypeStr)
     const uploadsDir = getUploadsDir()
     const createdAt = new Date().toISOString()
     const sha256 = crypto.createHash('sha256').update(buf).digest('hex')
+
+    let scanStatusStr: string = typeof scanStatus === 'string' ? scanStatus : 'pending'
+    let scanResultVal: string | null = scanResult != null && typeof scanResult === 'string' ? scanResult : null
+    let scanDetailsVal: Record<string, unknown> | null =
+      scanDetails != null && typeof scanDetails === 'object' && !Array.isArray(scanDetails)
+        ? (scanDetails as Record<string, unknown>)
+        : null
+
+    const keys = await getApiKeys()
+    if (keys.lakeraAiKey?.trim()) {
+      const { prepareContentForFileScan, screenTextAsFileUpload } = await import('@/lib/lakera/guard-client')
+      const { resolveLakeraGuardEndpoint } = await import('@/lib/lakera-guard-endpoint')
+      const guardUrl = resolveLakeraGuardEndpoint(keys.lakeraEndpoint)
+      if (!guardUrl.startsWith('http://') && !guardUrl.startsWith('https://')) {
+        scanStatusStr = 'error'
+        scanResultVal = 'Invalid Lakera endpoint. Must start with http:// or https://'
+        scanDetailsVal = { serverLakeraScan: true, invalidEndpoint: true }
+      } else {
+        const { contentToScan } = prepareContentForFileScan(content, fileNameStr)
+        const fr = await screenTextAsFileUpload({
+          contentToScan,
+          lakeraKey: keys.lakeraAiKey,
+          lakeraEndpoint: keys.lakeraEndpoint,
+          lakeraProjectId: keys.lakeraProjectId,
+          metadata: {
+            ip_address: getUserIP(request),
+            internal_request_id: `store-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          },
+          extraHighRiskCategories: ['code_injection'],
+        })
+        const scores = fr.scores
+        const baseDetails: Record<string, unknown> = {
+          categories: fr.categories,
+          score: scores && Object.keys(scores).length > 0 ? Math.max(...Object.values(scores)) : undefined,
+          threatLevel: fr.threatLevel,
+          payload: fr.payload,
+          breakdown: fr.breakdown,
+          serverLakeraScan: true,
+          lakeraRequestUuid: fr.requestUuid,
+          prescanPatterns: fr.prescanPatterns,
+        }
+        if (fr.lakeraSkipped && fr.lakeraHttpStatus) {
+          scanStatusStr = 'error'
+          scanResultVal = `Lakera API error (${fr.lakeraHttpStatus})`
+          scanDetailsVal = {
+            ...baseDetails,
+            lakeraHttpStatus: fr.lakeraHttpStatus,
+            lakeraErrorDetails: fr.lakeraErrorDetails ?? null,
+          }
+        } else if (fr.scanned && fr.flagged) {
+          scanStatusStr = 'flagged'
+          const catMsg = fr.categories
+            ? Object.keys(fr.categories)
+                .filter((k) => fr.categories![k])
+                .join(', ')
+            : 'unknown'
+          scanResultVal = `Security threats detected (${fr.threatLevel}): ${catMsg}`
+          scanDetailsVal = baseDetails
+        } else if (fr.scanned && !fr.flagged) {
+          scanStatusStr = 'safe'
+          scanResultVal = 'File content appears safe'
+          scanDetailsVal = baseDetails
+        } else {
+          scanStatusStr = 'pending'
+          scanResultVal = 'Lakera scan incomplete; open Files to rescan'
+          scanDetailsVal = { ...baseDetails, lakeraSkipped: fr.lakeraSkipped === true }
+        }
+      }
+    }
+
+    const checkpointTeDetailsVal: Record<string, unknown> | null =
+      checkpointTeDetails != null && typeof checkpointTeDetails === 'object' && !Array.isArray(checkpointTeDetails)
+        ? (checkpointTeDetails as Record<string, unknown>)
+        : null
 
     if (process.env.NODE_ENV === 'development') {
       console.log('[FILES/STORE] ownerId=', ownerId, 'fileId=', fileIdStr)
@@ -134,11 +210,6 @@ export async function POST(request: NextRequest) {
 
     const writtenBytes = buf.length
     console.log('[STORE] written', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length, writtenBytes })
-
-    const scanStatusStr: string = typeof scanStatus === 'string' ? scanStatus : 'pending'
-    const scanResultVal: string | null = scanResult != null && typeof scanResult === 'string' ? scanResult : null
-    const scanDetailsVal: Record<string, unknown> | null = scanDetails != null && typeof scanDetails === 'object' && !Array.isArray(scanDetails) ? (scanDetails as Record<string, unknown>) : null
-    const checkpointTeDetailsVal: Record<string, unknown> | null = checkpointTeDetails != null && typeof checkpointTeDetails === 'object' && !Array.isArray(checkpointTeDetails) ? (checkpointTeDetails as Record<string, unknown>) : null
 
     try {
       insertFile({

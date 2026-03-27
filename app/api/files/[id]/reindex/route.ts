@@ -5,12 +5,14 @@ import { getById, updateFileMetadata } from '@/lib/registry/files-registry'
 import { readOwnerFile } from '@/lib/persistent-storage'
 import { removeDocumentFromRAG } from '@/lib/rag/index'
 import { indexFileForRAG } from '@/lib/rag/registry-index'
+import { getApiKeys } from '@/lib/api-keys-storage'
+import { getUserIP } from '@/lib/logging'
 
 /**
  * POST /api/files/:id/reindex - Rebuild RAG index for a file (reads from storage).
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -31,9 +33,14 @@ export async function POST(
     // Mark as queued during reindex
     updateFileMetadata(id, { rag_indexed_at: null })
     await removeDocumentFromRAG(id)
+    const keys = await getApiKeys()
     const result = await indexFileForRAG(id, content, file.name, {
       owner_id: file.owner_id ?? undefined,
       session_id: file.session_id ?? undefined,
+      ipAddress: getUserIP(request),
+      lakeraApiKeyOverride: keys.lakeraAiKey ?? undefined,
+      lakeraEndpointOverride: keys.lakeraEndpoint ?? undefined,
+      lakeraProjectIdOverride: keys.lakeraProjectId ?? undefined,
     })
 
     return NextResponse.json({

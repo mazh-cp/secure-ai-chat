@@ -72,8 +72,12 @@ export async function ingestDocument(
     filename: meta.filename,
     tenantId: meta.tenantId,
     userId: meta.userId,
+    sessionId: meta.sessionId,
     ipAddress: meta.ipAddress,
     source: meta.source ?? 'file_upload',
+    lakeraApiKeyOverride: meta.lakeraApiKeyOverride,
+    lakeraEndpointOverride: meta.lakeraEndpointOverride,
+    lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
   })
 
   if (!scanResult.allowed) {

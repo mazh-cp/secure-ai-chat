@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 
+import { DEFAULT_AZURE_DEPLOYMENT_ID } from '@/lib/azure-openai'
+
 export type ChatProvider = 'openai' | 'anthropic' | 'azure'
 
 interface Model {
@@ -50,9 +52,17 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
           return
         }
 
-        const data = await response.json()
+        const data = await response.json() as {
+          models?: Model[]
+          azureDeploymentListFailed?: boolean
+          message?: string
+        }
         const fetchedModels = data.models || []
         setModels(fetchedModels)
+
+        if (provider === 'azure' && data.azureDeploymentListFailed && data.message) {
+          setWarning(data.message)
+        }
 
         if (fetchedModels.length > 0) {
           const modelExists = fetchedModels.some((m: Model) => m.id === selectedModel)
@@ -90,14 +100,6 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
     )
   }
 
-  if (models.length === 0 && !warning) {
-    return (
-      <div className="text-sm text-theme-subtle">
-        No models available
-      </div>
-    )
-  }
-
   const selectStyle = {
     background: 'rgb(var(--surface-1))',
     borderColor: 'rgb(var(--border))',
@@ -109,6 +111,11 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
 
   return (
     <div className="flex flex-col gap-2">
+      {warning && (
+        <div className="text-sm text-amber-400/90 max-w-[42rem]" role="status">
+          {warning}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="provider-select" className="text-base font-medium text-theme-muted whitespace-nowrap">
           Provider:
@@ -147,7 +154,11 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
             type="text"
             value={selectedModel || ''}
             onChange={(e) => onModelChange(e.target.value)}
-            placeholder="Enter model name"
+            placeholder={
+              provider === 'azure'
+                ? `Deployment id (e.g. ${DEFAULT_AZURE_DEPLOYMENT_ID})`
+                : 'Enter model name'
+            }
             className="glass-input text-theme px-3 py-2 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50 transition-all"
             style={{ ...selectStyle, minWidth: '200px' }}
           />

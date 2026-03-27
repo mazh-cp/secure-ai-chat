@@ -13,13 +13,18 @@ import { getRagNamespace, type RagNamespaceParams } from './rag-namespace'
 import { parseCsvToChunks } from '@/lib/parsers/csv-parser'
 import { parseMarkdownToChunks } from '@/lib/parsers/markdown-parser'
 import { normalizeChunkText } from '@/lib/parsers/normalize'
+import { extractTextFromBinaryForRag } from '@/lib/extract-text-for-rag'
 
 const RAG_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
 const CHUNK_SIZE_CHARS = 1000
 const CHUNK_OVERLAP_CHARS = 200
 const MIN_CHUNK_LENGTH = 20
-const QUERY_FALLBACK_TOP_TOKENS = 10
+const QUERY_FALLBACK_TOP_TOKENS = 24
 const MIN_TOKEN_LENGTH = 3
+/** Max sliding-window chunks per prose file before relevance ranking (avoid only reading the start of long docs). */
+const MAX_SLICES_PER_PROSE_FILE = 100
+/** After ranking, keep this many best slices per large prose file before global cap. */
+const TOP_SLICES_PER_PROSE_FILE = 40
 
 const STOPWORDS = new Set(
   'a an and are as at be by for from has he in is it its of on that the to was were will with'.split(/\s+/)
@@ -38,6 +43,59 @@ function queryTokens(query: string, topN: number = QUERY_FALLBACK_TOP_TOKENS): s
 function scoreChunkByTokens(chunkText: string, tokens: string[]): number {
   const lower = chunkText.toLowerCase()
   return tokens.filter((t) => lower.includes(t)).length
+}
+
+function isProseLikeFile(fileMeta: { name: string; type: string }): boolean {
+  const n = fileMeta.name.toLowerCase()
+  const t = (fileMeta.type || '').toLowerCase()
+  if (t.includes('pdf')) return true
+  if (t.includes('wordprocessing') || t.includes('msword') || n.endsWith('.docx') || n.endsWith('.doc'))
+    return true
+  if (t.includes('text/plain') || n.endsWith('.txt')) return true
+  if (n.endsWith('.rtf')) return true
+  return false
+}
+
+/** Rank chunks for retrieval: proper nouns and multi-word matches boost score. */
+function relevanceScore(
+  chunkText: string,
+  query: string,
+  queryLower: string,
+  tokenBudget: string[],
+): number {
+  let s = scoreChunkByTokens(chunkText, tokenBudget) * 2
+  const lower = chunkText.toLowerCase()
+  const words = queryLower.split(/\s+/).filter((w) => w.length > 2)
+  for (const w of words) {
+    if (lower.includes(w)) s += w.length > 5 ? 4 : 2
+  }
+  const quoted = query.match(/["']([^"']{2,120})["']/g)
+  if (quoted) {
+    for (const seg of quoted) {
+      const inner = seg.slice(1, -1).toLowerCase().trim()
+      if (inner.length >= 2 && lower.includes(inner)) s += 12
+    }
+  }
+  return s
+}
+
+function rankAndCapChunks(
+  chunks: RagChunk[],
+  query: string,
+  queryLower: string,
+  maxChunks: number,
+): RagChunk[] {
+  if (chunks.length === 0) return chunks
+  if (chunks.length === 1) return chunks.slice(0, maxChunks)
+  const rankTokens = queryTokens(query, 48)
+  const scored = chunks.map((c) => ({
+    c,
+    s: relevanceScore(c.text, query, queryLower, rankTokens),
+  }))
+  if (scored.some((x) => x.s > 0)) {
+    scored.sort((a, b) => b.s - a.s)
+  }
+  return scored.slice(0, maxChunks).map((x) => x.c)
 }
 
 export type RagChunk = {
@@ -81,6 +139,10 @@ function buildCitationLabel(fileName: string, chunk: Partial<RagChunk>): string 
 export interface BuildRagContextScope extends RagNamespaceParams {
   ipAddress?: string
   source?: string
+  /** From getApiKeys() in API routes so retrieval Lakera matches chat/settings */
+  lakeraApiKey?: string | null
+  lakeraEndpoint?: string | null
+  lakeraProjectId?: string | null
 }
 
 /**
@@ -121,17 +183,22 @@ export async function buildRagContext(
     console.log('[RAG] listFiles returned 0 files for owner_id=', scope.userId ?? 'null')
   }
 
-  const chunks: RagChunk[] = []
+  let chunks: RagChunk[] = []
   const queryLower = query.toLowerCase()
   const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2)
-  const isDataQuery = /user|person|name|email|id|record|data|field|column|row|list|count|line item|how many|who|what|where|when|find|search|show|display|code|department|bob|alice|key|token|deployment/i.test(queryLower)
+  const isDataQuery =
+    /user|person|people|names?|email|id|record|data|field|column|row|list|count|line item|how many|who|what|where|when|find|search|show|display|code|department|bob|alice|key|token|deployment|company|companies|corporat|business|firm|organization|org|individual|employee|employees|customer|clients?|vendors?|suppliers?|contact|details?|information|profile|stakeholder|director|manager|executive|founder|ceo|cfo|address|phone|website|title|role|salary|revenue|account/i.test(
+      queryLower,
+    )
 
   /** Extract "line item N" or "row N" from query for deterministic filter. */
   const lineItemMatch = query.match(/\bline\s+item\s+(\d+)\b/i) || query.match(/\brow\s+(\d+)\b/i)
   const requestedRowNumber = lineItemMatch ? parseInt(lineItemMatch[1], 10) : null
 
   for (const fileMeta of files) {
-    if (fileMeta.scanStatus === 'error' || fileMeta.scanStatus === 'flagged') continue
+    // Only skip explicitly unsafe files. "error" often means Lakera/API misconfiguration on store,
+    // not that the file is malicious — bytes are still readable for RAG.
+    if (fileMeta.scanStatus === 'flagged') continue
     if ((fileMeta as any).checkpointTeDetails?.verdict === 'malicious') continue
     const scanDetails = (fileMeta.scanDetails as { threatLevel?: string }) ?? {}
     if (scanDetails.threatLevel === 'critical' || scanDetails.threatLevel === 'high') continue
@@ -190,7 +257,24 @@ export async function buildRagContext(
     }
 
     try {
-      const content = useStorage ? await readContent(fileMeta.id) : await fileStorage.readFile(fileMeta.storage_key)
+      const nameLower = fileMeta.name.toLowerCase()
+      const typeLower = (fileMeta.type || '').toLowerCase()
+      const needsBinaryText =
+        typeLower.includes('pdf') ||
+        typeLower.includes('wordprocessing') ||
+        typeLower.includes('msword') ||
+        nameLower.endsWith('.docx') ||
+        nameLower.endsWith('.doc') ||
+        nameLower.endsWith('.pdf')
+
+      let content: string | null = null
+      if (needsBinaryText && useStorage) {
+        const binBuf = await readBuffer(fileMeta.id)
+        content = await extractTextFromBinaryForRag(fileMeta, binBuf)
+      }
+      if (content == null) {
+        content = useStorage ? await readContent(fileMeta.id) : await fileStorage.readFile(fileMeta.storage_key)
+      }
       if (!content) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn('[RAG] readFile returned null for', fileMeta.storage_key, 'name=', fileMeta.name)
@@ -207,8 +291,9 @@ export async function buildRagContext(
         fileMeta.name.endsWith('.csv') ||
         fileMeta.name.endsWith('.json') ||
         fileMeta.name.endsWith('.txt')
+      const proseDoc = isProseLikeFile(fileMeta)
       const hasKeywordMatch = queryWords.some((word) => contentLower.includes(word))
-      const shouldInclude = isDataFile || isDataQuery || hasKeywordMatch
+      const shouldInclude = isDataFile || proseDoc || isDataQuery || hasKeywordMatch
 
       if (!shouldInclude && content.length > 5000) continue
 
@@ -288,6 +373,7 @@ export async function buildRagContext(
       }
       const formatted = formatFileContentForRAG(fileMeta.name, text, fileMeta.type, false)
       const citationLabel = buildCitationLabel(fileMeta.name, {})
+      const sourceType = fileMeta.type.includes('pdf') ? 'pdf' : 'txt'
       if (formatted.length <= CHUNK_SIZE_CHARS + CHUNK_OVERLAP_CHARS) {
         const normalized = normalizeChunkText(formatted)
         if (normalized.length >= MIN_CHUNK_LENGTH) {
@@ -296,30 +382,44 @@ export async function buildRagContext(
             fileId: fileMeta.id,
             text: `\n\n${normalized}`,
             citationLabel,
-            source_type: fileMeta.type.includes('pdf') ? 'pdf' : 'txt',
+            source_type: sourceType,
           })
         }
       } else {
-        for (let i = 0; i < formatted.length; i += CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS) {
-          if (chunks.length >= maxChunks) break
+        const step = CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS
+        const fileSlices: RagChunk[] = []
+        let sliceCount = 0
+        for (let i = 0; i < formatted.length && sliceCount < MAX_SLICES_PER_PROSE_FILE; i += step) {
           const slice = formatted.slice(i, i + CHUNK_SIZE_CHARS)
           const normalized = normalizeChunkText(slice)
           if (normalized.length >= MIN_CHUNK_LENGTH) {
-            chunks.push({
+            fileSlices.push({
               chunkId: `${fileMeta.id}:${i}`,
               fileId: fileMeta.id,
               text: `\n\n${normalized}`,
               citationLabel,
-              source_type: fileMeta.type.includes('pdf') ? 'pdf' : 'txt',
+              source_type: sourceType,
             })
+            sliceCount++
           }
         }
+        const rankTokens = queryTokens(query, 48)
+        if (fileSlices.length > 0) {
+          fileSlices.sort(
+            (a, b) =>
+              relevanceScore(b.text, query, queryLower, rankTokens) -
+              relevanceScore(a.text, query, queryLower, rankTokens),
+          )
+          const take = Math.min(TOP_SLICES_PER_PROSE_FILE, fileSlices.length)
+          chunks.push(...fileSlices.slice(0, take))
+        }
       }
-      if (chunks.length >= maxChunks) break
     } catch {
       continue
     }
   }
+
+  chunks = rankAndCapChunks(chunks, query, queryLower, maxChunks)
 
   let safeChunks = chunks
   // When Lakera is enabled (LAKERA_AI_KEY/LAKERA_API_KEY in env), always scan retrieved chunks for security
@@ -330,6 +430,9 @@ export async function buildRagContext(
       ipAddress: scope.ipAddress,
       source: scope.source ?? 'rag_retrieval',
       layer: 'retrieval',
+      lakeraApiKeyOverride: scope.lakeraApiKey ?? undefined,
+      lakeraEndpointOverride: scope.lakeraEndpoint ?? undefined,
+      lakeraProjectIdOverride: scope.lakeraProjectId ?? undefined,
     }
     const { safeChunks: scannedChunks } = await guardMany(
       chunks.map((c) => ({

@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.0.18'
-export const RELEASE_DATE = '2026-03-26'
+export const APP_VERSION = '1.0.20'
+export const RELEASE_DATE = '2026-03-28'
 
 export interface ReleaseNoteItem {
   title: string
@@ -15,18 +15,15 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'Freeze baseline: code prior to 2026-01-19 tagged as v1.0.11-freeze (immutable). New work lives on release/1.0.12.',
-      'CI guard: scripts/guard-prejan19.sh fails CI if changes vs v1.0.11-freeze are outside file/RAG/security paths.',
-      'File/RAG/Security: Persistent file storage (registry + ./data/uploads), unified file registry with owner/session scoping.',
-      'Deterministic delete/clear (bytes + metadata + vectors), RAG reindex endpoint POST /api/files/:id/reindex.',
-      'RAG readiness in list (ragStatus: queued/ready), Lakera at upload and on retrieved chunks before OpenAI.',
-      'Stability smoke script: npm run smoke:stability.',
+      'Correct binary file storage for uploads; DOCX/PDF text extraction for chat RAG.',
+      'Stricter VM upgrade script (type-check + health) and SSH helper from your laptop.',
     ],
   },
   {
-    title: 'Compatibility',
+    title: 'Fixed',
     items: [
-      'No routes or response fields removed or renamed; only new fields (e.g. ragStatus) and new endpoints (e.g. /api/files/:id/reindex) added.',
+      'Questions about uploaded documents (e.g. names, user counts) when Lakera scan was off — files are now read as real PDF/Word text.',
+      'Production upgrades when git tag is missing: fall back to main automatically.',
     ],
   },
 ]

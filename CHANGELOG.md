@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.20] - 2026-03-28
+
+### Added
+- **`lib/upload-body-buffer.ts`** — `POST /api/files/store` decodes client **base64** payloads for binary uploads (PDF, DOCX, etc.). Previously `Buffer.from(content, 'utf-8')` stored the base64 *string* as file bytes, breaking RAG and any binary use.
+- **`lib/extract-text-for-rag.ts`** — **mammoth** (DOCX/DOC) and **pdf-parse** (PDF) extract plain text for RAG; used from **`lib/rag-context.ts`** and **`app/api/chat`** fallback when primary retrieval returns no chunks.
+- **Production VM upgrades** — `scripts/upgrade-remote-production-v2.sh` (type-check + health retries), `scripts/run-remote-production-upgrade.sh` (SSH from laptop). **`upgrade-curl-production.sh`**: optional `RUN_TYPECHECK` / `HEALTH_RETRIES`, restore **`.storage`** from backup, **`checkout_git_ref`** helper, **missing `v*` tag → `GIT_REF_FALLBACK`** (default `main`).
+
+### Changed
+- **Upgrade wrappers** — `upgrade-remote-production.sh` / `v2` default **`GIT_REF=main`** so curl upgrades work when release tags are not pushed.
+- **`UPGRADE_COMMANDS.md`** — Option A1 one-liner without the v2 raw URL; troubleshooting for 404 and missing tags.
+- **`next.config.js`** — `serverExternalPackages`: `pdf-parse`, `pdfjs-dist`, `mammoth`.
+
+### Fixed
+- **Chat + uploaded PDF/Word** — Answers could ignore file content (especially with Lakera upload scan off); fixed by correct bytes on disk and text extraction for RAG.
+
+## [1.0.19] - 2026-03-27
+
+### Added
+- **Lakera Guard (canonical client)** — `lib/lakera/guard-client.ts` centralizes POST/parse/merge for chat screening, `/api/scan`, and server file store.
+- **Server scan on store** — `POST /api/files/store` runs Lakera when a key is configured; sets `scan_status` / `scan_details` from the server (not client-only).
+- **Chat vs upload scans** — `chatUseUploadedFilesContext` (localStorage) and API `lakeraRetrievalScan`: file content in chat can stay on when Lakera/Check Point upload toggles are off; per-chunk retrieval scan follows Files-page Lakera preferences.
+- **RAG retrieval** — Relevance scoring over chunks, higher default chunk budget in chat (56), sliding windows up to 100 slices per prose file with top-40 pre-rank; global rank-and-cap; broader `isDataQuery` / `isFileOrDataQuestion` for companies, people, orgs, quoted strings; `readOwnerFileBuffer` reads canonical `raw.bin`.
+
+### Changed
+- **`lib/security/lakera.ts`** — Uses `postLakeraGuard` / merge pipeline; merges `getApiKeys()` for endpoint and project id when only the key is overridden.
+- **RAG ingest/embed/reindex/chat** — Thread Lakera credentials from `getApiKeys()` into `scanIngestion` / retrieval metadata.
+- **Files page** — Turning off Lakera Scan no longer forces RAG auto-scan off in a way that disables chat file context; clarified “Lakera after upload” copy.
+
+### Fixed
+- **OpenAI adapter** — On 400, retry Chat Completions with `max_completion_tokens` when the model rejects `max_tokens` (and Azure parity).
+- **Next.js dev navigation** — `Strict-Transport-Security` is sent only in **production** so local HTTP dev is not upgraded to broken HTTPS (`Failed to fetch` on client navigations).
+- **RAG file inclusion** — Do not skip registry `scan_status: error` for retrieval (Lakera API misconfig ≠ unsafe file).
+
 ## [1.0.18] - 2026-03-26
 
 ### Added

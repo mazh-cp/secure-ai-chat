@@ -10,14 +10,25 @@ export async function indexFileForRAG(
   fileId: string,
   fileContent: string,
   fileName: string,
-  meta?: { owner_id?: string; session_id?: string; ipAddress?: string }
+  meta?: {
+    owner_id?: string
+    session_id?: string
+    ipAddress?: string
+    lakeraApiKeyOverride?: string
+    lakeraEndpointOverride?: string
+    lakeraProjectIdOverride?: string | null
+  }
 ): Promise<{ indexed: boolean; quarantined?: boolean }> {
   const result = await ingestDocument(fileContent, {
     docId: fileId,
     filename: fileName,
     userId: meta?.owner_id ?? undefined,
+    sessionId: meta?.session_id ?? undefined,
     ipAddress: meta?.ipAddress ?? undefined,
     source: 'file_upload',
+    lakeraApiKeyOverride: meta?.lakeraApiKeyOverride,
+    lakeraEndpointOverride: meta?.lakeraEndpointOverride,
+    lakeraProjectIdOverride: meta?.lakeraProjectIdOverride,
   })
   if (result.quarantined) {
     return { indexed: false, quarantined: true }

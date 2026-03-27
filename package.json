@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.0.18",
+  "version": "1.0.20",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -8,6 +8,7 @@
   },
   "packageManager": "npm@9.9.3",
   "scripts": {
+    "clear": "rm -rf .next",
     "verify-security": "bash scripts/verify-key-security.sh",
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
@@ -40,7 +41,9 @@
     "better-sqlite3": "^11.6.0",
     "date-fns": "^2.30.0",
     "form-data": "^4.0.5",
+    "mammoth": "^1.12.0",
     "next": "^16.1.6",
+    "pdf-parse": "^2.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "^5.2.2",

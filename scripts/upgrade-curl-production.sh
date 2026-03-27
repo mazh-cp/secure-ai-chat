@@ -2,7 +2,11 @@
 # Secure AI Chat - Curl one-liner upgrade for production VM
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 # Default path: /home/adminuser/secure-ai-chat (override with APP_DIR)
-# Default ref: main (override with GIT_REF). Use main for latest; tags (e.g. v1.0.15) are supported.
+# Default ref: main (override with GIT_REF). Use main for latest; tags (e.g. v1.0.20) are supported.
+#
+# Optional (export before piping, or use scripts/upgrade-remote-production-v2.sh):
+#   RUN_TYPECHECK=1     — run npm run type-check before build (stricter production upgrades)
+#   HEALTH_RETRIES=12   — after start, retry curl /api/health this many times (1s apart)
 #
 # Retry with main: If the build fails and GIT_REF is not main, the script automatically
 # retries by checking out main, reinstalling dependencies, and building again so upgrades
@@ -15,6 +19,10 @@
 #   curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat bash
 #   curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat
 #   GIT_REF=v1.0.15 curl -fsSL .../upgrade-curl-production.sh | bash
+#
+# If GIT_REF is a version tag (v1.2.3) that does not exist on origin yet, the script
+# falls back to GIT_REF_FALLBACK (default: main). Push tags for reproducible deploys:
+#   git tag v1.0.20 && git push origin v1.0.20
 
 set -euo pipefail
 
@@ -32,8 +40,11 @@ elif [ -z "${APP_DIR:-}" ]; then
 fi
 APP_DIR="${APP_DIR:-/home/adminuser/secure-ai-chat}"
 GIT_REF="${GIT_REF:-main}"
+GIT_REF_FALLBACK="${GIT_REF_FALLBACK:-main}"
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
+RUN_TYPECHECK="${RUN_TYPECHECK:-0}"
+HEALTH_RETRIES="${HEALTH_RETRIES:-0}"
 
 # Colors
 RED='\033[0;31m'
@@ -162,19 +173,43 @@ run_in_app_dir() {
 run_in_app_dir git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*' 2>/dev/null || true
 run_in_app_dir git fetch origin --tags 2>/dev/null || true
 run_in_app_dir git fetch origin 2>/dev/null || true
+
+checkout_git_ref() {
+  local ref="$1"
+  if run_in_app_dir git show-ref -q "origin/$ref" 2>/dev/null; then
+    run_in_app_dir git checkout -B "$ref" "origin/$ref" 2>/dev/null || run_in_app_dir git checkout "$ref" 2>/dev/null || {
+      warn "Checkout failed. Git status:"
+      run_in_app_dir git status 2>&1 || true
+      run_in_app_dir git branch -a 2>&1 || true
+      return 1
+    }
+    run_in_app_dir git pull origin "$ref" 2>/dev/null || true
+    ok "Checked out $ref (latest from origin)"
+    return 0
+  fi
+  if run_in_app_dir git rev-parse "$ref" 2>/dev/null; then
+    run_in_app_dir git checkout "$ref" 2>/dev/null || return 1
+    ok "Checked out $ref (tag or ref)"
+    return 0
+  fi
+  return 1
+}
+
+ORIGINAL_GIT_REF="$GIT_REF"
 # Checkout: branch (e.g. main) or tag.
-if run_in_app_dir git show-ref -q "origin/$GIT_REF" 2>/dev/null; then
-  run_in_app_dir git checkout -B "$GIT_REF" "origin/$GIT_REF" 2>/dev/null || run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || {
-    warn "Checkout failed. Git status:"
-    run_in_app_dir git status 2>&1 || true
+if checkout_git_ref "$GIT_REF"; then
+  :
+elif echo "$ORIGINAL_GIT_REF" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+  warn "Ref $ORIGINAL_GIT_REF not found on origin (tag not pushed or shallow clone). Using $GIT_REF_FALLBACK instead."
+  warn "To pin releases: git tag $ORIGINAL_GIT_REF && git push origin $ORIGINAL_GIT_REF"
+  GIT_REF="$GIT_REF_FALLBACK"
+  if checkout_git_ref "$GIT_REF"; then
+    :
+  else
+    echo ""
     run_in_app_dir git branch -a 2>&1 || true
-    fail "Failed to checkout $GIT_REF"
-  }
-  run_in_app_dir git pull origin "$GIT_REF" 2>/dev/null || true
-  ok "Checked out $GIT_REF (latest from origin)"
-elif run_in_app_dir git rev-parse "$GIT_REF" 2>/dev/null; then
-  run_in_app_dir git checkout "$GIT_REF" 2>/dev/null || fail "Failed to checkout $GIT_REF"
-  ok "Checked out $GIT_REF (tag or ref)"
+    fail "Ref $GIT_REF not found. Run: cd $APP_DIR && sudo -u $APP_USER git fetch origin && git branch -a"
+  fi
 else
   echo ""
   run_in_app_dir git branch -a 2>&1 || true
@@ -187,6 +222,9 @@ if [ -f "$BACKUP_DIR/.env.local" ]; then
 fi
 if [ -d "$BACKUP_DIR/.secure-storage" ]; then
   sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" || true
+fi
+if [ -d "$BACKUP_DIR/.storage" ]; then
+  sudo cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" || true
 fi
 
 # npm install (with nvm if present). App user (secureai) has nvm in APP_DIR/.nvm, so set HOME=APP_DIR.
@@ -204,6 +242,17 @@ else
 fi
 ok "Dependencies installed"
 
+# Optional TypeScript check before build (RUN_TYPECHECK=1)
+if [ "${RUN_TYPECHECK}" = "1" ] || [ "${RUN_TYPECHECK}" = "true" ]; then
+  say "Running type-check (RUN_TYPECHECK=1)"
+  if [ "$(whoami)" = "$APP_USER" ]; then
+    (cd "$APP_DIR" && npm run type-check) || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
+  else
+    sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run type-check" || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
+  fi
+  ok "type-check passed"
+fi
+
 # Build (retry with main if build fails, e.g. old tag had TypeScript error)
 build_ok=false
 for attempt in 1 2; do
@@ -220,6 +269,7 @@ for attempt in 1 2; do
     GIT_REF=main
     [ -f "$BACKUP_DIR/.env.local" ] && sudo cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" 2>/dev/null || true
     [ -d "$BACKUP_DIR/.secure-storage" ] && sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || true
+    [ -d "$BACKUP_DIR/.storage" ] && sudo cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" 2>/dev/null || true
     say "Reinstalling dependencies after checkout main"
     if [ "$(whoami)" = "$APP_USER" ]; then
       (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
@@ -243,6 +293,27 @@ else
   warn "Service may not have started; check: sudo journalctl -u $SERVICE_NAME -n 30"
 fi
 # App runs on port 3000 only (no nginx); skip nginx reload.
+
+# Optional health probe (HEALTH_RETRIES > 0 or default when RUN_TYPECHECK=1)
+HR="${HEALTH_RETRIES}"
+if [ -z "$HR" ] || [ "$HR" = "0" ]; then
+  if [ "${RUN_TYPECHECK}" = "1" ] || [ "${RUN_TYPECHECK}" = "true" ]; then HR=12; fi
+fi
+if [ -n "$HR" ] && [ "$HR" -gt 0 ] 2>/dev/null; then
+  say "Waiting for /api/health (up to ${HR} attempts)"
+  health_ok=false
+  i=1
+  while [ "$i" -le "$HR" ]; do
+    if curl -fsS --max-time 5 "http://127.0.0.1:3000/api/health" >/dev/null 2>&1; then
+      health_ok=true
+      ok "Health check passed (attempt $i)"
+      break
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+  [ "$health_ok" = true ] || warn "Health check did not succeed after ${HR} attempts; verify: curl -s http://127.0.0.1:3000/api/health"
+fi
 
 # Version check (sudo in case APP_DIR is owned by app user)
 NEW_VERSION=$(sudo cat "$APP_DIR/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo "unknown")

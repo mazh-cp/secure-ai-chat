@@ -10,6 +10,8 @@
  * This adapter hides model-specific differences from the rest of the application.
  */
 
+import { azureOpenAiJsonHeaders, normalizeAzureEndpoint } from '@/lib/azure-openai'
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
@@ -47,6 +49,23 @@ const FALLBACK_CHAIN: Record<string, string[]> = {
  */
 function isGPT5Model(model: string): boolean {
   return GPT5_MODELS.some(gpt5 => model.toLowerCase().startsWith(gpt5.toLowerCase()))
+}
+
+/**
+ * Chat Completions: o-series and some newer models require max_completion_tokens, not max_tokens.
+ */
+function chatCompletionsUsesMaxCompletionTokens(model: string): boolean {
+  const m = model.toLowerCase()
+  return m.startsWith('o1') || m.startsWith('o2') || m.startsWith('o3') || m.startsWith('o4')
+}
+
+/** OpenAI 400 body often says to use max_completion_tokens instead of max_tokens. */
+function errorSuggestsMaxCompletionTokens(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    (m.includes('max_completion_tokens') && m.includes('max_tokens')) ||
+    (m.includes('max_tokens') && m.includes('not supported') && m.includes('use'))
+  )
 }
 
 /**
@@ -191,141 +210,161 @@ async function callGPT4ChatCompletionsAPI(
   openAiKey: string,
   options: AdapterOptions
 ): Promise<string> {
-  const requestBody: Record<string, unknown> = {
-    messages: [
-      ...(options.systemPrompt ? [{
-        role: 'system',
-        content: options.systemPrompt,
-      }] : []),
-      ...messages,
-    ],
-    temperature: options.temperature ?? 0.7,
-  }
-  
-  // Determine endpoint and headers based on provider
-  let endpoint = 'https://api.openai.com/v1/chat/completions'
+  const endpoint = 'https://api.openai.com/v1/chat/completions'
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${openAiKey}`,
   }
-  
-  // Standard OpenAI: use Bearer token and include model in request body
-  requestBody.model = model
-  headers['Authorization'] = `Bearer ${openAiKey}`
-  
-  // GPT-4 uses max_tokens
-  if (options.maxTokens !== undefined) {
-    requestBody.max_tokens = options.maxTokens
-  }
-  
-  let response: Response
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-  
-  try {
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-      // Add cache control for better error handling
-      cache: 'no-store',
-    })
-    clearTimeout(timeoutId)
-  } catch (fetchError) {
-    clearTimeout(timeoutId)
-    
-    // Handle network errors, CORS, connection refused, DNS failures, etc.
-    let errorMessage = 'Unknown network error'
-    let troubleshooting = ''
-    
-    if (fetchError instanceof Error) {
-      errorMessage = fetchError.message
-      
-      // Handle specific error types
-      if (fetchError.name === 'AbortError' || errorMessage.includes('aborted')) {
-        errorMessage = 'Request timeout (30 seconds). The OpenAI service may be slow or unavailable.'
-        troubleshooting = 'Please check: 1) OpenAI service status, 2) Network connectivity, 3) Try again in a few moments.'
-      } else if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
-        errorMessage = 'Network connection failed. Unable to reach OpenAI endpoint.'
-        troubleshooting = 'Please check your network connection and try again.'
-      } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
-        errorMessage = 'DNS resolution failed. Cannot resolve OpenAI endpoint hostname.'
-        troubleshooting = 'Please verify: 1) DNS is working, 2) Network connectivity.'
-      } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('connection refused')) {
-        errorMessage = 'Connection refused by OpenAI endpoint.'
-        troubleshooting = 'Please verify: 1) Network connectivity, 2) Service is available.'
-      } else if (errorMessage.includes('CERT') || errorMessage.includes('certificate')) {
-        errorMessage = 'SSL/TLS certificate error when connecting to OpenAI.'
-        troubleshooting = 'Please verify: 1) Certificate is valid, 2) System time is correct.'
+
+  let useMaxCompletionTokens = chatCompletionsUsesMaxCompletionTokens(model)
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const requestBody: Record<string, unknown> = {
+      model,
+      messages: [
+        ...(options.systemPrompt
+          ? [{ role: 'system', content: options.systemPrompt }]
+          : []),
+        ...messages,
+      ],
+      temperature: options.temperature ?? 0.7,
+    }
+
+    if (options.maxTokens !== undefined) {
+      if (useMaxCompletionTokens) {
+        requestBody.max_completion_tokens = options.maxTokens
       } else {
-        troubleshooting = 'Please check your network connection.'
+        requestBody.max_tokens = options.maxTokens
       }
     }
-    
-    // Log detailed error for debugging
-    console.error('OpenAI fetch error:', {
-      endpoint: endpoint.replace(/\/\/.*@/, '//***'),
-      error: errorMessage,
-      errorType: fetchError instanceof Error ? fetchError.name : 'Unknown',
-    })
-    
-    throw new Error(`Failed to connect to OpenAI API. ${errorMessage}${troubleshooting ? ' ' + troubleshooting : ''}`)
-  }
-  
-  if (!response.ok) {
-    let error: any = {}
-    let errorText = ''
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+    let response: Response
     try {
-      errorText = await response.text()
-      error = errorText ? JSON.parse(errorText) : {}
-    } catch (parseError) {
-      // If response isn't JSON, use the text or default message
-      error = { error: { message: errorText || `HTTP ${response.status}: ${response.statusText}` } }
-    }
-    
-    let errorMessage = error.error?.message || error.message || `OpenAI API error: ${response.status}`
-    
-    // Handle rate limit errors specifically
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After') || response.headers.get('retry-after')
-      const rateLimitType = error.error?.type || 'rate_limit_exceeded'
-      
-      if (retryAfter) {
-        errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
-      } else if (rateLimitType.includes('quota')) {
-        errorMessage = 'API quota exceeded. Please check your usage limits or upgrade your plan.'
-      } else {
-        errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.'
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      clearTimeout(timeoutId)
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+
+      let errorMessage = 'Unknown network error'
+      let troubleshooting = ''
+
+      if (fetchError instanceof Error) {
+        errorMessage = fetchError.message
+
+        if (fetchError.name === 'AbortError' || errorMessage.includes('aborted')) {
+          errorMessage =
+            'Request timeout (30 seconds). The OpenAI service may be slow or unavailable.'
+          troubleshooting =
+            'Please check: 1) OpenAI service status, 2) Network connectivity, 3) Try again in a few moments.'
+        } else if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
+          errorMessage = 'Network connection failed. Unable to reach OpenAI endpoint.'
+          troubleshooting = 'Please check your network connection and try again.'
+        } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
+          errorMessage = 'DNS resolution failed. Cannot resolve OpenAI endpoint hostname.'
+          troubleshooting = 'Please verify: 1) DNS is working, 2) Network connectivity.'
+        } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('connection refused')) {
+          errorMessage = 'Connection refused by OpenAI endpoint.'
+          troubleshooting = 'Please verify: 1) Network connectivity, 2) Service is available.'
+        } else if (errorMessage.includes('CERT') || errorMessage.includes('certificate')) {
+          errorMessage = 'SSL/TLS certificate error when connecting to OpenAI.'
+          troubleshooting = 'Please verify: 1) Certificate is valid, 2) System time is correct.'
+        } else {
+          troubleshooting = 'Please check your network connection.'
+        }
       }
-      
-      // Create a custom error with rate limit information
-      const rateLimitError = new Error(errorMessage) as Error & { 
-        rateLimit?: boolean
-        retryAfter?: number
-        statusCode?: number
-      }
-      rateLimitError.rateLimit = true
-      rateLimitError.retryAfter = retryAfter ? parseInt(retryAfter, 10) : 60
-      rateLimitError.statusCode = 429
-      throw rateLimitError
+
+      console.error('OpenAI fetch error:', {
+        endpoint: endpoint.replace(/\/\/.*@/, '//***'),
+        error: errorMessage,
+        errorType: fetchError instanceof Error ? fetchError.name : 'Unknown',
+      })
+
+      throw new Error(
+        `Failed to connect to OpenAI API. ${errorMessage}${troubleshooting ? ' ' + troubleshooting : ''}`
+      )
     }
-    
-    // Handle token limit errors
-    if (response.status === 400 && (errorMessage.includes('token') || errorMessage.includes('context_length'))) {
-      const tokenError = new Error(`Token limit exceeded: ${errorMessage}`) as Error & { 
-        tokenLimit?: boolean
-        statusCode?: number
+
+    if (!response.ok) {
+      let error: Record<string, unknown> = {}
+      let errorText = ''
+      try {
+        errorText = await response.text()
+        error = errorText ? (JSON.parse(errorText) as Record<string, unknown>) : {}
+      } catch {
+        error = { error: { message: errorText || `HTTP ${response.status}: ${response.statusText}` } }
       }
-      tokenError.tokenLimit = true
-      tokenError.statusCode = 400
-      throw tokenError
+
+      const errObj = error.error as { message?: string } | undefined
+      let errorMessage =
+        errObj?.message ||
+        (typeof error.message === 'string' ? error.message : null) ||
+        `OpenAI API error: ${response.status}`
+
+      if (
+        response.status === 400 &&
+        attempt === 0 &&
+        !useMaxCompletionTokens &&
+        errorSuggestsMaxCompletionTokens(errorMessage)
+      ) {
+        useMaxCompletionTokens = true
+        continue
+      }
+
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After') || response.headers.get('retry-after')
+        const rateLimitType = (error.error as { type?: string } | undefined)?.type || 'rate_limit_exceeded'
+
+        if (retryAfter) {
+          errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
+        } else if (rateLimitType.includes('quota')) {
+          errorMessage = 'API quota exceeded. Please check your usage limits or upgrade your plan.'
+        } else {
+          errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.'
+        }
+
+        const rateLimitError = new Error(errorMessage) as Error & {
+          rateLimit?: boolean
+          retryAfter?: number
+          statusCode?: number
+        }
+        rateLimitError.rateLimit = true
+        rateLimitError.retryAfter = retryAfter ? parseInt(retryAfter, 10) : 60
+        rateLimitError.statusCode = 429
+        throw rateLimitError
+      }
+
+      const looksLikeContextOverflow =
+        errorMessage.includes('context_length') ||
+        errorMessage.includes('maximum context') ||
+        /requested.*tokens.*exceed/i.test(errorMessage)
+
+      if (response.status === 400 && looksLikeContextOverflow) {
+        const tokenError = new Error(`Token limit exceeded: ${errorMessage}`) as Error & {
+          tokenLimit?: boolean
+          statusCode?: number
+        }
+        tokenError.tokenLimit = true
+        tokenError.statusCode = 400
+        throw tokenError
+      }
+
+      throw new Error(errorMessage)
     }
-    
-    throw new Error(errorMessage)
+
+    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    return data.choices?.[0]?.message?.content || 'No response generated.'
   }
-  
-  const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response generated.'
+
+  throw new Error('OpenAI Chat Completions failed after retries')
 }
 
 /**
@@ -579,61 +618,90 @@ async function callAzureChatCompletionsAPI(
   azureEndpoint: string,
   apiVersion: string,
 ): Promise<string> {
-  const requestBody: Record<string, unknown> = {
-    messages: [
-      ...(options.systemPrompt ? [{ role: 'system', content: options.systemPrompt }] : []),
-      ...messages,
-    ],
-    temperature: options.temperature ?? 0.7,
-  }
+  const base = normalizeAzureEndpoint(azureEndpoint)
+  const url = `${base}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`
 
-  // GPT-4 style uses max_tokens
-  if (options.maxTokens !== undefined) {
-    requestBody.max_tokens = options.maxTokens
-  }
+  let useMaxCompletionTokens = chatCompletionsUsesMaxCompletionTokens(deployment)
 
-  const url = `${azureEndpoint}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 30000)
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': azureApiKey,
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({})) as any
-      const errorMessage =
-        errBody?.error?.message ||
-        errBody?.message ||
-        `Azure OpenAI request failed (${response.status})`
-      throw new Error(errorMessage)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const requestBody: Record<string, unknown> = {
+      messages: [
+        ...(options.systemPrompt ? [{ role: 'system', content: options.systemPrompt }] : []),
+        ...messages,
+      ],
+      temperature: options.temperature ?? 0.7,
     }
 
-    const data = await response.json().catch(() => ({})) as any
-    const content =
-      data?.choices?.[0]?.message?.content ||
-      data?.choices?.[0]?.text ||
-      data?.choices?.[0]?.delta?.content ||
-      'No response generated.'
-
-    return String(content)
-  } catch (fetchError) {
-    clearTimeout(timeoutId)
-    if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-      throw new Error('Azure OpenAI request timeout (30 seconds).')
+    if (options.maxTokens !== undefined) {
+      if (useMaxCompletionTokens) {
+        requestBody.max_completion_tokens = options.maxTokens
+      } else {
+        requestBody.max_tokens = options.maxTokens
+      }
     }
-    throw fetchError instanceof Error ? fetchError : new Error(String(fetchError))
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: azureOpenAiJsonHeaders(azureApiKey, base),
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '')
+        let errBody: Record<string, unknown> = {}
+        try {
+          errBody = errText ? (JSON.parse(errText) as Record<string, unknown>) : {}
+        } catch {
+          errBody = {}
+        }
+        const errNested = errBody.error as { message?: string } | undefined
+        const errorMessage =
+          errNested?.message ||
+          (typeof errBody.message === 'string' ? errBody.message : null) ||
+          errText ||
+          `Azure OpenAI request failed (${response.status})`
+
+        if (
+          response.status === 400 &&
+          attempt === 0 &&
+          !useMaxCompletionTokens &&
+          errorSuggestsMaxCompletionTokens(errorMessage)
+        ) {
+          useMaxCompletionTokens = true
+          continue
+        }
+
+        throw new Error(errorMessage)
+      }
+
+      const data = (await response.json().catch(() => ({}))) as {
+        choices?: Array<{ message?: { content?: string }; text?: string; delta?: { content?: string } }>
+      }
+      const content =
+        data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.text ||
+        data?.choices?.[0]?.delta?.content ||
+        'No response generated.'
+
+      return String(content)
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        throw new Error('Azure OpenAI request timeout (30 seconds).')
+      }
+      throw fetchError instanceof Error ? fetchError : new Error(String(fetchError))
+    }
   }
+
+  throw new Error('Azure OpenAI Chat Completions failed after retries')
 }
 
 /**

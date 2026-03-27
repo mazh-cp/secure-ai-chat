@@ -1304,9 +1304,6 @@ export default function FilesPage() {
                     checked={lakeraScanEnabled}
                     onChange={(e) => {
                       setLakeraScanEnabled(e.target.checked)
-                      if (!e.target.checked) {
-                        setRagScanEnabled(false) // Disable RAG scan if Lakera is disabled
-                      }
                     }}
                     className="sr-only peer"
                   />
@@ -1318,17 +1315,17 @@ export default function FilesPage() {
               </div>
             </div>
 
-            {/* RAG Scan Toggle */}
+            {/* Lakera after upload (upload pipeline only; chat file context is controlled on the Chat page) */}
             <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-theme">RAG Auto-Scan</span>
+                  <span className="text-base font-medium text-theme">Lakera after upload</span>
                   {/* Status Dot */}
                   <div 
                     className={`h-2 w-2 rounded-full transition-all ${
                       ragScanEnabled && lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
                     }`}
-                    title={ragScanEnabled && lakeraScanEnabled ? 'Enabled' : 'Disabled'}
+                    title={ragScanEnabled && lakeraScanEnabled ? 'Active on new uploads' : 'Off'}
                     style={{
                       boxShadow: ragScanEnabled && lakeraScanEnabled
                         ? '0 0 8px rgba(34, 197, 94, 0.6)' 
@@ -1336,13 +1333,15 @@ export default function FilesPage() {
                     }}
                   />
                 </div>
-                <span className="text-base text-theme-subtle mt-1">Automatically scan files on upload</span>
+                <span className="text-base text-theme-subtle mt-1 max-w-md">
+                  When ON: run Lakera on each new upload before RAG indexing, and run Lakera on each snippet retrieved in chat (requires Lakera Scan ON). Chat can still read stored file text when this is OFF — enable &quot;Use uploaded files in chat&quot; on the home page.
+                </span>
               </div>
               <div className="flex items-center space-x-3">
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={ragScanEnabled && lakeraScanEnabled}
+                    checked={ragScanEnabled}
                     onChange={(e) => setRagScanEnabled(e.target.checked)}
                     disabled={!lakeraScanEnabled}
                     className="sr-only peer"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiKeys } from '@/lib/api-keys-storage'
+import { LAKERA_GUARD_URL_DEFAULT } from '@/lib/lakera-guard-endpoint'
 
 /**
  * GET - Retrieve API keys status for client-side checks
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
         azureOpenAiApiVersion: keys.azureOpenAiApiVersion || '2025-04-01-preview',
         lakeraAiKey: keys.lakeraAiKey ? 'configured' : null,
         lakeraProjectId: keys.lakeraProjectId ? 'configured' : null,
-        lakeraEndpoint: keys.lakeraEndpoint || 'https://api.lakera.ai/v2/guard',
+        lakeraEndpoint: keys.lakeraEndpoint || LAKERA_GUARD_URL_DEFAULT,
       },
       // Also return configured status for easier checking
       configured: {
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
           azureOpenAiApiVersion: '2025-04-01-preview',
           lakeraAiKey: null,
           lakeraProjectId: null,
-          lakeraEndpoint: 'https://api.lakera.ai/v2/guard',
+          lakeraEndpoint: LAKERA_GUARD_URL_DEFAULT,
         },
       },
       { 

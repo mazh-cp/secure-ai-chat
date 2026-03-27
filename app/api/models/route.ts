@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import {
+  azureOpenAiAuthHeaders,
+  normalizeAzureEndpoint,
+} from '@/lib/azure-openai'
+
 // Mark route as dynamic since it uses query parameters
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +35,21 @@ interface AzureDeployment {
   name?: string
 }
 
+/** Azure data-plane list deployments works with inference API dates; preview chat versions may 404 on GET /deployments. */
+const AZURE_DEPLOYMENTS_LIST_API_VERSIONS = [
+  '2024-10-21',
+  '2024-06-01',
+  '2023-05-15',
+] as const
+
+function parseAzureDeploymentsPayload(raw: unknown): AzureDeployment[] {
+  if (!raw || typeof raw !== 'object') return []
+  const o = raw as { data?: unknown; value?: unknown }
+  const list = o.data ?? o.value
+  if (!Array.isArray(list)) return []
+  return list as AzureDeployment[]
+}
+
 /**
  * GET /api/models
  * Fetches available models for the user's API key.
@@ -56,51 +76,92 @@ export async function GET(request: NextRequest) {
 
     if (provider === 'azure') {
       const apiKey = serverKeys.azureOpenAiKey
-      const endpoint = serverKeys.azureOpenAiEndpoint
-      const apiVersion = serverKeys.azureOpenAiApiVersion || '2025-04-01-preview'
+      const endpointRaw = serverKeys.azureOpenAiEndpoint
+      const configuredChatVersion = serverKeys.azureOpenAiApiVersion || '2025-04-01-preview'
 
-      if (!apiKey || !endpoint) {
+      if (!apiKey || !endpointRaw) {
         return NextResponse.json(
           { error: 'Azure OpenAI API key and endpoint are required' },
           { status: 400 }
         )
       }
 
+      const endpoint = normalizeAzureEndpoint(endpointRaw)
+      // Try known-good list API versions first; user's version is for chat/completions and often 404s on GET /deployments.
+      const versionsToTry: string[] = [...AZURE_DEPLOYMENTS_LIST_API_VERSIONS]
+      if (!versionsToTry.some((v) => v === configuredChatVersion)) {
+        versionsToTry.push(configuredChatVersion)
+      }
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
       try {
-        const url = `${endpoint}/openai/deployments?api-version=${encodeURIComponent(apiVersion)}`
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': apiKey,
-          },
-          signal: controller.signal,
-        })
+        let lastStatus = 0
+        let lastMessage = ''
+
+        for (const ver of versionsToTry) {
+          const url = `${endpoint}/openai/deployments?api-version=${encodeURIComponent(ver)}`
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: azureOpenAiAuthHeaders(apiKey, endpoint),
+            signal: controller.signal,
+          })
+
+          if (response.ok) {
+            clearTimeout(timeoutId)
+            const raw = await response.json().catch(() => ({}))
+            const deployments = parseAzureDeploymentsPayload(raw)
+            const models = deployments
+              .map((d) => {
+                const id = d.id || d.name
+                return id ? { id, name: id } : null
+              })
+              .filter((x): x is { id: string; name: string } => x != null)
+
+            return NextResponse.json({
+              models,
+              azureDeploymentsApiVersionUsed: ver,
+            })
+          }
+
+          const errorData = (await response.json().catch(() => ({}))) as {
+            error?: { message?: string; code?: string }
+            message?: string
+          }
+          lastStatus = response.status
+          lastMessage =
+            errorData?.error?.message ||
+            errorData?.message ||
+            (typeof errorData?.error === 'string' ? errorData.error : '') ||
+            response.statusText ||
+            'Failed to fetch Azure deployments'
+
+          // Retry on 404 "Resource not found" — usually wrong api-version for this operation.
+          if (response.status === 404) {
+            continue
+          }
+          // Auth / key issues: do not keep hammering.
+          if (response.status === 401 || response.status === 403) {
+            clearTimeout(timeoutId)
+            const sanitizedError = lastMessage.toLowerCase().includes('invalid')
+              ? 'Invalid Azure OpenAI credentials'
+              : lastMessage
+            return NextResponse.json({ error: sanitizedError }, { status: response.status })
+          }
+        }
 
         clearTimeout(timeoutId)
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          const errorMessage = errorData?.error?.message || errorData?.message || 'Failed to fetch Azure deployments'
-          const sanitizedError = errorMessage.toLowerCase().includes('invalid')
-            ? 'Invalid Azure OpenAI credentials'
-            : errorMessage
-          return NextResponse.json({ error: sanitizedError }, { status: response.status })
-        }
-
-        const data = (await response.json()) as { data?: AzureDeployment[] }
-        const deployments = data.data || []
-        const models = deployments
-          .map((d) => {
-            const id = d.id || d.name
-            return id ? { id, name: id } : null
-          })
-          .filter((x): x is { id: string; name: string } => x != null)
-
-        return NextResponse.json({ models })
+        // Listing failed for all versions — allow chat to work with a manually entered deployment name.
+        return NextResponse.json({
+          models: [],
+          azureDeploymentListFailed: true,
+          message:
+            lastStatus === 404
+              ? 'Could not list deployments (Azure returned Resource not found for this endpoint/API version). Enter your deployment name manually. For API Management use the full gateway base (e.g. https://staging-openai.azure-api.net/openai-gw-proxy-dev); for native Azure OpenAI use https://your-resource.openai.azure.com.'
+              : `Could not list deployments (${lastMessage}). Enter your deployment name manually.`,
+        })
       } catch (fetchError: unknown) {
         clearTimeout(timeoutId)
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {

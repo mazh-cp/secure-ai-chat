@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { isTeApiKeyConfiguredSync } from '@/lib/checkpoint-te'
+import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
 /**
  * GET - Check server-side API key configuration status
@@ -29,7 +30,7 @@ export async function GET() {
       lakeraEndpoint: {
         configured: !!process.env.LAKERA_ENDPOINT?.trim(),
         source: process.env.LAKERA_ENDPOINT ? 'environment' : 'localStorage',
-        value: process.env.LAKERA_ENDPOINT || 'https://api.lakera.ai/v2/guard',
+        value: resolveLakeraGuardEndpoint(process.env.LAKERA_ENDPOINT),
       },
       checkpointTeApiKey: {
         configured: checkpointTeConfigured,

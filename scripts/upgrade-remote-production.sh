@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Secure AI Chat — Remote production upgrade (one-liner friendly)
 #
-# Defaults GIT_REF to the current production release tag (v1.0.18) and runs the
+# Defaults GIT_REF to main (latest). Override with GIT_REF=v1.0.20 when the tag
+# exists on origin. Runs the
 # same flow as scripts/upgrade-curl-production.sh: backup, fetch, checkout,
 # npm install/ci, build, restart systemd, health/version checks. Build failures
 # on a non-main ref retry once by checking out main (see upgrade-curl-production.sh).
@@ -19,7 +20,7 @@
 #
 # Track main instead of the release tag:
 #
-#   GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-remote-production.sh | bash
+#   GIT_REF=v1.0.20 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-remote-production.sh | bash
 #
 # Pin another tag or branch:
 #
@@ -31,11 +32,12 @@
 # If this URL returns 404, the file is not on main yet — use the canonical script
 # (same behavior; set GIT_REF yourself). Default there is already main:
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
-#   GIT_REF=v1.0.18 curl -fsSL .../upgrade-curl-production.sh | bash
+#   GIT_REF=v1.0.20 curl -fsSL .../upgrade-curl-production.sh | bash
+#   (If the tag is missing on GitHub, upgrade-curl-production.sh falls back to main.)
 #
 set -euo pipefail
 
-GIT_REF="${GIT_REF:-v1.0.18}"
+GIT_REF="${GIT_REF:-main}"
 export GIT_REF
 
 UPGRADE_SCRIPT_URL="${UPGRADE_SCRIPT_URL:-https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh}"

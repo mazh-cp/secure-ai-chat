@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.0.18'
+export const APP_VERSION = '1.0.20'
 
-export const RELEASE_DATE = '2026-03-26'
+export const RELEASE_DATE = '2026-03-28'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,23 +18,27 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.0.12]) */
+/** Release notes for current version (matches CHANGELOG.md [1.0.20]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'Freeze baseline: code prior to 2026-01-19 tagged as v1.0.11-freeze (immutable). New work lives on release/1.0.12.',
-      'CI guard: scripts/guard-prejan19.sh fails CI if changes vs v1.0.11-freeze are outside file/RAG/security paths.',
-      'File/RAG/Security: Persistent file storage (registry + ./data/uploads), unified file registry with owner/session scoping.',
-      'Deterministic delete/clear (bytes + metadata + vectors), RAG reindex endpoint POST /api/files/:id/reindex.',
-      'RAG readiness in list (ragStatus: queued/ready), Lakera at upload and on retrieved chunks before OpenAI.',
-      'Stability smoke script: npm run smoke:stability.',
+      'Binary upload decode: POST /api/files/store decodes client base64 (PDF/DOCX) via lib/upload-body-buffer.ts instead of storing UTF-8 of base64.',
+      'RAG: mammoth + pdf-parse extract text from DOCX/DOC/PDF (lib/extract-text-for-rag.ts) in rag-context and chat fallback.',
+      'Production upgrade: scripts/upgrade-remote-production-v2.sh, run-remote-production-upgrade.sh; curl script RUN_TYPECHECK, HEALTH_RETRIES, .storage restore, missing-tag fallback to main.',
     ],
   },
   {
-    title: 'Compatibility',
+    title: 'Fixed',
     items: [
-      'No routes or response fields removed or renamed; only new fields (e.g. ragStatus) and new endpoints (e.g. /api/files/:id/reindex) added.',
+      'Chat could not answer from uploaded PDF/Word when scans were off — root cause was on-disk bytes + missing text extraction.',
+      'Upgrade one-liners: default GIT_REF=main when release tags are not pushed; documented Option A1 curl without v2 wrapper.',
+    ],
+  },
+  {
+    title: 'Changed',
+    items: [
+      'next.config.js: serverExternalPackages for pdf-parse, pdfjs-dist, mammoth.',
     ],
   },
 ]

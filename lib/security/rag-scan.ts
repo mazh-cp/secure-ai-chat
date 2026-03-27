@@ -19,6 +19,10 @@ export type ScanMeta = {
   filename?: string
   tenantId?: string
   source?: string
+  /** Prefer server keys from getApiKeys(); overrides env when set (e.g. chat RAG / embed). */
+  lakeraApiKeyOverride?: string
+  lakeraEndpointOverride?: string
+  lakeraProjectIdOverride?: string | null
 }
 
 export interface IngestionScanResult {
@@ -64,6 +68,9 @@ export async function scanIngestion(text: string, meta: ScanMeta): Promise<Inges
       user_id: meta.userId,
       session_id: meta.sessionId,
     },
+    lakeraApiKeyOverride: meta.lakeraApiKeyOverride,
+    lakeraEndpointOverride: meta.lakeraEndpointOverride,
+    lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
   }
 
   const lakeraResult = await scanTextWithLakera(lakeraInput)
@@ -107,7 +114,12 @@ export async function scanRetrieval(
         docId: chunk.metadata?.docId as string | undefined,
         tenantId: meta.tenantId,
         ip_address: meta.ipAddress,
+        user_id: meta.userId,
+        session_id: meta.sessionId,
       },
+      lakeraApiKeyOverride: meta.lakeraApiKeyOverride,
+      lakeraEndpointOverride: meta.lakeraEndpointOverride,
+      lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
     }
 
     const result = await scanTextWithLakera(lakeraInput)
@@ -152,6 +164,9 @@ export async function scanGeneration(
       user_id: meta.userId,
       session_id: meta.sessionId,
     },
+    lakeraApiKeyOverride: meta.lakeraApiKeyOverride,
+    lakeraEndpointOverride: meta.lakeraEndpointOverride,
+    lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
   }
 
   const lakeraResult = await scanTextWithLakera(lakeraInput)

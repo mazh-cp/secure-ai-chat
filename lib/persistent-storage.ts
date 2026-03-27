@@ -84,9 +84,17 @@ export async function readOwnerFile(ownerId: string, fileId: string): Promise<st
 }
 
 /**
- * Read file as Buffer from ./data/uploads/<ownerId>/<fileId>. Returns null if not found.
+ * Read file as Buffer from canonical raw.bin or legacy flat path. Returns null if not found.
+ * Matches readOwnerFile so Numbers/RAG paths work with v1.0.16+ storage layout.
  */
 export async function readOwnerFileBuffer(ownerId: string, fileId: string): Promise<Buffer | null> {
+  try {
+    const { readRaw } = await import('@/lib/storage-canonical')
+    const raw = await readRaw(ownerId, fileId)
+    if (raw) return raw
+  } catch {
+    // fall through to legacy
+  }
   try {
     const p = filePath(ownerId, fileId)
     return await fs.readFile(p)

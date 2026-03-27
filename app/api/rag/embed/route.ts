@@ -5,6 +5,8 @@ import { getOwnerId } from '@/lib/owner'
 import { listFiles } from '@/lib/registry/files-registry'
 import { readOwnerFile } from '@/lib/persistent-storage'
 import { indexFileForRAG } from '@/lib/rag/registry-index'
+import { getApiKeys } from '@/lib/api-keys-storage'
+import { getUserIP } from '@/lib/logging'
 
 /** GET not supported; use POST to index from storage. */
 export async function GET() {
@@ -26,6 +28,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const fileIds = body.fileIds as string[] | undefined
 
+    const keys = await getApiKeys()
+    const lakeraMeta = {
+      lakeraApiKeyOverride: keys.lakeraAiKey ?? undefined,
+      lakeraEndpointOverride: keys.lakeraEndpoint ?? undefined,
+      lakeraProjectIdOverride: keys.lakeraProjectId ?? undefined,
+      ipAddress: getUserIP(request),
+    }
+
     const files = fileIds?.length
       ? listFiles({ owner_id: owner }).filter((f) => fileIds.includes(f.id))
       : listFiles({ owner_id: owner })
@@ -42,6 +52,7 @@ export async function POST(request: NextRequest) {
         const result = await indexFileForRAG(file.id, content, file.name, {
           owner_id: owner,
           session_id: file.session_id ?? undefined,
+          ...lakeraMeta,
         })
         results.push({
           fileId: file.id,

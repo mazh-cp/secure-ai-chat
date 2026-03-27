@@ -8,6 +8,12 @@ import ModelSelector, { type ChatProvider } from './ModelSelector'
 import { Message } from '@/types/chat'
 import { addLog } from '@/lib/logging'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
+import { DEFAULT_AZURE_DEPLOYMENT_ID } from '@/lib/azure-openai'
+import {
+  LS_CHAT_USE_UPLOADS,
+  readChatUseUploadsInChat,
+  readEffectiveLakeraRetrievalScan,
+} from '@/lib/chat-local-preferences'
 
 interface ApiKeys {
   openAiKey: string
@@ -34,9 +40,32 @@ export default function ChatInterface() {
   const [apiKeys, setApiKeys] = useState<ApiKeys | null>(null)
   const [inputScanEnabled, setInputScanEnabled] = useState(true)
   const [outputScanEnabled, setOutputScanEnabled] = useState(true)
+  /** File/RAG context in answers — independent of Lakera file-upload toggles */
+  const [useUploadsInChat, setUseUploadsInChat] = useState(true)
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini')
   const [provider, setProvider] = useState<ChatProvider>('openai')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const handleProviderChange = (p: ChatProvider) => {
+    setProvider(p)
+    if (p === 'azure') {
+      setSelectedModel((prev) => {
+        const looksLikeOpenAiDefault = new Set([
+          'gpt-4o-mini',
+          'gpt-4o',
+          'gpt-4-turbo',
+          'gpt-4-turbo-preview',
+          'gpt-4',
+          'gpt-3.5-turbo',
+          '',
+        ])
+        if (looksLikeOpenAiDefault.has(prev) || !prev.trim()) {
+          return DEFAULT_AZURE_DEPLOYMENT_ID
+        }
+        return prev
+      })
+    }
+  }
 
   // Load API keys from server-side storage (fallback to localStorage for backward compatibility)
   useEffect(() => {
@@ -201,6 +230,7 @@ export default function ChatInterface() {
           console.error('Failed to load toggle states:', e)
         }
       }
+      setUseUploadsInChat(readChatUseUploadsInChat())
     }
 
     window.addEventListener('storage', handleStorageChange)
@@ -211,6 +241,14 @@ export default function ChatInterface() {
       window.removeEventListener('storage', handleStorageChange)
       clearInterval(interval)
     }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (localStorage.getItem(LS_CHAT_USE_UPLOADS) === null) {
+      localStorage.setItem(LS_CHAT_USE_UPLOADS, 'true')
+    }
+    setUseUploadsInChat(readChatUseUploadsInChat())
   }, [])
 
   const scrollToBottom = () => {
@@ -259,10 +297,9 @@ export default function ChatInterface() {
         content: m.content,
       }))
 
-      // Check if RAG is enabled (from localStorage or default to true)
-      const ragEnabled = typeof window !== 'undefined' ? 
-        (localStorage.getItem('lakeraRagScanEnabled') !== null ? 
-          JSON.parse(localStorage.getItem('lakeraRagScanEnabled') || 'true') : true) : true
+      const enableRAG = typeof window !== 'undefined' ? useUploadsInChat : true
+      const lakeraRetrievalScan =
+        typeof window !== 'undefined' ? readEffectiveLakeraRetrievalScan() : true
 
       const { ownerHeaders, apiFetchOptions } = await import('@/lib/owner-client')
       const response = await fetch('/api/chat', {
@@ -277,11 +314,14 @@ export default function ChatInterface() {
           apiKeys: apiKeys,
           provider,
           model: selectedModel,
+          // Let the server run Lakera when keys exist; toggles only control user preference.
+          // Do not gate on apiKeys.lakeraAiKey here — client may show stale state; server merges real keys from storage/env.
           scanOptions: {
-            scanInput: inputScanEnabled && !!(apiKeys?.lakeraAiKey),
-            scanOutput: outputScanEnabled && !!(apiKeys?.lakeraAiKey),
+            scanInput: inputScanEnabled,
+            scanOutput: outputScanEnabled,
           },
-          enableRAG: ragEnabled,
+          enableRAG,
+          lakeraRetrievalScan,
         }),
       })
 
@@ -411,7 +451,8 @@ export default function ChatInterface() {
 
   const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
   const hasAnthropicKey = apiKeys?.anthropicApiKey === 'configured' || (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
-  const hasChatKey = hasOpenAiKey || hasAnthropicKey
+  const hasAzureKey = apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+  const hasChatKey = hasOpenAiKey || hasAnthropicKey || hasAzureKey
 
   return (
     <div className="flex flex-col h-full">
@@ -449,11 +490,38 @@ export default function ChatInterface() {
         </div>
       )}
 
+      {/* Uploaded files in chat (separate from Lakera / TE upload scanning) */}
+      {hasChatKey && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'rgb(var(--border))', background: 'rgba(var(--surface-2), 0.4)' }}>
+          <div className="text-theme min-w-0">
+            <span className="font-medium text-theme">Use uploaded files in chat</span>
+            <p className="text-xs text-theme-muted mt-0.5">
+              Answers can include your stored uploads even when Lakera or Check Point file scanning is off. Turn off to use the model only.
+            </p>
+          </div>
+          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={useUploadsInChat}
+              onChange={(e) => {
+                const v = e.target.checked
+                setUseUploadsInChat(v)
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem(LS_CHAT_USE_UPLOADS, JSON.stringify(v))
+                }
+              }}
+            />
+            <div className="h-6 w-11 rounded-full bg-white/20 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white/30 after:bg-white after:transition-all peer-checked:after:translate-x-full peer-checked:bg-brand-berry/50 peer-focus:ring-2 peer-focus:ring-brand-berry/30" />
+          </label>
+        </div>
+      )}
+
       {/* Provider & Model Selector (OpenAI or Anthropic) */}
       <div className="mb-4 flex justify-end items-center gap-4 flex-wrap">
           <ModelSelector
             provider={provider}
-            onProviderChange={setProvider}
+            onProviderChange={handleProviderChange}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
           apiKey={provider === 'anthropic' ? (apiKeys?.anthropicApiKey || null) : (apiKeys?.openAiKey || null)}
