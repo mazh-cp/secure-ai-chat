@@ -187,7 +187,7 @@ export async function buildRagContext(
   const queryLower = query.toLowerCase()
   const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2)
   const isDataQuery =
-    /user|person|people|names?|email|id|record|data|field|column|row|list|count|line item|how many|who|what|where|when|find|search|show|display|code|department|bob|alice|key|token|deployment|company|companies|corporat|business|firm|organization|org|individual|employee|employees|customer|clients?|vendors?|suppliers?|contact|details?|information|profile|stakeholder|director|manager|executive|founder|ceo|cfo|address|phone|website|title|role|salary|revenue|account/i.test(
+    /user|person|people|names?|email|id|record|data|field|column|row|list|count|line item|how many|who|what|where|when|find|search|show|display|code|department|bob|alice|key|token|deployment|company|companies|corporat|business|firm|organization|org|individual|employee|employees|customer|clients?|vendors?|suppliers?|contact|details?|information|profile|stakeholder|director|manager|executive|founder|ceo|cfo|address|phone|website|title|role|salary|revenue|account|visa|h-?1b|h1b|work\s+authorization|immigration|citizenship|passport|i-?9|green\s+card|permanent\s+resident/i.test(
       queryLower,
     )
 
@@ -266,9 +266,16 @@ export async function buildRagContext(
         nameLower.endsWith('.docx') ||
         nameLower.endsWith('.doc') ||
         nameLower.endsWith('.pdf')
+      const isExcel =
+        nameLower.endsWith('.xlsx') ||
+        nameLower.endsWith('.xls') ||
+        nameLower.endsWith('.xlsm') ||
+        typeLower.includes('spreadsheetml') ||
+        typeLower.includes('ms-excel') ||
+        typeLower.includes('vnd.ms-excel')
 
       let content: string | null = null
-      if (needsBinaryText && useStorage) {
+      if ((needsBinaryText || isExcel) && useStorage) {
         const binBuf = await readBuffer(fileMeta.id)
         content = await extractTextFromBinaryForRag(fileMeta, binBuf)
       }
@@ -288,9 +295,13 @@ export async function buildRagContext(
       const isDataFile =
         fileMeta.type.includes('csv') ||
         fileMeta.type.includes('json') ||
+        fileMeta.type.includes('spreadsheet') ||
         fileMeta.name.endsWith('.csv') ||
         fileMeta.name.endsWith('.json') ||
-        fileMeta.name.endsWith('.txt')
+        fileMeta.name.endsWith('.txt') ||
+        fileMeta.name.endsWith('.xlsx') ||
+        fileMeta.name.endsWith('.xls') ||
+        fileMeta.name.endsWith('.xlsm')
       const proseDoc = isProseLikeFile(fileMeta)
       const hasKeywordMatch = queryWords.some((word) => contentLower.includes(word))
       const shouldInclude = isDataFile || proseDoc || isDataQuery || hasKeywordMatch

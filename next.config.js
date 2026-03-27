@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Enable standalone output for Docker
   // pdf-parse / pdfjs-dist pull in worker assets; keep them external for server bundles
-  serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'mammoth'],
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'mammoth', 'xlsx'],
 
   // Security headers (HSTS only in production — sending HSTS over http://localhost breaks client
   // navigation in dev: browsers upgrade to HTTPS and RSC fetches fail with "Failed to fetch".)

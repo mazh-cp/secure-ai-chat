@@ -31,7 +31,7 @@ function isFileOrDataQuestion(query: string): boolean {
   const q = query.trim().toLowerCase()
   // Explicit file/data intent: who, which people, list, find, in the file, from the data, users with, records, etc.
   const fileDataPatterns = [
-    /\b(who|which\s+people|which\s+person|list|find|show|get)\s+(is|are|has|have|with|dealing|suffering|from)/i,
+    /\b(who|which\s+people|which\s+person|list|find|show|get)\s+(is|are|has|have|with|on|using|holding|dealing|suffering|from)/i,
     /\b(in\s+(the\s+)?(file|data|document|upload))/i,
     /\b(from\s+(the\s+)?(file|data|document|upload))/i,
     /\b(users?|people|persons?|records?|rows?)\s+(with|who|that|where)/i,
@@ -39,7 +39,8 @@ function isFileOrDataQuestion(query: string): boolean {
     /\b(data|records?|file\s+content)\s+(about|for|from)/i,
     /\b(search|look)\s+(in|through)\s+(the\s+)?(file|data|documents?)/i,
     /\b(tell\s+me\s+about|what\s+do\s+you\s+know\s+about|information\s+about|details?\s+(on|for|about))\b/i,
-    /\b(who\s+is|who\s+are|who\s+works|which\s+company|which\s+companies)\b/i,
+    /\b(who\s+is|who\s+are|who\s+works|who\s+has|who\s+have|which\s+company|which\s+companies)\b/i,
+    /\b(visa|h-?1b|h1b|work\s+authorization|immigration|green\s+card|permanent\s+resident)\b/i,
     /\b(uploaded|my\s+upload|I\s+uploaded)\b.*\b(file|document|csv|data|spreadsheet|txt)\b/i,
     /\b(file|document|csv|spreadsheet)\b.*\b(uploaded|I\s+uploaded|my\s+upload)\b/i,
     /\b(according\s+to|based\s+on)\s+(the\s+)?(file|document|upload|csv|data|spreadsheet)\b/i,
@@ -276,6 +277,13 @@ export async function POST(request: NextRequest) {
         if (ragContextFromRetrieve.chunks.length > 0) {
           ragChunks = ragContextFromRetrieve.chunks
         }
+        if (uploadedFiles.length === 0 && owner) {
+          console.warn(
+            '[chat RAG] registry has no files for owner_id prefix=',
+            owner.slice(0, 12),
+            '— uploads use a different browser/session cookie than chat, or registry empty.',
+          )
+        }
         if (process.env.NODE_ENV !== 'production') {
           const ctx = buildForensicContext(request, ownerId, uploadedFiles.length, uploadedFiles.map((f) => f.id))
           logForensic('api/chat (RAG)', ctx)
@@ -305,8 +313,15 @@ export async function POST(request: NextRequest) {
                 nameLower.endsWith('.docx') ||
                 nameLower.endsWith('.doc') ||
                 nameLower.endsWith('.pdf')
+              const isExcel =
+                nameLower.endsWith('.xlsx') ||
+                nameLower.endsWith('.xls') ||
+                nameLower.endsWith('.xlsm') ||
+                typeLower.includes('spreadsheetml') ||
+                typeLower.includes('ms-excel') ||
+                typeLower.includes('vnd.ms-excel')
               let fileContent: string | null = null
-              if (needsBinaryText) {
+              if (needsBinaryText || isExcel) {
                 const buf = await readOwnerFileBuffer(owner, fileMeta.id)
                 fileContent = await extractTextFromBinaryForRag(fileMeta, buf)
               }
@@ -328,19 +343,26 @@ export async function POST(request: NextRequest) {
                 fileMeta.type.includes('json') ||
                 fileMeta.type.includes('wordprocessing') ||
                 fileMeta.type.includes('pdf') ||
+                fileMeta.type.includes('spreadsheet') ||
                 fileMeta.name.endsWith('.csv') ||
                 fileMeta.name.endsWith('.json') ||
                 fileMeta.name.endsWith('.txt') ||
                 fileMeta.name.endsWith('.docx') ||
                 fileMeta.name.endsWith('.doc') ||
-                fileMeta.name.endsWith('.pdf')
+                fileMeta.name.endsWith('.pdf') ||
+                fileMeta.name.endsWith('.xlsx') ||
+                fileMeta.name.endsWith('.xls') ||
+                fileMeta.name.endsWith('.xlsm')
               
               // Enhanced keyword matching
               const queryWords = userQuery.split(/\s+/).filter((w: string) => w.length > 2)
               const hasKeywordMatch = queryWords.some((word: string) => contentLower.includes(word))
               
               // Check for common data patterns in query
-              const isDataQuery = /user|person|people|name|email|id|record|data|field|column|row|list|count|how many|who|what|where|when|find|search|show|display/i.test(userQuery)
+              const isDataQuery =
+                /user|person|people|name|email|id|record|data|field|column|row|list|count|how many|who|what|where|when|find|search|show|display|visa|h-?1b|h1b|work\s+authorization|immigration/i.test(
+                  userQuery,
+                )
               
               // ENHANCEMENT: Always include data files, or if query mentions data-related terms
               // OR if there's any keyword match

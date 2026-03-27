@@ -88,8 +88,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ALLOWED_TYPES = ['text/plain', 'application/pdf', 'text/markdown', 'application/json', 'text/csv', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-    const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx']
+    const ALLOWED_TYPES = [
+      'text/plain',
+      'application/pdf',
+      'text/markdown',
+      'application/json',
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ]
+    const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx', '.xlsx', '.xls', '.xlsm']
     const fileExtension = '.' + fileNameStr.split('.').pop()?.toLowerCase()
     if (!ALLOWED_TYPES.includes(fileTypeStr) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
