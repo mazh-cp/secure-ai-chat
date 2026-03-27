@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { APP_VERSION } from '@/lib/app-release-client'
 
 interface ReleaseNote {
   version: string
@@ -16,7 +17,6 @@ interface ReleaseNote {
 }
 
 export default function ReleaseNotesPage() {
-  const [appVersion, setAppVersion] = useState<string>('1.0.8')
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,13 +24,6 @@ export default function ReleaseNotesPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load app version
-        const versionResponse = await fetch('/api/version', { credentials: 'include', cache: 'no-store' })
-        if (versionResponse.ok) {
-          const versionData = await versionResponse.json()
-          setAppVersion(versionData.version || '1.0.8')
-        }
-
         // Load release notes from API
         const notesResponse = await fetch('/api/release-notes', { credentials: 'include', cache: 'no-store' })
         if (notesResponse.ok) {
@@ -107,7 +100,7 @@ export default function ReleaseNotesPage() {
           </div>
           <div className="text-right">
             <div className="text-base text-theme-muted">Current Version</div>
-            <div className="text-4xl font-bold text-theme">{appVersion}</div>
+            <div className="text-4xl font-bold text-theme">{APP_VERSION}</div>
             {releaseNotes.length > 1 && (
               <div className="mt-2 text-sm text-theme-subtle">
                 Previous: v{releaseNotes[1].version}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
+import { APP_VERSION } from '@/lib/app-release-client'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -23,7 +24,6 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname()
   const [logoData, setLogoData] = useState<string | null>(null)
   const [openAIStatus, setOpenAIStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
-  const [appVersion, setAppVersion] = useState<string>('1.0.5')
 
   // Load logo from localStorage
   useEffect(() => {
@@ -51,23 +51,6 @@ export default function Layout({ children }: LayoutProps) {
       window.addEventListener('settingsUpdated', loadLogo)
       return () => window.removeEventListener('settingsUpdated', loadLogo)
     }
-  }, [])
-
-  // Load app version
-  useEffect(() => {
-    const loadVersion = async () => {
-      try {
-        const response = await fetch('/api/version', { credentials: 'include', cache: 'no-store' })
-        if (response.ok) {
-          const data = await response.json()
-          setAppVersion(data.version || '1.0.5')
-        }
-      } catch (error) {
-        console.error('Failed to load version:', error)
-        // Keep default version
-      }
-    }
-    loadVersion()
   }, [])
 
   // Poll OpenAI health status
@@ -189,7 +172,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="text-sm text-theme-subtle">
               <p className="font-semibold text-theme-muted">Secure AI Chat</p>
               <p className="mt-1">Powered by Lakera AI</p>
-              <p className="mt-1 text-theme-subtle/80">App version {appVersion}</p>
+              <p className="mt-1 text-theme-subtle/80">App version {APP_VERSION}</p>
               <p className="mt-1 text-theme-subtle/70">© 2026 All rights reserved</p>
             </div>
           </div>
