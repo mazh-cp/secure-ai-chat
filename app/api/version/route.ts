@@ -3,22 +3,17 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { APP_VERSION } from '@/lib/app-release'
 
-function readPackageVersion(): { version: string; name: string } | null {
+/** Package name only — version always comes from APP_VERSION (compiled at build) so disk/cwd drift cannot show 1.0.18 on a 1.0.20 build. */
+function readPackageName(): string | null {
   const candidates = [
     join(process.cwd(), 'package.json'),
-    // next start with output: 'standalone' often runs with cwd = .next/standalone
     join(process.cwd(), '..', 'package.json'),
   ]
   for (const packagePath of candidates) {
     try {
       if (!existsSync(packagePath)) continue
-      const packageJson = JSON.parse(readFileSync(packagePath, 'utf-8')) as {
-        version?: string
-        name?: string
-      }
-      if (packageJson.version) {
-        return { version: packageJson.version, name: packageJson.name || 'secure-ai-chat' }
-      }
+      const packageJson = JSON.parse(readFileSync(packagePath, 'utf-8')) as { name?: string }
+      if (packageJson.name) return packageJson.name
     } catch {
       continue
     }
@@ -27,13 +22,8 @@ function readPackageVersion(): { version: string; name: string } | null {
 }
 
 export async function GET() {
-  const fromFile = readPackageVersion()
-  if (fromFile) {
-    return NextResponse.json(fromFile)
-  }
-  console.warn('[api/version] package.json not found; using APP_VERSION from lib/app-release')
   return NextResponse.json({
     version: APP_VERSION,
-    name: 'secure-ai-chat',
+    name: readPackageName() ?? 'secure-ai-chat',
   })
 }
