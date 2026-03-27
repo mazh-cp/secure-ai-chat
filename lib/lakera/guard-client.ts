@@ -7,6 +7,7 @@ import { config } from '@/lib/config'
 import { buildGuardMessagesFromAugmentedUserTurn } from '@/lib/lakera-guard-messages'
 import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 import { detectCommonInjectionPatterns } from '@/lib/lakera-prescan'
+import { detectStructuredSensitiveLeakInAssistantOutput } from '@/lib/lakera-output-structured-leak'
 import { mergeLakeraEffectiveFlag, sortLakeraThreatCategoriesForDisplay } from '@/lib/lakera-sensitive-block'
 
 /** Raw JSON shape from POST /v2/guard */
@@ -360,6 +361,15 @@ export async function screenChatWithLakera(
     flagged = effective.flagged
     categories = effective.categories
 
+    if (context === 'output' && !flagged && message.trim() && detectStructuredSensitiveLeakInAssistantOutput(message)) {
+      flagged = true
+      categories = {
+        ...(categories || {}),
+        pii: true,
+        structured_sensitive_output: true,
+      }
+    }
+
     const threatCategories = categories
       ? sortLakeraThreatCategoriesForDisplay(
           Object.entries(categories)
@@ -370,9 +380,14 @@ export async function screenChatWithLakera(
 
     let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
     if (flagged) {
-      const hasHighRiskCategories = threatCategories.some((cat) =>
-        ['prompt_injection', 'jailbreak', 'system_override', 'pii'].includes(cat.toLowerCase()),
-      )
+      const hasHighRiskCategories = threatCategories.some((cat) => {
+        const c = cat.toLowerCase()
+        return (
+          ['prompt_injection', 'jailbreak', 'system_override', 'pii', 'structured_sensitive_output'].includes(c) ||
+          c.includes('phi') ||
+          c.includes('medical')
+        )
+      })
       const maxScore = scores ? Math.max(...Object.values(scores)) : 0
 
       if (hasHighRiskCategories || maxScore > 0.8) {

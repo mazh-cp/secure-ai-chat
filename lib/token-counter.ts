@@ -34,6 +34,9 @@ export const MODEL_TOKEN_LIMITS: Record<string, number> = {
   'gpt-5.3': 128000,
   'gpt-5.4': 128000,
   'gpt-5.5': 128000,
+
+  // Anthropic: OpenAI model_limits API does not apply; ~200k context for Claude 3/3.5/4 API models
+  claude: 200000,
 }
 
 /**

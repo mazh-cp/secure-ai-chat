@@ -13,6 +13,20 @@ export function isSensitiveLakeraDetectorType(detectorType: string | undefined):
   return (
     t.includes('pii') ||
     t.includes('personal_data') ||
+    t.includes('phi') ||
+    t.includes('hipaa') ||
+    t.includes('medical') ||
+    t.includes('health') ||
+    t.includes('financial') ||
+    t.includes('income') ||
+    t.includes('salary') ||
+    t.includes('payment_card') ||
+    t.includes('political') ||
+    t.includes('religion') ||
+    t.includes('race') ||
+    t.includes('ethnic') ||
+    t.includes('demographic') ||
+    t.includes('dlp') ||
     t.includes('secret') ||
     t.includes('credential') ||
     t.includes('api_key') ||
@@ -36,13 +50,26 @@ export function isSensitiveLakeraPayloadMatch(entry: {
   const labelStr = (entry.labels || []).join(' ').toLowerCase()
   return (
     labelStr.includes('pii') ||
+    labelStr.includes('phi') ||
+    labelStr.includes('hipaa') ||
+    labelStr.includes('medical') ||
+    labelStr.includes('health') ||
+    labelStr.includes('financial') ||
+    labelStr.includes('income') ||
+    labelStr.includes('salary') ||
+    labelStr.includes('political') ||
+    labelStr.includes('religion') ||
+    labelStr.includes('race') ||
+    labelStr.includes('ethnic') ||
     labelStr.includes('email') ||
     labelStr.includes('phone') ||
     labelStr.includes('ssn') ||
     labelStr.includes('credit') ||
     labelStr.includes('secret') ||
     labelStr.includes('password') ||
-    labelStr.includes('address')
+    labelStr.includes('address') ||
+    labelStr.includes('dob') ||
+    labelStr.includes('date_of_birth')
   )
 }
 
@@ -54,11 +81,22 @@ function isSensitiveCategoryKey(key: string): boolean {
   const k = key.toLowerCase().replace(/-/g, '_')
   return (
     k.includes('pii') ||
+    k.includes('phi') ||
+    k.includes('hipaa') ||
+    k.includes('medical') ||
+    k.includes('health') ||
+    k.includes('financial') ||
+    k.includes('income') ||
+    k.includes('dlp') ||
     k.includes('personal') ||
     k.includes('secret') ||
     k.includes('credential') ||
     k.includes('moderation') ||
-    k.includes('profanity')
+    k.includes('profanity') ||
+    k.includes('political') ||
+    k.includes('religion') ||
+    k.includes('race') ||
+    k.includes('ethnic')
   )
 }
 

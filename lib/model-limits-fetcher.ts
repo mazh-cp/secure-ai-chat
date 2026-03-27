@@ -124,6 +124,12 @@ export async function getModelLimit(
   fallbackLimit?: number
 ): Promise<number> {
   const normalizedModel = model.toLowerCase()
+
+  // Claude is not in OpenAI's model_limits API; skip fetch (avoids useless calls with an Anthropic key).
+  if (normalizedModel.startsWith('claude')) {
+    return fallbackLimit ?? 200_000
+  }
+
   const now = Date.now()
 
   // Check cache first
