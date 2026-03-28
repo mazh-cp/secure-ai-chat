@@ -37,7 +37,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                   <div className="flex items-center space-x-2">
                     <span className="text-red-300">🚫</span>
                     <span className="text-sm font-semibold text-red-300">
-                      Threat Detected
+                      {scanResult.blockPolicy === 'pii'
+                        ? 'Sensitive data policy'
+                        : scanResult.blockPolicy === 'content_moderation'
+                          ? 'Content moderation'
+                          : scanResult.blockPolicy === 'security'
+                            ? 'Security policy'
+                            : 'Threat detected'}
                     </span>
                   </div>
                   {scanResult.message && (

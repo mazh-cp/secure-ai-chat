@@ -4,8 +4,14 @@
  * or detector-specific behavior. Chat/file flows previously only blocked on `flagged`, so
  * model output could leak PII despite a working Guard call.
  *
+ * Content moderation (crime, hate, profanity, sexual, violence, weapons) is handled similarly
+ * when breakdown/payload shows a hit but `flagged` is false.
+ *
  * @see https://docs.lakera.ai/docs/api/guard — payload & breakdown
+ * @see https://docs.lakera.ai/docs/content-moderation
  */
+
+import { isContentModerationCategoryOrDetector } from '@/lib/lakera-guard-classify'
 
 export function isSensitiveLakeraDetectorType(detectorType: string | undefined): boolean {
   if (!detectorType) return false
@@ -118,6 +124,15 @@ export function mergeLakeraEffectiveFlag(args: {
     if (sensitiveCategoryHit) {
       return { flagged: true, categories: { ...categories } }
     }
+    const moderationCategoryHit = Object.entries(categories).some(
+      ([key, val]) => val === true && isContentModerationCategoryOrDetector(key),
+    )
+    if (moderationCategoryHit) {
+      return {
+        flagged: true,
+        categories: { ...categories, content_moderation: true },
+      }
+    }
   }
 
   const fromBreakdown = breakdown?.some(
@@ -126,6 +141,21 @@ export function mergeLakeraEffectiveFlag(args: {
   const fromPayload = payload?.some((p) => isSensitiveLakeraPayloadMatch(p))
 
   if (!fromBreakdown && !fromPayload) {
+    const fromBreakdownMod = breakdown?.some(
+      (d) => d.detected === true && isContentModerationCategoryOrDetector(d.detector_type ?? ''),
+    )
+    const fromPayloadMod = payload?.some((p) =>
+      isContentModerationCategoryOrDetector(p.detector_type ?? ''),
+    )
+    if (fromBreakdownMod || fromPayloadMod) {
+      return {
+        flagged: true,
+        categories: {
+          ...(categories || {}),
+          content_moderation: true,
+        },
+      }
+    }
     return { flagged: false, categories: categories ? { ...categories } : undefined }
   }
 

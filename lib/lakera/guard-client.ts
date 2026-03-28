@@ -9,6 +9,11 @@ import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/laker
 import { detectCommonInjectionPatterns } from '@/lib/lakera-prescan'
 import { detectStructuredSensitiveLeakInAssistantOutput } from '@/lib/lakera-output-structured-leak'
 import { mergeLakeraEffectiveFlag, sortLakeraThreatCategoriesForDisplay } from '@/lib/lakera-sensitive-block'
+import {
+  classifyLakeraBlock,
+  buildLakeraChatBlockMessage,
+  type LakeraBlockPolicy,
+} from '@/lib/lakera-guard-classify'
 
 /** Raw JSON shape from POST /v2/guard */
 export interface LakeraApiResponse {
@@ -193,6 +198,8 @@ export interface GuardChatScanResult {
   payload?: LakeraApiResponse['payload']
   breakdown?: LakeraApiResponse['breakdown']
   requestUuid?: string
+  /** PII vs content moderation vs security — for UX aligned with Lakera policies */
+  blockPolicy?: LakeraBlockPolicy
 }
 
 export type ChatGuardCallOptions = {
@@ -231,6 +238,7 @@ export async function screenChatWithLakera(
       },
       message: `Security threat detected: ${preScan.patterns.join(', ')}. Message blocked.`,
       threatLevel: 'high',
+      blockPolicy: 'security',
     }
   }
 
@@ -379,7 +387,11 @@ export async function screenChatWithLakera(
       : []
 
     let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
+    const classification = classifyLakeraBlock({ categories, payload, breakdown })
+    let blockPolicy: LakeraBlockPolicy | undefined
+
     if (flagged) {
+      blockPolicy = classification.policy
       const hasHighRiskCategories = threatCategories.some((cat) => {
         const c = cat.toLowerCase()
         return (
@@ -397,20 +409,25 @@ export async function screenChatWithLakera(
       } else if (maxScore > 0.4 || preScan.severity === 'medium') {
         threatLevel = 'medium'
       }
+      if (classification.hasContentModeration && !hasHighRiskCategories && threatLevel === 'critical') {
+        threatLevel = 'high'
+      }
     }
 
+    const ctx: 'input' | 'output' = context === 'output' ? 'output' : 'input'
     return {
       scanned: true,
       flagged,
       categories,
       scores,
       message: flagged
-        ? `Security threat detected (${threatLevel}): ${threatCategories.join(', ')}`
+        ? buildLakeraChatBlockMessage(ctx, classification, threatCategories)
         : 'No threats detected',
       threatLevel,
       payload,
       breakdown,
       requestUuid,
+      blockPolicy,
     }
   } catch (error) {
     console.error('Lakera check failed:', error)

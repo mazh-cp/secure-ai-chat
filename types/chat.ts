@@ -26,6 +26,8 @@ export interface ScanResult {
   scores?: Record<string, number>
   message?: string
   threatLevel?: 'low' | 'medium' | 'high' | 'critical'
+  /** PII vs content moderation vs security (Lakera-aligned UX) */
+  blockPolicy?: 'pii' | 'content_moderation' | 'security' | 'mixed'
   // Official payload data (detected threats with locations)
   payload?: Array<{
     start: number
