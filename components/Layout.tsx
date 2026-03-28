@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
+import AppAuthGate from '@/components/AppAuthGate'
 import { APP_VERSION } from '@/lib/app-release-client'
 
 interface LayoutProps {
@@ -230,7 +231,7 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Page content - No padding, Bento Grid handles it */}
         <main className="relative z-10 min-h-[calc(100vh-4rem)]">
-          {children}
+          <AppAuthGate>{children}</AppAuthGate>
         </main>
       </div>
     </div>

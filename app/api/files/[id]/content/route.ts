@@ -3,15 +3,19 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { getById } from '@/lib/registry/files-registry'
 import { readOwnerFile } from '@/lib/persistent-storage'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * GET /api/files/:id/content - Return file content from server storage (./data/uploads/<ownerId>/<fileId>).
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'File id is required' }, { status: 400 })

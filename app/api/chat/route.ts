@@ -16,6 +16,7 @@ import {
   getTokenLimitAsync,
 } from '@/lib/token-counter'
 import { injectRagContext } from '@/lib/rag-context'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -105,6 +106,9 @@ async function callOpenAI(
 
 export async function POST(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const body = await request.json()
     const {
       messages,

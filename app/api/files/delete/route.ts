@@ -6,6 +6,7 @@ import { getById, markDeleted } from '@/lib/registry/files-registry'
 import { deleteOwnerFile } from '@/lib/persistent-storage'
 import { deleteFileDir } from '@/lib/storage-canonical'
 import { removeDocumentFromRAG } from '@/lib/rag/index'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * DELETE - Delete one file (only if owned by current owner).
@@ -13,6 +14,9 @@ import { removeDocumentFromRAG } from '@/lib/rag/index'
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { ownerId } = await getOwnerId(request)
     const { searchParams } = new URL(request.url)
     const fileId = searchParams.get('fileId')

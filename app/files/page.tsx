@@ -51,7 +51,15 @@ async function triggerRagEmbed(fileIds: string[]): Promise<void> {
 function buildStoreBody(
   file: UploadedFile,
   scanStatus: string,
-  extra?: { scanResult?: string; scanDetails?: unknown; checkpointTeDetails?: unknown }
+  extra?: {
+    scanResult?: string
+    scanDetails?: unknown
+    checkpointTeDetails?: unknown
+    /** Merge registry only; do not re-run Lakera (Check Point TE / Lakera stay independent). */
+    skipServerLakeraScan?: boolean
+    /** When false, server skips Lakera even if API key is set (Lakera file-scan toggle off). */
+    lakeraScanRequested?: boolean
+  },
 ): string {
   return JSON.stringify({
     fileId: file.id,
@@ -63,6 +71,8 @@ function buildStoreBody(
     ...(extra?.scanResult != null && { scanResult: extra.scanResult }),
     ...(extra?.scanDetails != null && { scanDetails: extra.scanDetails }),
     ...(extra?.checkpointTeDetails != null && { checkpointTeDetails: extra.checkpointTeDetails }),
+    ...(extra?.skipServerLakeraScan === true && { skipServerLakeraScan: true }),
+    ...(extra?.lakeraScanRequested === false && { lakeraScanRequested: false }),
   })
 }
 
@@ -315,6 +325,7 @@ export default function FilesPage() {
         scanResult: file.scanResult,
         scanDetails: file.scanDetails,
         checkpointTeDetails: file.checkpointTeDetails,
+        skipServerLakeraScan: true,
       }),
     })
     if (!res.ok) {
@@ -357,11 +368,10 @@ export default function FilesPage() {
   }, [files])
 
   const handleFileUpload = async (newFile: UploadedFile) => {
-    // SECURITY PIPELINE: Enforce proper scan order
-    // 1. File upload
-    // 2. Malware scan (Check Point TE) - if enabled
-    // 3. Content scan (Lakera) - if enabled
-    // 4. Only then allow RAG/embedding
+    // Two independent engines (configure separately in Settings / toggles):
+    // - Check Point Threat Emulation (TE): malware / malicious code in the file binary.
+    // - Lakera Guard: prompt injection, system override, and other LLM/content policy signals in extracted text.
+    // When both are on, TE runs first on the client, then Lakera runs after TE is safe (or in parallel with server Lakera on first store if enabled).
 
     setFiles(prev => [...prev, newFile])
     setStoreError(null)
@@ -371,7 +381,7 @@ export default function FilesPage() {
       ...apiFetchOptions,
       method: 'POST',
       headers,
-      body: buildStoreBody(newFile, 'pending'),
+      body: buildStoreBody(newFile, 'pending', { lakeraScanRequested: lakeraScanEnabled }),
     })
     if (storeResult.ok) {
       setStoreError(null)
@@ -402,7 +412,7 @@ export default function FilesPage() {
       ...apiFetchOptions,
       method: 'POST',
       headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
-      body: buildStoreBody(newFile, 'not_scanned'),
+      body: buildStoreBody(newFile, 'not_scanned', { lakeraScanRequested: false }),
     })
     if (res.ok) {
       setStoreError(null)
@@ -875,12 +885,12 @@ export default function FilesPage() {
           success: true,
         })
 
-        // If RAG scan is enabled, continue with Lakera then RAG embed; else index for RAG now
-        if (ragScanEnabled && lakeraScanEnabled) {
+        // Lakera (content / prompt policy) is independent of Check Point TE — run when the Lakera toggle is on, regardless of RAG toggle.
+        if (lakeraScanEnabled) {
           setTimeout(() => {
-            handleFileScan(fileId)
+            handleFileScan(fileId, { teAlreadySafe: true })
           }, 300)
-        } else {
+        } else if (ragScanEnabled) {
           triggerRagEmbed([fileId]).catch(err => console.warn('RAG embed after TE safe:', err))
         }
       }
@@ -941,7 +951,10 @@ export default function FilesPage() {
     }
   }
 
-  const handleFileScan = async (fileId: string) => {
+  const handleFileScan = async (
+    fileId: string,
+    opts?: { teAlreadySafe?: boolean },
+  ) => {
     const file = files.find(f => f.id === fileId)
     if (!file) return
 
@@ -952,7 +965,15 @@ export default function FilesPage() {
     }
 
     setIsScanning(true)
-    
+
+    const tePipelineOn = checkpointTeSandboxEnabled && checkpointTeConfigured
+    const teVerdictEarly = file.checkpointTeDetails?.verdict as string | undefined
+    const teClearForRag =
+      opts?.teAlreadySafe === true ||
+      !tePipelineOn ||
+      teVerdictEarly === 'safe' ||
+      teVerdictEarly === 'unknown'
+
     // Update file status to scanning
     setFiles(prev => prev.map(f => 
       f.id === fileId ? { ...f, scanStatus: 'scanning' as const, scanResult: undefined } : f
@@ -1162,8 +1183,8 @@ export default function FilesPage() {
           updateFileMetadataOnServer(updatedFile).catch(err => 
             console.error('Failed to update file metadata:', err)
           )
-          // RAG pipeline: index file when safe (Lakera runs again on extracted text server-side)
-          if (!data.flagged) {
+          // RAG only after Check Point TE is clear when TE sandboxing is enabled (engines are independent but both must pass).
+          if (!data.flagged && teClearForRag) {
             triggerRagEmbed([fileId]).catch(err => console.warn('RAG embed after Lakera safe:', err))
           }
           return updatedFile

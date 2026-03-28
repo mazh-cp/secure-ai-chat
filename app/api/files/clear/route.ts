@@ -6,6 +6,7 @@ import { listFiles, markDeleted } from '@/lib/registry/files-registry'
 import { clearOwnerFiles } from '@/lib/persistent-storage'
 import { clearDerivedForTenant } from '@/lib/storage-canonical'
 import { removeDocumentFromRAG } from '@/lib/rag/index'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * POST or DELETE - Clear all uploaded files for the current owner only.
@@ -32,6 +33,9 @@ async function handleClear(ownerId: string | null): Promise<NextResponse> {
 
 export async function POST(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { ownerId } = await getOwnerId(request)
     return handleClear(ownerId)
   } catch (error) {
@@ -45,6 +49,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { ownerId } = await getOwnerId(request)
     return handleClear(ownerId)
   } catch (error) {

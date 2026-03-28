@@ -6,6 +6,7 @@ import { listFiles } from '@/lib/registry/files-registry'
 import { readOwnerFile } from '@/lib/persistent-storage'
 import { buildForensicContext, logForensic } from '@/lib/forensic-log'
 import type { UploadedFile } from '@/types/files'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * GET - List files for the current owner (canonical registry).
@@ -13,6 +14,9 @@ import type { UploadedFile } from '@/types/files'
  */
 export async function GET(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { ownerId } = await getOwnerId(request)
     if (process.env.NODE_ENV === 'development') {
       console.log('[FILES/LIST] ownerId=', ownerId)

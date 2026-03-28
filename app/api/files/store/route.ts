@@ -5,12 +5,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { getApiKeys } from '@/lib/api-keys-storage'
 import { getOwnerId } from '@/lib/owner'
-import { insertFile } from '@/lib/registry/files-registry'
+import { getById, insertFile } from '@/lib/registry/files-registry'
 import { getUploadsDir } from '@/lib/persistent-storage'
 import { writeRawAndMeta, writeStatus } from '@/lib/storage-canonical'
 import { buildForensicContext, logForensic } from '@/lib/forensic-log'
 import { listFiles } from '@/lib/registry/files-registry'
 import { decodeUploadBodyToBuffer } from '@/lib/upload-body-buffer'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * POST - Store a file on the server (canonical registry + disk).
@@ -19,6 +20,9 @@ import { decodeUploadBodyToBuffer } from '@/lib/upload-body-buffer'
  */
 export async function POST(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { ownerId } = await getOwnerId(request)
     if (!ownerId || typeof ownerId !== 'string' || ownerId.length === 0) {
       return NextResponse.json(
@@ -54,6 +58,10 @@ export async function POST(request: NextRequest) {
     const scanResult = body.scanResult
     const scanDetails = body.scanDetails
     const checkpointTeDetails = body.checkpointTeDetails
+    /** When true, client is only merging scan/TE metadata for an existing file — do not re-run Lakera (keeps engines independent). */
+    const skipServerLakeraScan = body.skipServerLakeraScan === true
+    /** When false, skip Lakera on this request even if the server key is set (UI "Lakera file scan" off). Default true if omitted. */
+    const lakeraScanRequested = body.lakeraScanRequested !== false
 
     if (fileId == null || fileName == null || fileContent === undefined || fileType == null || fileSize == null) {
       return NextResponse.json(
@@ -121,8 +129,27 @@ export async function POST(request: NextRequest) {
         ? (scanDetails as Record<string, unknown>)
         : null
 
+    const existing = getById(fileIdStr)
+    const useMetadataMerge =
+      skipServerLakeraScan &&
+      existing != null &&
+      String(existing.owner_id ?? '') === String(ownerId ?? '')
+
     const keys = await getApiKeys()
-    if (keys.lakeraAiKey?.trim()) {
+    if (useMetadataMerge) {
+      const prevDetails =
+        existing!.scanDetails && typeof existing.scanDetails === 'object' && !Array.isArray(existing.scanDetails)
+          ? { ...(existing.scanDetails as Record<string, unknown>) }
+          : {}
+      const incomingDetails = scanDetailsVal ?? {}
+      scanDetailsVal = { ...prevDetails, ...incomingDetails }
+      if (typeof scanStatus !== 'string' || !scanStatus) {
+        scanStatusStr = existing!.scanStatus || 'pending'
+      }
+      if (scanResult == null || typeof scanResult !== 'string') {
+        scanResultVal = existing!.scanResult ?? null
+      }
+    } else if (keys.lakeraAiKey?.trim() && lakeraScanRequested) {
       const { prepareContentForFileScan, screenTextAsFileUpload } = await import('@/lib/lakera/guard-client')
       const { resolveLakeraGuardEndpoint } = await import('@/lib/lakera-guard-endpoint')
       const guardUrl = resolveLakeraGuardEndpoint(keys.lakeraEndpoint)
@@ -183,10 +210,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const checkpointTeDetailsVal: Record<string, unknown> | null =
+    let checkpointTeDetailsVal: Record<string, unknown> | null =
       checkpointTeDetails != null && typeof checkpointTeDetails === 'object' && !Array.isArray(checkpointTeDetails)
         ? (checkpointTeDetails as Record<string, unknown>)
         : null
+    if (
+      useMetadataMerge &&
+      !checkpointTeDetailsVal &&
+      existing!.checkpointTeDetails &&
+      typeof existing!.checkpointTeDetails === 'object' &&
+      !Array.isArray(existing!.checkpointTeDetails)
+    ) {
+      checkpointTeDetailsVal = { ...(existing!.checkpointTeDetails as Record<string, unknown>) }
+    }
 
     if (process.env.NODE_ENV === 'development') {
       console.log('[FILES/STORE] ownerId=', ownerId, 'fileId=', fileIdStr)

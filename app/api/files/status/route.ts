@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOwnerId } from '@/lib/owner'
 import { getById } from '@/lib/registry/files-registry'
 import { readStatus } from '@/lib/storage-canonical'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * GET /api/files/status?fileId= — Return pipeline status for a file.
@@ -13,6 +14,9 @@ import { readStatus } from '@/lib/storage-canonical'
  */
 export async function GET(request: NextRequest) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { ownerId } = await getOwnerId(request)
     if (!ownerId || typeof ownerId !== 'string' || ownerId.length === 0) {
       return NextResponse.json(

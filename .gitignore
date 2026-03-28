@@ -32,6 +32,9 @@ pnpm-debug.log*
 .env.*
 !.env.example
 
+# production VM SSH target / upgrade overrides (never commit)
+scripts/production-vm-upgrade.local.env
+
 # vercel
 .vercel
 

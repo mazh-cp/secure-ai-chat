@@ -7,6 +7,7 @@ import { removeDocumentFromRAG } from '@/lib/rag/index'
 import { indexFileForRAG } from '@/lib/rag/registry-index'
 import { getApiKeys } from '@/lib/api-keys-storage'
 import { getUserIP } from '@/lib/logging'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * POST /api/files/:id/reindex - Rebuild RAG index for a file (reads from storage).
@@ -16,6 +17,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'File id is required' }, { status: 400 })

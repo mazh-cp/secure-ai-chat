@@ -2,15 +2,19 @@ export const runtime = 'nodejs'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { deleteFileById } from '@/lib/files/delete-file'
+import { requireSecureChatSession } from '@/lib/app-login'
 
 /**
  * DELETE /api/files/:id - Mark file deleted_at, remove from storage, remove RAG chunks/embeddings.
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) return authBlock
+
     const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'File id is required' }, { status: 400 })
