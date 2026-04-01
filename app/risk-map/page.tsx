@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import RiskMap from '@/components/RiskMap'
 import RiskDetail from '@/components/RiskDetail'
 import { OWASPRisk, OWASP_TOP_10_2025 } from '@/types/risks'
@@ -11,23 +11,26 @@ import { mapLakeraCategoryToOWASPRisk } from '@/types/risks'
 export default function RiskMapPage() {
   const [selectedRisk, setSelectedRisk] = useState<OWASPRisk | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [riskAssociations, setRiskAssociations] = useState<Map<string, LogEntry[]>>(new Map())
 
-  useEffect(() => {
-    loadLogs()
-    
-    // Refresh logs every 2 seconds for real-time updates
-    const interval = setInterval(() => {
-      loadLogs()
-    }, 2000)
-
-    return () => clearInterval(interval)
+  const loadLogs = useCallback(() => {
+    const allLogs = getLogs()
+    setLogs(allLogs)
   }, [])
 
   useEffect(() => {
-    // Map logs to OWASP risks
+    const schedule = () => {
+      queueMicrotask(() => {
+        loadLogs()
+      })
+    }
+    schedule()
+    const interval = setInterval(schedule, 2000)
+    return () => clearInterval(interval)
+  }, [loadLogs])
+
+  const riskAssociations = useMemo(() => {
     const associations = new Map<string, LogEntry[]>()
-    
+
     logs.forEach(log => {
       const addedRisks = new Set<string>()
       
@@ -119,14 +122,9 @@ export default function RiskMapPage() {
         }
       }
     })
-    
-    setRiskAssociations(associations)
-  }, [logs])
 
-  const loadLogs = () => {
-    const allLogs = getLogs()
-    setLogs(allLogs)
-  }
+    return associations
+  }, [logs])
 
   const handleRiskSelect = (risk: OWASPRisk) => {
     setSelectedRisk(risk)

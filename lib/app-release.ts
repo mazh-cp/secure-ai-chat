@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.0.21'
+export const APP_VERSION = '1.0.22'
 
-export const RELEASE_DATE = '2026-03-29'
+export const RELEASE_DATE = '2026-03-30'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,28 +18,27 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.0.21]) */
+/** Release notes for current version (matches CHANGELOG.md [1.0.22]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'GET /api/te/diagnostic for Check Point TE troubleshooting (IP hint, base URLs; no secrets).',
-      'Lakera Guard audit logs (lib/lakera-guard-audit.ts): correlate with platform via request_uuid; chat, file scan, RAG ingestion/retrieval.',
-      'Chat Lakera metadata includes session_id for platform analytics.',
+      'npm run build:fresh — clears .next, runs check:secrets, typecheck, lint, then production build.',
+      'scripts/verify-build.mjs — asserts standalone server.js and static output after next build (npm run build).',
     ],
   },
   {
     title: 'Changed',
     items: [
-      'Check Point TE: TPAPI-shaped query (te.images[]), te_cookie stickiness, CHECKPOINT_TE_AUTH_FORMAT, default TE reports xml; teAuthFormat on /api/te/config.',
-      'Lakera: optional LAKERA_TELEMETRY_HTTP for custom ingest; default relies on Guard API + audit logs.',
-      'Files page: /api/owner before refetch; clearer sync warnings.',
+      'Toolchain: ESLint 9 with flat eslint.config.mjs; eslint-config-next 16 aligned with Next.js 16.',
+      'RAG Excel extraction uses exceljs instead of the unmaintained xlsx package (addresses npm audit advisories).',
+      'Legacy .xls binary workbooks are not text-extracted for RAG; use .xlsx/.xlsm for indexing.',
     ],
   },
   {
     title: 'Fixed',
     items: [
-      'Removed default POST to undocumented Lakera /v2/telemetry (404 noise); use Guard dashboard or opt-in HTTP.',
+      'React Compiler / react-hooks lint rules from eslint-plugin-react-hooks v7 (effects, Link for internal nav).',
     ],
   },
 ]

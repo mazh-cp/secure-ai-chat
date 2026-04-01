@@ -24,25 +24,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    
-    // Read current theme from DOM (set by bootstrap script)
-    const currentTheme = getTheme()
-    if (currentTheme !== theme) {
+    queueMicrotask(() => {
+      setMounted(true)
+      const currentTheme = getTheme()
       setThemeState(currentTheme)
-    }
+    })
 
-    // Listen for theme changes (from other components or system preference)
     const handleThemeChange = (e: CustomEvent<{ theme: Theme }>) => {
       setThemeState(e.detail.theme)
     }
-    
+
     window.addEventListener('themechange', handleThemeChange as EventListener)
-    
+
     return () => {
       window.removeEventListener('themechange', handleThemeChange as EventListener)
     }
-  }, [theme])
+  }, [])
 
   // Set theme using production-ready function
   const setTheme = (newTheme: Theme) => {

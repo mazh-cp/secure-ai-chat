@@ -10,16 +10,16 @@ export default function ThemeToggleButton() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    // Only read from DOM/localStorage after hydration
-    const dataTheme = document.documentElement.getAttribute("data-theme");
-    if (dataTheme === "day" || dataTheme === "dark") {
-      setTheme(dataTheme);
-    } else {
-      // Fallback to localStorage if data-theme not set
-      const stored = (localStorage.getItem(KEY) as "day" | "dark" | null) ?? "dark";
-      setTheme(stored);
-    }
+    queueMicrotask(() => {
+      setMounted(true);
+      const dataTheme = document.documentElement.getAttribute("data-theme");
+      if (dataTheme === "day" || dataTheme === "dark") {
+        setTheme(dataTheme);
+      } else {
+        const stored = (localStorage.getItem(KEY) as "day" | "dark" | null) ?? "dark";
+        setTheme(stored);
+      }
+    });
   }, []);
 
   const toggle = () => {

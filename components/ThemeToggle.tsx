@@ -16,19 +16,17 @@ export default function ThemeToggle() {
 
   // Initialize theme from DOM (already set by bootstrap script)
   useEffect(() => {
-    setMounted(true)
-    
-    // Read theme from DOM (set by bootstrap script)
-    const currentTheme = getTheme()
-    setThemeState(currentTheme)
+    queueMicrotask(() => {
+      setMounted(true)
+      setThemeState(getTheme())
+    })
 
-    // Listen for theme changes (from other components or system preference)
     const handleThemeChange = (e: CustomEvent<{ theme: Theme }>) => {
       setThemeState(e.detail.theme)
     }
-    
+
     window.addEventListener('themechange', handleThemeChange as EventListener)
-    
+
     return () => {
       window.removeEventListener('themechange', handleThemeChange as EventListener)
     }

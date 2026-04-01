@@ -8,29 +8,32 @@ interface LakeraTogglesProps {
   hasLakeraKey: boolean
 }
 
+function readLakeraTogglesFromStorage(): { inputScan: boolean; outputScan: boolean } {
+  if (typeof window === 'undefined') {
+    return { inputScan: true, outputScan: true }
+  }
+  const stored = localStorage.getItem('lakeraToggles')
+  if (!stored) {
+    return { inputScan: true, outputScan: true }
+  }
+  try {
+    const parsed = JSON.parse(stored) as { inputScan?: boolean; outputScan?: boolean }
+    return {
+      inputScan: parsed.inputScan !== false,
+      outputScan: parsed.outputScan !== false,
+    }
+  } catch (e) {
+    console.error('Failed to load toggle states:', e)
+    return { inputScan: true, outputScan: true }
+  }
+}
+
 export default function LakeraToggles({ 
   onInputScanChange, 
   onOutputScanChange,
   hasLakeraKey 
 }: LakeraTogglesProps) {
-  const [inputScan, setInputScan] = useState(true)
-  const [outputScan, setOutputScan] = useState(true)
-
-  // Load toggle states from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('lakeraToggles')
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setInputScan(parsed.inputScan !== false) // Default to true
-          setOutputScan(parsed.outputScan !== false) // Default to true
-        } catch (e) {
-          console.error('Failed to load toggle states:', e)
-        }
-      }
-    }
-  }, [])
+  const [{ inputScan, outputScan }, setToggles] = useState(readLakeraTogglesFromStorage)
 
   // Save to localStorage and notify parent
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function LakeraToggles({
                 <input
                   type="checkbox"
                   checked={inputScan}
-                  onChange={(e) => setInputScan(e.target.checked)}
+                  onChange={(e) => setToggles((prev) => ({ ...prev, inputScan: e.target.checked }))}
                   className="sr-only peer"
                   disabled={!hasLakeraKey}
                 />
@@ -115,7 +118,7 @@ export default function LakeraToggles({
                 <input
                   type="checkbox"
                   checked={outputScan}
-                  onChange={(e) => setOutputScan(e.target.checked)}
+                  onChange={(e) => setToggles((prev) => ({ ...prev, outputScan: e.target.checked }))}
                   className="sr-only peer"
                   disabled={!hasLakeraKey}
                 />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import LogViewer from '@/components/LogViewer'
 import SystemLogViewer from '@/components/SystemLogViewer'
 import { LogEntry } from '@/types/logs'
@@ -13,22 +13,10 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<'all' | 'chat' | 'file_scan' | 'error' | 'system'>('all')
   const [refreshKey, setRefreshKey] = useState(0)
 
-  useEffect(() => {
-    loadLogs()
-    
-    // Refresh logs every 2 seconds for real-time updates
-    const interval = setInterval(() => {
-      loadLogs()
-    }, 2000)
-
-    return () => clearInterval(interval)
-  }, [refreshKey])
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     const allLogs = getLogs()
     setLogs(allLogs)
-    
-    // Load system logs
+
     try {
       const response = await fetch('/api/logs/system?limit=100', { credentials: 'include', cache: 'no-store' })
       if (response.ok) {
@@ -38,7 +26,18 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Failed to load system logs:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const schedule = () => {
+      queueMicrotask(() => {
+        void loadLogs()
+      })
+    }
+    schedule()
+    const interval = setInterval(schedule, 2000)
+    return () => clearInterval(interval)
+  }, [refreshKey, loadLogs])
 
   const handleClearLogs = async () => {
     if (filter === 'system') {

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.22] - 2026-03-30
+
+### Added
+- **`npm run build:fresh`** — Clears `.next`, runs **`check:secrets`** (client leak gate), **`typecheck`**, **`lint`**, then **`npm run build`**.
+- **`scripts/verify-build.mjs`** — After **`next build`**, fails if **`.next/standalone/server.js`** or **`.next/static`** is missing (matches **`output: 'standalone'`** and **`npm start`**).
+
+### Changed
+- **Toolchain** — **ESLint 9** with flat **`eslint.config.mjs`**; **`eslint-config-next@16`** with **Next.js 16**; **`eslint-config-prettier@10`**. Removed legacy **`.eslintrc.json`** / **`@typescript-eslint/*` v6**.
+- **Dependencies / audit** — Replaced **`xlsx`** with **`exceljs`** for RAG spreadsheet text extraction (addresses unpatched **`xlsx`** advisories); **`npm audit`** clean on supported tree. **`next.config.js`** **`serverExternalPackages`**: **`exceljs`** instead of **`xlsx`**.
+- **Excel RAG** — **`.xlsx` / `.xlsm`** (OOXML) only for extraction; legacy **`.xls`** is not indexed for RAG (convert to **`.xlsx`** if needed).
+
+### Fixed
+- **Lint** — Satisfies **`eslint-plugin-react-hooks` v7** rules (effects, **`next/link`** on internal error UI, derived state where applicable).
+
 ## [1.0.21] - 2026-03-29
 
 ### Added

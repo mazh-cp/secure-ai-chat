@@ -13,7 +13,6 @@ export default function AppAuthGate({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (pathname === '/login') {
-      setReady(true)
       return
     }
 

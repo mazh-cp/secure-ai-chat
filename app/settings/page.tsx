@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 import SettingsForm from '@/components/SettingsForm'
 import SecurityIndicator from '@/components/SecurityIndicator'
 import MCPToolsSetup from '@/components/MCPToolsSetup'
@@ -8,15 +8,16 @@ import MCPToolsSetup from '@/components/MCPToolsSetup'
 // Force dynamic rendering to prevent static generation issues with ThemeProvider
 export const dynamic = 'force-dynamic'
 
-export default function SettingsPage() {
-  const [isSecure, setIsSecure] = useState(true)
+function readConnectionSecure(): boolean {
+  return window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+}
 
-  useEffect(() => {
-    // Check if connection is secure
-    if (typeof window !== 'undefined') {
-      setIsSecure(window.location.protocol === 'https:' || window.location.hostname === 'localhost')
-    }
-  }, [])
+export default function SettingsPage() {
+  const isSecure = useSyncExternalStore(
+    () => () => {},
+    readConnectionSecure,
+    () => true
+  )
 
   return (
     <div className="bento-grid">
