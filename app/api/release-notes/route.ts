@@ -8,6 +8,7 @@ interface ReleaseNote {
   type: 'major' | 'minor' | 'patch' | 'hotfix'
   changes: {
     added?: string[]
+    changed?: string[]
     fixed?: string[]
     improved?: string[]
     security?: string[]
@@ -59,6 +60,16 @@ function parseChangelog(): ReleaseNote[] {
           .filter(Boolean)
       }
       
+      // Parse Changed section (CHANGELOG convention)
+      const changedMatch = section.match(/### Changed\n([\s\S]*?)(?=### |$)/)
+      if (changedMatch) {
+        release.changes.changed = changedMatch[1]
+          .split('\n')
+          .filter((line) => line.trim().startsWith('-'))
+          .map((line) => line.replace(/^-\s*/, '').trim())
+          .filter(Boolean)
+      }
+
       // Parse Fixed section
       const fixedMatch = section.match(/### Fixed\n([\s\S]*?)(?=### |$)/)
       if (fixedMatch) {

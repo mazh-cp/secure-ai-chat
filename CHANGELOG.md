@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2026-04-02
+
+### Fixed
+- **`/release-notes` and `GET /api/release-notes`** — Parse **`### Changed`** from `CHANGELOG.md` and render it on the release notes page (previously only **Added**, **Fixed**, **Improved**, and **Security** were shown).
+
+### Changed
+- **Upgrade defaults** — **`GIT_REF=v1.1.4`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, and docs (**`UPGRADE_COMMANDS.md`**).
+
 ## [1.1.3] - 2026-04-01
 
 ### Fixed

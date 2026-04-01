@@ -10,6 +10,7 @@ interface ReleaseNote {
   type: 'major' | 'minor' | 'patch' | 'hotfix'
   changes: {
     added?: string[]
+    changed?: string[]
     fixed?: string[]
     improved?: string[]
     security?: string[]
@@ -167,6 +168,19 @@ export default function ReleaseNotesPage() {
                     </h3>
                     <ul className="list-disc list-inside space-y-1 text-theme-muted ml-4">
                       {release.changes.added.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {release.changes.changed && release.changes.changed.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold text-cyan-300 mb-2 flex items-center gap-2">
+                      <span>📦</span> Changed
+                    </h3>
+                    <ul className="list-disc list-inside space-y-1 text-theme-muted ml-4">
+                      {release.changes.changed.map((item, i) => (
                         <li key={i}>{item}</li>
                       ))}
                     </ul>
