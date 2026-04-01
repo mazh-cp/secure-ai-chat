@@ -21,7 +21,7 @@
 # --- After install ---
 #   • Configure API keys: sudo nano /opt/secure-ai-chat/.env.local (or your INSTALL_DIR)
 #   • Restart: sudo systemctl restart secure-ai-chat
-#   • Future upgrades (same machine): pipe upgrade-remote-production-v3.sh (default GIT_REF=v1.1.7)
+#   • Future upgrades (same machine): pipe upgrade-remote-production-v3.sh (default GIT_REF=v1.1.8)
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 
@@ -30,7 +30,7 @@ set -euo pipefail
 INSTALL_SCRIPT_URL="${INSTALL_SCRIPT_URL:-https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh}"
 
 # Pin release for reproducible deploys (override with GIT_REF=main for latest main)
-export BRANCH="${GIT_REF:-${BRANCH:-v1.1.7}}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.1.8}}"
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 export APP_USER="${APP_USER:-secureai}"
 export APP_GROUP="${APP_GROUP:-secureai}"

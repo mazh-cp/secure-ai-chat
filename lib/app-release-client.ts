@@ -3,7 +3,7 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.7'
+export const APP_VERSION = '1.1.8'
 export const RELEASE_DATE = '2026-04-03'
 
 export interface ReleaseNoteItem {
@@ -14,10 +14,10 @@ export interface ReleaseNoteItem {
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Fixed',
-    items: ['Build uses local Next CLI + webpack (`next-build-production.mjs`) so standalone is not skipped.'],
+    items: ['Standalone `server.js` can live under `.next/standalone/<app>/` — start + verify-build find it.'],
   },
   {
     title: 'Changed',
-    items: ['Default production upgrade tag is `v1.1.7`.'],
+    items: ['Default production upgrade tag is `v1.1.8`.'],
   },
 ]

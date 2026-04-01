@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.8] - 2026-04-03
+
+### Fixed
+- **Nested standalone output** — Some Next.js 16 / tracing layouts emit **`.next/standalone/<app>/server.js`** (with extra folders like **`.nvm/`** at the standalone root). **`verify-build`** and **`start-standalone.js`** now resolve **`server.js`** under **`.next/standalone`** (bounded depth) and run with **`cwd`** set to that app directory.
+
+### Changed
+- **Upgrade defaults** — **`GIT_REF=v1.1.8`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+
 ## [1.1.7] - 2026-04-03
 
 ### Fixed

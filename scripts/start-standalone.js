@@ -3,15 +3,16 @@
  * Start script: use standalone server when output: 'standalone' was built,
  * otherwise fall back to "next start". Fixes Next.js warning:
  * "next start" does not work with "output: standalone" configuration.
+ *
+ * Supports nested standalone: .next/standalone/<app>/server.js (skips traced .nvm/, etc.).
  */
 
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { resolveStandaloneServer } = require('./resolve-standalone-server.cjs');
 
 const projectRoot = path.resolve(__dirname, '..');
-const standaloneDir = path.join(projectRoot, '.next', 'standalone');
-const serverJs = path.join(standaloneDir, 'server.js');
 
 function copyDirSync(src, dest) {
   if (!fs.existsSync(src)) return;
@@ -27,11 +28,11 @@ function copyDirSync(src, dest) {
   }
 }
 
-function runStandalone() {
+function runStandalone(appDir) {
   const staticSrc = path.join(projectRoot, '.next', 'static');
-  const staticDest = path.join(standaloneDir, '.next', 'static');
+  const staticDest = path.join(appDir, '.next', 'static');
   const publicSrc = path.join(projectRoot, 'public');
-  const publicDest = path.join(standaloneDir, 'public');
+  const publicDest = path.join(appDir, 'public');
 
   if (fs.existsSync(staticSrc)) {
     fs.mkdirSync(path.dirname(staticDest), { recursive: true });
@@ -43,7 +44,7 @@ function runStandalone() {
 
   const child = spawn(process.execPath, ['server.js'], {
     stdio: 'inherit',
-    cwd: standaloneDir,
+    cwd: appDir,
     env: process.env,
   });
   child.on('exit', (code) => process.exit(code ?? 0));
@@ -59,8 +60,9 @@ function runNextStart() {
   child.on('exit', (code) => process.exit(code ?? 0));
 }
 
-if (fs.existsSync(serverJs)) {
-  runStandalone();
+const resolved = resolveStandaloneServer(projectRoot);
+if (resolved) {
+  runStandalone(resolved.appDir);
 } else {
   runNextStart();
 }

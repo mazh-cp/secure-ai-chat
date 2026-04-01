@@ -4,13 +4,16 @@
  * (scripts/start-standalone.js). Exit 1 if anything required is missing.
  */
 
+import { createRequire } from 'node:module'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+const require = createRequire(import.meta.url)
+const { resolveStandaloneServer } = require('./resolve-standalone-server.cjs')
+
 const root = path.join(fileURLToPath(import.meta.url), '..', '..')
 const nextDir = path.join(root, '.next')
-const standaloneServer = path.join(nextDir, 'standalone', 'server.js')
 const staticDir = path.join(nextDir, 'static')
 
 function fail(msg) {
@@ -21,13 +24,15 @@ function fail(msg) {
 if (!fs.existsSync(nextDir)) {
   fail('Missing .next — run `next build` first.')
 }
-if (!fs.existsSync(standaloneServer)) {
+
+const resolved = resolveStandaloneServer(root)
+if (!resolved) {
   const standaloneRoot = path.join(nextDir, 'standalone')
   if (fs.existsSync(standaloneRoot)) {
     try {
       const entries = fs.readdirSync(standaloneRoot, { withFileTypes: true })
       const names = entries.map((e) => (e.isDirectory() ? `${e.name}/` : e.name)).join(', ')
-      console.error('❌ verify-build: .next/standalone exists but server.js missing. Contents:', names || '(empty)')
+      console.error('❌ verify-build: .next/standalone exists but no server.js found. Top-level:', names || '(empty)')
     } catch {
       console.error('❌ verify-build: could not list .next/standalone')
     }
@@ -40,9 +45,10 @@ if (!fs.existsSync(standaloneServer)) {
     }
   }
   fail(
-    `Missing standalone server (${path.relative(root, standaloneServer)}). Use project-local Next with webpack: node scripts/next-build-production.mjs (or next build --webpack). If you see only Turbopack in the build log, pull latest main and run npm ci.`,
+    'Missing standalone server.js under .next/standalone. Use: node scripts/next-build-production.mjs (webpack). Nested layouts (e.g. standalone/<app>/server.js) are supported once server.js exists.',
   )
 }
+
 if (!fs.existsSync(staticDir)) {
   fail(`Missing ${path.relative(root, staticDir)} — build may be incomplete.`)
 }
@@ -57,6 +63,8 @@ try {
   // optional
 }
 
+const relServer = path.relative(root, resolved.serverJs)
 console.log('✅ Build finalized: standalone server and static assets present.')
 if (buildId) console.log(`   BUILD_ID: ${buildId}`)
-console.log(`   Start with: npm start  (uses ${path.join('.next', 'standalone', 'server.js')})`)
+console.log(`   Standalone: ${relServer}`)
+console.log(`   Start with: npm start`)
