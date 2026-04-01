@@ -10,6 +10,11 @@
 
 import { scanTextWithLakera, type LakeraScanInput, type LakeraScanResult } from './lakera'
 import { applyPolicy, type ScanLayer, type PolicyDecision } from '@/lib/policies/rag-policy'
+import { recordLakeraGuardAudit } from '@/lib/lakera-guard-audit'
+
+function categoriesListToRecord(categories: string[]): Record<string, boolean> {
+  return Object.fromEntries(categories.map((c) => [c, true]))
+}
 
 export type ScanMeta = {
   userId?: string
@@ -86,6 +91,27 @@ export async function scanIngestion(text: string, meta: ScanMeta): Promise<Inges
     timestamp: new Date().toISOString(),
   }
 
+  if (lakeraResult.requestUuid) {
+    let projectId: string | null | undefined = meta.lakeraProjectIdOverride ?? undefined
+    if (projectId === undefined) {
+      const { getApiKeys } = await import('@/lib/api-keys-storage')
+      projectId = (await getApiKeys()).lakeraProjectId ?? null
+    }
+    recordLakeraGuardAudit({
+      context: 'rag_ingestion',
+      projectId,
+      requestUuid: lakeraResult.requestUuid,
+      flagged: lakeraResult.flagged,
+      categories:
+        lakeraResult.categories.length > 0 ? categoriesListToRecord(lakeraResult.categories) : undefined,
+      breakdown: lakeraResult.breakdown,
+      internalRequestId: meta.sessionId,
+      userId: meta.userId,
+      sessionId: meta.sessionId,
+      ip: meta.ipAddress,
+    }).catch(() => {})
+  }
+
   return {
     allowed,
     decision,
@@ -129,6 +155,25 @@ export async function scanRetrieval(
       safeChunks.push(chunk)
     } else {
       droppedCount++
+      if (result.requestUuid) {
+        let projectId: string | null | undefined = meta.lakeraProjectIdOverride ?? undefined
+        if (projectId === undefined) {
+          const { getApiKeys } = await import('@/lib/api-keys-storage')
+          projectId = (await getApiKeys()).lakeraProjectId ?? null
+        }
+        recordLakeraGuardAudit({
+          context: 'rag_retrieval',
+          projectId,
+          requestUuid: result.requestUuid,
+          flagged: true,
+          categories:
+            result.categories.length > 0 ? categoriesListToRecord(result.categories) : undefined,
+          breakdown: result.breakdown,
+          userId: meta.userId,
+          sessionId: meta.sessionId,
+          ip: meta.ipAddress,
+        }).catch(() => {})
+      }
     }
   }
 

@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.0.20'
+export const APP_VERSION = '1.0.21'
 
-export const RELEASE_DATE = '2026-03-28'
+export const RELEASE_DATE = '2026-03-29'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,27 +18,28 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.0.20]) */
+/** Release notes for current version (matches CHANGELOG.md [1.0.21]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'Binary upload decode: POST /api/files/store decodes client base64 (PDF/DOCX) via lib/upload-body-buffer.ts instead of storing UTF-8 of base64.',
-      'RAG: mammoth + pdf-parse extract text from DOCX/DOC/PDF (lib/extract-text-for-rag.ts) in rag-context and chat fallback.',
-      'Production upgrade: scripts/upgrade-remote-production-v2.sh, run-remote-production-upgrade.sh; curl script RUN_TYPECHECK, HEALTH_RETRIES, .storage restore, missing-tag fallback to main.',
-    ],
-  },
-  {
-    title: 'Fixed',
-    items: [
-      'Chat could not answer from uploaded PDF/Word when scans were off — root cause was on-disk bytes + missing text extraction.',
-      'Upgrade one-liners: default GIT_REF=main when release tags are not pushed; documented Option A1 curl without v2 wrapper.',
+      'GET /api/te/diagnostic for Check Point TE troubleshooting (IP hint, base URLs; no secrets).',
+      'Lakera Guard audit logs (lib/lakera-guard-audit.ts): correlate with platform via request_uuid; chat, file scan, RAG ingestion/retrieval.',
+      'Chat Lakera metadata includes session_id for platform analytics.',
     ],
   },
   {
     title: 'Changed',
     items: [
-      'next.config.js: serverExternalPackages for pdf-parse, pdfjs-dist, mammoth.',
+      'Check Point TE: TPAPI-shaped query (te.images[]), te_cookie stickiness, CHECKPOINT_TE_AUTH_FORMAT, default TE reports xml; teAuthFormat on /api/te/config.',
+      'Lakera: optional LAKERA_TELEMETRY_HTTP for custom ingest; default relies on Guard API + audit logs.',
+      'Files page: /api/owner before refetch; clearer sync warnings.',
+    ],
+  },
+  {
+    title: 'Fixed',
+    items: [
+      'Removed default POST to undocumented Lakera /v2/telemetry (404 noise); use Guard dashboard or opt-in HTTP.',
     ],
   },
 ]

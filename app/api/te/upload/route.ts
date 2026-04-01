@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTeApiKeySync, createTeAuthHeader, getTeApiBaseUrl, buildTeUploadRequest, getTeImageId } from '@/lib/checkpoint-te'
+import {
+  getTeApiKeySync,
+  buildTeFetchHeaders,
+  captureTeStickyFromResponse,
+  getTeApiBaseUrl,
+  buildTeUploadRequest,
+  getTeImageId,
+  getDefaultTeReports,
+  normalizeTeApiKeyInput,
+  getTeCloud403Troubleshooting,
+  getTeUploadCandidateBases,
+  getTeAuthorizationValue,
+} from '@/lib/checkpoint-te'
 import FormDataNode from 'form-data'
 import { systemLog } from '@/lib/system-logging'
 
@@ -12,7 +24,7 @@ import { systemLog } from '@/lib/system-logging'
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  const uploadUrl = `${getTeApiBaseUrl()}/upload`
+  let uploadUrl = `${getTeApiBaseUrl()}/upload`
   
   try {
     let apiKey = getTeApiKeySync()
@@ -30,8 +42,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Ensure API key is trimmed (remove any leading/trailing whitespace)
-    apiKey = apiKey.trim()
+    apiKey = normalizeTeApiKeyInput(apiKey)
     
     if (!apiKey || apiKey.length === 0) {
       await systemLog.error('checkpoint_te', 'API key is empty', {
@@ -109,9 +120,9 @@ export async function POST(request: NextRequest) {
         } else {
           // Use helper function to build correct format
           requestBody = buildTeUploadRequest({
-            reports: parsed.te?.reports || ['pdf', 'xml'],
-            imageId: parsed.te?.image?.id,
-            revision: parsed.te?.image?.revision,
+            reports: Array.isArray(parsed.te?.reports) ? parsed.te.reports : undefined,
+            imageId: parsed.te?.image?.id ?? parsed.te?.images?.[0]?.id,
+            revision: parsed.te?.image?.revision ?? parsed.te?.images?.[0]?.revision,
           })
         }
       } catch {
@@ -121,10 +132,8 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
-      // Use helper function to build default configuration
-      requestBody = buildTeUploadRequest({
-        reports: ['pdf', 'xml'],
-      })
+      // TPAPI-aligned defaults (xml report; override via CHECKPOINT_TECLOUD_TE_REPORTS)
+      requestBody = buildTeUploadRequest({})
     }
 
     // Validate that imageId is configured if images are needed
@@ -161,8 +170,10 @@ export async function POST(request: NextRequest) {
 
     // Create multipart form data for Check Point TE API
     // Try native FormData first (Node.js 18+), fallback to form-data package if needed
-    const authHeader = createTeAuthHeader(apiKey)
-    
+    const logAuthPrefix = (h: Record<string, string>) =>
+      (h.Authorization ?? '').substring(0, Math.min(28, (h.Authorization ?? '').length)) +
+      ((h.Authorization ?? '').length > 28 ? '...' : '')
+
     console.log('Uploading file to Check Point TE:', {
       fileName: file.name,
       fileSize: file.size,
@@ -171,8 +182,8 @@ export async function POST(request: NextRequest) {
       hasApiKey: !!apiKey,
       apiKeyLength: apiKey.length,
       apiKeyPrefix: apiKey.substring(0, Math.min(10, apiKey.length)) + (apiKey.length > 10 ? '...' : ''),
-      authHeaderPrefix: authHeader.substring(0, Math.min(30, authHeader.length)) + (authHeader.length > 30 ? '...' : ''),
       requestBody: JSON.stringify(requestBody),
+      defaultTeReports: getDefaultTeReports(),
     })
 
     // Use form-data package for better compatibility with external APIs
@@ -193,22 +204,6 @@ export async function POST(request: NextRequest) {
 
     // Get headers from form-data (includes Content-Type with boundary)
     const formHeaders = teFormData.getHeaders()
-    const headers: Record<string, string> = {
-      'Authorization': authHeader,
-      ...(formHeaders as Record<string, string>),
-    }
-
-    console.log('Sending request to Check Point TE:', {
-      url: uploadUrl,
-      method: 'POST',
-      headers: {
-        'Authorization': authHeader.substring(0, 30) + '...',
-        'Content-Type': formHeaders['content-type'],
-      },
-      hasFile: !!fileBuffer,
-      fileSize: fileBuffer.length,
-      requestBody: JSON.stringify(requestBody),
-    })
 
     // form-data package provides getBuffer() method to get the entire buffer
     // This is simpler and more reliable than stream handling
@@ -219,43 +214,98 @@ export async function POST(request: NextRequest) {
     // Convert Buffer to Uint8Array for fetch body (TypeScript compatibility)
     const bodyData = new Uint8Array(formDataBuffer)
 
-    // Set timeout for the fetch request (30 seconds)
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const candidateBases = getTeUploadCandidateBases()
+    let teResolvedBase = candidateBases[0] ?? getTeApiBaseUrl()
+    let response: Response | undefined
 
-    let response: Response
-    try {
-      response = await fetch(uploadUrl, {
+    for (let bi = 0; bi < candidateBases.length; bi++) {
+      const base = candidateBases[bi]
+      uploadUrl = `${base}/upload`
+      teResolvedBase = base
+
+      const headers = buildTeFetchHeaders(apiKey, base, formHeaders as Record<string, string>)
+
+      console.log('Sending request to Check Point TE:', {
+        url: uploadUrl,
         method: 'POST',
-        headers: headers,
-        body: bodyData,
-        signal: controller.signal,
+        headers: {
+          Authorization: logAuthPrefix(headers) + '...',
+          'Content-Type': formHeaders['content-type'],
+        },
+        hasFile: !!fileBuffer,
+        fileSize: fileBuffer.length,
+        requestBody: JSON.stringify(requestBody),
       })
-      clearTimeout(timeoutId)
-    } catch (fetchError) {
-      clearTimeout(timeoutId)
-      
-      // Handle timeout or abort
-      if (fetchError instanceof Error && (fetchError.name === 'AbortError' || fetchError.message.includes('aborted'))) {
-        await systemLog.error('checkpoint_te', 'Upload request timeout (30s)', {
-          endpoint: uploadUrl,
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+      try {
+        response = await fetch(uploadUrl, {
           method: 'POST',
-          statusCode: 504,
-          error: 'Request timeout after 30 seconds',
-          duration: Date.now() - startTime,
-        }, { requestId, fileName: file.name })
-        
-        return NextResponse.json(
-          { 
-            error: 'Request timeout: Check Point TE API did not respond within 30 seconds. The file may be too large or the service may be unavailable.',
-            type: 'timeout_error',
-          },
-          { status: 504 }
-        )
+          headers,
+          body: bodyData,
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+
+        if (fetchError instanceof Error && (fetchError.name === 'AbortError' || fetchError.message.includes('aborted'))) {
+          await systemLog.error('checkpoint_te', 'Upload request timeout (30s)', {
+            endpoint: uploadUrl,
+            method: 'POST',
+            statusCode: 504,
+            error: 'Request timeout after 30 seconds',
+            duration: Date.now() - startTime,
+          }, { requestId, fileName: file.name })
+
+          return NextResponse.json(
+            {
+              error:
+                'Request timeout: Check Point TE API did not respond within 30 seconds. The file may be too large or the service may be unavailable.',
+              type: 'timeout_error',
+            },
+            { status: 504 }
+          )
+        }
+
+        throw fetchError
       }
-      
-      // Re-throw other fetch errors to be handled by outer catch
-      throw fetchError
+
+      if (response.ok) {
+        captureTeStickyFromResponse(base, response)
+        if (bi > 0) {
+          console.warn(
+            `[checkpoint-te] Upload succeeded using alternate TE host (set CHECKPOINT_TECLOUD_BASE_URL=${base} to skip retries): ${base}`
+          )
+        }
+        break
+      }
+
+      const canRetry403 =
+        response.status === 403 &&
+        bi < candidateBases.length - 1 &&
+        !process.env.CHECKPOINT_TECLOUD_BASE_URL?.trim()
+
+      if (canRetry403) {
+        try {
+          await response.text()
+        } catch {
+          /* drain body */
+        }
+        console.warn(`[checkpoint-te] 403 from ${uploadUrl}; retrying next TE Cloud host...`)
+        continue
+      }
+
+      break
+    }
+
+    if (!response) {
+      return NextResponse.json(
+        { error: 'Check Point TE upload failed: no response from gateway', type: 'te_upload_error' },
+        { status: 502 }
+      )
     }
 
     const requestDuration = Date.now() - startTime
@@ -309,7 +359,7 @@ export async function POST(request: NextRequest) {
         error: errorMessage,
         responseBody: typeof errorDetails === 'string' ? errorDetails.substring(0, 1000) : JSON.stringify(errorDetails).substring(0, 1000),
         requestHeaders: {
-          'Authorization': authHeader.substring(0, 30) + '...',
+          Authorization: `${getTeAuthorizationValue(apiKey).substring(0, 28)}...`,
           'Content-Type': formHeaders['content-type'] || 'not set',
         },
         duration: requestDuration,
@@ -327,18 +377,24 @@ export async function POST(request: NextRequest) {
           { 
             error: 'Invalid Check Point TE API key. Please verify your API key in Settings. The API key may be incorrect or expired.',
             details: errorDetails,
-            troubleshooting: 'Please verify that: 1) Your API key is correct, 2) The key has not expired, 3) The key format is correct (should not include the TE_API_KEY_ prefix when entering in Settings).',
+            troubleshooting:
+              'Verify the API key in Settings (paste raw key only). If 401 persists, try server env CHECKPOINT_TE_AUTH_FORMAT=raw (TPAPI) vs te_api_key (TE_API_KEY_ prefix).',
           },
           { status: 401 }
         )
       }
 
       if (response.status === 403) {
+        const base = getTeApiBaseUrl()
         return NextResponse.json(
-          { 
-            error: 'Check Point TE API access denied. This could be due to: 1) API key does not have file upload permissions, 2) Your server IP address is not allowed to access the API, 3) API key restrictions or policy limits.',
+          {
+            error: 'Check Point TE access denied (403).',
             details: errorDetails,
-            troubleshooting: 'Please check: 1) API key permissions in Check Point management console, 2) IP address restrictions (may need to allow your server IP in SmartConsole > Management API > Advanced Settings), 3) API subscription/plan limits.',
+            teBaseUrl: base,
+            teUploadUrl: uploadUrl,
+            teHostsAttempted: candidateBases,
+            diagnosticPath: '/api/te/diagnostic',
+            troubleshooting: getTeCloud403Troubleshooting(),
           },
           { status: 403 }
         )
@@ -549,6 +605,7 @@ export async function POST(request: NextRequest) {
         md5: data.data?.md5,
         teImageId: data.data?.te?.images?.[0]?.id,
         teRevision: data.data?.te?.images?.[0]?.revision,
+        teResolvedBase,
       },
     })
   } catch (error) {

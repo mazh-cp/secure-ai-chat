@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         ip_address: userIP,
         internal_request_id: requestId,
+        session_id: requestId,
       },
       extraHighRiskCategories: ['code_injection'],
     })
@@ -151,6 +152,9 @@ export async function POST(request: NextRequest) {
       type: 'file_scan',
       action: flagged ? 'blocked' : 'scanned',
       source: 'file_upload',
+      projectId: apiKeys.lakeraProjectId,
+      sessionId: requestId,
+      internalRequestId: requestId,
       requestDetails: {
         fileName,
         fileType: fileName?.split('.').pop() || 'unknown',
@@ -167,6 +171,7 @@ export async function POST(request: NextRequest) {
         message: flagged
           ? `Security threats detected (${threatLevel})`
           : 'File content appears safe',
+        requestUuid: fr.requestUuid,
         payload,
         breakdown,
       },
@@ -176,7 +181,7 @@ export async function POST(request: NextRequest) {
 
     if (apiKeys.lakeraAiKey) {
       sendLakeraTelemetryFromLog(logData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId).catch((error) => {
-        console.error('Failed to send Lakera telemetry (non-blocking):', error)
+        console.error('Failed Lakera audit/telemetry (non-blocking):', error)
       })
     }
 

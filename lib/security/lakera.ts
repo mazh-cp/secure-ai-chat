@@ -39,6 +39,16 @@ export interface LakeraScanResult {
   severity: LakeraSeverity
   redactions?: Array<{ start: number; end: number; replacement?: string }>
   raw?: unknown
+  /** Guard metadata.request_uuid when Lakera API was called */
+  requestUuid?: string
+  breakdown?: Array<{
+    project_id: string
+    policy_id: string
+    detector_id: string
+    detector_type: string
+    detected: boolean
+    message_id: number
+  }>
 }
 
 export function getLakeraApiKey(): string | null {
@@ -155,6 +165,8 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
       categories: categoriesList,
       severity,
       raw: posted.data,
+      requestUuid: extracted.requestUuid,
+      breakdown: extracted.breakdown,
     }
   } catch (err) {
     if (config.lakeraFailClosed) {

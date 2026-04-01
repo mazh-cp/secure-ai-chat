@@ -12,6 +12,145 @@ import { safeFetchJson } from '@/lib/safe-fetch'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 import { CheckPointTEResponse } from '@/types/checkpoint-te'
 
+/** Mirrors server `getTeSubmitStrategy()` — parsed from GET /api/te/config (do not import lib/checkpoint-te in client). */
+type TeSubmitStrategy = 'auto' | 'hash_only' | 'upload_only'
+
+function parseTeSubmitStrategyFromConfig(cfg: {
+  teSubmitStrategy?: string
+  hashLookupOnly?: boolean
+}): TeSubmitStrategy {
+  const s = cfg.teSubmitStrategy
+  if (s === 'hash_only' || s === 'upload_only' || s === 'auto') return s
+  if (cfg.hashLookupOnly === true) return 'hash_only'
+  if (cfg.hashLookupOnly === false) return 'upload_only'
+  return 'auto'
+}
+
+type TeVerdict = 'safe' | 'malicious' | 'pending' | 'unknown'
+
+async function parseTeQueryFailureMessage(res: Response): Promise<string> {
+  try {
+    const data = (await res.json()) as {
+      error?: string
+      message?: string
+      troubleshooting?: string
+    }
+    let msg =
+      (typeof data.error === 'string' && data.error.trim()) ||
+      (typeof data.message === 'string' && data.message.trim()) ||
+      `Check Point TE query failed (${res.status})`
+    if (typeof data.troubleshooting === 'string' && data.troubleshooting.trim()) {
+      msg = `${msg.trim()}\n\n${data.troubleshooting.trim()}`
+    }
+    return msg
+  } catch {
+    try {
+      const t = await res.text()
+      return t.trim()
+        ? `Check Point TE query failed (${res.status}): ${t.slice(0, 400)}`
+        : `Check Point TE query failed (${res.status} ${res.statusText})`
+    } catch {
+      return `Check Point TE query failed (${res.status} ${res.statusText})`
+    }
+  }
+}
+
+/** Poll POST /api/te/query until a non-pending verdict or attempts exhausted. */
+async function checkpointTePollQuery(params: {
+  sha256?: string
+  sha1?: string
+  md5?: string
+  teImageId?: string
+  teRevision?: number
+  teResolvedBase?: string
+  maxAttempts: number
+  pollIntervalMs: number
+  skipDelayOnFirstAttempt: boolean
+}): Promise<{ verdict: TeVerdict; teResult: CheckPointTEResponse | null }> {
+  const {
+    sha256,
+    sha1,
+    md5,
+    teImageId,
+    teRevision,
+    teResolvedBase,
+    maxAttempts,
+    pollIntervalMs,
+    skipDelayOnFirstAttempt,
+  } = params
+
+  let effectiveTeApiBase = teResolvedBase
+
+  const pollTimeout = maxAttempts * pollIntervalMs
+  const pollStartTime = Date.now()
+  let attempts = 0
+  let verdict: TeVerdict = 'pending'
+  let teResult: CheckPointTEResponse | null = null
+
+  while (attempts < maxAttempts && verdict === 'pending') {
+    if (Date.now() - pollStartTime > pollTimeout) {
+      console.warn('Check Point TE polling timeout exceeded', {
+        attempts,
+        duration: Date.now() - pollStartTime,
+        timeout: pollTimeout,
+      })
+      verdict = 'unknown'
+      break
+    }
+    if (attempts > 0 || !skipDelayOnFirstAttempt) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+    }
+    attempts++
+
+    const queryBody: {
+      sha256?: string
+      sha1?: string
+      md5?: string
+      features: string[]
+      teApiBase?: string
+      /** TPAPI te.images[] (server also accepts legacy te.image). */
+      te?: { images?: Array<{ id?: string; revision?: number }> }
+    } = { features: ['te'] }
+
+    if (typeof effectiveTeApiBase === 'string' && effectiveTeApiBase.trim().length > 0) {
+      queryBody.teApiBase = effectiveTeApiBase.trim()
+    }
+    if (sha256) queryBody.sha256 = sha256
+    else if (sha1) queryBody.sha1 = sha1
+    else if (md5) queryBody.md5 = md5
+    if (teImageId && teRevision != null) {
+      queryBody.te = { images: [{ id: teImageId, revision: teRevision }] }
+    }
+
+    const queryResponse = await fetch('/api/te/query', {
+      credentials: 'include',
+      cache: 'no-store',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryBody),
+    })
+
+    if (!queryResponse.ok) {
+      const failMsg = await parseTeQueryFailureMessage(queryResponse.clone())
+      const failFast = [400, 401, 403, 404].includes(queryResponse.status)
+      if (failFast || attempts >= maxAttempts) {
+        throw new Error(failMsg)
+      }
+      continue
+    }
+
+    const queryData = (await queryResponse.json()) as CheckPointTEResponse
+    if (typeof queryData.teResolvedBase === 'string' && queryData.teResolvedBase.trim().length > 0) {
+      effectiveTeApiBase = queryData.teResolvedBase.trim()
+    }
+    verdict = queryData.verdict as TeVerdict
+    teResult = queryData
+    if (verdict !== 'pending' && verdict !== 'unknown') break
+  }
+
+  return { verdict, teResult }
+}
+
 const VALID_SCAN_STATUSES: UploadedFile['scanStatus'][] = [
   'pending', 'scanning', 'safe', 'flagged', 'error', 'not_scanned',
 ]
@@ -76,6 +215,47 @@ function buildStoreBody(
   })
 }
 
+/** Lowercase SHA-256 hex of file bytes (browser-only; never sent to Check Point as raw file). */
+async function sha256HexFromBlob(blob: Blob): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('Check Point hash-only mode requires Web Crypto. Use HTTPS or localhost.')
+  }
+  const buf = await blob.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/** Same bytes the TE upload path would send — used for hashing without uploading. */
+async function uploadedFileToBlob(file: UploadedFile): Promise<Blob> {
+  if (file.content.startsWith('data:')) {
+    const response = await fetch(file.content)
+    return response.blob()
+  }
+  const isBase64 = /^[A-Za-z0-9+/=]+$/.test(file.content) && file.content.length > 0
+  if (isBase64 && file.content.length > 100) {
+    let base64Content = file.content
+    if (base64Content.includes(',')) {
+      base64Content = base64Content.split(',')[1] ?? base64Content
+    }
+    while (base64Content.length % 4) {
+      base64Content += '='
+    }
+    try {
+      const byteCharacters = atob(base64Content)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      return new Blob([new Uint8Array(byteNumbers)], { type: file.type || 'application/octet-stream' })
+    } catch {
+      return new Blob([file.content], { type: file.type || 'text/plain' })
+    }
+  }
+  return new Blob([file.content], { type: file.type || 'text/plain' })
+}
+
 export default function FilesPage() {
   const [isSecure, setIsSecure] = useState(true)
   const [files, setFiles] = useState<UploadedFile[]>([])
@@ -84,6 +264,8 @@ export default function FilesPage() {
   const [ragScanEnabled, setRagScanEnabled] = useState(true)
   const [checkpointTeSandboxEnabled, setCheckpointTeSandboxEnabled] = useState(false)
   const [checkpointTeConfigured, setCheckpointTeConfigured] = useState<boolean>(false)
+  /** Server TE mode from GET /api/te/config (auto = hash-first then upload if needed). */
+  const [teSubmitStrategy, setTeSubmitStrategy] = useState<TeSubmitStrategy>('upload_only')
   const [serverSyncWarning, setServerSyncWarning] = useState<string | null>(null)
   const [storeError, setStoreError] = useState<string | null>(null)
   const filesCountRef = useRef(0)
@@ -118,6 +300,7 @@ export default function FilesPage() {
       if (response.ok) {
         const data = await response.json()
         setCheckpointTeConfigured(data.configured || false)
+        setTeSubmitStrategy(parseTeSubmitStrategyFromConfig(data))
         // If API key not configured but toggle is enabled, disable it
         setCheckpointTeSandboxEnabled((prev) => {
           if (!data.configured && prev) {
@@ -126,8 +309,8 @@ export default function FilesPage() {
           return prev
         })
       } else {
-        // If endpoint returns error, assume not configured
         setCheckpointTeConfigured(false)
+        setTeSubmitStrategy('upload_only')
         setCheckpointTeSandboxEnabled((prev) => {
           if (prev) {
             return false
@@ -140,6 +323,7 @@ export default function FilesPage() {
       // Don't break the UI if status check fails
       console.error('Failed to check Check Point TE status:', error)
       setCheckpointTeConfigured(false)
+      setTeSubmitStrategy('upload_only')
       setCheckpointTeSandboxEnabled((prev) => {
         if (prev) {
           return false
@@ -289,8 +473,21 @@ export default function FilesPage() {
   useEffect(() => {
     if (typeof document === 'undefined') return
     const refetch = async () => {
+      // Match initial page load: sync owner cookie with X-Client-ID so list/store use the same owner_id
+      await fetch('/api/owner', {
+        ...apiFetchOptions,
+        headers: ownerHeaders(),
+      }).catch(() => {})
+
       const list = await loadFilesFromServer().catch(() => null)
-      if (list === null) return
+      if (list === null) {
+        if (filesCountRef.current > 0) {
+          setServerSyncWarning(
+            'Could not refresh the file list from the server (network error, login session expired, or server error). Files shown may be outdated—retry after signing in or check server logs.'
+          )
+        }
+        return
+      }
       if (list.length > 0) {
         setFiles(list)
         setServerSyncWarning(null)
@@ -298,7 +495,9 @@ export default function FilesPage() {
           localStorage.setItem('uploadedFiles', JSON.stringify(list))
         }
       } else if (filesCountRef.current > 0) {
-        setServerSyncWarning('Files could not be loaded from server. Storage may be unavailable—check server data directory and permissions.')
+        setServerSyncWarning(
+          'The server returned no files for this browser session, but the page still shows a previous list. Common causes: the server data directory was reset or moved (self-host: ensure ./data or DATA_DIR is persistent and writable), you opened another browser/profile, or the site data / owner id changed. Re-upload files or verify permissions on data/app.db and data/uploads.'
+        )
       } else {
         setFiles([])
         setServerSyncWarning(null)
@@ -326,6 +525,7 @@ export default function FilesPage() {
         scanDetails: file.scanDetails,
         checkpointTeDetails: file.checkpointTeDetails,
         skipServerLakeraScan: true,
+        lakeraScanRequested: false,
       }),
     })
     if (!res.ok) {
@@ -515,182 +715,140 @@ export default function FilesPage() {
     try {
       setIsScanning(true)
 
-      // Step 1: Upload file to Check Point TE
-      const formData = new FormData()
-      
-      // Convert file content to Blob for upload
-      // FileUploader stores text files as plain text and binary files as base64
-      let fileBlob: Blob
-      try {
-        if (file.content.startsWith('data:')) {
-          // If it's a data URL, convert to blob
-          const response = await fetch(file.content)
-          fileBlob = await response.blob()
-        } else {
-          // Check if content is base64 (binary files) or plain text
-          // Binary files from FileUploader are base64 encoded
-          // Text files are stored as-is
-          const isBase64 = /^[A-Za-z0-9+/=]+$/.test(file.content) && file.content.length > 0
-          
-          if (isBase64 && file.content.length > 100) {
-            // Likely base64 encoded binary file
-            // Handle base64 strings that might not have padding
-            let base64Content = file.content
-            // Remove data URL prefix if present
-            if (base64Content.includes(',')) {
-              base64Content = base64Content.split(',')[1]
-            }
-            // Add padding if needed
-            while (base64Content.length % 4) {
-              base64Content += '='
-            }
-            
-            try {
-              const byteCharacters = atob(base64Content)
-              const byteNumbers = new Array(byteCharacters.length)
-              for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i)
-              }
-              const byteArray = new Uint8Array(byteNumbers)
-              fileBlob = new Blob([byteArray], { type: file.type || 'application/octet-stream' })
-            } catch {
-              // If base64 decode fails, treat as text
-              fileBlob = new Blob([file.content], { type: file.type || 'text/plain' })
-            }
-          } else {
-            // Plain text file
-            fileBlob = new Blob([file.content], { type: file.type || 'text/plain' })
-          }
-        }
-      } catch (error) {
-        throw new Error(`Failed to convert file content for upload: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-
-      formData.append('file', fileBlob, file.name)
-      // Server will use default request format via buildTeUploadRequest()
-      // No need to send 'request' field - server handles it correctly
-
-      const uploadResponse = await fetch('/api/te/upload', {
+      const cfgRes = await fetch(`/api/te/config?t=${Date.now()}`, {
         credentials: 'include',
         cache: 'no-store',
-        method: 'POST',
-        body: formData,
+        headers: { 'Cache-Control': 'no-cache' },
       })
+      const cfgJson = cfgRes.ok
+        ? ((await cfgRes.json().catch(() => ({}))) as {
+            teSubmitStrategy?: string
+            hashLookupOnly?: boolean
+          })
+        : {}
+      const strategy = parseTeSubmitStrategyFromConfig(cfgJson)
 
-      if (!uploadResponse.ok) {
-        let errorMessage = 'Failed to upload file to Check Point TE'
-        try {
-          const errorData = await uploadResponse.json()
-          errorMessage = errorData.error || errorData.message || errorMessage
-          if (errorData.details) {
-            console.error('Check Point TE upload error details:', errorData.details)
-          }
-        } catch (parseError) {
-          // If response is not JSON, try to read as text
-          try {
-            const errorText = await uploadResponse.text()
-            errorMessage = `Upload failed (${uploadResponse.status}): ${errorText.substring(0, 200)}`
-          } catch {
-            errorMessage = `Upload failed with status ${uploadResponse.status} ${uploadResponse.statusText}`
-          }
-        }
-        throw new Error(errorMessage)
-      }
-
-      let uploadData
+      let fileBlob: Blob
       try {
-        uploadData = await uploadResponse.json()
-      } catch (parseError) {
-        throw new Error('Invalid response format from Check Point TE upload API')
+        fileBlob = await uploadedFileToBlob(file)
+      } catch (error) {
+        throw new Error(`Failed to read file for Check Point TE: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
 
-      if (!uploadData.success || !uploadData.data) {
-        throw new Error(uploadData.error || 'Upload succeeded but no data returned')
-      }
-
-      const { sha256, sha1, md5, teImageId, teRevision } = uploadData.data
-
-      if (!sha256 && !sha1 && !md5) {
-        throw new Error('No hash returned from Check Point TE upload')
-      }
-
-      // Step 2: Poll for results
-      const maxAttempts = 30 // 30 attempts = 60 seconds total (30 * 2s)
-      const pollInterval = 2000 // 2 seconds between attempts
-      const pollTimeout = maxAttempts * pollInterval // 60 seconds total timeout
-      const pollStartTime = Date.now()
-      let attempts = 0
-      let verdict: 'safe' | 'malicious' | 'pending' | 'unknown' = 'pending'
+      let sha256: string | undefined
+      let sha1: string | undefined
+      let md5: string | undefined
+      let teImageId: string | undefined
+      let teRevision: number | undefined
+      let teResolvedBase: string | undefined
+      let verdict: TeVerdict = 'pending'
       let teResult: CheckPointTEResponse | null = null
 
-      while (attempts < maxAttempts && verdict === 'pending') {
-        // Check if polling timeout exceeded
-        if (Date.now() - pollStartTime > pollTimeout) {
-          console.warn('Check Point TE polling timeout exceeded', {
-            attempts,
-            duration: Date.now() - pollStartTime,
-            timeout: pollTimeout,
-          })
-          verdict = 'unknown'
-          break
-        }
-        await new Promise(resolve => setTimeout(resolve, pollInterval))
-        attempts++
-
-        const queryBody: {
-          sha256?: string
-          sha1?: string
-          md5?: string
-          features: string[]
-          te?: {
-            image?: {
-              id?: string
-              revision?: number
-            }
-          }
-        } = {
-          features: ['te'],
-        }
-
-        if (sha256) queryBody.sha256 = sha256
-        else if (sha1) queryBody.sha1 = sha1
-        else if (md5) queryBody.md5 = md5
-
-        if (teImageId && teRevision) {
-          queryBody.te = {
-            image: {
-              id: teImageId,
-              revision: teRevision,
-            },
-          }
-        }
-
-        const queryResponse = await fetch('/api/te/query', {
-          credentials: 'include',
-          cache: 'no-store',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(queryBody),
+      let resolvedWithoutUpload = false
+      if (strategy === 'auto') {
+        sha256 = await sha256HexFromBlob(fileBlob)
+        const pre = await checkpointTePollQuery({
+          sha256,
+          maxAttempts: 8,
+          pollIntervalMs: 1500,
+          skipDelayOnFirstAttempt: true,
         })
+        if (pre.verdict === 'safe' || pre.verdict === 'malicious') {
+          verdict = pre.verdict
+          teResult = pre.teResult
+          resolvedWithoutUpload = true
+        }
+      }
 
-        if (!queryResponse.ok) {
-          // If query fails, wait and retry
-          if (attempts < maxAttempts) continue
-          throw new Error('Failed to query Check Point TE results')
+      if (!resolvedWithoutUpload) {
+        if (strategy === 'hash_only') {
+          sha256 = await sha256HexFromBlob(fileBlob)
+        } else if (strategy === 'upload_only' || strategy === 'auto') {
+          const formData = new FormData()
+          formData.append('file', fileBlob, file.name)
+
+          const uploadResponse = await fetch('/api/te/upload', {
+            credentials: 'include',
+            cache: 'no-store',
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!uploadResponse.ok) {
+            let errorMessage = 'Failed to upload file to Check Point TE'
+            try {
+              const errorData = (await uploadResponse.json()) as {
+                error?: string
+                message?: string
+                details?: unknown
+                troubleshooting?: string
+              }
+              errorMessage = errorData.error || errorData.message || errorMessage
+              if (
+                typeof errorData.troubleshooting === 'string' &&
+                errorData.troubleshooting.trim().length > 0
+              ) {
+                const extra = errorData.troubleshooting.trim()
+                errorMessage = `${errorMessage.trim()}\n\n${extra}`
+              }
+            } catch {
+              try {
+                const errorText = await uploadResponse.text()
+                errorMessage = `Upload failed (${uploadResponse.status}): ${errorText.substring(0, 200)}`
+              } catch {
+                errorMessage = `Upload failed with status ${uploadResponse.status} ${uploadResponse.statusText}`
+              }
+            }
+            throw new Error(errorMessage)
+          }
+
+          let uploadData: {
+            success?: boolean
+            data?: {
+              sha256?: string
+              sha1?: string
+              md5?: string
+              teImageId?: string
+              teRevision?: number
+              teResolvedBase?: string
+            }
+            error?: string
+          }
+          try {
+            uploadData = await uploadResponse.json()
+          } catch {
+            throw new Error('Invalid response format from Check Point TE upload API')
+          }
+
+          if (!uploadData.success || !uploadData.data) {
+            throw new Error(uploadData.error || 'Upload succeeded but no data returned')
+          }
+
+          sha256 = uploadData.data.sha256
+          sha1 = uploadData.data.sha1
+          md5 = uploadData.data.md5
+          teImageId = uploadData.data.teImageId
+          teRevision = uploadData.data.teRevision
+          teResolvedBase = uploadData.data.teResolvedBase
         }
 
-        const queryData = await queryResponse.json()
-        // Extract verdict from the CheckPointTEResponse structure
-        verdict = queryData.verdict as 'safe' | 'malicious' | 'pending' | 'unknown'
-        // Store the full response including logFields
-        teResult = queryData
-
-        // If verdict is found (not pending), break
-        if (verdict !== 'pending' && verdict !== 'unknown') {
-          break
+        if (!sha256 && !sha1 && !md5) {
+          throw new Error('No file hash available for Check Point TE')
         }
+
+        const mainPoll = await checkpointTePollQuery({
+          sha256,
+          sha1,
+          md5,
+          teImageId,
+          teRevision,
+          teResolvedBase,
+          maxAttempts: strategy === 'hash_only' ? 15 : 30,
+          pollIntervalMs: 2000,
+          skipDelayOnFirstAttempt: strategy === 'hash_only',
+        })
+        verdict = mainPoll.verdict
+        teResult = mainPoll.teResult
       }
 
       // Step 3: Update file status based on verdict
@@ -704,8 +862,10 @@ export default function FilesPage() {
       let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
       
       if (verdict === 'pending' || verdict === 'unknown') {
-        // Timeout or unknown - treat as safe but log
-        scanResultMessage = 'Check Point TE analysis completed but verdict is unclear. File allowed.'
+        scanResultMessage =
+          strategy === 'hash_only'
+            ? 'Check Point TE (hash-only): No verdict in Threat Cloud for this SHA-256. File bytes were not sent to Check Point — only reputation lookup. New or rare files will often show this; set server env CHECKPOINT_TE_HASH_LOOKUP_ONLY=false or upload_only for full sandbox, or leave unset for automatic hash-then-upload.'
+            : 'Check Point TE analysis completed but verdict is unclear. File allowed.'
         
         setFiles(prev => prev.map(f => {
           if (f.id === fileId) {
@@ -899,24 +1059,30 @@ export default function FilesPage() {
       
       if (error instanceof Error) {
         message = error.message
-        
-        // Add helpful suggestions based on error type
-        if (message.includes('401') || message.includes('Invalid') || message.includes('API key')) {
-          message += ' - Please check your Check Point TE API key in Settings.'
-        } else if (message.includes('403') || message.includes('denied')) {
-          message += ' - Please check your API key permissions in Settings.'
-        } else if (message.includes('404') || message.includes('not found')) {
-          message += ' - Check Point TE endpoint may be incorrect. Check your API configuration.'
-        } else if (message.includes('429') || message.includes('rate limit')) {
-          message += ' - Rate limit exceeded. Please wait a moment and try again.'
-        } else if (message.includes('network') || message.includes('connect') || message.includes('fetch')) {
-          message += ' - Check your internet connection and firewall settings.'
-        } else if (message.includes('timeout')) {
-          message += ' - Request timed out. The file may be too large or the service may be slow.'
+        // API already appends troubleshooting with blank line — do not add generic suffixes (they duplicated 403 text and matched "API key" inside it).
+        if (!message.includes('\n\n')) {
+          if (/\b401\b/i.test(message) || /invalid check point te api key/i.test(message)) {
+            message += ' Check your TE API key in Settings (no TE_API_KEY_ prefix).'
+          } else if (message.includes('404') || message.includes('not found')) {
+            message += ' Check CHECKPOINT_TECLOUD_BASE_URL and Settings.'
+          } else if (message.includes('429') || message.includes('rate limit')) {
+            message += ' Rate limit exceeded — wait and retry.'
+          } else if (message.includes('network') || message.includes('connect') || message.includes('fetch')) {
+            message += ' Check network and firewall.'
+          } else if (message.includes('timeout')) {
+            message += ' Request timed out — file may be large or TE slow.'
+          }
         }
       }
       
-      console.error('Check Point TE sandboxing error:', error)
+      const msg = error instanceof Error ? error.message : String(error)
+      const isExpectedApiDenial =
+        /\b403\b|\b401\b|access denied|Invalid Check Point TE API key/i.test(msg)
+      if (isExpectedApiDenial) {
+        console.warn('Check Point TE:', msg.split('\n')[0])
+      } else {
+        console.error('Check Point TE sandboxing error:', error)
+      }
       
       setFiles(prev => prev.map(f => {
         if (f.id === fileId) {
@@ -1394,8 +1560,12 @@ export default function FilesPage() {
                   />
                 </div>
                 <span className="text-base text-theme-subtle mt-1">
-                  {checkpointTeConfigured 
-                    ? 'Sandbox files with Check Point Threat Emulation' 
+                  {checkpointTeConfigured
+                    ? teSubmitStrategy === 'hash_only'
+                      ? 'TE hash-only mode: only SHA-256 is sent to Check Point (no file upload). Verdicts if the hash is already known to Threat Cloud.'
+                      : teSubmitStrategy === 'auto'
+                        ? 'Automatic TE mode: reputation lookup by SHA-256 first; full upload only if Threat Cloud has no verdict yet.'
+                        : 'Sandbox files with Check Point Threat Emulation (full upload).'
                     : '⚠️ API key not configured in Settings'}
                 </span>
               </div>

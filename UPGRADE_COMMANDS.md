@@ -1,9 +1,9 @@
 # One-Step Production Upgrade Commands
 
-**Latest**: v1.0.20 (main)  
+**Latest**: v1.0.21 (main)  
 **Last Updated**: 2026-03-28
 
-## 🚀 Upgrade remote VM to v1.0.20 (recommended)
+## 🚀 Upgrade remote VM to v1.0.21 (recommended)
 
 ### Option A — Stricter upgrade (type-check + health probe) — **v2**
 
@@ -19,10 +19,10 @@ The wrapper URL below returns **404** until `scripts/upgrade-remote-production-v
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=main RUN_TYPECHECK=1 bash
 ```
 
-**Pin a release tag** (only works after `git tag v1.0.20 && git push origin v1.0.20`). If the tag is missing on GitHub, the script **falls back to `main`** and prints a warning:
+**Pin a release tag** (only works after `git tag v1.0.21 && git push origin v1.0.21`). If the tag is missing on GitHub, the script **falls back to `main`** and prints a warning:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.0.20 RUN_TYPECHECK=1 bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.0.21 RUN_TYPECHECK=1 bash
 ```
 
 With `RUN_TYPECHECK=1`, the script runs **`npm run type-check`** before build and (on current `main` of this repo) retries **`/api/health`** up to **12** times after start. Older copies of `upgrade-curl-production.sh` on GitHub ignore those options but still checkout and build.
@@ -177,9 +177,9 @@ For more information, see:
 
 That file is not on GitHub `main` yet. Use **Option A1** above, or push `scripts/upgrade-remote-production-v2.sh` to `mazh-cp/secure-ai-chat` on `main`.
 
-### `Ref v1.0.20 not found` (or any `v*` tag)
+### `Ref v1.0.21 not found` (or any `v*` tag)
 
-The tag is not on GitHub yet. Either push it (`git tag v1.0.20 && git push origin v1.0.20`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
+The tag is not on GitHub yet. Either push it (`git tag v1.0.21 && git push origin v1.0.21`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
 
 ### Permission Errors
 ```bash

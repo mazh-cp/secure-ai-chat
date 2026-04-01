@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.0.20'
-export const RELEASE_DATE = '2026-03-28'
+export const APP_VERSION = '1.0.21'
+export const RELEASE_DATE = '2026-03-29'
 
 export interface ReleaseNoteItem {
   title: string
@@ -15,15 +15,19 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'Correct binary file storage for uploads; DOCX/PDF text extraction for chat RAG.',
-      'Stricter VM upgrade script (type-check + health) and SSH helper from your laptop.',
+      'TE diagnostic API and Lakera Guard audit logging aligned with platform.lakera.ai.',
+      'Chat sends session metadata to Lakera for better tracing.',
+    ],
+  },
+  {
+    title: 'Changed',
+    items: [
+      'Check Point TE requests aligned with official TPAPI shapes; Files sync messaging improved.',
+      'Lakera: platform logs via Guard; optional HTTP telemetry when enabled.',
     ],
   },
   {
     title: 'Fixed',
-    items: [
-      'Questions about uploaded documents (e.g. names, user counts) when Lakera scan was off — files are now read as real PDF/Word text.',
-      'Production upgrades when git tag is missing: fall back to main automatically.',
-    ],
+    items: ['Default Lakera telemetry no longer hits a non-ingest endpoint.'],
   },
 ]

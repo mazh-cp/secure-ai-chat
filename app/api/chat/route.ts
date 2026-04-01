@@ -511,6 +511,7 @@ IMPORTANT INSTRUCTIONS:
         'input',
         {
           user_id: guardUserId,
+          session_id: requestId,
           ip_address: userIP,
           internal_request_id: requestId,
         },
@@ -780,6 +781,7 @@ IMPORTANT INSTRUCTIONS:
         'output',
         {
           user_id: guardUserId,
+          session_id: requestId,
           ip_address: userIP,
           internal_request_id: `${requestId}-output`,
         },
@@ -859,35 +861,38 @@ IMPORTANT INSTRUCTIONS:
       timestamp: new Date().toISOString(),
     }
 
-    // Send telemetry to Lakera Platform for input scan (if scanned)
+    // Platform-aligned audit (+ optional LAKERA_TELEMETRY_HTTP companion)
     if (apiKeys.lakeraAiKey && inputScanResult.scanned) {
       const inputLogData = {
         ...logData,
         action: inputScanResult.flagged ? 'blocked' : 'allowed',
         lakeraDecision: inputScanResult,
+        projectId: apiKeys.lakeraProjectId,
+        userId: guardUserId,
+        sessionId: requestId,
+        internalRequestId: requestId,
       }
-      sendLakeraTelemetryFromLog(
-        inputLogData as any,
-        apiKeys.lakeraAiKey,
-        apiKeys.lakeraProjectId
-      ).catch((error) => {
-        console.error('Failed to send Lakera telemetry for input scan (non-blocking):', error)
+      sendLakeraTelemetryFromLog(inputLogData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId, {
+        contextOverride: 'chat_input',
+      }).catch((error) => {
+        console.error('Failed Lakera audit/telemetry for input scan (non-blocking):', error)
       })
     }
 
-    // Send telemetry to Lakera Platform for output scan (if scanned)
     if (apiKeys.lakeraAiKey && outputScanResult.scanned) {
       const outputLogData = {
         ...logData,
         action: outputScanResult.flagged ? 'blocked' : 'allowed',
         lakeraDecision: outputScanResult,
+        projectId: apiKeys.lakeraProjectId,
+        userId: guardUserId,
+        sessionId: requestId,
+        internalRequestId: `${requestId}-output`,
       }
-      sendLakeraTelemetryFromLog(
-        outputLogData as any,
-        apiKeys.lakeraAiKey,
-        apiKeys.lakeraProjectId
-      ).catch((error) => {
-        console.error('Failed to send Lakera telemetry for output scan (non-blocking):', error)
+      sendLakeraTelemetryFromLog(outputLogData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId, {
+        contextOverride: 'chat_output',
+      }).catch((error) => {
+        console.error('Failed Lakera audit/telemetry for output scan (non-blocking):', error)
       })
     }
 

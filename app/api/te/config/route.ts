@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { setTeApiKey, getTeApiKey, reloadTeApiKey } from '@/lib/checkpoint-te'
+import {
+  setTeApiKey,
+  getTeApiKey,
+  reloadTeApiKey,
+  normalizeTeApiKeyInput,
+  isTeHashLookupOnlyMode,
+  getTeSubmitStrategy,
+  getTeAuthFormatMode,
+} from '@/lib/checkpoint-te'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
 
 /**
@@ -16,6 +24,10 @@ export async function GET() {
     
     return NextResponse.json({
       configured,
+      teSubmitStrategy: getTeSubmitStrategy(),
+      hashLookupOnly: isTeHashLookupOnlyMode(),
+      /** TPAPI 1.0: raw key in Authorization; default te_api_key = TE_API_KEY_ prefix (CHECKPOINT_TE_AUTH_FORMAT). */
+      teAuthFormat: getTeAuthFormatMode(),
       message: configured ? 'Check Point TE API key is configured' : 'Check Point TE API key is not configured',
     }, {
       headers: {
@@ -49,14 +61,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate API key format
-    // Remove any existing prefix if user accidentally included it
-    let trimmedKey = apiKey.trim()
-    
-    // Remove TE_API_KEY_ prefix if user included it (we'll add it when making requests)
-    if (trimmedKey.startsWith('TE_API_KEY_')) {
-      trimmedKey = trimmedKey.substring('TE_API_KEY_'.length).trim()
-    }
+    const trimmedKey = normalizeTeApiKeyInput(apiKey)
     
     // Basic validation - Check Point TE keys are typically alphanumeric
     if (trimmedKey.length < 10) {

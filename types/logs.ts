@@ -17,13 +17,19 @@ export interface LogEntry {
     fileSize?: number
     threatLevel?: 'low' | 'medium' | 'high' | 'critical'
     detectedPatterns?: string[]
+    lakeraRequestUuid?: string
   }
+  projectId?: string | null
+  sessionId?: string
+  internalRequestId?: string
   lakeraDecision?: {
     scanned: boolean
     flagged: boolean
     categories?: Record<string, boolean>
     scores?: Record<string, number>
     message?: string
+    /** Lakera Guard metadata.request_uuid — search this in platform.lakera.ai */
+    requestUuid?: string
     // Official payload data (detected threats with locations)
     payload?: Array<{
       start: number

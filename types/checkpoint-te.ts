@@ -1,12 +1,14 @@
 /**
  * Check Point Threat Emulation (TE) detailed log fields and findings
- * Based on Check Point R81 Threat Prevention Administration Guide
- * Reference: https://sc1.checkpoint.com/documents/R81/WebAdminGuides/EN/CP_R81_ThreatPrevention_AdminGuide/Topics-TPG/Log_Fields.htm
+ * TPAPI 1.0 te response: combined_verdict, numeric severity/confidence, nested status object
+ * @see https://sc1.checkpoint.com/documents/TPAPI/CP_1.0_ThreatPreventionAPI_APIRefGuide/189790.htm
  */
 
 export interface CheckPointTELogFields {
   // Core verdict and status
   verdict?: 'Malicious' | 'Benign' | 'Suspicious' | 'Unknown'
+  /** TPAPI Threat Emulation combined_verdict (benign | malicious). */
+  combined_verdict?: string
   status?: 'FOUND' | 'PARTIALLY_FOUND' | 'NOT_FOUND' | 'IN_PROGRESS' | 'QUEUED'
   
   // Analysis details
@@ -59,4 +61,6 @@ export interface CheckPointTEResponse {
   status: string
   logFields: CheckPointTELogFields
   rawResponse?: unknown // Store raw API response for debugging
+  /** TE file API base that answered (for follow-up queries after multi-host 403 fallback). */
+  teResolvedBase?: string
 }

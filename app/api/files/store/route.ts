@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { getApiKeys } from '@/lib/api-keys-storage'
 import { getOwnerId } from '@/lib/owner'
-import { getById, insertFile } from '@/lib/registry/files-registry'
+import { getById, insertFile, updateFileMetadata } from '@/lib/registry/files-registry'
 import { getUploadsDir } from '@/lib/persistent-storage'
 import { writeRawAndMeta, writeStatus } from '@/lib/storage-canonical'
 import { buildForensicContext, logForensic } from '@/lib/forensic-log'
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       if (scanResult == null || typeof scanResult !== 'string') {
         scanResultVal = existing!.scanResult ?? null
       }
-    } else if (keys.lakeraAiKey?.trim() && lakeraScanRequested) {
+    } else if (!skipServerLakeraScan && keys.lakeraAiKey?.trim() && lakeraScanRequested) {
       const { prepareContentForFileScan, screenTextAsFileUpload } = await import('@/lib/lakera/guard-client')
       const { resolveLakeraGuardEndpoint } = await import('@/lib/lakera-guard-endpoint')
       const guardUrl = resolveLakeraGuardEndpoint(keys.lakeraEndpoint)
@@ -224,6 +224,66 @@ export async function POST(request: NextRequest) {
       checkpointTeDetailsVal = { ...(existing!.checkpointTeDetails as Record<string, unknown>) }
     }
 
+    /** Client sync after TE/Lakera: update scan columns only — avoids disk rewrite failures (permissions, locks). */
+    if (useMetadataMerge) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[FILES/STORE] metadata-only merge', { ownerId, fileId: fileIdStr })
+      }
+      try {
+        const updated = updateFileMetadata(fileIdStr, {
+          scan_status: scanStatusStr,
+          scan_result: scanResultVal,
+          scan_details: scanDetailsVal,
+          checkpoint_te_details: checkpointTeDetailsVal,
+        })
+        if (!updated) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: {
+                code: 'METADATA_NOT_FOUND',
+                message: 'File not found in registry or was deleted',
+                details: null,
+              },
+            },
+            { status: 404 }
+          )
+        }
+      } catch (metaErr) {
+        console.error('Failed to update file metadata in registry:', metaErr)
+        const msg = metaErr instanceof Error ? metaErr.message : 'Failed to update file metadata'
+        return NextResponse.json(
+          { ok: false, error: { code: 'REGISTRY_FAILED', message: msg, details: null } },
+          { status: 500 }
+        )
+      }
+
+      try {
+        const files = listFiles({ owner_id: ownerId })
+        const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
+        logForensic('files/store-metadata', ctx)
+      } catch {
+        // never fail the request on forensic logging
+      }
+
+      return NextResponse.json({
+        ok: true,
+        success: true,
+        file: {
+          id: fileIdStr,
+          name: fileNameStr,
+          size: fileSizeNum,
+          mime: fileTypeStr,
+          storagePath: `data/uploads/${ownerId}/${fileIdStr}`,
+          message: 'Metadata updated',
+        },
+        ownerId,
+        fileId: fileIdStr,
+        storagePathPreview: `data/uploads/${ownerId}/${fileIdStr}`,
+        message: 'File metadata updated',
+      })
+    }
+
     if (process.env.NODE_ENV === 'development') {
       console.log('[FILES/STORE] ownerId=', ownerId, 'fileId=', fileIdStr)
     }
@@ -279,9 +339,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const files = listFiles({ owner_id: ownerId })
-    const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
-    logForensic('files/store', ctx)
+    try {
+      const files = listFiles({ owner_id: ownerId })
+      const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
+      logForensic('files/store', ctx)
+    } catch {
+      // never fail a successful store on debug logging
+    }
 
     const storagePathPreview = `data/uploads/${ownerId}/${fileIdStr}`
     return NextResponse.json({

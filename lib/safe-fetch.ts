@@ -11,6 +11,29 @@ export interface SafeFetchResult<T = unknown> {
   error?: { code: string; message: string; details?: unknown }
 }
 
+/** Supports `{ error: "string" }`, `{ error: { code, message, details } }`, and top-level `message`. */
+function parseApiErrorBody(data: unknown, httpStatus: number): { code: string; message: string; details?: unknown } {
+  const fallback = `Request failed with status ${httpStatus}`
+  if (data == null || typeof data !== 'object') {
+    return { code: `HTTP_${httpStatus}`, message: fallback }
+  }
+  const d = data as Record<string, unknown>
+  const nested = d.error
+  if (typeof nested === 'string') {
+    return { code: `HTTP_${httpStatus}`, message: nested }
+  }
+  if (nested && typeof nested === 'object') {
+    const o = nested as Record<string, unknown>
+    const code = typeof o.code === 'string' ? o.code : `HTTP_${httpStatus}`
+    const message = typeof o.message === 'string' ? o.message : fallback
+    return { code, message, details: o.details }
+  }
+  if (typeof d.message === 'string') {
+    return { code: `HTTP_${httpStatus}`, message: d.message }
+  }
+  return { code: `HTTP_${httpStatus}`, message: fallback }
+}
+
 export async function safeFetchJson<T = unknown>(
   url: string,
   opts?: RequestInit
@@ -51,15 +74,15 @@ export async function safeFetchJson<T = unknown>(
   try {
     const data = (await response.json()) as T
     if (!response.ok) {
-      const err = data as { error?: string; message?: string; details?: unknown }
+      const parsed = parseApiErrorBody(data, response.status)
       return {
         ok: false,
         status: response.status,
         data,
         error: {
-          code: `HTTP_${response.status}`,
-          message: typeof err?.error === 'string' ? err.error : typeof err?.message === 'string' ? err.message : `Request failed with status ${response.status}`,
-          details: err?.details,
+          code: parsed.code,
+          message: parsed.message,
+          details: parsed.details,
         },
       }
     }

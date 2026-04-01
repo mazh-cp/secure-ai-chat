@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.21] - 2026-03-29
+
+### Added
+- **`GET /api/te/diagnostic`** — Operator hints for Check Point TE (suggested outbound IP, upload base candidates); no secrets in response.
+- **`lib/lakera-guard-audit.ts`** — Server system logs aligned with Lakera Guard platform correlation (`request_uuid`, `project_id`, breakdown summary). Chat input/output, file scan, and RAG paths emit `service: lakera_guard` audit rows.
+- **Lakera Guard metadata** — Chat screening sends `session_id` (per-request correlation) alongside existing `user_id` / `ip_address` / `internal_request_id`.
+
+### Changed
+- **Check Point TE (TPAPI 1.0 alignment)** — Query body uses `te.images[]` and optional `te.reports`; default upload reports **`xml`** only (override `CHECKPOINT_TECLOUD_TE_REPORTS`). Optional **`te_cookie`** stickiness from responses; **`CHECKPOINT_TE_AUTH_FORMAT`** (`raw` vs `te_api_key` / default prefixed). **`GET /api/te/config`** returns `teAuthFormat`.
+- **Lakera telemetry** — Platform visibility is primarily via **Guard API** calls (dashboard logs). Optional HTTP companion POST only when **`LAKERA_TELEMETRY_HTTP=true`**; extended payload includes `lakera_correlation`. **`LAKERA_GUARD_AUDIT_LOG=false`** disables local audit rows.
+- **Files page** — Visibility refetch calls **`/api/owner`** before list (owner cookie sync); clearer banners when the server returns an empty list vs a failed refresh.
+
+### Fixed
+- Misleading “telemetry to Lakera” behavior: default no longer POSTs to undocumented `/v2/telemetry` (avoid silent 404s); use Guard + audit logs, or opt-in HTTP ingest.
+
 ## [1.0.20] - 2026-03-28
 
 ### Added

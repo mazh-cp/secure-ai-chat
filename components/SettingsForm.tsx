@@ -59,6 +59,9 @@ export default function SettingsForm() {
   // Check Point TE API key state (server-side only)
   const [checkpointTeKey, setCheckpointTeKey] = useState<string>('')
   const [checkpointTeConfigured, setCheckpointTeConfigured] = useState<boolean>(false)
+  const [teSubmitStrategyServer, setTeSubmitStrategyServer] = useState<
+    'auto' | 'hash_only' | 'upload_only'
+  >('upload_only')
   const [isCheckingTeStatus, setIsCheckingTeStatus] = useState<boolean>(false)
   const [isSavingTeKey, setIsSavingTeKey] = useState<boolean>(false)
 
@@ -217,15 +220,26 @@ export default function SettingsForm() {
       if (response.ok) {
         const data = await response.json()
         setCheckpointTeConfigured(data.configured || false)
+        const s = data.teSubmitStrategy
+        if (s === 'hash_only' || s === 'upload_only' || s === 'auto') {
+          setTeSubmitStrategyServer(s)
+        } else if (data.hashLookupOnly === true) {
+          setTeSubmitStrategyServer('hash_only')
+        } else if (data.hashLookupOnly === false) {
+          setTeSubmitStrategyServer('upload_only')
+        } else {
+          setTeSubmitStrategyServer('auto')
+        }
       } else {
-        // If endpoint returns error, assume not configured
         setCheckpointTeConfigured(false)
+        setTeSubmitStrategyServer('upload_only')
       }
     } catch (error) {
       // Silently handle errors - service may not be ready yet
       // Don't break the UI if status check fails
       console.error('Failed to check Check Point TE status:', error)
       setCheckpointTeConfigured(false)
+      setTeSubmitStrategyServer('upload_only')
     } finally {
       setIsCheckingTeStatus(false)
     }
@@ -1381,10 +1395,17 @@ export default function SettingsForm() {
                   🔒 Server-side storage - Key is stored securely on the server and never exposed to the browser. Paste only (Ctrl/Cmd + V).
                 </span>
                 <span className="block mt-2 text-sm opacity-75 border-l-2 border-yellow-500/50 pl-2">
-                  <strong>Important:</strong> Enter only the API key value (without the &quot;TE_API_KEY_&quot; prefix). 
-                  If you get an &quot;access denied&quot; (403) error, check: 1) API key has file upload permissions, 
-                  2) Your server IP is allowed in Check Point Management API settings (SmartConsole → Management API → Advanced Settings), 
-                  3) API subscription/plan limits.
+                  <strong>Important:</strong> Enter only the API key value (without the &quot;TE_API_KEY_&quot; prefix).
+                  If you see <strong>403 access denied</strong> with a new key, Check Point usually blocks by <strong>source IP</strong> or <strong>wrong regional TE host</strong> — not a typo in the key (401 is more common for bad keys).
+                  Allowlist the <strong>outbound IP of the machine running this app</strong> (open <code className="text-xs">/api/te/diagnostic</code> on that server for a suggested IP).
+                  Default TE host matches v1.0.17+ docs (<code className="text-xs break-all">te-api.checkpoint.com</code>). If Check Point returns 403, set <code className="text-xs">CHECKPOINT_TECLOUD_BASE_URL</code> on the server to your tenant region, e.g. <code className="text-xs break-all">https://te-na.checkpoint.com/tecloud/api/v1/file</code>.
+                  <br /><br />
+                  <strong>TE submission mode</strong> (server env <code className="text-xs">CHECKPOINT_TE_HASH_LOOKUP_ONLY</code>): <strong>unset</strong> = automatic (hash reputation first, then full upload if needed). <code className="text-xs">true</code> = hash-only (no file bytes). <code className="text-xs">false</code> or <code className="text-xs">upload_only</code> = always upload.
+                  {teSubmitStrategyServer === 'hash_only' ? (
+                    <span className="block mt-1 text-green-400/90">This server uses hash-only mode (no file upload to Check Point).</span>
+                  ) : teSubmitStrategyServer === 'auto' ? (
+                    <span className="block mt-1 text-emerald-400/90">This server uses automatic mode (hash-first, then upload if needed).</span>
+                  ) : null}
                 </span>
               </p>
             </div>
