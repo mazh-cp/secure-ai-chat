@@ -3,7 +3,7 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.2'
+export const APP_VERSION = '1.1.3'
 export const RELEASE_DATE = '2026-04-01'
 
 export interface ReleaseNoteItem {
@@ -13,18 +13,10 @@ export interface ReleaseNoteItem {
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Added',
+    title: 'Fixed',
     items: [
-      'Production upgrade v3 script for the 1.1.x line (gated build + default release tag).',
-      'Extra checks so API key material is not committed to git.',
+      'Production `build:fresh` no longer fails ESLint on `.backups/` copies of `.next`.',
+      'VM upgrade retry now pulls latest `main` so `package.json` scripts stay in sync.',
     ],
-  },
-  {
-    title: 'Changed',
-    items: ['Remote VM upgrades: prefer upgrade-remote-production-v3.sh or USE_V3=1 from your laptop.'],
-  },
-  {
-    title: 'Security',
-    items: ['Clarified in docs: pulling from GitHub never includes your stored provider keys.'],
   },
 ]

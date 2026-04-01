@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-04-01
+
+### Fixed
+- **ESLint / `build:fresh` on production VMs** — Ignore **`.backups/**`** and nested **`**/.next/**`** so lint does not scan copied `.next` chunks inside upgrade backup trees (fixes `react/no-find-dom-node` / `react/display-name` on minified files).
+- **`upgrade-curl-production.sh`** — On build failure retry: after `git checkout main`, run **`git pull origin main`** so a stale local `main` is not missing `build:fresh` and other scripts. If the first failure happened while already on **`main`**, second attempt also **pulls** and reinstalls deps.
+
+### Changed
+- **`.gitignore`** — **`/.backups/`** so backup snapshots are not committed.
+- **`upgrade-remote-production-v3.sh`** — Default **`GIT_REF=v1.1.3`**.
+
 ## [1.1.2] - 2026-04-01
 
 ### Added

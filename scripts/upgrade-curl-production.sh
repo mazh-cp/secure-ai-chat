@@ -294,11 +294,23 @@ for attempt in 1 2; do
     warn "Build failed. Retrying with main (latest fixes)..."
     run_in_app_dir git fetch origin 2>/dev/null || true
     run_in_app_dir git checkout main 2>/dev/null || true
+    # VM clones often have local main behind origin/main — pull or build uses old package.json (e.g. missing build:fresh).
+    run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
     GIT_REF=main
     [ -f "$BACKUP_DIR/.env.local" ] && sudo cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" 2>/dev/null || true
     [ -d "$BACKUP_DIR/.secure-storage" ] && sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || true
     [ -d "$BACKUP_DIR/.storage" ] && sudo cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" 2>/dev/null || true
     say "Reinstalling dependencies after checkout main"
+    if [ "$(whoami)" = "$APP_USER" ]; then
+      (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
+    else
+      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
+    fi
+  elif [ "$attempt" -eq 1 ] && [ "$GIT_REF" = "main" ]; then
+    warn "Build failed on main — fetching latest origin/main (local clone may be behind)..."
+    run_in_app_dir git fetch origin 2>/dev/null || true
+    run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
+    say "Reinstalling dependencies after git pull"
     if [ "$(whoami)" = "$APP_USER" ]; then
       (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
     else

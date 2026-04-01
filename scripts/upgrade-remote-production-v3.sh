@@ -5,7 +5,7 @@
 # verify-build, check:secrets (client + git-tracked leak scan), npm audit hygiene.
 #
 # Defaults (override with env vars on the bash that consumes this pipe):
-#   GIT_REF=v1.1.2        — pin this tag on the VM; falls back to main if tag missing (see upgrade-curl-production.sh)
+#   GIT_REF=v1.1.3        — pin this tag on the VM; falls back to main if tag missing (see upgrade-curl-production.sh)
 #   USE_BUILD_FRESH=1     — npm run build:fresh on server (secrets + typecheck + lint + verify standalone)
 #   RUN_TYPECHECK=1       — kept for parity; skipped inside build:fresh when USE_BUILD_FRESH=1
 #   HEALTH_RETRIES=0      — upgrade-curl sets 12 when USE_BUILD_FRESH=1 and retries were 0
@@ -31,14 +31,14 @@
 #
 set -euo pipefail
 
-export GIT_REF="${GIT_REF:-v1.1.2}"
+export GIT_REF="${GIT_REF:-v1.1.3}"
 export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
 export RUN_TYPECHECK="${RUN_TYPECHECK:-1}"
 export HEALTH_RETRIES="${HEALTH_RETRIES:-0}"
 
 UPGRADE_SCRIPT_URL="${UPGRADE_SCRIPT_URL:-https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh}"
 
-echo "==> Remote production upgrade v3 — release line 1.1.x (default GIT_REF=${GIT_REF})"
+echo "==> Remote production upgrade v3 — release line 1.1.x (default tag ${GIT_REF})"
 echo "==> USE_BUILD_FRESH=${USE_BUILD_FRESH} RUN_TYPECHECK=${RUN_TYPECHECK} HEALTH_RETRIES=${HEALTH_RETRIES}"
 echo "==> Underlying: ${UPGRADE_SCRIPT_URL}"
 echo ""

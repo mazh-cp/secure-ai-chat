@@ -1,11 +1,11 @@
 # One-Step Production Upgrade Commands
 
-**Latest**: v1.1.2 (main)  
+**Latest**: v1.1.3 (main)  
 **Last Updated**: 2026-04-01
 
 ## 🚀 Upgrade remote VM — **1.1.x line (recommended): v3**
 
-### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.2`, `USE_BUILD_FRESH=1`)
+### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.3`, `USE_BUILD_FRESH=1`)
 
 Use this for new production cycles after **1.0.22**. It runs **`npm run build:fresh`** on the VM (client + git leak checks, typecheck, lint, verify standalone) when **`USE_BUILD_FRESH=1`** (default).
 
@@ -38,17 +38,17 @@ bash scripts/build-remote-production-vm.sh
 **Tag must exist on GitHub** (or the script falls back to `main`):
 
 ```bash
-git tag v1.1.2 && git push origin v1.1.2
+git tag v1.1.3 && git push origin v1.1.3
 ```
 
 ---
 
-## 🚀 Upgrade remote VM to v1.1.2 (direct curl, no v3 wrapper)
+## 🚀 Upgrade remote VM to v1.1.3 (direct curl, no v3 wrapper)
 
-**Pin tag with the core script** (after `git tag v1.1.2 && git push origin v1.1.2`):
+**Pin tag with the core script** (after `git tag v1.1.3 && git push origin v1.1.3`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.1.2 USE_BUILD_FRESH=1 bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.1.3 USE_BUILD_FRESH=1 bash
 ```
 
 ---
@@ -234,9 +234,9 @@ For more information, see:
 
 That file is not on GitHub `main` yet. Use **Option A1** above, or push `scripts/upgrade-remote-production-v2.sh` to `mazh-cp/secure-ai-chat` on `main`.
 
-### `Ref v1.1.2 not found` (or any `v*` tag)
+### `Ref v1.1.3 not found` (or any `v*` tag)
 
-The tag is not on GitHub yet. Either push it (`git tag v1.1.2 && git push origin v1.1.2`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
+The tag is not on GitHub yet. Either push it (`git tag v1.1.3 && git push origin v1.1.3`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
 
 ### Permission Errors
 ```bash

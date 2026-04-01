@@ -3,7 +3,7 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.2'
+export const APP_VERSION = '1.1.3'
 
 export const RELEASE_DATE = '2026-04-01'
 
@@ -18,26 +18,19 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.2]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.3]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Added',
+    title: 'Fixed',
     items: [
-      'scripts/upgrade-remote-production-v3.sh — 1.1.x VM upgrade path (default GIT_REF=v1.1.2, USE_BUILD_FRESH=1).',
-      'scripts/check-git-no-api-keys.mjs — blocks sk-… / sk-ant-api… tokens in git-tracked files (part of check:secrets).',
+      'ESLint ignores `.backups/**` and nested `**/.next/**` so `npm run build:fresh` does not lint old upgrade snapshots.',
+      'upgrade-curl-production.sh: after a failed build, `git pull origin main` so retries do not use stale main (missing scripts).',
     ],
   },
   {
     title: 'Changed',
     items: [
-      'Version line 1.1.x — use USE_V3=1 or curl …/upgrade-remote-production-v3.sh for production upgrades.',
-      'run-remote-production-upgrade.sh — USE_V3=1 selects the v3 upgrade wrapper.',
-    ],
-  },
-  {
-    title: 'Security',
-    items: [
-      'SECURITY.md documents that GitHub clones do not ship provider API keys; .secure-storage remains gitignored.',
+      'Default v3 upgrade tag `GIT_REF=v1.1.3`; `.backups/` added to `.gitignore`.',
     ],
   },
 ]

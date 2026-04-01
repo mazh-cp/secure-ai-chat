@@ -75,3 +75,6 @@ Thumbs.db
 
 # App data directory (uploads, registry DB) - do not commit
 data/
+
+# Local upgrade snapshots (often include .next bundles — never lint or commit)
+.backups/
