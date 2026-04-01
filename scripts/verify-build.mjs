@@ -22,8 +22,25 @@ if (!fs.existsSync(nextDir)) {
   fail('Missing .next — run `next build` first.')
 }
 if (!fs.existsSync(standaloneServer)) {
+  const standaloneRoot = path.join(nextDir, 'standalone')
+  if (fs.existsSync(standaloneRoot)) {
+    try {
+      const entries = fs.readdirSync(standaloneRoot, { withFileTypes: true })
+      const names = entries.map((e) => (e.isDirectory() ? `${e.name}/` : e.name)).join(', ')
+      console.error('❌ verify-build: .next/standalone exists but server.js missing. Contents:', names || '(empty)')
+    } catch {
+      console.error('❌ verify-build: could not list .next/standalone')
+    }
+  } else {
+    try {
+      const nextEntries = fs.readdirSync(nextDir)
+      console.error('❌ verify-build: .next contains:', nextEntries.join(', ') || '(empty)')
+    } catch {
+      // ignore
+    }
+  }
   fail(
-    `Missing standalone server (${path.relative(root, standaloneServer)}). Ensure next.config has output: 'standalone'.`,
+    `Missing standalone server (${path.relative(root, standaloneServer)}). Use project-local Next with webpack: node scripts/next-build-production.mjs (or next build --webpack). If you see only Turbopack in the build log, pull latest main and run npm ci.`,
   )
 }
 if (!fs.existsSync(staticDir)) {

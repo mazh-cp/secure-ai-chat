@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.7] - 2026-04-03
+
+### Fixed
+- **`npm run build`** — Use **`scripts/next-build-production.mjs`** to invoke **`node_modules/next/dist/bin/next build --webpack`**, so VMs that have a **global `next`** on PATH still produce **`.next/standalone/server.js`**. **`verify-build`** now prints **`.next`** / **`.next/standalone`** listings when **`server.js`** is missing.
+
+### Changed
+- **Upgrade defaults** — **`GIT_REF=v1.1.7`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+
 ## [1.1.6] - 2026-04-03
 
 ### Fixed

@@ -1,11 +1,11 @@
 # One-Step Production Upgrade Commands
 
-**Latest**: v1.1.6 (main)  
+**Latest**: v1.1.7 (main)  
 **Last Updated**: 2026-04-03
 
 ## 🚀 Upgrade remote VM — **1.1.x line (recommended): v3**
 
-### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.6`, `USE_BUILD_FRESH=1`)
+### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.7`, `USE_BUILD_FRESH=1`)
 
 Use this for new production cycles after **1.0.22**. It runs **`npm run build:fresh`** on the VM (client + git leak checks, typecheck, lint, verify standalone) when **`USE_BUILD_FRESH=1`** (default).
 
@@ -28,7 +28,7 @@ export SSH_TARGET=adminuser@YOUR_VM_IP
 USE_V3=1 bash scripts/run-remote-production-upgrade.sh
 ```
 
-**Laptop helper** (`build-remote-production-vm.sh` defaults **`USE_V3=1`**, **`GIT_REF=v1.1.6`**, **`USE_BUILD_FRESH=1`**):
+**Laptop helper** (`build-remote-production-vm.sh` defaults **`USE_V3=1`**, **`GIT_REF=v1.1.7`**, **`USE_BUILD_FRESH=1`**):
 
 ```bash
 export SSH_TARGET=adminuser@YOUR_VM_IP
@@ -38,17 +38,17 @@ bash scripts/build-remote-production-vm.sh
 **Tag must exist on GitHub** (or the script falls back to `main`):
 
 ```bash
-git tag v1.1.6 && git push origin v1.1.6
+git tag v1.1.7 && git push origin v1.1.7
 ```
 
 ---
 
-## 🚀 Upgrade remote VM to v1.1.6 (direct curl, no v3 wrapper)
+## 🚀 Upgrade remote VM to v1.1.7 (direct curl, no v3 wrapper)
 
-**Pin tag with the core script** (after `git tag v1.1.6 && git push origin v1.1.6`):
+**Pin tag with the core script** (after `git tag v1.1.7 && git push origin v1.1.7`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.1.6 USE_BUILD_FRESH=1 bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.1.7 USE_BUILD_FRESH=1 bash
 ```
 
 ---
@@ -234,9 +234,9 @@ For more information, see:
 
 That file is not on GitHub `main` yet. Use **Option A1** above, or push `scripts/upgrade-remote-production-v2.sh` to `mazh-cp/secure-ai-chat` on `main`.
 
-### `Ref v1.1.6 not found` (or any `v*` tag)
+### `Ref v1.1.7 not found` (or any `v*` tag)
 
-The tag is not on GitHub yet. Either push it (`git tag v1.1.6 && git push origin v1.1.6`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
+The tag is not on GitHub yet. Either push it (`git tag v1.1.7 && git push origin v1.1.7`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
 
 ### Permission Errors
 ```bash
