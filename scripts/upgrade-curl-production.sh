@@ -22,6 +22,10 @@
 #   curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat
 #   GIT_REF=v1.0.15 curl -fsSL .../upgrade-curl-production.sh | bash
 #
+# If the app lives under another user's home (e.g. /home/adminuser/secure-ai-chat) but systemd
+# User= is secureai, auto-detection uses the directory owner for git/npm. Override explicitly:
+#   APP_USER=adminuser curl -fsSL .../upgrade-curl-production.sh | bash
+#
 # If GIT_REF is a version tag (v1.2.3) that does not exist on origin yet, the script
 # falls back to GIT_REF_FALLBACK (default: main). Push tags for reproducible deploys:
 #   git tag v1.0.20 && git push origin v1.0.20
@@ -142,13 +146,41 @@ if [ "$APP_ROOT" != "$APP_DIR" ]; then
   APP_DIR="$APP_ROOT"
 fi
 
-# Detect app user (systemd User= or owner of APP_DIR)
-APP_USER="${APP_USER:-}"
-if [ -z "$APP_USER" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-  APP_USER=$(grep "^User=" "/etc/systemd/system/${SERVICE_NAME}.service" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
+# Detect app user: must be able to cd to APP_DIR (e.g. secureai cannot enter /home/adminuser/...).
+try_cd_as_user() {
+  local u="$1"
+  [ -z "$u" ] && return 1
+  sudo -u "$u" bash -c "cd \"$APP_DIR\" 2>/dev/null" || return 1
+  return 0
+}
+
+DIR_OWNER=$(sudo stat -c '%U' "$APP_DIR" 2>/dev/null || sudo stat -f '%Su' "$APP_DIR" 2>/dev/null || echo "")
+UNIT_USER=""
+if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+  UNIT_USER=$(grep "^User=" "/etc/systemd/system/${SERVICE_NAME}.service" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
 fi
-if [ -z "$APP_USER" ]; then
-  APP_USER=$(sudo stat -c '%U' "$APP_DIR" 2>/dev/null || sudo stat -f '%Su' "$APP_DIR" 2>/dev/null || echo "$(whoami)")
+
+if [ -n "${APP_USER:-}" ]; then
+  if ! try_cd_as_user "$APP_USER"; then
+    warn "APP_USER=$APP_USER cannot access $APP_DIR; ignoring override and auto-detecting"
+    APP_USER=""
+  fi
+fi
+
+if [ -z "${APP_USER:-}" ]; then
+  if try_cd_as_user "$UNIT_USER"; then
+    APP_USER="$UNIT_USER"
+  elif try_cd_as_user "$DIR_OWNER"; then
+    APP_USER="$DIR_OWNER"
+    if [ -n "$UNIT_USER" ] && [ "$UNIT_USER" != "$DIR_OWNER" ]; then
+      warn "systemd User=$UNIT_USER cannot cd to $APP_DIR; using directory owner $APP_USER for git/npm/build"
+      warn "Fix long-term: set systemd User=$APP_USER, or move app to /opt/secure-ai-chat owned by the service user"
+    fi
+  elif try_cd_as_user "$(whoami)"; then
+    APP_USER="$(whoami)"
+  else
+    fail "No user can cd to $APP_DIR. Try: APP_USER=adminuser curl -fsSL ... | bash (or chmod +x parent home dirs)"
+  fi
 fi
 say "App user: $APP_USER"
 
@@ -322,6 +354,12 @@ for attempt in 1 2; do
 done
 [ "$build_ok" = true ] || fail "Build failed. Try: GIT_REF=main curl -fsSL ... | bash"
 ok "Build complete"
+
+if [ -n "${UNIT_USER:-}" ] && [ -n "${APP_USER:-}" ] && [ "$UNIT_USER" != "$APP_USER" ]; then
+  warn "systemd unit uses User=$UNIT_USER but this upgrade ran git/npm/build as $APP_USER."
+  warn "If the service fails to read files, set User=$APP_USER and Group=$APP_USER in /etc/systemd/system/${SERVICE_NAME}.service, then: sudo systemctl daemon-reload && sudo systemctl restart $SERVICE_NAME"
+  warn "If the app lives under /home/otheruser with mode 700, the service account must be that user (or move the app to e.g. /opt/secure-ai-chat)."
+fi
 
 # Start service
 say "Starting service: $SERVICE_NAME"
