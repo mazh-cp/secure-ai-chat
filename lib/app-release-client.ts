@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.4'
-export const RELEASE_DATE = '2026-04-02'
+export const APP_VERSION = '1.1.5'
+export const RELEASE_DATE = '2026-04-03'
 
 export interface ReleaseNoteItem {
   title: string
@@ -13,13 +13,13 @@ export interface ReleaseNoteItem {
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Fixed',
+    title: 'Added',
     items: [
-      '`/release-notes` shows `### Changed` bullets from CHANGELOG.md (API + page).',
+      'Optional `SHARED_ORG_OWNER_ID` for one org-wide file + RAG corpus; check `/api/owner` for `shared_org_corpus`.',
     ],
   },
   {
     title: 'Changed',
-    items: ['Default production upgrade tag is `v1.1.4`.'],
+    items: ['Default production upgrade tag is `v1.1.5`.'],
   },
 ]

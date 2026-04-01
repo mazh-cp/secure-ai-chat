@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.4'
+export const APP_VERSION = '1.1.5'
 
-export const RELEASE_DATE = '2026-04-02'
+export const RELEASE_DATE = '2026-04-03'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,18 +18,18 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.4]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.5]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Fixed',
+    title: 'Added',
     items: [
-      '`/release-notes` and `GET /api/release-notes` parse `### Changed` from CHANGELOG.md and show it on the page.',
+      '`SHARED_ORG_OWNER_ID` — one shared file + RAG corpus for the whole deployment; `/api/owner` includes `shared_org_corpus`.',
     ],
   },
   {
     title: 'Changed',
     items: [
-      'Default v3 upgrade tag `GIT_REF=v1.1.4` in scripts and upgrade docs.',
+      'Default v3 upgrade tag `GIT_REF=v1.1.5` in scripts and upgrade docs.',
     ],
   },
 ]

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2026-04-03
+
+### Added
+- **`SHARED_ORG_OWNER_ID`** — Optional env (e.g. `org`) so **all browsers** share one **file + RAG** corpus on the server; **`GET /api/owner`** returns **`shared_org_corpus`**. Documented in **`.env.example`**.
+- **`scripts/production-enable-shared-org-corpus.sh`** — On-VM helper to append **`SHARED_ORG_OWNER_ID`** to **`.env.local`** and restart the service (optional; you can edit **`.env.local`** manually).
+
+### Changed
+- **Upgrade defaults** — **`GIT_REF=v1.1.5`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+
 ## [1.1.4] - 2026-04-02
 
 ### Fixed

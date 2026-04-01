@@ -1,7 +1,11 @@
 /**
  * Stable owner_id for file registry and RAG scope.
- * Priority: 1) X-Client-ID header (when valid) and sync to cookie 2) cookie 3) generate and set cookie.
- * Syncing header to cookie ensures list/store/chat always use the same owner after client sends X-Client-ID.
+ *
+ * Shared org corpus: set SHARED_ORG_OWNER_ID (e.g. org) so every browser uses one tenant — uploads,
+ * file list, RAG, and delete/clear all apply to the same server-side corpus. Ignores per-browser cookie
+ * and X-Client-ID for owner resolution (cookie is still set to the shared id for consistency).
+ *
+ * Default: 1) X-Client-ID (valid) + sync cookie 2) cookie 3) generate and set cookie.
  */
 
 import { cookies } from 'next/headers'
@@ -26,6 +30,28 @@ function isValidOwnerId(value: string): boolean {
   return typeof value === 'string' && value.length > 0 && value.length < 256 && /^[a-zA-Z0-9_-]+$/.test(value)
 }
 
+let loggedInvalidSharedOrgId = false
+
+/** When set and valid, all clients share one file/RAG namespace (single-tenant org). */
+function resolvedSharedOrgOwnerId(): string | null {
+  const raw = process.env.SHARED_ORG_OWNER_ID?.trim()
+  if (!raw) return null
+  if (!isValidOwnerId(raw)) {
+    if (!loggedInvalidSharedOrgId) {
+      loggedInvalidSharedOrgId = true
+      console.error(
+        '[owner] SHARED_ORG_OWNER_ID is invalid (use 1–255 chars, [a-zA-Z0-9_-] only); falling back to per-browser owner',
+      )
+    }
+    return null
+  }
+  return raw
+}
+
+export function isSharedOrgCorpusMode(): boolean {
+  return resolvedSharedOrgOwnerId() !== null
+}
+
 function setOwnerCookie(cookieStore: Awaited<ReturnType<typeof cookies>>, ownerId: string, request?: NextRequest): void {
   const host = request?.headers.get('host') ?? ''
   const isLocalhost = /^localhost(:\d+)?$/i.test(host.trim())
@@ -44,11 +70,19 @@ export interface OwnerResult {
 }
 
 /**
- * Get stable owner_id. When X-Client-ID is present and valid, use it and set cookie to that value
- * so list/store/chat always share the same owner. Otherwise use cookie, or generate and set cookie.
+ * Get stable owner_id. Shared org mode (SHARED_ORG_OWNER_ID) wins over header/cookie.
  */
 export async function getOwnerId(request?: NextRequest): Promise<OwnerResult> {
   const cookieStore = await cookies()
+  const shared = resolvedSharedOrgOwnerId()
+  if (shared) {
+    const fromCookie = cookieStore.get(COOKIE_NAME)?.value?.trim()
+    if (fromCookie !== shared) {
+      setOwnerCookie(cookieStore, shared, request)
+    }
+    return { ownerId: shared }
+  }
+
   const fromHeader = (request?.headers.get(CLIENT_ID_HEADER_LC) ?? request?.headers.get(CLIENT_ID_HEADER))?.trim()
 
   // Prefer client-sent X-Client-ID and sync to cookie so list/store never use a different owner
