@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.0.22",
+  "version": "1.1.2",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -24,7 +24,7 @@
     "check": "npm run type-check && npm run lint",
     "check:ci": "npm run type-check && npm run lint && npm run format:check",
     "check:node": "node -e \"const v=process.versions.node; if(v!=='24.13.0'){console.error('❌ Node 24.13.0 required. Current:', v); process.exit(1)} else {console.log('✅ Node OK:', v)}\"",
-    "check:secrets": "node scripts/check-no-client-secrets.mjs",
+    "check:secrets": "node scripts/check-no-client-secrets.mjs && node scripts/check-git-no-api-keys.mjs",
     "validate:v1.0.10": "node scripts/validate-v1.0.10-features.mjs",
     "doctor": "npm run check:node && npm run lint && npm run type-check && npm run test && npm run build",
     "pre-push": "npm run doctor",

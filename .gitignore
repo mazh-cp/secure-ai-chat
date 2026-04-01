@@ -66,6 +66,9 @@ Thumbs.db
 
 # Secure storage (encrypted files, PIN hashes, system logs)
 .secure-storage/
+# Explicit filenames (defense in depth if paths move)
+**/api-keys.enc
+**/checkpoint-te-key.enc
 
 # Persistent file storage (uploaded files and metadata)
 .storage/

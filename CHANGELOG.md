@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2026-04-01
+
+### Added
+- **`scripts/upgrade-remote-production-v3.sh`** — Remote / VM upgrade entry for the **1.1.x** line: default **`GIT_REF=v1.1.2`**, **`USE_BUILD_FRESH=1`**, **`RUN_TYPECHECK=1`**, same underlying **`upgrade-curl-production.sh`** (backup, checkout, npm install, build, systemd, health).
+- **`scripts/check-git-no-api-keys.mjs`** — Scans **git-tracked** files for high-confidence **`sk-…`** / **`sk-ant-api…`** patterns; folded into **`npm run check:secrets`**.
+
+### Changed
+- **`scripts/run-remote-production-upgrade.sh`** — **`USE_V3=1`** runs **`upgrade-remote-production-v3.sh`** (overrides **`USE_V2`** when set).
+- **`scripts/build-remote-production-vm.sh`** — Defaults **`USE_V3=1`**, **`GIT_REF=v1.1.2`**, **`USE_BUILD_FRESH=1`** for laptop-driven production builds.
+- **`SECURITY.md`** — Documents that **cloning/upgrading from GitHub does not distribute OpenAI, Anthropic, or Lakera keys**; keys stay in **`.secure-storage/`** / **`.env.local`**.
+
 ## [1.0.22] - 2026-03-30
 
 ### Added

@@ -7,6 +7,8 @@
 # Optional (export before piping, or use scripts/upgrade-remote-production-v2.sh):
 #   RUN_TYPECHECK=1     — run npm run type-check before build (stricter production upgrades)
 #   HEALTH_RETRIES=12   — after start, retry curl /api/health this many times (1s apart)
+#   USE_BUILD_FRESH=1   — run npm run build:fresh instead of build (secrets scan + typecheck + lint;
+#                         skips duplicate RUN_TYPECHECK). VM needs devDependencies (full npm install).
 #
 # Retry with main: If the build fails and GIT_REF is not main, the script automatically
 # retries by checking out main, reinstalling dependencies, and building again so upgrades
@@ -45,6 +47,12 @@ REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
 SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
 RUN_TYPECHECK="${RUN_TYPECHECK:-0}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-0}"
+# USE_BUILD_FRESH=1 — run npm run build:fresh (check:secrets, typecheck, lint, clean .next, build, verify)
+# instead of optional type-check + npm run build. Requires devDependencies on the VM (eslint, etc.).
+USE_BUILD_FRESH="${USE_BUILD_FRESH:-0}"
+if { [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; } && [ "${HEALTH_RETRIES}" = "0" ]; then
+  HEALTH_RETRIES=12
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -64,6 +72,9 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 say "App directory: $APP_DIR"
 say "Git reference: $GIT_REF"
+if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
+  say "Build mode: build:fresh (secrets gate + typecheck + lint + production build)"
+fi
 echo ""
 
 # Directory must exist (use sudo for check; APP_DIR may be owned by app user e.g. secureai)
@@ -242,25 +253,42 @@ else
 fi
 ok "Dependencies installed"
 
-# Optional TypeScript check before build (RUN_TYPECHECK=1)
-if [ "${RUN_TYPECHECK}" = "1" ] || [ "${RUN_TYPECHECK}" = "true" ]; then
-  say "Running type-check (RUN_TYPECHECK=1)"
-  if [ "$(whoami)" = "$APP_USER" ]; then
-    (cd "$APP_DIR" && npm run type-check) || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
-  else
-    sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run type-check" || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
+# Optional TypeScript check before build (RUN_TYPECHECK=1); skipped when USE_BUILD_FRESH=1
+if [ "${USE_BUILD_FRESH}" != "1" ] && [ "${USE_BUILD_FRESH}" != "true" ]; then
+  if [ "${RUN_TYPECHECK}" = "1" ] || [ "${RUN_TYPECHECK}" = "true" ]; then
+    say "Running type-check (RUN_TYPECHECK=1)"
+    if [ "$(whoami)" = "$APP_USER" ]; then
+      (cd "$APP_DIR" && npm run type-check) || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
+    else
+      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run type-check" || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
+    fi
+    ok "type-check passed"
   fi
-  ok "type-check passed"
+else
+  say "Skipping separate type-check (included in npm run build:fresh)"
 fi
 
 # Build (retry with main if build fails, e.g. old tag had TypeScript error)
 build_ok=false
+if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
+  BUILD_LABEL="npm run build:fresh"
+else
+  BUILD_LABEL="npm run build"
+fi
 for attempt in 1 2; do
-  if [ "$attempt" -eq 2 ]; then say "Building application (retry with main)"; else say "Building application"; fi
+  if [ "$attempt" -eq 2 ]; then say "Building application (retry with main): $BUILD_LABEL"; else say "Building application: $BUILD_LABEL"; fi
   if [ "$(whoami)" = "$APP_USER" ]; then
-    if (cd "$APP_DIR" && npm run build); then build_ok=true; break; fi
+    if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
+      if (cd "$APP_DIR" && npm run build:fresh); then build_ok=true; break; fi
+    else
+      if (cd "$APP_DIR" && npm run build); then build_ok=true; break; fi
+    fi
   else
-    if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
+    if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
+      if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build:fresh"; then build_ok=true; break; fi
+    else
+      if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
+    fi
   fi
   if [ "$attempt" -eq 1 ] && [ "$GIT_REF" != "main" ]; then
     warn "Build failed. Retrying with main (latest fixes)..."

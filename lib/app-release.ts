@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.0.22'
+export const APP_VERSION = '1.1.2'
 
-export const RELEASE_DATE = '2026-03-30'
+export const RELEASE_DATE = '2026-04-01'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,27 +18,26 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.0.22]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.2]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'npm run build:fresh — clears .next, runs check:secrets, typecheck, lint, then production build.',
-      'scripts/verify-build.mjs — asserts standalone server.js and static output after next build (npm run build).',
+      'scripts/upgrade-remote-production-v3.sh — 1.1.x VM upgrade path (default GIT_REF=v1.1.2, USE_BUILD_FRESH=1).',
+      'scripts/check-git-no-api-keys.mjs — blocks sk-… / sk-ant-api… tokens in git-tracked files (part of check:secrets).',
     ],
   },
   {
     title: 'Changed',
     items: [
-      'Toolchain: ESLint 9 with flat eslint.config.mjs; eslint-config-next 16 aligned with Next.js 16.',
-      'RAG Excel extraction uses exceljs instead of the unmaintained xlsx package (addresses npm audit advisories).',
-      'Legacy .xls binary workbooks are not text-extracted for RAG; use .xlsx/.xlsm for indexing.',
+      'Version line 1.1.x — use USE_V3=1 or curl …/upgrade-remote-production-v3.sh for production upgrades.',
+      'run-remote-production-upgrade.sh — USE_V3=1 selects the v3 upgrade wrapper.',
     ],
   },
   {
-    title: 'Fixed',
+    title: 'Security',
     items: [
-      'React Compiler / react-hooks lint rules from eslint-plugin-react-hooks v7 (effects, Link for internal nav).',
+      'SECURITY.md documents that GitHub clones do not ship provider API keys; .secure-storage remains gitignored.',
     ],
   },
 ]
