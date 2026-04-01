@@ -23,10 +23,9 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=secure-ai-chat
 
-# Security
-NoNewPrivileges=true
-PrivateTmp=true
-ReadWritePaths={{APP_DIR}}/.secure-storage {{APP_DIR}}/.next {{APP_DIR}}/.storage
+# Writable app tree (npm cache, nvm, .next, .storage, .secure-storage). Avoid per-subdir only:
+# missing paths or .npm outside the list cause systemd status 226/NAMESPACE on some distros.
+ReadWritePaths={{APP_DIR}}
 
 [Install]
 WantedBy=multi-user.target

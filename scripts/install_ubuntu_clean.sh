@@ -286,6 +286,13 @@ else
 fi
 log_warning "IMPORTANT: Add your API keys to $INSTALL_DIR/.env.local and restart the service"
 
+# Directories must exist before systemd applies ReadWritePaths (otherwise start fails with status 226/NAMESPACE).
+# Whole app tree must be writable: npm cache (.npm), nvm, standalone build copies, .storage, .secure-storage.
+log_info "Ensuring data dirs exist for systemd..."
+sudo -u "$APP_USER" mkdir -p "$INSTALL_DIR/.secure-storage" "$INSTALL_DIR/.storage" "$INSTALL_DIR/.npm" 2>/dev/null || true
+sudo mkdir -p "$INSTALL_DIR/.secure-storage" "$INSTALL_DIR/.storage" "$INSTALL_DIR/.npm" 2>/dev/null || true
+sudo chown -R "$APP_USER:$APP_GROUP" "$INSTALL_DIR/.secure-storage" "$INSTALL_DIR/.storage" "$INSTALL_DIR/.npm" 2>/dev/null || true
+
 # --- systemd ---
 log_info "Creating systemd service..."
 sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null << EOF
@@ -308,9 +315,8 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=$SERVICE_NAME
-NoNewPrivileges=true
-PrivateTmp=true
-ReadWritePaths=$INSTALL_DIR/.secure-storage $INSTALL_DIR/.next $INSTALL_DIR/.storage
+# Allow full app dir: npm uses ~/.npm (here \$INSTALL_DIR/.npm), Next standalone touches several paths under the tree.
+ReadWritePaths=$INSTALL_DIR
 
 [Install]
 WantedBy=multi-user.target
