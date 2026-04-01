@@ -7,6 +7,9 @@
 # --- ONE-LINER (run on the VM, not as root) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 #
+# --- Production defaults (pinned tag + build:fresh) — prefer this for new VMs ---
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | bash
+#
 # --- CLEAN INSTALL (wipe existing + fresh clone, preserves API keys) ---
 #   FORCE_CLEAN=1 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 #
@@ -38,6 +41,8 @@ set -euxo pipefail
 REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 BRANCH="${BRANCH:-main}"
+# When 1: run npm run build:fresh (secrets scan, typecheck, lint, build). Set by install-remote-production-vm.sh for prod parity with v3 upgrades.
+USE_BUILD_FRESH="${USE_BUILD_FRESH:-0}"
 FORCE_CLEAN="${FORCE_CLEAN:-0}"
 APP_USER="${APP_USER:-secureai}"
 APP_GROUP="${APP_GROUP:-secureai}"
@@ -91,6 +96,9 @@ fi
 log_info "=== Secure AI Chat: Clean install on fresh Ubuntu VM ==="
 log_info "Install directory: $INSTALL_DIR"
 log_info "Branch: $BRANCH"
+if [ "$USE_BUILD_FRESH" = "1" ] || [ "$USE_BUILD_FRESH" = "true" ]; then
+  log_info "USE_BUILD_FRESH=1: will run npm run build:fresh"
+fi
 log_info "Node version: $NODE_VERSION"
 [ "$FORCE_CLEAN" = "1" ] && log_info "FORCE_CLEAN=1: will wipe existing install and do fresh clone"
 
@@ -239,14 +247,20 @@ sudo -u "$APP_USER" rm -rf "$INSTALL_DIR/node_modules/.cache" 2>/dev/null || tru
 log_success "Phase 6: Clean slate for build"
 
 # --- Phase 7: Build ---
-log_info "Phase 7: Building application..."
+if [ "$USE_BUILD_FRESH" = "1" ] || [ "$USE_BUILD_FRESH" = "true" ]; then
+  log_info "Phase 7: Building application (build:fresh)..."
+  BUILD_CMD='npm run build:fresh'
+else
+  log_info "Phase 7: Building application..."
+  BUILD_CMD='npm run build'
+fi
 sudo -u "$APP_USER" HOME="$INSTALL_DIR" bash << BUILD
 set -e
 cd "$INSTALL_DIR"
 export HOME="$INSTALL_DIR"
 export NVM_DIR="\$HOME/.nvm"
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-npm run build >/dev/null 2>&1
+$BUILD_CMD >/dev/null 2>&1
 BUILD
 log_success "Phase 7 done: Application built"
 
@@ -296,7 +310,7 @@ StandardError=journal
 SyslogIdentifier=$SERVICE_NAME
 NoNewPrivileges=true
 PrivateTmp=true
-ReadWritePaths=$INSTALL_DIR/.secure-storage $INSTALL_DIR/.next
+ReadWritePaths=$INSTALL_DIR/.secure-storage $INSTALL_DIR/.next $INSTALL_DIR/.storage
 
 [Install]
 WantedBy=multi-user.target
