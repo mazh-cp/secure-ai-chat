@@ -305,11 +305,14 @@ Type=simple
 User=$APP_USER
 Group=$APP_USER
 WorkingDirectory=$INSTALL_DIR
+# systemd's PATH is minimal; npm's shebang uses /usr/bin/env node → 127 without nvm's bin on PATH
+Environment="PATH=${NODE_PATH%/*}:/usr/bin:/bin"
 Environment="NODE_ENV=production"
 Environment="PORT=$APP_PORT"
 Environment="HOSTNAME=0.0.0.0"
 EnvironmentFile=$INSTALL_DIR/.env.local
-ExecStart=$NPM_PATH start
+# Run start script directly (same as npm start) — avoids env node lookup inside npm-cli
+ExecStart=$NODE_PATH $INSTALL_DIR/scripts/start-standalone.js
 Restart=always
 RestartSec=5
 StandardOutput=journal
