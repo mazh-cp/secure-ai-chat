@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run on the production VM after deploying >= 1.1.5. Appends SHARED_ORG_OWNER_ID to .env.local if missing, then restarts systemd.
+# Run on the production VM after deploying >= 1.1.5 (SHARED_ORG_OWNER_ID shipped in 1.1.5; use current tag for code). Appends SHARED_ORG_OWNER_ID to .env.local if missing, then restarts systemd.
 #
 # Usage (from any directory, as a user with sudo):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-enable-shared-org-corpus.sh | sudo -E bash -s

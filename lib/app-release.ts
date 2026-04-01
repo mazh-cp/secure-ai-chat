@@ -3,7 +3,7 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.5'
+export const APP_VERSION = '1.1.6'
 
 export const RELEASE_DATE = '2026-04-03'
 
@@ -18,18 +18,18 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.5]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.6]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Added',
+    title: 'Fixed',
     items: [
-      '`SHARED_ORG_OWNER_ID` — one shared file + RAG corpus for the whole deployment; `/api/owner` includes `shared_org_corpus`.',
+      '`npm run build` uses `next build --webpack` so standalone output and `verify-build` succeed on Next.js 16.',
     ],
   },
   {
     title: 'Changed',
     items: [
-      'Default v3 upgrade tag `GIT_REF=v1.1.5` in scripts and upgrade docs.',
+      'Default v3 upgrade tag `GIT_REF=v1.1.6` in scripts and upgrade docs.',
     ],
   },
 ]

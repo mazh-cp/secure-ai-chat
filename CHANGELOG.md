@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2026-04-03
+
+### Fixed
+- **Production `npm run build`** — Run **`next build --webpack`** so **`output: 'standalone'`** reliably emits **`.next/standalone/server.js`** (Next.js 16’s default Turbopack build could finish without standalone, causing **`verify-build`** / upgrade scripts to fail).
+
+### Changed
+- **Upgrade defaults** — **`GIT_REF=v1.1.6`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+
 ## [1.1.5] - 2026-04-03
 
 ### Added
