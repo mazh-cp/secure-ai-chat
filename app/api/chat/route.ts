@@ -17,6 +17,11 @@ import {
 } from '@/lib/token-counter'
 import { injectRagContext } from '@/lib/rag-context'
 import { requireSecureChatSession } from '@/lib/app-login'
+import {
+  effectiveLakeraAiKey,
+  effectiveLakeraEndpoint,
+  effectiveLakeraProjectId,
+} from '@/lib/effective-lakera-client-merge'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -159,12 +164,15 @@ export async function POST(request: NextRequest) {
       azureOpenAiApiVersion: serverKeys.azureOpenAiApiVersion || clientApiKeys?.azureOpenAiApiVersion || '2025-04-01-preview',
       anthropicApiKey: serverKeys.anthropicApiKey ||
                        (clientApiKeys?.anthropicApiKey && clientApiKeys.anthropicApiKey !== 'configured' ? clientApiKeys.anthropicApiKey : null),
-      lakeraAiKey: serverKeys.lakeraAiKey ||
-                   (clientApiKeys?.lakeraAiKey && clientApiKeys.lakeraAiKey !== 'configured' ? clientApiKeys.lakeraAiKey : null),
-      lakeraProjectId: serverKeys.lakeraProjectId ||
-                      (clientApiKeys?.lakeraProjectId && clientApiKeys.lakeraProjectId !== 'configured' ? clientApiKeys.lakeraProjectId : null),
-      lakeraEndpoint:
-        serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || undefined,
+      lakeraAiKey: effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey),
+      lakeraProjectId: effectiveLakeraProjectId(
+        serverKeys.lakeraProjectId,
+        clientApiKeys?.lakeraProjectId,
+      ),
+      lakeraEndpoint: effectiveLakeraEndpoint(
+        serverKeys.lakeraEndpoint,
+        clientApiKeys?.lakeraEndpoint,
+      ),
     }
 
     const activeApiKey =
@@ -493,8 +501,9 @@ IMPORTANT INSTRUCTIONS:
     }
 
     // Lakera input scan AFTER RAG/file injection: screen what the model actually receives (user text + file/RAG context) for PII/DLP and prompt attacks.
-    const runInputScan = apiKeys.lakeraAiKey && (scanOptions?.scanInput !== false)
-    if (latestUserMessage && runInputScan) {
+    const runInputScan = Boolean(apiKeys.lakeraAiKey) && (scanOptions?.scanInput !== false)
+    if (latestUserMessage && runInputScan && apiKeys.lakeraAiKey) {
+      const lakeraKey = apiKeys.lakeraAiKey
       let inputTextForGuard = latestUserMessage.content
       for (let i = enhancedMessages.length - 1; i >= 0; i--) {
         if (enhancedMessages[i].role === 'user') {
@@ -505,7 +514,7 @@ IMPORTANT INSTRUCTIONS:
 
       inputScanResult = await screenChatWithLakera(
         inputTextForGuard,
-        apiKeys.lakeraAiKey,
+        lakeraKey,
         apiKeys.lakeraEndpoint,
         apiKeys.lakeraProjectId,
         'input',
@@ -771,11 +780,12 @@ IMPORTANT INSTRUCTIONS:
     let outputScanResult: ScanResult = { scanned: false, flagged: false }
 
     // Lakera output scan: only when key is configured and client has output scan enabled (toggles off = no scan)
-    const runOutputScan = apiKeys.lakeraAiKey && (scanOptions?.scanOutput !== false)
-    if (runOutputScan) {
+    const runOutputScan = Boolean(apiKeys.lakeraAiKey) && (scanOptions?.scanOutput !== false)
+    if (runOutputScan && apiKeys.lakeraAiKey) {
+      const lakeraKey = apiKeys.lakeraAiKey
       outputScanResult = await screenChatWithLakera(
         aiResponse,
-        apiKeys.lakeraAiKey,
+        lakeraKey,
         apiKeys.lakeraEndpoint,
         apiKeys.lakeraProjectId,
         'output',

@@ -1272,7 +1272,9 @@ export default function SettingsForm() {
               )}
             </div>
             <p className="text-sm text-theme-subtle mt-1">
-              Required for your project&apos;s policy: Guard reads <code className="text-xs">project_id</code> from this app&apos;s JSON body (not a separate policy download). If empty, Lakera uses the{' '}
+              Saving Settings stores this value in encrypted server storage so every user and browser uses the same{' '}
+              <code className="text-xs">project_id</code> on Guard requests (portal logging stays under one project). Required for your project&apos;s policy: Guard reads{' '}
+              <code className="text-xs">project_id</code> from this app&apos;s JSON body (not a separate policy download). If empty, Lakera uses the{' '}
               <a href="https://docs.lakera.ai/docs/api/guard" className="underline" target="_blank" rel="noreferrer">
                 default policy
               </a>

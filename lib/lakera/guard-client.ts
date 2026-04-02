@@ -213,7 +213,7 @@ export type ChatGuardCallOptions = {
 export async function screenChatWithLakera(
   message: string,
   lakeraKey: string,
-  lakeraEndpoint: string,
+  lakeraEndpoint: string | null | undefined,
   lakeraProjectId: string | null | undefined,
   context?: 'input' | 'output',
   metadata?: GuardMetadata,

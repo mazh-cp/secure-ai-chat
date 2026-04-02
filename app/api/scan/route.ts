@@ -6,6 +6,11 @@ import {
   resolveLakeraGuardEndpoint,
 } from '@/lib/lakera-guard-endpoint'
 import { prepareContentForFileScan, screenTextAsFileUpload } from '@/lib/lakera/guard-client'
+import {
+  effectiveLakeraAiKey,
+  effectiveLakeraEndpoint,
+  effectiveLakeraProjectId,
+} from '@/lib/effective-lakera-client-merge'
 
 function lakeraHttpErrorNextResponse(
   status: number,
@@ -81,9 +86,15 @@ export async function POST(request: NextRequest) {
     const serverKeys = await getApiKeys()
 
     const apiKeys = {
-      lakeraAiKey: serverKeys.lakeraAiKey || clientApiKeys?.lakeraAiKey || null,
-      lakeraProjectId: serverKeys.lakeraProjectId || clientApiKeys?.lakeraProjectId || null,
-      lakeraEndpoint: serverKeys.lakeraEndpoint || clientApiKeys?.lakeraEndpoint || undefined,
+      lakeraAiKey: effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey),
+      lakeraProjectId: effectiveLakeraProjectId(
+        serverKeys.lakeraProjectId,
+        clientApiKeys?.lakeraProjectId,
+      ),
+      lakeraEndpoint: effectiveLakeraEndpoint(
+        serverKeys.lakeraEndpoint,
+        clientApiKeys?.lakeraEndpoint,
+      ),
     }
 
     if (!apiKeys.lakeraAiKey) {
