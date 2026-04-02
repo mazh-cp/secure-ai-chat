@@ -8,6 +8,8 @@
 # 2. From this repo on your laptop, run this script with SSH access to the VM:
 #      ./scripts/deploy-upgrade-remote-vm.sh adminuser@YOUR_VM_IP
 #
+#    Same behavior with more options (DIRECT=1, docs): ./scripts/upgrade-remote-production-vm.sh user@host
+#
 # What it does
 # ------------
 # SSH into the VM and run the same upgrade as:
