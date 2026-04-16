@@ -12,10 +12,7 @@ import { requireSecureChatSession } from '@/lib/app-login'
 /**
  * POST /api/files/:id/reindex - Rebuild RAG index for a file (reads from storage).
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authBlock = requireSecureChatSession(request)
     if (authBlock) return authBlock
@@ -52,7 +49,11 @@ export async function POST(
       fileId: id,
       indexed: result.indexed,
       quarantined: result.quarantined ?? false,
-      message: result.indexed ? 'RAG index rebuilt' : result.quarantined ? 'Content quarantined by policy' : 'Reindex completed with no chunks',
+      message: result.indexed
+        ? 'RAG index rebuilt'
+        : result.quarantined
+          ? 'Content quarantined by policy'
+          : 'Reindex completed with no chunks',
     })
   } catch (error) {
     console.error('Failed to reindex file:', error)

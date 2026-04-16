@@ -88,17 +88,17 @@ for (let i = 0; i < args.length; i += 2) {
     const apiKeys = {};
     if (keys.openaiApiKey) apiKeys.openaiApiKey = keys.openaiApiKey;
     if (keys.lakeraApiKey) apiKeys.lakeraApiKey = keys.lakeraApiKey;
-    
+
     if (Object.keys(apiKeys).length > 0) {
       await saveApiKeys(apiKeys);
       console.log('✅ API keys updated');
     }
-    
+
     if (keys.threatCloudApiKey) {
       await setTeApiKey(keys.threatCloudApiKey);
       console.log('✅ Check Point key updated');
     }
-    
+
     console.log('✅ All keys updated successfully');
     process.exit(0);
   } catch (err) {

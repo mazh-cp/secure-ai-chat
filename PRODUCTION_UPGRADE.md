@@ -98,33 +98,37 @@ bash scripts/upgrade-production.sh
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REPO_DIR` | `/home/adminuser/secure-ai-chat` | Repository directory path |
-| `BRANCH` | `release/unifi-theme-safe-final` | Git branch to upgrade to |
-| `SERVICE_USER` | `adminuser` | System user running the service |
-| `SERVICE_NAME` | `secure-ai-chat` | systemd service name |
-| `BACKUP_DIR` | `$REPO_DIR/.backups` | Backup storage directory |
+| Variable       | Default                          | Description                     |
+| -------------- | -------------------------------- | ------------------------------- |
+| `REPO_DIR`     | `/home/adminuser/secure-ai-chat` | Repository directory path       |
+| `BRANCH`       | `release/unifi-theme-safe-final` | Git branch to upgrade to        |
+| `SERVICE_USER` | `adminuser`                      | System user running the service |
+| `SERVICE_NAME` | `secure-ai-chat`                 | systemd service name            |
+| `BACKUP_DIR`   | `$REPO_DIR/.backups`             | Backup storage directory        |
 
 ## Requirements
 
 ### Server Requirements
+
 - **Node.js**: v25.2.1 (recommended) or v22.x+ (works but may have warnings)
 - **npm**: v10.x+
 - **Git**: Latest version
 - **systemd**: For service management (optional - script will work without it)
 
 ### Permissions
+
 - Script should be run as the service user (default: `adminuser`)
 - Or run with appropriate sudo permissions for systemd service restart
 
 ### Network Access
+
 - Server must be able to access GitHub (for `git pull`)
 - Server must be able to access npm registry (for `npm ci`)
 
 ## Troubleshooting
 
 ### Script Fails at "Pull Latest Code"
+
 ```bash
 # Manually pull and retry
 cd /home/adminuser/secure-ai-chat
@@ -134,6 +138,7 @@ git pull origin release/unifi-theme-safe-final
 ```
 
 ### Build Fails
+
 ```bash
 # Check Node.js version
 node -v  # Should be v25.2.1
@@ -146,6 +151,7 @@ npm run build
 ```
 
 ### Service Fails to Start
+
 ```bash
 # Check service logs
 sudo journalctl -u secure-ai-chat -n 50
@@ -158,6 +164,7 @@ sudo systemctl restart secure-ai-chat
 ```
 
 ### Health Endpoint Not Responding
+
 ```bash
 # Wait a bit longer (server may still be starting)
 sleep 10
@@ -171,6 +178,7 @@ sudo ufw status
 ```
 
 ### Permission Errors
+
 ```bash
 # Fix repository ownership
 sudo chown -R adminuser:adminuser /home/adminuser/secure-ai-chat
@@ -238,6 +246,7 @@ sudo systemctl status secure-ai-chat
 ## Support
 
 For issues or questions:
+
 1. Check the troubleshooting section above
 2. Review service logs: `sudo journalctl -u secure-ai-chat -n 100`
 3. Check application logs in repository `.logs/` directory

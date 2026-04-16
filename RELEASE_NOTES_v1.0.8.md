@@ -229,6 +229,7 @@ This release focuses on production deployment and operational tooling, making it
 ## 📞 Support
 
 For issues or questions:
+
 - Check documentation in `docs/` directory
 - Review troubleshooting guides in installation documentation
 - Check release notes for known issues

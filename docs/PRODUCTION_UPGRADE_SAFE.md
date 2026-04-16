@@ -159,17 +159,20 @@ ls -la .storage/files/*.dat 2>/dev/null | wc -l
 ### 4. Functional Testing
 
 #### Test 1: File Upload
+
 1. Go to Files page in browser
 2. Upload a test file
 3. Verify file is stored
 4. Refresh page - file should persist
 
 #### Test 2: Upload 10 Files
+
 1. Go to Files page
 2. Upload 10 files (should accept up to 10)
 3. Verify all files are stored
 
 #### Test 3: File Persistence After Restart
+
 ```bash
 # Upload some files via UI, then:
 sudo systemctl restart secure-ai-chat
@@ -178,6 +181,7 @@ sudo systemctl restart secure-ai-chat
 ```
 
 #### Test 4: RAG Functionality
+
 1. Upload 5-10 files
 2. Go to Chat page
 3. Enable RAG (if toggle exists)
@@ -185,6 +189,7 @@ sudo systemctl restart secure-ai-chat
 5. Verify RAG uses file context
 
 #### Test 5: API Keys
+
 1. Go to Settings page
 2. Verify API keys are still configured
 3. Test chat with OpenAI API
@@ -284,16 +289,19 @@ sudo journalctl -u secure-ai-chat -n 20 --no-pager
 ## Expected Changes After Upgrade
 
 ### File Storage
+
 - ✅ `.storage/` directory: Mode `755` (was `700`)
 - ✅ `.storage/files/` directory: Mode `755` (was `700`)
 - ✅ Files: Mode `644` (explicitly set)
 - ✅ Metadata: Mode `644` (explicitly set)
 
 ### File Limit
+
 - ✅ Maximum files per upload: **10 files** (was 5)
 - ✅ RAG supports up to 10 files in context
 
 ### Compatibility
+
 - ✅ Existing files remain accessible
 - ✅ API keys remain configured
 - ✅ Settings remain intact

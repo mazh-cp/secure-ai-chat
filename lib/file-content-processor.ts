@@ -1,11 +1,11 @@
 /**
  * File Content Processor Utility
- * 
+ *
  * Processes file content for RAG (Retrieval Augmented Generation) with:
  * - Structured data extraction (CSV, JSON fields)
  * - Field-level access for chat queries
  * - Security validation for prompts using file content
- * 
+ *
  * NOTE: This is an ADDITIONAL security layer that works alongside
  * Lakera AI and Check Point TE scanning. It does NOT replace them.
  */
@@ -14,7 +14,11 @@
  * Extract structured fields from file content
  * Supports CSV, JSON, and structured text formats
  */
-export function extractFileFields(fileContent: string, fileName: string, fileType: string): {
+export function extractFileFields(
+  fileContent: string,
+  fileName: string,
+  fileType: string
+): {
   fields: string[]
   structuredData?: Record<string, unknown>[] | Record<string, unknown>
   hasStructuredData: boolean
@@ -28,7 +32,7 @@ export function extractFileFields(fileContent: string, fileName: string, fileTyp
     if (fileType.includes('json') || fileName.endsWith('.json')) {
       try {
         const parsed = JSON.parse(fileContent)
-        
+
         if (Array.isArray(parsed)) {
           // Array of objects - extract fields from first object
           if (parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
@@ -47,7 +51,7 @@ export function extractFileFields(fileContent: string, fileName: string, fileTyp
         console.warn(`Failed to parse JSON file ${fileName}:`, parseError)
       }
     }
-    
+
     // Handle CSV files
     else if (fileType.includes('csv') || fileName.endsWith('.csv')) {
       const lines = fileContent.split('\n').filter(line => line.trim())
@@ -57,7 +61,7 @@ export function extractFileFields(fileContent: string, fileName: string, fileTyp
         const csvFields = headerLine.split(',').map(f => f.trim().replace(/^"|"$/g, ''))
         fields.push(...csvFields)
         hasStructuredData = true
-        
+
         // Parse CSV rows (limit to first 100 rows for performance)
         const rows: Record<string, string>[] = []
         for (let i = 1; i < Math.min(lines.length, 101); i++) {
@@ -76,7 +80,7 @@ export function extractFileFields(fileContent: string, fileName: string, fileTyp
         }
       }
     }
-    
+
     // Handle structured text files (e.g., key: value pairs)
     else if (fileType.includes('text/plain') || fileName.endsWith('.txt')) {
       // Try to detect structured patterns
@@ -118,14 +122,18 @@ export function formatFileContentForRAG(
   fileType: string,
   includeAllFields: boolean = false
 ): string {
-  const { fields, structuredData, hasStructuredData } = extractFileFields(fileContent, fileName, fileType)
-  
+  const { fields, structuredData, hasStructuredData } = extractFileFields(
+    fileContent,
+    fileName,
+    fileType
+  )
+
   let formattedContent = `[File: ${fileName}]\n`
-  
+
   // Add field information if structured data is available
   if (hasStructuredData && fields.length > 0) {
     formattedContent += `[Available Fields: ${fields.join(', ')}]\n`
-    
+
     // Include structured data if requested or if file is small
     if (includeAllFields || fileContent.length < 50000) {
       if (structuredData) {
@@ -146,16 +154,19 @@ export function formatFileContentForRAG(
       formattedContent += `[Note: File contains structured data with ${fields.length} fields. All fields are accessible for querying. Use the field names when asking about specific data.]\n`
     }
   }
-  
+
   // Add full content (truncated if too large)
   let contentToInclude = fileContent
   if (fileContent.length > 20000 && !includeAllFields) {
     // For very large files, include first 10000 and last 10000 chars
-    contentToInclude = fileContent.substring(0, 10000) + '\n\n...[content truncated - showing first and last portions]...\n\n' + fileContent.substring(fileContent.length - 10000)
+    contentToInclude =
+      fileContent.substring(0, 10000) +
+      '\n\n...[content truncated - showing first and last portions]...\n\n' +
+      fileContent.substring(fileContent.length - 10000)
   }
-  
+
   formattedContent += contentToInclude
-  
+
   return formattedContent
 }
 
@@ -165,17 +176,20 @@ export function formatFileContentForRAG(
  * This is ADDITIONAL security on top of Lakera/Check Point TE scanning
  * NOTE: This does NOT replace Lakera AI or Check Point TE - it's a secondary check
  */
-export function validateFilePromptSecurity(prompt: string, fileContent: string): {
+export function validateFilePromptSecurity(
+  prompt: string,
+  fileContent: string
+): {
   safe: boolean
   riskLevel: 'low' | 'medium' | 'high'
   warnings: string[]
 } {
   const warnings: string[] = []
   let riskLevel: 'low' | 'medium' | 'high' = 'low'
-  
+
   const promptLower = prompt.toLowerCase()
   const contentLower = fileContent.toLowerCase()
-  
+
   // Check for system override attempts in prompt
   const systemOverridePatterns = [
     /ignore\s+(previous|all|above|prior)\s+(instructions?|prompts?|rules?)/i,
@@ -183,14 +197,14 @@ export function validateFilePromptSecurity(prompt: string, fileContent: string):
     /you\s+are\s+now\s+(a|an)\s+/i,
     /act\s+as\s+(if|though)\s+/i,
   ]
-  
+
   for (const pattern of systemOverridePatterns) {
     if (pattern.test(prompt)) {
       warnings.push('Potential system override attempt detected in prompt')
       riskLevel = 'high'
     }
   }
-  
+
   // Check if file content contains suspicious patterns that might be used in injection
   // This is a secondary check - Lakera/Check Point TE are primary security layers
   const suspiciousFilePatterns = [
@@ -200,7 +214,7 @@ export function validateFilePromptSecurity(prompt: string, fileContent: string):
     /system\s*:\s*ignore/i,
     /new\s+instructions?:/i,
   ]
-  
+
   // Only flag if BOTH prompt and file content have suspicious patterns (indicates coordinated attack)
   let fileHasSuspiciousPattern = false
   for (const pattern of suspiciousFilePatterns) {
@@ -209,19 +223,23 @@ export function validateFilePromptSecurity(prompt: string, fileContent: string):
       break
     }
   }
-  
+
   // Check for prompt extraction attempts
-  if (/show|reveal|display|print|output\s+(your|the|system)\s+(prompt|instructions?)/i.test(promptLower)) {
+  if (
+    /show|reveal|display|print|output\s+(your|the|system)\s+(prompt|instructions?)/i.test(
+      promptLower
+    )
+  ) {
     warnings.push('Prompt extraction attempt detected')
     if (riskLevel === 'low') riskLevel = 'medium'
   }
-  
+
   // Only escalate to high risk if both prompt and file show suspicious patterns
   // This prevents false positives from legitimate data files
   if (fileHasSuspiciousPattern && warnings.length > 0 && riskLevel === 'low') {
     riskLevel = 'medium'
   }
-  
+
   return {
     safe: riskLevel !== 'high',
     riskLevel,

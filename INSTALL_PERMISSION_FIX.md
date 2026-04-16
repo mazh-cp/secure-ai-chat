@@ -8,6 +8,7 @@
 ## 🔍 Problem
 
 The installation script was trying to clone to `/opt/secure-ai-chat` which requires root permissions, causing:
+
 ```
 fatal: could not create work tree dir 'secure-ai-chat': Permission denied
 ```
@@ -19,6 +20,7 @@ fatal: could not create work tree dir 'secure-ai-chat': Permission denied
 ### 1. Smart Directory Selection
 
 The script now:
+
 - **Defaults to `$HOME`** (user's home directory) - no permission issues
 - **Auto-detects** if `/opt` is writable
 - **Falls back** to `$HOME` if `/opt` is not accessible
@@ -27,6 +29,7 @@ The script now:
 ### 2. Permission Verification
 
 Before cloning, the script:
+
 - Checks if directory is writable
 - Creates directories with proper ownership
 - Fixes permissions if needed
@@ -35,6 +38,7 @@ Before cloning, the script:
 ### 3. Better Error Messages
 
 If permissions fail, the script provides:
+
 - Clear error message
 - Suggestion to use `$HOME` instead
 - Instructions for manual fix
@@ -66,11 +70,13 @@ INSTALL_DIR=/home/myuser/apps TAG=v1.0.11 curl -fsSL ... | bash
 ## 🔧 What Changed
 
 ### Before
+
 - Default: `/opt/secure-ai-chat` (requires root)
 - No permission checks before clone
 - Failed with permission denied
 
 ### After
+
 - Default: `~/secure-ai-chat` (user-writable)
 - Permission checks before clone
 - Auto-fallback if /opt not writable
@@ -81,17 +87,21 @@ INSTALL_DIR=/home/myuser/apps TAG=v1.0.11 curl -fsSL ... | bash
 ## 📋 Installation Locations
 
 ### Option 1: Home Directory (Default - Recommended)
+
 ```
 ~/secure-ai-chat
 ```
+
 - ✅ No permission issues
 - ✅ User has full control
 - ✅ Easy to manage
 
 ### Option 2: /opt (System Directory)
+
 ```
 /opt/secure-ai-chat
 ```
+
 - Requires sudo for creation
 - Script handles permissions automatically
 - More "system-like" location
@@ -103,12 +113,14 @@ INSTALL_DIR=/home/myuser/apps TAG=v1.0.11 curl -fsSL ... | bash
 If you still get permission errors:
 
 ### Option 1: Use Home Directory
+
 ```bash
 # Force home directory
 INSTALL_DIR=$HOME TAG=v1.0.11 curl -fsSL ... | bash
 ```
 
 ### Option 2: Fix /opt Permissions First
+
 ```bash
 # Create directory with proper permissions
 sudo mkdir -p /opt/secure-ai-chat
@@ -120,6 +132,7 @@ INSTALL_DIR=/opt TAG=v1.0.11 curl -fsSL ... | bash
 ```
 
 ### Option 3: Clone Manually
+
 ```bash
 # Clone to home directory
 cd ~

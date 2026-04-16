@@ -13,6 +13,7 @@
 The chat client now automatically searches through uploaded files when answering questions. No more "please upload files" messages - the system intelligently finds relevant information from your uploaded data.
 
 **Key Features:**
+
 - ✅ Automatic file indexing on upload
 - ✅ Intelligent content matching for data queries
 - ✅ Search files first, fall back to LLM knowledge
@@ -25,17 +26,20 @@ The chat client now automatically searches through uploaded files when answering
 ## 📋 Changes Summary
 
 ### Added
+
 - Enhanced RAG system with automatic file indexing
 - Improved content matching algorithm
 - System message for LLM file access instructions
 - Enhanced file context formatting
 
 ### Improved
+
 - File access control (more inclusive filtering)
 - Content matching for data/PII queries
 - LLM instructions about available files
 
 ### Fixed
+
 - Chat client not finding uploaded files issue
 
 ---
@@ -95,12 +99,14 @@ None reported.
 ## 📊 Technical Details
 
 ### File Processing
+
 - Maximum file size: 10MB per file
 - Maximum files processed: 5 most relevant files per query
 - Supported formats: CSV, JSON, TXT
 - File truncation: Intelligent truncation for files > 15KB
 
 ### Security
+
 - Only safe files are searched (flagged/malicious files excluded)
 - Files stored securely in `.storage/files/` directory
 - All file access logged for security auditing

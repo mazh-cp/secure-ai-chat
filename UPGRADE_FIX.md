@@ -143,5 +143,6 @@ sudo journalctl -u secure-ai-chat -n 30
 ## Why This Happened
 
 The remote installation is likely on the `main` branch, which still has version 1.0.7. Version 1.0.8 is currently on the `release/1.0.8` branch. You need to either:
+
 1. Checkout the `release/1.0.8` branch, OR
 2. Merge `release/1.0.8` to `main` (if you have merge permissions)

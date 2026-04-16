@@ -26,7 +26,14 @@ export async function POST(request: NextRequest) {
     const { ownerId } = await getOwnerId(request)
     if (!ownerId || typeof ownerId !== 'string' || ownerId.length === 0) {
       return NextResponse.json(
-        { ok: false, error: { code: 'OWNER_REQUIRED', message: 'Owner ID is required (cookie or X-Client-ID)', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'OWNER_REQUIRED',
+            message: 'Owner ID is required (cookie or X-Client-ID)',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -35,7 +42,14 @@ export async function POST(request: NextRequest) {
     const MAX_REQUEST_SIZE = 55 * 1024 * 1024 // 55 MB
     if (contentLength && parseInt(contentLength, 10) > MAX_REQUEST_SIZE) {
       return NextResponse.json(
-        { ok: false, error: { code: 'REQUEST_TOO_LARGE', message: `Request size exceeds ${MAX_REQUEST_SIZE / (1024 * 1024)} MB limit`, details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'REQUEST_TOO_LARGE',
+            message: `Request size exceeds ${MAX_REQUEST_SIZE / (1024 * 1024)} MB limit`,
+            details: null,
+          },
+        },
         { status: 413 }
       )
     }
@@ -45,7 +59,14 @@ export async function POST(request: NextRequest) {
       body = (await request.json()) as Record<string, unknown>
     } catch (parseErr) {
       return NextResponse.json(
-        { ok: false, error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'INVALID_JSON',
+            message: 'Request body must be valid JSON',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -63,9 +84,22 @@ export async function POST(request: NextRequest) {
     /** When false, skip Lakera on this request even if the server key is set (UI "Lakera file scan" off). Default true if omitted. */
     const lakeraScanRequested = body.lakeraScanRequested !== false
 
-    if (fileId == null || fileName == null || fileContent === undefined || fileType == null || fileSize == null) {
+    if (
+      fileId == null ||
+      fileName == null ||
+      fileContent === undefined ||
+      fileType == null ||
+      fileSize == null
+    ) {
       return NextResponse.json(
-        { ok: false, error: { code: 'MISSING_FIELDS', message: 'Missing required fields: fileId, fileName, fileContent, fileType, fileSize', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'MISSING_FIELDS',
+            message: 'Missing required fields: fileId, fileName, fileContent, fileType, fileSize',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -73,10 +107,18 @@ export async function POST(request: NextRequest) {
     const fileIdStr: string = typeof fileId === 'string' ? fileId : String(fileId)
     const fileNameStr: string = typeof fileName === 'string' ? fileName : String(fileName)
     const fileTypeStr: string = typeof fileType === 'string' ? fileType : String(fileType)
-    const fileSizeNum: number = typeof fileSize === 'number' && !Number.isNaN(fileSize) ? fileSize : Number(fileSize)
+    const fileSizeNum: number =
+      typeof fileSize === 'number' && !Number.isNaN(fileSize) ? fileSize : Number(fileSize)
     if (Number.isNaN(fileSizeNum) || fileSizeNum < 0) {
       return NextResponse.json(
-        { ok: false, error: { code: 'INVALID_FIELDS', message: 'fileSize must be a non-negative number', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'INVALID_FIELDS',
+            message: 'fileSize must be a non-negative number',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -84,14 +126,28 @@ export async function POST(request: NextRequest) {
     const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
     if (fileSizeNum > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { ok: false, error: { code: 'FILE_TOO_LARGE', message: `File size exceeds 50 MB limit. Current size: ${(fileSizeNum / (1024 * 1024)).toFixed(2)} MB`, details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File size exceeds 50 MB limit. Current size: ${(fileSizeNum / (1024 * 1024)).toFixed(2)} MB`,
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
 
     if (typeof fileContent === 'string' && fileContent.length > MAX_FILE_SIZE * 1.5) {
       return NextResponse.json(
-        { ok: false, error: { code: 'CONTENT_TOO_LARGE', message: 'File content size exceeds allowed limit', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'CONTENT_TOO_LARGE',
+            message: 'File content size exceeds allowed limit',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -106,11 +162,28 @@ export async function POST(request: NextRequest) {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
     ]
-    const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx', '.xlsx', '.xls', '.xlsm']
+    const ALLOWED_EXTENSIONS = [
+      '.pdf',
+      '.txt',
+      '.md',
+      '.json',
+      '.csv',
+      '.docx',
+      '.xlsx',
+      '.xls',
+      '.xlsm',
+    ]
     const fileExtension = '.' + fileNameStr.split('.').pop()?.toLowerCase()
     if (!ALLOWED_TYPES.includes(fileTypeStr) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
-        { ok: false, error: { code: 'FILE_TYPE_NOT_SUPPORTED', message: `File type not supported. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`, details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'FILE_TYPE_NOT_SUPPORTED',
+            message: `File type not supported. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`,
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -123,7 +196,8 @@ export async function POST(request: NextRequest) {
     const sha256 = crypto.createHash('sha256').update(buf).digest('hex')
 
     let scanStatusStr: string = typeof scanStatus === 'string' ? scanStatus : 'pending'
-    let scanResultVal: string | null = scanResult != null && typeof scanResult === 'string' ? scanResult : null
+    let scanResultVal: string | null =
+      scanResult != null && typeof scanResult === 'string' ? scanResult : null
     let scanDetailsVal: Record<string, unknown> | null =
       scanDetails != null && typeof scanDetails === 'object' && !Array.isArray(scanDetails)
         ? (scanDetails as Record<string, unknown>)
@@ -138,7 +212,9 @@ export async function POST(request: NextRequest) {
     const keys = await getApiKeys()
     if (useMetadataMerge) {
       const prevDetails =
-        existing!.scanDetails && typeof existing.scanDetails === 'object' && !Array.isArray(existing.scanDetails)
+        existing!.scanDetails &&
+        typeof existing.scanDetails === 'object' &&
+        !Array.isArray(existing.scanDetails)
           ? { ...(existing.scanDetails as Record<string, unknown>) }
           : {}
       const incomingDetails = scanDetailsVal ?? {}
@@ -150,7 +226,8 @@ export async function POST(request: NextRequest) {
         scanResultVal = existing!.scanResult ?? null
       }
     } else if (!skipServerLakeraScan && keys.lakeraAiKey?.trim() && lakeraScanRequested) {
-      const { prepareContentForFileScan, screenTextAsFileUpload } = await import('@/lib/lakera/guard-client')
+      const { prepareContentForFileScan, screenTextAsFileUpload } =
+        await import('@/lib/lakera/guard-client')
       const { resolveLakeraGuardEndpoint } = await import('@/lib/lakera-guard-endpoint')
       const guardUrl = resolveLakeraGuardEndpoint(keys.lakeraEndpoint)
       if (!guardUrl.startsWith('http://') && !guardUrl.startsWith('https://')) {
@@ -173,7 +250,10 @@ export async function POST(request: NextRequest) {
         const scores = fr.scores
         const baseDetails: Record<string, unknown> = {
           categories: fr.categories,
-          score: scores && Object.keys(scores).length > 0 ? Math.max(...Object.values(scores)) : undefined,
+          score:
+            scores && Object.keys(scores).length > 0
+              ? Math.max(...Object.values(scores))
+              : undefined,
           threatLevel: fr.threatLevel,
           payload: fr.payload,
           breakdown: fr.breakdown,
@@ -193,7 +273,7 @@ export async function POST(request: NextRequest) {
           scanStatusStr = 'flagged'
           const catMsg = fr.categories
             ? Object.keys(fr.categories)
-                .filter((k) => fr.categories![k])
+                .filter(k => fr.categories![k])
                 .join(', ')
             : 'unknown'
           scanResultVal = `Security threats detected (${fr.threatLevel}): ${catMsg}`
@@ -211,7 +291,9 @@ export async function POST(request: NextRequest) {
     }
 
     let checkpointTeDetailsVal: Record<string, unknown> | null =
-      checkpointTeDetails != null && typeof checkpointTeDetails === 'object' && !Array.isArray(checkpointTeDetails)
+      checkpointTeDetails != null &&
+      typeof checkpointTeDetails === 'object' &&
+      !Array.isArray(checkpointTeDetails)
         ? (checkpointTeDetails as Record<string, unknown>)
         : null
     if (
@@ -260,7 +342,12 @@ export async function POST(request: NextRequest) {
 
       try {
         const files = listFiles({ owner_id: ownerId })
-        const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
+        const ctx = buildForensicContext(
+          request,
+          ownerId,
+          files.length,
+          files.map(f => f.id)
+        )
         logForensic('files/store-metadata', ctx)
       } catch {
         // never fail the request on forensic logging
@@ -314,7 +401,13 @@ export async function POST(request: NextRequest) {
     }
 
     const writtenBytes = buf.length
-    console.log('[STORE] written', { ownerId, fileId: fileIdStr, uploadsDir, bytes: buf.length, writtenBytes })
+    console.log('[STORE] written', {
+      ownerId,
+      fileId: fileIdStr,
+      uploadsDir,
+      bytes: buf.length,
+      writtenBytes,
+    })
 
     try {
       insertFile({
@@ -341,7 +434,12 @@ export async function POST(request: NextRequest) {
 
     try {
       const files = listFiles({ owner_id: ownerId })
-      const ctx = buildForensicContext(request, ownerId, files.length, files.map((f) => f.id))
+      const ctx = buildForensicContext(
+        request,
+        ownerId,
+        files.length,
+        files.map(f => f.id)
+      )
       logForensic('files/store', ctx)
     } catch {
       // never fail a successful store on debug logging

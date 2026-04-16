@@ -3,6 +3,7 @@
 ## Overview
 
 This document ensures that API keys are:
+
 1. ✅ **Never committed to GitHub** - All key storage is excluded from git
 2. ✅ **Persistent across restarts** - Keys survive server restarts and upgrades
 3. ✅ **Encrypted at rest** - All keys are encrypted before storage
@@ -59,11 +60,13 @@ git ls-files | grep -E "\.secure-storage|api-keys|checkpoint-te-key|\.enc"
 ### Storage Implementation
 
 **Check Point TE Key** (`lib/checkpoint-te.ts`):
+
 - Saves to: `.secure-storage/checkpoint-te-key.enc`
 - Loads on: Module initialization and API calls
 - Persists: Across all restarts and upgrades
 
 **API Keys** (`lib/api-keys-storage.ts`):
+
 - Saves to: `.secure-storage/api-keys.enc`
 - Loads on: Module initialization and API calls
 - Persists: Across all restarts and upgrades
@@ -101,6 +104,7 @@ fi
 ### Encryption Key Sources (Priority Order)
 
 1. **Environment Variable** (Recommended for production):
+
    ```bash
    export CHECKPOINT_TE_ENCRYPTION_KEY="your-secure-32-byte-key"
    export API_KEYS_ENCRYPTION_KEY="your-secure-32-byte-key"
@@ -167,6 +171,7 @@ await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600 })
 ### Server Restart
 
 Keys automatically reload from disk:
+
 1. Server stops → Keys remain in `.secure-storage/`
 2. Server starts → Keys load from `.secure-storage/`
 3. API calls work → Keys available immediately
@@ -174,6 +179,7 @@ Keys automatically reload from disk:
 ### Version Upgrade
 
 Keys are preserved during upgrades:
+
 1. **Backup**: `.secure-storage/` backed up before upgrade
 2. **Preserve**: `.secure-storage/` never deleted during upgrade
 3. **Restore**: If missing, directory recreated with correct permissions
@@ -223,17 +229,20 @@ echo "✅ Found $KEY_COUNT encrypted file(s)"
 ### Keys Not Persisting After Restart
 
 1. **Check file exists**:
+
    ```bash
    ls -la .secure-storage/*.enc
    ```
 
 2. **Check permissions**:
+
    ```bash
    stat -c "%a %n" .secure-storage/
    stat -c "%a %n" .secure-storage/*.enc
    ```
 
 3. **Check file content**:
+
    ```bash
    # Should show encrypted data (not plaintext)
    head -1 .secure-storage/checkpoint-te-key.enc
@@ -244,6 +253,7 @@ echo "✅ Found $KEY_COUNT encrypted file(s)"
 ### Keys Missing After Upgrade
 
 1. **Restore from backup**:
+
    ```bash
    tar -xzf .backups/backup-*.tar.gz .secure-storage/
    chmod 700 .secure-storage/
@@ -266,6 +276,7 @@ Run the automated security check:
 ```
 
 This script checks:
+
 - ✅ `.secure-storage/` in `.gitignore`
 - ✅ No secure files in git
 - ✅ No hardcoded API keys
@@ -275,6 +286,7 @@ This script checks:
 ## Summary
 
 **Keys are safe because:**
+
 1. ✅ Excluded from git (`.gitignore`)
 2. ✅ Encrypted at rest (AES-256-CBC)
 3. ✅ Proper file permissions (700/600)
@@ -283,6 +295,7 @@ This script checks:
 6. ✅ Server-side only (never exposed to client)
 
 **Your keys will:**
+
 - ✅ Never be committed to GitHub
 - ✅ Survive server restarts
 - ✅ Persist through version upgrades

@@ -18,7 +18,10 @@ export default function DashboardPage() {
     setLogs(allLogs)
 
     try {
-      const response = await fetch('/api/logs/system?limit=100', { credentials: 'include', cache: 'no-store' })
+      const response = await fetch('/api/logs/system?limit=100', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
       if (response.ok) {
         const data = await response.json()
         setSystemLogs(data.logs || [])
@@ -41,9 +44,15 @@ export default function DashboardPage() {
 
   const handleClearLogs = async () => {
     if (filter === 'system') {
-      if (confirm('Are you sure you want to clear all system logs? This action cannot be undone.')) {
+      if (
+        confirm('Are you sure you want to clear all system logs? This action cannot be undone.')
+      ) {
         try {
-          const response = await fetch('/api/logs/system', { method: 'DELETE', credentials: 'include', cache: 'no-store' })
+          const response = await fetch('/api/logs/system', {
+            method: 'DELETE',
+            credentials: 'include',
+            cache: 'no-store',
+          })
           if (response.ok) {
             setSystemLogs([])
             setRefreshKey(prev => prev + 1)
@@ -53,19 +62,20 @@ export default function DashboardPage() {
         }
       }
     } else {
-    if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
-      clearLogs()
-      setLogs([])
-      setRefreshKey(prev => prev + 1)
+      if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+        clearLogs()
+        setLogs([])
+        setRefreshKey(prev => prev + 1)
       }
     }
   }
 
-  const filteredLogs = filter === 'all' 
-    ? logs 
-    : filter === 'system'
-    ? [] // System logs are handled separately
-    : logs.filter(log => log.type === filter)
+  const filteredLogs =
+    filter === 'all'
+      ? logs
+      : filter === 'system'
+        ? [] // System logs are handled separately
+        : logs.filter(log => log.type === filter)
 
   const totalLogs = logs.length
   const chatLogs = logs.filter(log => log.type === 'chat').length
@@ -75,20 +85,22 @@ export default function DashboardPage() {
   const allowedCount = logs.filter(log => log.action === 'allowed').length
   const scannedCount = logs.filter(log => log.lakeraDecision?.scanned).length
   const flaggedCount = logs.filter(log => log.lakeraDecision?.flagged).length
-  
+
   // System logs stats
   const systemErrorLogs = systemLogs.filter(log => log.level === 'error').length
-  const checkpointTeErrors = systemLogs.filter(log => log.service === 'checkpoint_te' && log.level === 'error').length
+  const checkpointTeErrors = systemLogs.filter(
+    log => log.service === 'checkpoint_te' && log.level === 'error'
+  ).length
 
   return (
     <div className="bento-grid">
       {/* Header Card */}
-      <div 
+      <div
         className="bento-card bento-span-4 glass-card p-6 liquid-shimmer"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex items-center justify-between">
@@ -102,12 +114,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards - Bento Grid */}
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -117,12 +129,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -132,12 +144,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -147,12 +159,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -162,12 +174,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-brand-berry/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -177,12 +189,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-brand-berry/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -192,12 +204,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-yellow-400/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -207,12 +219,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-red-400/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -222,12 +234,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-blue-400/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -237,12 +249,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div 
+      <div
         className="bento-card bento-span-1 glass-card p-6 hover:scale-105 transition-transform border-orange-400/30"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex flex-col items-center justify-center h-full">
@@ -253,12 +265,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters Card */}
-      <div 
+      <div
         className="bento-card bento-span-4 glass-card p-4"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -319,7 +331,7 @@ export default function DashboardPage() {
             onClick={handleClearLogs}
             className="px-4 py-2 glass-button text-theme-subtle hover:text-red-400 rounded-xl transition-all text-base font-medium"
             style={{
-              backgroundColor: "var(--destructive-bg, transparent)",
+              backgroundColor: 'var(--destructive-bg, transparent)',
             }}
           >
             Clear All Logs
@@ -328,18 +340,18 @@ export default function DashboardPage() {
       </div>
 
       {/* Logs Viewer Card - Full Width */}
-      <div 
+      <div
         className="bento-card bento-span-4 bento-row-span-2 glass-card overflow-hidden flex flex-col"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         {filter === 'system' ? (
           <SystemLogViewer logs={systemLogs} />
         ) : (
-        <LogViewer logs={filteredLogs} />
+          <LogViewer logs={filteredLogs} />
         )}
       </div>
     </div>

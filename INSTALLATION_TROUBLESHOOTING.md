@@ -5,6 +5,7 @@
 ### Problem
 
 When running:
+
 ```bash
 wget -qO- https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 ```
@@ -18,15 +19,18 @@ The repository must be pushed to GitHub first before the remote installation scr
 #### Option 1: Push to GitHub First (Recommended)
 
 1. **Push the repository to GitHub:**
+
    ```bash
    cd /path/to/Secure-Ai-Chat
    ./scripts/push-to-github.sh "Initial release - install script ready"
    ```
 
 2. **Verify the script is accessible:**
+
    ```bash
    curl -I https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh
    ```
+
    Should return `200 OK`
 
 3. **Then run the installation on your Ubuntu VM:**
@@ -39,10 +43,11 @@ The repository must be pushed to GitHub first before the remote installation scr
 If you want to install without pushing to GitHub first:
 
 1. **Copy the script to your Ubuntu VM:**
+
    ```bash
    # On your local machine, copy the script
    scp scripts/install-ubuntu.sh user@ubuntu-vm:~/
-   
+
    # Or manually copy/paste the script content
    ```
 
@@ -80,18 +85,22 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ### Common Issues
 
 **Issue**: `404 Not Found`
+
 - **Cause**: Repository or file doesn't exist on GitHub
 - **Fix**: Push the repository to GitHub first
 
 **Issue**: `403 Forbidden`
+
 - **Cause**: Repository is private
 - **Fix**: Make repository public or use personal access token
 
 **Issue**: Script downloads but doesn't execute
+
 - **Cause**: Script might have syntax errors or the repository structure is different
 - **Fix**: Check script syntax: `bash -n install-ubuntu.sh`
 
 **Issue**: Script hangs at "Continue? (y/N)"
+
 - **Cause**: Script detects interactive terminal
 - **Fix**: This shouldn't happen when piped, but if it does, use: `echo y | bash install-ubuntu.sh`
 

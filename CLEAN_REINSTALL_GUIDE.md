@@ -10,6 +10,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/
 ```
 
 Or if you already have the repo:
+
 ```bash
 cd ~/secure-ai-chat
 bash scripts/clean-reinstall.sh
@@ -169,6 +170,7 @@ Should show your restored API keys as configured.
 ### 5. Web Interface
 
 Open `http://localhost:3000` and verify:
+
 - ✅ Home page loads
 - ✅ Settings page shows API keys (if restored)
 - ✅ Chat page works
@@ -218,11 +220,13 @@ npm run build
 ## Backup Location
 
 Backups are stored in:
+
 ```
 ~/secure-ai-chat-backup-YYYYMMDD-HHMMSS/
 ```
 
 After verifying everything works, you can remove the backup:
+
 ```bash
 rm -rf ~/secure-ai-chat-backup-*
 ```
@@ -230,6 +234,7 @@ rm -rf ~/secure-ai-chat-backup-*
 ## Comparison: Clean Reinstall vs Update
 
 ### Clean Reinstall
+
 - ✅ Removes everything and starts fresh
 - ✅ Ensures no leftover files or configurations
 - ✅ Best for major version changes
@@ -237,18 +242,21 @@ rm -rf ~/secure-ai-chat-backup-*
 - ⚠️ Requires backup/restore of data
 
 ### Update (restart-update.sh)
+
 - ✅ Faster (only updates changed files)
 - ✅ Preserves everything automatically
 - ✅ Best for minor updates
 - ✅ Less disruptive
 
 **Use clean reinstall when:**
+
 - You're experiencing persistent issues
 - Major version upgrade
 - Want to start completely fresh
 - Installation is corrupted
 
 **Use update when:**
+
 - Just need latest code changes
 - Everything is working fine
 - Quick update needed
@@ -261,6 +269,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/
 ```
 
 This will:
+
 1. Stop service
 2. Backup your data
 3. Remove old installation

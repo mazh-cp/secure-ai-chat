@@ -9,6 +9,7 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 ### 🎯 Key Features Added
 
 #### 1. **OpenAI Model Selector**
+
 - **Location**: Chat page, above message input
 - **Functionality**: Dropdown to select different OpenAI models
 - **API Route**: `/api/models` - Fetches available models from OpenAI
@@ -19,12 +20,14 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 - **Sorting**: Newest models first
 
 #### 2. **Dynamic Version Display**
+
 - **Location**: Bottom left of sidebar (Layout component)
 - **API Endpoint**: `/api/version` - Reads version from `package.json`
 - **Implementation**: `app/api/version/route.ts`
 - **Behavior**: Automatically reflects `package.json` version after rebuild
 
 #### 3. **Persistent File Storage**
+
 - **Location**: `.storage/` directory (server-side)
 - **Functionality**: Files persist across server restarts
 - **API Routes**:
@@ -34,12 +37,14 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 - **Library**: `lib/persistent-storage.ts`
 
 #### 4. **Multiple File Upload**
+
 - **Limit**: Up to 5 files simultaneously
 - **Component**: `FileUploader.tsx`
 - **UI**: Progress bar showing upload progress
 - **File Size**: 50 MB per file limit
 
 #### 5. **API Key Validation**
+
 - **Endpoints**:
   - `/api/keys/validate` - Validate OpenAI and Lakera keys
   - `/api/te/config/validate` - Validate Check Point TE key
@@ -48,28 +53,33 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 - **Settings**: Real-time validation feedback
 
 #### 6. **Lakera Project ID Persistence**
+
 - **Issue Fixed**: Project ID disappearing after reboot
 - **Solution**: Server-side storage with `/api/keys/values` endpoint
 - **UI**: Project ID field is now visible (text input, not password)
 
 #### 7. **Check Point TE Key Status Fix**
+
 - **Issue Fixed**: "Key not configured" showing after adding new key
 - **Solution**: Re-check status from server after save/remove
 - **Implementation**: `checkCheckpointTeStatus()` called after operations
 
 #### 8. **Cache Cleanup Service**
+
 - **Functionality**: Automatically clears uploaded files every 24 hours
 - **Library**: `lib/cache-cleanup.ts`
 - **API**: `/api/health/cache` - Manual trigger and status
 - **Initialization**: Auto-starts on server startup
 
 #### 9. **API Key Persistence Protection**
+
 - **Enhancement**: Upgrade script protects `.secure-storage/` directory
 - **Verification**: Checks keys exist after upgrade
 - **Permissions**: Restores 700/600 permissions after upgrade
 - **Documentation**: `API_KEYS_PERSISTENCE.md`
 
 #### 10. **Lakera Guard API v2 Compliance**
+
 - **Changes**:
   - `project_id` moved from header to request body
   - Custom `context` replaced with official `metadata: { ip_address, internal_request_id }`
@@ -131,6 +141,7 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 ### 🎯 Key Features Added
 
 #### 1. **UniFi-Style Day/Night Theme System**
+
 - **Complete Theme Overhaul**: Light and dark themes with neutral-first palette
 - **CSS Variables**: Design tokens for maintainability
 - **Theme Toggle**: Component with system preference support
@@ -138,13 +149,15 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 - **Documentation**: `docs/THEME_SYSTEM.md`
 
 #### 2. **Status Dots Enhancement**
+
 - **Visual Indicators**: Green/red dots for enabled/disabled states
-- **Locations**: 
+- **Locations**:
   - Files page toggles (Lakera Scan, RAG Auto Scan, File Sandboxing)
   - Settings page API key fields
 - **Effects**: Subtle glow effects for better visibility
 
 #### 3. **Source Protection**
+
 - **Security Features**:
   - Disabled right-click context menu
   - Disabled keyboard shortcuts (F12, Ctrl+U, Ctrl+Shift+I, etc.)
@@ -154,12 +167,14 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 - **Integration**: Layout component
 
 #### 4. **Production Safety Audit**
+
 - **Comprehensive Audit**: `docs/SAFETY_AUDIT.md`
 - **Hardening Changes**: `docs/HARDENING_CHANGES.md`
 - **Validation Script**: `scripts/validate-env.sh`
 - **Environment Config**: `.env.example` file
 
 #### 5. **Environment Configuration**
+
 - **Validation**: `validate-env` npm script for startup checks
 - **Documentation**: `.env.example` for reference
 - **Package Scripts**: Added `typecheck` alias, `test` placeholder, `validate-env`
@@ -210,21 +225,25 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 ### Version 1.0.5 Issues
 
 #### Issue: Version not showing correctly after upgrade
+
 - **Cause**: Hardcoded version in Layout component
 - **Fix**: Use `/api/version` endpoint (already implemented)
 - **Verification**: `curl http://localhost:3000/api/version`
 
 #### Issue: Check Point TE key shows "not configured" after adding
+
 - **Cause**: Status not re-checked after save
 - **Fix**: `checkCheckpointTeStatus()` called after save/remove (already implemented)
 - **Verification**: Check Settings page status dot
 
 #### Issue: API keys lost after upgrade
+
 - **Cause**: `.secure-storage/` not protected during upgrade
 - **Fix**: Upgrade script now protects and verifies keys (already implemented)
 - **Verification**: Check `.secure-storage/` directory exists after upgrade
 
 #### Issue: Lakera Project ID disappears after reboot
+
 - **Cause**: Not persisted server-side
 - **Fix**: `/api/keys/values` endpoint and server-side storage (already implemented)
 - **Verification**: Check Settings page after reboot
@@ -232,11 +251,13 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 ### Version 1.0.4 Issues
 
 #### Issue: Theme flash on page load
+
 - **Cause**: Theme not set before React hydration
 - **Fix**: Bootstrap script sets theme immediately (already implemented)
 - **Verification**: Check `components/ThemeBootstrap.tsx`
 
 #### Issue: Source code easily accessible
+
 - **Cause**: No protection against casual inspection
 - **Fix**: Source protection component (already implemented)
 - **Verification**: Try right-click, F12, Ctrl+U (should be blocked)
@@ -279,12 +300,14 @@ This document provides a comprehensive summary of all changes in versions 1.0.4 
 ## 🔍 Debugging Commands
 
 ### Check Version
+
 ```bash
 curl http://localhost:3000/api/version
 cd /home/adminuser/secure-ai-chat && node -p "require('./package.json').version"
 ```
 
 ### Check API Keys
+
 ```bash
 curl http://localhost:3000/api/keys
 curl http://localhost:3000/api/te/config
@@ -292,18 +315,21 @@ ls -la .secure-storage/
 ```
 
 ### Check Files
+
 ```bash
 curl http://localhost:3000/api/files/list
 ls -la .storage/
 ```
 
 ### Check Service
+
 ```bash
 sudo systemctl status secure-ai-chat
 sudo journalctl -u secure-ai-chat -n 50
 ```
 
 ### Check Git Status
+
 ```bash
 cd /home/adminuser/secure-ai-chat
 git branch --show-current
@@ -315,6 +341,7 @@ git log --oneline -5
 ## 📚 Documentation Files
 
 ### Version 1.0.5
+
 - `API_KEYS_PERSISTENCE.md` - Key persistence guide
 - `SECURE_UPDATE_GUIDE_v1.0.5.md` - Secure update instructions
 - `PRODUCTION_VERIFICATION_COMMANDS.md` - Verification commands
@@ -322,6 +349,7 @@ git log --oneline -5
 - `CURL_UPGRADE_COMMAND_v1.0.5.md` - CURL upgrade commands
 
 ### Version 1.0.4
+
 - `docs/SAFETY_AUDIT.md` - Production safety audit
 - `docs/HARDENING_CHANGES.md` - Hardening changes
 - `docs/THEME_SYSTEM.md` - Theme system documentation

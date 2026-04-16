@@ -73,11 +73,13 @@ The error happens when:
 To avoid this error in the future:
 
 1. **Always run deployment as the service user** when possible:
+
    ```bash
    sudo -u adminuser bash deploy-ubuntu-vm.sh
    ```
 
 2. **Clone repository as the service user**:
+
    ```bash
    sudo -u adminuser git clone -b release/v1.0.2 \
      https://github.com/mazh-cp/secure-ai-chat.git \
@@ -123,6 +125,7 @@ sudo bash upgrade.sh
 ```
 
 It will automatically:
+
 - Fix ownership before operations
 - Ensure .git write permissions
 - Handle git pull failures gracefully
@@ -134,18 +137,21 @@ It will automatically:
 If the error persists after following these steps:
 
 1. Check the deployment script version:
+
    ```bash
    grep "REPO_DIR=" deploy-ubuntu-vm.sh | head -1
    # Should show: /home/adminuser/secure-ai-chat
    ```
 
 2. Verify git is installed:
+
    ```bash
    which git
    git --version
    ```
 
 3. Check disk space:
+
    ```bash
    df -h /home/adminuser
    ```

@@ -39,7 +39,9 @@ function mapTpapiSeverity(n: unknown): CheckPointTELogFields['severity'] | undef
 }
 
 /** TPAPI te.confidence: integer 1–3 (doc: block medium+). */
-function mapTpapiConfidenceLevel(n: unknown): CheckPointTELogFields['confidence_level'] | undefined {
+function mapTpapiConfidenceLevel(
+  n: unknown
+): CheckPointTELogFields['confidence_level'] | undefined {
   const v = typeof n === 'number' ? n : typeof n === 'string' ? parseInt(n, 10) : NaN
   if (Number.isNaN(v)) return undefined
   if (v >= 3) return 'High'
@@ -77,29 +79,39 @@ export async function POST(request: NextRequest) {
 
   try {
     let apiKey = getTeApiKeySync()
-    
+
     if (!apiKey) {
-      await systemLog.error('checkpoint_te', 'API key not configured for query', {
-        endpoint: defaultQueryEndpoint,
-        method: 'POST',
-        statusCode: 400,
-      }, { requestId })
-      
+      await systemLog.error(
+        'checkpoint_te',
+        'API key not configured for query',
+        {
+          endpoint: defaultQueryEndpoint,
+          method: 'POST',
+          statusCode: 400,
+        },
+        { requestId }
+      )
+
       return NextResponse.json(
         { error: 'Check Point TE API key is not configured. Please configure it in Settings.' },
         { status: 400 }
       )
     }
-    
+
     apiKey = normalizeTeApiKeyInput(apiKey)
-    
+
     if (!apiKey || apiKey.length === 0) {
-      await systemLog.error('checkpoint_te', 'API key is empty for query', {
-        endpoint: defaultQueryEndpoint,
-        method: 'POST',
-        statusCode: 400,
-      }, { requestId })
-      
+      await systemLog.error(
+        'checkpoint_te',
+        'API key is empty for query',
+        {
+          endpoint: defaultQueryEndpoint,
+          method: 'POST',
+          statusCode: 400,
+        },
+        { requestId }
+      )
+
       return NextResponse.json(
         { error: 'Check Point TE API key is empty. Please configure a valid API key in Settings.' },
         { status: 400 }
@@ -109,10 +121,7 @@ export async function POST(request: NextRequest) {
     const body: QueryRequestBody = await request.json()
 
     if (!body.features || !body.features.includes('te')) {
-      return NextResponse.json(
-        { error: 'features must include "te"' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'features must include "te"' }, { status: 400 })
     }
 
     const teImageId = body.te?.image?.id ?? body.te?.images?.[0]?.id
@@ -170,14 +179,22 @@ export async function POST(request: NextRequest) {
       } catch (fetchError) {
         clearTimeout(timeoutId)
 
-        if (fetchError instanceof Error && (fetchError.name === 'AbortError' || fetchError.message.includes('aborted'))) {
-          await systemLog.error('checkpoint_te', 'Query request timeout (30s)', {
-            endpoint: queryUrl,
-            method: 'POST',
-            statusCode: 504,
-            error: 'Request timeout after 30 seconds',
-            duration: Date.now() - startTime,
-          }, { requestId, sha256: body.sha256 })
+        if (
+          fetchError instanceof Error &&
+          (fetchError.name === 'AbortError' || fetchError.message.includes('aborted'))
+        ) {
+          await systemLog.error(
+            'checkpoint_te',
+            'Query request timeout (30s)',
+            {
+              endpoint: queryUrl,
+              method: 'POST',
+              statusCode: 504,
+              error: 'Request timeout after 30 seconds',
+              duration: Date.now() - startTime,
+            },
+            { requestId, sha256: body.sha256 }
+          )
 
           return NextResponse.json(
             {
@@ -219,7 +236,9 @@ export async function POST(request: NextRequest) {
         } catch {
           /* drain body */
         }
-        console.warn(`[checkpoint-te] 403 from ${queryUrl}; retrying next TE Cloud host for query...`)
+        console.warn(
+          `[checkpoint-te] 403 from ${queryUrl}; retrying next TE Cloud host for query...`
+        )
         continue
       }
 
@@ -243,8 +262,9 @@ export async function POST(request: NextRequest) {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
           errorDetails = await response.json()
-          const msg = (errorDetails as { message?: string; error?: string })?.message || 
-                     (errorDetails as { message?: string; error?: string })?.error
+          const msg =
+            (errorDetails as { message?: string; error?: string })?.message ||
+            (errorDetails as { message?: string; error?: string })?.error
           if (msg) errorMessage = msg as string
         } else {
           const text = await response.text()
@@ -256,23 +276,32 @@ export async function POST(request: NextRequest) {
       }
 
       // Log error to system logs
-      await systemLog.error('checkpoint_te', `Query failed: ${errorMessage}`, {
-        endpoint: queryUrl,
-        method: 'POST',
-        statusCode: response.status,
-        error: errorMessage,
-        responseBody: typeof errorDetails === 'string' ? errorDetails.substring(0, 1000) : JSON.stringify(errorDetails).substring(0, 1000),
-        duration: queryDuration,
-      }, {
-        requestId,
-        sha256: body.sha256,
-        teImageId: teImageId,
-      })
+      await systemLog.error(
+        'checkpoint_te',
+        `Query failed: ${errorMessage}`,
+        {
+          endpoint: queryUrl,
+          method: 'POST',
+          statusCode: response.status,
+          error: errorMessage,
+          responseBody:
+            typeof errorDetails === 'string'
+              ? errorDetails.substring(0, 1000)
+              : JSON.stringify(errorDetails).substring(0, 1000),
+          duration: queryDuration,
+        },
+        {
+          requestId,
+          sha256: body.sha256,
+          teImageId: teImageId,
+        }
+      )
 
       if (response.status === 401) {
         return NextResponse.json(
-          { 
-            error: 'Invalid Check Point TE API key. Please verify your API key in Settings. The API key may be incorrect or expired.',
+          {
+            error:
+              'Invalid Check Point TE API key. Please verify your API key in Settings. The API key may be incorrect or expired.',
             details: errorDetails,
             troubleshooting:
               'Verify the key in Settings (raw key only). If 401 persists, set CHECKPOINT_TE_AUTH_FORMAT=raw (TPAPI) or te_api_key (TE_API_KEY_ prefix).',
@@ -297,7 +326,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { 
+        {
           error: errorMessage,
           details: errorDetails,
         },
@@ -317,14 +346,21 @@ export async function POST(request: NextRequest) {
     }
 
     const nestedTe = extractTpapiTeFeature(rawRecord)
-    const flatTe = (data.data?.te && typeof data.data.te === 'object' && !Array.isArray(data.data.te)
-      ? data.data.te
-      : {}) as Record<string, unknown>
+    const flatTe = (
+      data.data?.te && typeof data.data.te === 'object' && !Array.isArray(data.data.te)
+        ? data.data.te
+        : {}
+    ) as Record<string, unknown>
     const teData: Record<string, unknown> = { ...flatTe, ...nestedTe }
 
     const teStatusRaw = teData['status']
     let teStatusFromNested: string | undefined
-    if (teStatusRaw && typeof teStatusRaw === 'object' && teStatusRaw !== null && !Array.isArray(teStatusRaw)) {
+    if (
+      teStatusRaw &&
+      typeof teStatusRaw === 'object' &&
+      teStatusRaw !== null &&
+      !Array.isArray(teStatusRaw)
+    ) {
       const o = teStatusRaw as Record<string, unknown>
       teStatusFromNested =
         (typeof o.label === 'string' ? o.label : undefined) ||
@@ -334,8 +370,7 @@ export async function POST(request: NextRequest) {
     }
 
     const combinedRaw = teData['combined_verdict']
-    const combined =
-      typeof combinedRaw === 'string' ? combinedRaw.toLowerCase().trim() : ''
+    const combined = typeof combinedRaw === 'string' ? combinedRaw.toLowerCase().trim() : ''
 
     const severityMapped = mapTpapiSeverity(teData['severity'])
     const confidenceMapped = mapTpapiConfidenceLevel(teData['confidence'])
@@ -373,62 +408,73 @@ export async function POST(request: NextRequest) {
         severityMapped ||
         (teData['severity'] as CheckPointTELogFields['severity']) ||
         (teData['severity_level'] as CheckPointTELogFields['severity']),
-      
+
       // Protection information
-      protection_type: teData['protection_type'] as string ||
-                       teData['protectionType'] as string,
-      protection_name: teData['protection_name'] as string ||
-                       teData['protectionName'] as string,
-      attack: teData['attack'] as string ||
-              teData['attack_name'] as string ||
-              teData['attackName'] as string,
-      attack_info: teData['attack_info'] as string ||
-                   teData['attackInfo'] as string,
-      attack_status: teData['attack_status'] as string ||
-                     teData['attackStatus'] as string,
-      
+      protection_type:
+        (teData['protection_type'] as string) || (teData['protectionType'] as string),
+      protection_name:
+        (teData['protection_name'] as string) || (teData['protectionName'] as string),
+      attack:
+        (teData['attack'] as string) ||
+        (teData['attack_name'] as string) ||
+        (teData['attackName'] as string),
+      attack_info: (teData['attack_info'] as string) || (teData['attackInfo'] as string),
+      attack_status: (teData['attack_status'] as string) || (teData['attackStatus'] as string),
+
       // Action taken
       action: teData['action'] as CheckPointTELogFields['action'],
-      action_details: teData['action_details'] as string ||
-                      teData['actionDetails'] as string,
-      
+      action_details: (teData['action_details'] as string) || (teData['actionDetails'] as string),
+
       // File risk information
-      file_risk: typeof teData['file_risk'] === 'number' ? teData['file_risk'] :
-                 typeof teData['fileRisk'] === 'number' ? teData['fileRisk'] :
-                 typeof teData['risk'] === 'number' ? teData['risk'] : undefined,
-      content_risk: typeof teData['content_risk'] === 'number' ? teData['content_risk'] :
-                    typeof teData['contentRisk'] === 'number' ? teData['contentRisk'] : undefined,
-      scrubbed_content: teData['scrubbed_content'] as string ||
-                        teData['scrubbedContent'] as string,
-      suspicious_content: teData['suspicious_content'] as string ||
-                          teData['suspiciousContent'] as string,
-      
+      file_risk:
+        typeof teData['file_risk'] === 'number'
+          ? teData['file_risk']
+          : typeof teData['fileRisk'] === 'number'
+            ? teData['fileRisk']
+            : typeof teData['risk'] === 'number'
+              ? teData['risk']
+              : undefined,
+      content_risk:
+        typeof teData['content_risk'] === 'number'
+          ? teData['content_risk']
+          : typeof teData['contentRisk'] === 'number'
+            ? teData['contentRisk']
+            : undefined,
+      scrubbed_content:
+        (teData['scrubbed_content'] as string) || (teData['scrubbedContent'] as string),
+      suspicious_content:
+        (teData['suspicious_content'] as string) || (teData['suspiciousContent'] as string),
+
       // Threat profile
-      threat_profile: teData['threat_profile'] as string ||
-                      teData['threatProfile'] as string,
-      smartdefense_profile: teData['smartdefense_profile'] as string ||
-                            teData['smartdefenseProfile'] as string,
-      triggered_by: teData['triggered_by'] as string ||
-                    teData['triggeredBy'] as string,
-      
+      threat_profile: (teData['threat_profile'] as string) || (teData['threatProfile'] as string),
+      smartdefense_profile:
+        (teData['smartdefense_profile'] as string) || (teData['smartdefenseProfile'] as string),
+      triggered_by: (teData['triggered_by'] as string) || (teData['triggeredBy'] as string),
+
       // Vendor information
-      vendor_list: teData['vendor_list'] as string ||
-                   teData['vendorList'] as string ||
-                   'Check Point ThreatCloud',
-      
+      vendor_list:
+        (teData['vendor_list'] as string) ||
+        (teData['vendorList'] as string) ||
+        'Check Point ThreatCloud',
+
       // Confidence score (numeric)
-      confidence: typeof teData['confidence'] === 'number' ? teData['confidence'] :
-                  typeof teData['confidence_score'] === 'number' ? teData['confidence_score'] :
-                  typeof teData['confidenceScore'] === 'number' ? teData['confidenceScore'] : undefined,
-      
+      confidence:
+        typeof teData['confidence'] === 'number'
+          ? teData['confidence']
+          : typeof teData['confidence_score'] === 'number'
+            ? teData['confidence_score']
+            : typeof teData['confidenceScore'] === 'number'
+              ? teData['confidenceScore']
+              : undefined,
+
       // Additional metadata
       description: teData['description'] as string,
       reason: teData['reason'] as string,
-      
+
       // Hash information
-      sha256: teData['sha256'] as string || data.data?.['sha256'] as string,
-      sha1: teData['sha1'] as string || data.data?.['sha1'] as string,
-      md5: teData['md5'] as string || data.data?.['md5'] as string,
+      sha256: (teData['sha256'] as string) || (data.data?.['sha256'] as string),
+      sha1: (teData['sha1'] as string) || (data.data?.['sha1'] as string),
+      md5: (teData['md5'] as string) || (data.data?.['md5'] as string),
     }
 
     const verdict =
@@ -440,15 +486,12 @@ export async function POST(request: NextRequest) {
           ? 'benign'
           : '') ||
       ''
-    const status = (
-      logFields.status?.toUpperCase() ||
+    const status = (logFields.status?.toUpperCase() ||
       data.data?.status?.toUpperCase() ||
       teStatusFromNested?.toUpperCase().replace(/\s+/g, '_') ||
-      'UNKNOWN'
-    ) as string
+      'UNKNOWN') as string
 
-    const isSafe =
-      verdict === 'benign' || status === 'NOT_FOUND' || combined === 'benign'
+    const isSafe = verdict === 'benign' || status === 'NOT_FOUND' || combined === 'benign'
     const isMalicious =
       verdict === 'malicious' ||
       verdict === 'suspicious' ||
@@ -461,7 +504,7 @@ export async function POST(request: NextRequest) {
 
     const result: CheckPointTEResponse = {
       success: true,
-      verdict: isPending ? 'pending' : (isMalicious ? 'malicious' : (isSafe ? 'safe' : 'unknown')),
+      verdict: isPending ? 'pending' : isMalicious ? 'malicious' : isSafe ? 'safe' : 'unknown',
       status: status,
       logFields: logFields,
       rawResponse: rawData, // Include raw response for debugging and future enhancements
@@ -478,31 +521,37 @@ export async function POST(request: NextRequest) {
     })
 
     const successDuration = Date.now() - startTime
-    
+
     // Log successful query
-    await systemLog.info('checkpoint_te', 'Query successful', {
-      endpoint: queryUrl,
-      method: 'POST',
-      statusCode: 200,
-      duration: successDuration,
-    }, {
-      requestId,
-      sha256: body.sha256,
-      verdict: result.verdict,
-    })
+    await systemLog.info(
+      'checkpoint_te',
+      'Query successful',
+      {
+        endpoint: queryUrl,
+        method: 'POST',
+        statusCode: 200,
+        duration: successDuration,
+      },
+      {
+        requestId,
+        sha256: body.sha256,
+        verdict: result.verdict,
+      }
+    )
 
     return NextResponse.json(result)
   } catch (error) {
     const errorDuration = Date.now() - startTime
     console.error('Check Point TE query error:', error)
-    
+
     let errorMessage = 'An error occurred during query to Check Point TE'
     let statusCode = 500
     let stackTrace: string | undefined
 
     if (error instanceof TypeError) {
       if (error.message.includes('fetch') || error.message.includes('network')) {
-        errorMessage = 'Network error: Could not connect to Check Point TE API. Check your internet connection and firewall settings.'
+        errorMessage =
+          'Network error: Could not connect to Check Point TE API. Check your internet connection and firewall settings.'
         statusCode = 503
       }
       stackTrace = error.stack
@@ -512,20 +561,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Log error to system logs
-    await systemLog.error('checkpoint_te', `Query exception: ${errorMessage}`, {
-      endpoint: defaultQueryEndpoint,
-      method: 'POST',
-      statusCode,
-      error: errorMessage,
-      stackTrace,
-      duration: errorDuration,
-    }, {
-      requestId,
-      errorType: error instanceof TypeError ? 'TypeError' : error?.constructor?.name || 'Unknown',
-    })
+    await systemLog.error(
+      'checkpoint_te',
+      `Query exception: ${errorMessage}`,
+      {
+        endpoint: defaultQueryEndpoint,
+        method: 'POST',
+        statusCode,
+        error: errorMessage,
+        stackTrace,
+        duration: errorDuration,
+      },
+      {
+        requestId,
+        errorType: error instanceof TypeError ? 'TypeError' : error?.constructor?.name || 'Unknown',
+      }
+    )
 
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         type: error instanceof TypeError ? 'network_error' : 'unknown_error',
       },

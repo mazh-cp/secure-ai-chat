@@ -32,15 +32,15 @@ bash scripts/pre-publish-verify.sh
 
 Before pushing or tagging:
 
-| Step | Command / check |
-|------|------------------|
-| **No secrets in repo** | `npm run check:secrets`; ensure `.env`, `.env.local`, `.env.*` are in `.gitignore` and never committed. |
-| **Ignored paths** | `.gitignore` must include: `node_modules/`, `.next/`, `.env*`, `.secure-storage/`, `data/` (uploads + local DB). |
-| **Clean status** | `git status` — commit or stash all intended changes; no accidental `.env` or `data/` in the index. |
-| **Version** | `package.json` → `"version": "1.0.12"` (or your release version). |
-| **Commit** | e.g. `git add -A && git commit -m "Release v1.0.12: RAG persistence, cookie/origin fix, release notes key fix"` |
-| **Tag (optional)** | `git tag -a v1.0.12 -m "Release v1.0.12"` then `git push origin v1.0.12` |
-| **Push** | `git push origin main` (or your default branch). |
+| Step                   | Command / check                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **No secrets in repo** | `npm run check:secrets`; ensure `.env`, `.env.local`, `.env.*` are in `.gitignore` and never committed.          |
+| **Ignored paths**      | `.gitignore` must include: `node_modules/`, `.next/`, `.env*`, `.secure-storage/`, `data/` (uploads + local DB). |
+| **Clean status**       | `git status` — commit or stash all intended changes; no accidental `.env` or `data/` in the index.               |
+| **Version**            | `package.json` → `"version": "1.0.12"` (or your release version).                                                |
+| **Commit**             | e.g. `git add -A && git commit -m "Release v1.0.12: RAG persistence, cookie/origin fix, release notes key fix"`  |
+| **Tag (optional)**     | `git tag -a v1.0.12 -m "Release v1.0.12"` then `git push origin v1.0.12`                                         |
+| **Push**               | `git push origin main` (or your default branch).                                                                 |
 
 Example one-off “release” commit and tag:
 
@@ -139,9 +139,9 @@ If you later run `scripts/deploy/upgrade.sh`, it will ensure `data/uploads` exis
 
 ## 5. Summary
 
-| Goal | Action |
-|------|--------|
-| **Finalize build** | `npm run type-check && npm run lint && npm run build` |
-| **Git-ready** | No secrets; `.gitignore` includes `data/`; commit and optional tag `v1.0.12`, push. |
+| Goal               | Action                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **Finalize build** | `npm run type-check && npm run lint && npm run build`                                                           |
+| **Git-ready**      | No secrets; `.gitignore` includes `data/`; commit and optional tag `v1.0.12`, push.                             |
 | **Remote upgrade** | On server: `sudo bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main` (or `--ref v1.0.12`). |
-| **Rollback** | Backup is under `APP_DIR/.backups/upgrade-YYYYMMDD_HHMMSS`; script prints a manual rollback command on success. |
+| **Rollback**       | Backup is under `APP_DIR/.backups/upgrade-YYYYMMDD_HHMMSS`; script prints a manual rollback command on success. |

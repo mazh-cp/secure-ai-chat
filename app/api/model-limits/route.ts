@@ -7,18 +7,18 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const serverKeys = await getApiKeys()
-    const apiKey = serverKeys.openAiKey || request.headers.get('x-openai-key') || request.nextUrl.searchParams.get('key')
+    const apiKey =
+      serverKeys.openAiKey ||
+      request.headers.get('x-openai-key') ||
+      request.nextUrl.searchParams.get('key')
 
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'OpenAI API key is required' }, { status: 400 })
     }
 
     // Fetch fresh limits from API
     const limitsMap = await fetchModelLimitsFromAPI(apiKey)
-    
+
     // Convert Map to object for JSON response
     const limits: Record<string, number> = {}
     for (const [model, limit] of limitsMap.entries()) {
@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Failed to fetch model limits:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch model limits', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      {
+        error: 'Failed to fetch model limits',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

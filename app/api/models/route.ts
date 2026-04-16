@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import {
-  azureOpenAiAuthHeaders,
-  normalizeAzureEndpoint,
-} from '@/lib/azure-openai'
+import { azureOpenAiAuthHeaders, normalizeAzureEndpoint } from '@/lib/azure-openai'
 
 // Mark route as dynamic since it uses query parameters
 export const dynamic = 'force-dynamic'
@@ -36,11 +33,7 @@ interface AzureDeployment {
 }
 
 /** Azure data-plane list deployments works with inference API dates; preview chat versions may 404 on GET /deployments. */
-const AZURE_DEPLOYMENTS_LIST_API_VERSIONS = [
-  '2024-10-21',
-  '2024-06-01',
-  '2023-05-15',
-] as const
+const AZURE_DEPLOYMENTS_LIST_API_VERSIONS = ['2024-10-21', '2024-06-01', '2023-05-15'] as const
 
 function parseAzureDeploymentsPayload(raw: unknown): AzureDeployment[] {
   if (!raw || typeof raw !== 'object') return []
@@ -66,10 +59,7 @@ export async function GET(request: NextRequest) {
     if (provider === 'anthropic') {
       const apiKey = serverKeys.anthropicApiKey
       if (!apiKey) {
-        return NextResponse.json(
-          { error: 'Anthropic API key is required' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Anthropic API key is required' }, { status: 400 })
       }
       return NextResponse.json({ models: ANTHROPIC_MODELS })
     }
@@ -89,7 +79,7 @@ export async function GET(request: NextRequest) {
       const endpoint = normalizeAzureEndpoint(endpointRaw)
       // Try known-good list API versions first; user's version is for chat/completions and often 404s on GET /deployments.
       const versionsToTry: string[] = [...AZURE_DEPLOYMENTS_LIST_API_VERSIONS]
-      if (!versionsToTry.some((v) => v === configuredChatVersion)) {
+      if (!versionsToTry.some(v => v === configuredChatVersion)) {
         versionsToTry.push(configuredChatVersion)
       }
 
@@ -113,7 +103,7 @@ export async function GET(request: NextRequest) {
             const raw = await response.json().catch(() => ({}))
             const deployments = parseAzureDeploymentsPayload(raw)
             const models = deployments
-              .map((d) => {
+              .map(d => {
                 const id = d.id || d.name
                 return id ? { id, name: id } : null
               })
@@ -172,12 +162,10 @@ export async function GET(request: NextRequest) {
     }
 
     // OpenAI (default)
-    const apiKey = serverKeys.openAiKey || request.headers.get('x-openai-key') || searchParams.get('key')
+    const apiKey =
+      serverKeys.openAiKey || request.headers.get('x-openai-key') || searchParams.get('key')
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'OpenAI API key is required' }, { status: 400 })
     }
 
     // Fetch models from OpenAI API
@@ -188,7 +176,7 @@ export async function GET(request: NextRequest) {
       const response = await fetch('https://api.openai.com/v1/models', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         signal: controller.signal,
       })
@@ -198,31 +186,30 @@ export async function GET(request: NextRequest) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         const errorMessage = errorData.error?.message || 'Failed to fetch models'
-        
+
         // Don't expose sensitive error details
-        const sanitizedError = errorMessage.includes('Invalid API key') 
-          ? 'Invalid API key' 
+        const sanitizedError = errorMessage.includes('Invalid API key')
+          ? 'Invalid API key'
           : 'Failed to fetch models'
 
-        return NextResponse.json(
-          { error: sanitizedError },
-          { status: response.status }
-        )
+        return NextResponse.json({ error: sanitizedError }, { status: response.status })
       }
 
       const data: OpenAIModelsResponse = await response.json()
-      
+
       // Filter to only chat-compatible models (gpt-* models, excluding realtime, image, audio models)
       // Sort by name for better UX (newer models first)
       const chatModels = data.data
         .filter(model => {
           const id = model.id.toLowerCase()
           // Include GPT models but exclude realtime, image, and audio models
-          return id.startsWith('gpt-') && 
-                 !id.includes('realtime') && 
-                 !id.includes('image') && 
-                 !id.includes('audio') &&
-                 !id.includes('whisper')
+          return (
+            id.startsWith('gpt-') &&
+            !id.includes('realtime') &&
+            !id.includes('image') &&
+            !id.includes('audio') &&
+            !id.includes('whisper')
+          )
         })
         .sort((a, b) => {
           // Sort by id (newer models like gpt-4o come before gpt-4)
@@ -244,7 +231,7 @@ export async function GET(request: NextRequest) {
         { id: 'gpt-5.1', name: 'GPT-5.1' },
         { id: 'gpt-5', name: 'GPT-5' },
       ]
-      
+
       for (const gpt5Model of gpt5Models) {
         const hasModel = chatModels.some(model => model.id === gpt5Model.id)
         if (!hasModel) {
@@ -261,28 +248,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ models: chatModels })
     } catch (fetchError: unknown) {
       clearTimeout(timeoutId)
-      
+
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return NextResponse.json(
-          { error: 'Request timeout' },
-          { status: 408 }
-        )
+        return NextResponse.json({ error: 'Request timeout' }, { status: 408 })
       }
 
-      return NextResponse.json(
-        { error: 'Failed to fetch models' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to fetch models' }, { status: 500 })
     }
   } catch (error) {
     console.error('Models API error:', error)
-    return NextResponse.json(
-      { error: 'An error occurred while fetching models' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'An error occurred while fetching models' }, { status: 500 })
   }
 }
-
 
 /**
  * Format model ID to a more readable name
@@ -296,18 +273,18 @@ function formatModelName(modelId: string): string {
   if (modelId === 'gpt-5.2') return 'GPT-5.2'
   if (modelId === 'gpt-5.1') return 'GPT-5.1'
   if (modelId === 'gpt-5') return 'GPT-5'
-  
+
   // Remove 'gpt-' prefix and format
   let name = modelId.replace(/^gpt-/, '')
-  
+
   // Capitalize first letter
   name = name.charAt(0).toUpperCase() + name.slice(1)
-  
+
   // Handle special cases
   name = name.replace(/-/g, ' ')
-  
+
   // Capitalize each word
-  name = name.replace(/\b\w/g, (char) => char.toUpperCase())
-  
+  name = name.replace(/\b\w/g, char => char.toUpperCase())
+
   return `GPT-${name}`
 }

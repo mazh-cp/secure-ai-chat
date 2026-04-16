@@ -11,12 +11,14 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 ### 1. Dual-Mode API Support (`app/api/chat/route.ts`)
 
 **Added:**
+
 - `convertMessagesToText()` function to convert messages array to formatted text for GPT-5
 - Dual-mode routing in `callOpenAI()` function:
   - **GPT-5**: Uses `/v1/responses` endpoint with single `input` string
   - **Other GPT models**: Uses `/v1/chat/completions` endpoint with `messages` array
 
 **Key Features:**
+
 - Automatic detection: `model === 'gpt-5'` triggers GPT-5 mode
 - Conversation history preserved: Messages converted to readable text format
 - System prompt included: Security instructions prepended to conversation
@@ -26,11 +28,13 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 ### 2. Model Selector Update (`app/api/models/route.ts`)
 
 **Added:**
+
 - GPT-5 automatically added to model list (if not returned by `/v1/models` endpoint)
 - GPT-5 appears at the top of the list (newest first)
 - Format model name function updated to handle `gpt-5` → `GPT-5`
 
 **Key Features:**
+
 - GPT-5 always available in dropdown
 - Properly formatted display name
 - Sorted with newest models first
@@ -38,6 +42,7 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 ### 3. Model Validation
 
 **Updated:**
+
 - Validation allows `gpt-5` explicitly
 - Maintains security: Only `gpt-*` models and `gpt-5` allowed
 - Fallback to `gpt-4o-mini` for invalid models
@@ -51,6 +56,7 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 **Endpoint:** `/v1/chat/completions`
 
 **Request Format:**
+
 ```json
 {
   "model": "gpt-4o-mini",
@@ -65,13 +71,16 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 ```
 
 **Response Format:**
+
 ```json
 {
-  "choices": [{
-    "message": {
-      "content": "Response text..."
+  "choices": [
+    {
+      "message": {
+        "content": "Response text..."
+      }
     }
-  }]
+  ]
 }
 ```
 
@@ -80,6 +89,7 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 **Endpoint:** `/v1/responses`
 
 **Request Format:**
+
 ```json
 {
   "model": "gpt-5",
@@ -90,6 +100,7 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 ```
 
 **Response Format (Multiple Possible):**
+
 - `data.response`
 - `data.content`
 - `data.text`
@@ -103,16 +114,18 @@ This document summarizes the GPT-5 API integration and dual-mode support impleme
 The `convertMessagesToText()` function converts the messages array to a formatted text string:
 
 **Input (Messages Array):**
+
 ```typescript
-[
+;[
   { role: 'system', content: 'You are helpful...' },
   { role: 'user', content: 'Hello' },
   { role: 'assistant', content: 'Hi there!' },
-  { role: 'user', content: 'How are you?' }
+  { role: 'user', content: 'How are you?' },
 ]
 ```
 
 **Output (Formatted Text):**
+
 ```
 [System Instructions: You are helpful...]
 
@@ -124,6 +137,7 @@ User: How are you?
 ```
 
 This format:
+
 - ✅ Preserves conversation context
 - ✅ Includes system instructions
 - ✅ Maintains role clarity
@@ -134,12 +148,14 @@ This format:
 ## 🛡️ Security & Validation
 
 ### Model Validation
+
 - ✅ Only `gpt-*` models allowed (existing security)
 - ✅ `gpt-5` explicitly allowed
 - ✅ Invalid models fallback to `gpt-4o-mini`
 - ✅ System prompt always included (security guidelines)
 
 ### API Key Security
+
 - ✅ API keys stored server-side (encrypted)
 - ✅ No keys exposed in client code
 - ✅ Same security model for both endpoints
@@ -149,6 +165,7 @@ This format:
 ## 🧪 Testing Checklist
 
 ### ✅ Implementation Complete
+
 - [x] Dual-mode API support implemented
 - [x] Message conversion function created
 - [x] Model validation updated
@@ -223,10 +240,11 @@ This format:
 ### For Developers
 
 1. **Testing GPT-5:**
+
    ```bash
    # Set API key
    export OPENAI_API_KEY=your-key-here
-   
+
    # Run test script (when GPT-5 API is available)
    npx tsx scripts/test-gpt5-api.ts
    ```
@@ -241,21 +259,25 @@ This format:
 ## ⚠️ Important Notes
 
 ### API Availability
+
 - **GPT-5 API may not be publicly available yet**
 - Implementation is ready but requires actual API access to test
 - Test script provided for when API becomes available
 
 ### Response Structure
+
 - GPT-5 response structure is **unknown** until API is tested
 - Implementation handles multiple possible formats
 - May need adjustment after actual API testing
 
 ### Parameters
+
 - `max_tokens` and `temperature` included in request
 - Will be ignored by API if not supported
 - Can be adjusted after testing
 
 ### Conversation History
+
 - Converted to text format for GPT-5
 - Context should be maintained
 - May need optimization based on actual API behavior
@@ -265,6 +287,7 @@ This format:
 ## 🔍 Verification Commands
 
 ### Check Implementation
+
 ```bash
 # Verify GPT-5 support in code
 grep -n "gpt-5\|isGPT5" app/api/chat/route.ts app/api/models/route.ts
@@ -277,6 +300,7 @@ npm run lint
 ```
 
 ### Test Model List
+
 ```bash
 # Start dev server
 npm run dev

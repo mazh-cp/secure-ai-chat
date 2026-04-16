@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (process.env.NODE_ENV === 'development') {
       console.error('ErrorBoundary caught an error:', error, errorInfo)
     }
-    
+
     // In production, you could send to error logging service here
     // Example: logErrorToService(error, errorInfo)
   }
@@ -41,9 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="glass-card rounded-xl p-6 max-w-md w-full border-red-400/30">
-            <h2 className="text-xl font-semibold text-theme mb-4">
-              Something went wrong
-            </h2>
+            <h2 className="text-xl font-semibold text-theme mb-4">Something went wrong</h2>
             <p className="text-theme-muted mb-4">
               An unexpected error occurred. Please refresh the page or try again later.
             </p>

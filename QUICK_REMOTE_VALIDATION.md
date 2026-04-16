@@ -21,29 +21,37 @@ export VM_IP="your-domain.com"
 ## ✅ Essential Validation Commands
 
 ### 1. Check if Server is Running
+
 ```bash
 curl http://$VM_IP:3000/api/health
 ```
+
 **Expected**: `{"status":"ok"}`
 
 ### 2. Verify Version
+
 ```bash
 curl http://$VM_IP:3000/api/version
 ```
+
 **Expected**: `{"version":"1.0.11"}`
 
 ### 3. Check WAF Integration
+
 ```bash
 curl http://$VM_IP:3000/api/waf/health
 ```
+
 **Expected**: `{"waf":{"integrated":true}}`
 
 ### 4. Check API Keys Status
+
 ```bash
 curl http://$VM_IP:3000/api/keys
 ```
 
 ### 5. Get Recent Errors
+
 ```bash
 curl "http://$VM_IP:3000/api/logs/system?level=error&limit=10"
 ```
@@ -53,6 +61,7 @@ curl "http://$VM_IP:3000/api/logs/system?level=error&limit=10"
 ## 📊 Generate Complete Logs Report
 
 ### Automated Script
+
 ```bash
 # Download and run validation script
 ./scripts/validate-remote-vm.sh $VM_IP
@@ -62,6 +71,7 @@ curl "http://$VM_IP:3000/api/logs/system?level=error&limit=10"
 ```
 
 ### Manual Logs Export
+
 ```bash
 # Export all logs to files
 mkdir -p remote-logs
@@ -83,12 +93,14 @@ curl -X POST http://$VM_IP:3000/api/waf/logs \
 ## 🔧 Environment Fix Commands
 
 ### Check Configuration Status
+
 ```bash
 # See which keys are from environment vs storage
 curl http://$VM_IP:3000/api/keys | jq '.source'
 ```
 
 ### Validate Azure OpenAI
+
 ```bash
 curl -X POST http://$VM_IP:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -104,6 +116,7 @@ curl -X POST http://$VM_IP:3000/api/health/azure-openai \
 ## 🚨 Troubleshooting
 
 ### Connection Refused
+
 ```bash
 # Check if port is accessible
 telnet $VM_IP 3000
@@ -112,6 +125,7 @@ nc -zv $VM_IP 3000
 ```
 
 ### Timeout Issues
+
 ```bash
 # Increase timeout
 curl --connect-timeout 30 --max-time 60 \

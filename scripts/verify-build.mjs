@@ -31,8 +31,11 @@ if (!resolved) {
   if (fs.existsSync(standaloneRoot)) {
     try {
       const entries = fs.readdirSync(standaloneRoot, { withFileTypes: true })
-      const names = entries.map((e) => (e.isDirectory() ? `${e.name}/` : e.name)).join(', ')
-      console.error('❌ verify-build: .next/standalone exists but no server.js found. Top-level:', names || '(empty)')
+      const names = entries.map(e => (e.isDirectory() ? `${e.name}/` : e.name)).join(', ')
+      console.error(
+        '❌ verify-build: .next/standalone exists but no server.js found. Top-level:',
+        names || '(empty)'
+      )
     } catch {
       console.error('❌ verify-build: could not list .next/standalone')
     }
@@ -45,7 +48,7 @@ if (!resolved) {
     }
   }
   fail(
-    'Missing standalone server.js under .next/standalone. Use: node scripts/next-build-production.mjs (webpack). Nested layouts (e.g. standalone/<app>/server.js) are supported once server.js exists.',
+    'Missing standalone server.js under .next/standalone. Use: node scripts/next-build-production.mjs (webpack). Nested layouts (e.g. standalone/<app>/server.js) are supported once server.js exists.'
   )
 }
 

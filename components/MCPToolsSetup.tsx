@@ -14,7 +14,8 @@ export default function MCPToolsSetup() {
         <div>
           <h2 className="text-lg font-semibold text-theme">🔧 Advanced: MCP Tools Setup</h2>
           <p className="text-sm text-theme-muted mt-1">
-            For advanced functionality, you can add MCP (Model Context Protocol) tools using ToolHive.
+            For advanced functionality, you can add MCP (Model Context Protocol) tools using
+            ToolHive.
           </p>
         </div>
         <span className="text-theme-subtle text-xl ml-4 flex-shrink-0">
@@ -64,9 +65,13 @@ export default function MCPToolsSetup() {
             <h3 className="text-sm font-semibold text-theme mb-3">Add Filesystem MCP Server</h3>
             <ul className="space-y-2 text-sm text-theme-muted list-disc list-inside">
               <li>Add &quot;Filesystem&quot; from the default registry in ToolHive</li>
-              <li>Configure:
+              <li>
+                Configure:
                 <ul className="ml-6 mt-1 space-y-1 list-disc">
-                  <li>Host path: Full path to your documents folder (e.g., &quot;/Users/steve/Documents/mcpdemodocs&quot;)</li>
+                  <li>
+                    Host path: Full path to your documents folder (e.g.,
+                    &quot;/Users/steve/Documents/mcpdemodocs&quot;)
+                  </li>
                   <li>Container path: &quot;/projects&quot;</li>
                 </ul>
               </li>
@@ -84,8 +89,8 @@ export default function MCPToolsSetup() {
           {/* Pro Tip */}
           <div className="p-4 glass-card border-brand-berry/30 rounded-xl">
             <p className="text-sm text-theme">
-              <strong className="text-brand-berry">💡 Pro Tip:</strong>{' '}
-              Add a malicious system prompt to the bottom of your test file to see Lakera Guard detect and block it!
+              <strong className="text-brand-berry">💡 Pro Tip:</strong> Add a malicious system
+              prompt to the bottom of your test file to see Lakera Guard detect and block it!
             </p>
           </div>
         </div>

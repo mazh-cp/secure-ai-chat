@@ -8,10 +8,7 @@ import { requireSecureChatSession } from '@/lib/app-login'
 /**
  * GET /api/files/:id/content - Return file content from server storage (./data/uploads/<ownerId>/<fileId>).
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authBlock = requireSecureChatSession(request)
     if (authBlock) return authBlock

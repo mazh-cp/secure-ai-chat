@@ -98,7 +98,7 @@ async function checkpointTePollQuery(params: {
       break
     }
     if (attempts > 0 || !skipDelayOnFirstAttempt) {
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
     }
     attempts++
 
@@ -140,7 +140,10 @@ async function checkpointTePollQuery(params: {
     }
 
     const queryData = (await queryResponse.json()) as CheckPointTEResponse
-    if (typeof queryData.teResolvedBase === 'string' && queryData.teResolvedBase.trim().length > 0) {
+    if (
+      typeof queryData.teResolvedBase === 'string' &&
+      queryData.teResolvedBase.trim().length > 0
+    ) {
       effectiveTeApiBase = queryData.teResolvedBase.trim()
     }
     verdict = queryData.verdict as TeVerdict
@@ -152,7 +155,12 @@ async function checkpointTePollQuery(params: {
 }
 
 const VALID_SCAN_STATUSES: UploadedFile['scanStatus'][] = [
-  'pending', 'scanning', 'safe', 'flagged', 'error', 'not_scanned',
+  'pending',
+  'scanning',
+  'safe',
+  'flagged',
+  'error',
+  'not_scanned',
 ]
 
 /** Type guard: validate all required UploadedFile properties so partial objects are filtered out. */
@@ -166,7 +174,8 @@ function isUploadedFile(f: unknown): f is UploadedFile {
     typeof o.size === 'number' &&
     typeof o.type === 'string' &&
     typeof o.content === 'string' &&
-    (o.uploadedAt !== undefined && (typeof o.uploadedAt === 'string' || o.uploadedAt instanceof Date)) &&
+    o.uploadedAt !== undefined &&
+    (typeof o.uploadedAt === 'string' || o.uploadedAt instanceof Date) &&
     typeof scanStatus === 'string' &&
     VALID_SCAN_STATUSES.includes(scanStatus as UploadedFile['scanStatus'])
   )
@@ -198,7 +207,7 @@ function buildStoreBody(
     skipServerLakeraScan?: boolean
     /** When false, server skips Lakera even if API key is set (Lakera file-scan toggle off). */
     lakeraScanRequested?: boolean
-  },
+  }
 ): string {
   return JSON.stringify({
     fileId: file.id,
@@ -223,7 +232,7 @@ async function sha256HexFromBlob(blob: Blob): Promise<string> {
   const buf = await blob.arrayBuffer()
   const hashBuffer = await crypto.subtle.digest('SHA-256', buf)
   return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
+    .map(b => b.toString(16).padStart(2, '0'))
     .join('')
 }
 
@@ -248,7 +257,9 @@ async function uploadedFileToBlob(file: UploadedFile): Promise<Blob> {
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i)
       }
-      return new Blob([new Uint8Array(byteNumbers)], { type: file.type || 'application/octet-stream' })
+      return new Blob([new Uint8Array(byteNumbers)], {
+        type: file.type || 'application/octet-stream',
+      })
     } catch {
       return new Blob([file.content], { type: file.type || 'text/plain' })
     }
@@ -272,17 +283,18 @@ export default function FilesPage() {
 
   // Load files from server; returns list or null. Uses safeFetchJson so non-JSON response never crashes.
   const loadFilesFromServer = useCallback(async (): Promise<UploadedFile[] | null> => {
-    const result = await safeFetchJson<{ success?: boolean; files?: unknown[] }>('/api/files/list', {
-      ...apiFetchOptions,
-      headers: { ...ownerHeaders() },
-    })
+    const result = await safeFetchJson<{ success?: boolean; files?: unknown[] }>(
+      '/api/files/list',
+      {
+        ...apiFetchOptions,
+        headers: { ...ownerHeaders() },
+      }
+    )
     if (!result.ok || !result.data?.success || !Array.isArray(result.data.files)) return null
-    const filesWithDates = result.data.files
-      .filter(isUploadedFile)
-      .map((f: UploadedFile) => ({
-        ...f,
-        uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-      }))
+    const filesWithDates = result.data.files.filter(isUploadedFile).map((f: UploadedFile) => ({
+      ...f,
+      uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+    }))
     return filesWithDates
   }, [])
 
@@ -302,7 +314,7 @@ export default function FilesPage() {
         setCheckpointTeConfigured(data.configured || false)
         setTeSubmitStrategy(parseTeSubmitStrategyFromConfig(data))
         // If API key not configured but toggle is enabled, disable it
-        setCheckpointTeSandboxEnabled((prev) => {
+        setCheckpointTeSandboxEnabled(prev => {
           if (!data.configured && prev) {
             return false
           }
@@ -311,7 +323,7 @@ export default function FilesPage() {
       } else {
         setCheckpointTeConfigured(false)
         setTeSubmitStrategy('upload_only')
-        setCheckpointTeSandboxEnabled((prev) => {
+        setCheckpointTeSandboxEnabled(prev => {
           if (prev) {
             return false
           }
@@ -324,7 +336,7 @@ export default function FilesPage() {
       console.error('Failed to check Check Point TE status:', error)
       setCheckpointTeConfigured(false)
       setTeSubmitStrategy('upload_only')
-      setCheckpointTeSandboxEnabled((prev) => {
+      setCheckpointTeSandboxEnabled(prev => {
         if (prev) {
           return false
         }
@@ -353,75 +365,73 @@ export default function FilesPage() {
       establishOwner().then(() => {
         // Load files from server (persistent storage)
         return loadFilesFromServer()
-        .then(list => {
-          if (list !== null) {
-            if (list.length > 0) {
-              setFiles(list)
-              setServerSyncWarning(null)
-              localStorage.setItem('uploadedFiles', JSON.stringify(list))
+          .then(list => {
+            if (list !== null) {
+              if (list.length > 0) {
+                setFiles(list)
+                setServerSyncWarning(null)
+                localStorage.setItem('uploadedFiles', JSON.stringify(list))
+              } else {
+                // Server returned empty list—preserve local cache so files don't vanish after navigation
+                const stored = localStorage.getItem('uploadedFiles')
+                if (stored) {
+                  try {
+                    const parsed = JSON.parse(stored)
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      const filesWithDates = parsed
+                        .filter(isUploadedFile)
+                        .map((f: UploadedFile) => ({
+                          ...f,
+                          uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+                        }))
+                      setFiles(filesWithDates)
+                      setServerSyncWarning(
+                        'Files loaded from local cache. Server list was empty—re-upload or check storage.'
+                      )
+                      return
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse cached files:', e)
+                  }
+                }
+                setFiles([])
+                setServerSyncWarning(null)
+                localStorage.setItem('uploadedFiles', JSON.stringify([]))
+              }
             } else {
-              // Server returned empty list—preserve local cache so files don't vanish after navigation
               const stored = localStorage.getItem('uploadedFiles')
               if (stored) {
                 try {
                   const parsed = JSON.parse(stored)
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    const filesWithDates = parsed
-                      .filter(isUploadedFile)
-                      .map((f: UploadedFile) => ({
-                        ...f,
-                        uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-                      }))
-                    setFiles(filesWithDates)
-                    setServerSyncWarning('Files loaded from local cache. Server list was empty—re-upload or check storage.')
-                    return
-                  }
+                  if (!Array.isArray(parsed)) return
+                  const filesWithDates = parsed.filter(isUploadedFile).map((f: UploadedFile) => ({
+                    ...f,
+                    uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+                  }))
+                  setFiles(filesWithDates)
                 } catch (e) {
-                  console.error('Failed to parse cached files:', e)
+                  console.error('Failed to load files from localStorage:', e)
                 }
               }
-              setFiles([])
-              setServerSyncWarning(null)
-              localStorage.setItem('uploadedFiles', JSON.stringify([]))
             }
-          } else {
+          })
+          .catch(err => {
+            console.error('Failed to load files from server:', err)
             const stored = localStorage.getItem('uploadedFiles')
             if (stored) {
               try {
                 const parsed = JSON.parse(stored)
                 if (!Array.isArray(parsed)) return
-                const filesWithDates = parsed
-                  .filter(isUploadedFile)
-                  .map((f: UploadedFile) => ({
-                    ...f,
-                    uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-                  }))
+                const filesWithDates = parsed.filter(isUploadedFile).map((f: UploadedFile) => ({
+                  ...f,
+                  uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
+                }))
                 setFiles(filesWithDates)
               } catch (e) {
                 console.error('Failed to load files from localStorage:', e)
               }
             }
-          }
-        })
-        .catch(err => {
-          console.error('Failed to load files from server:', err)
-          const stored = localStorage.getItem('uploadedFiles')
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored)
-              if (!Array.isArray(parsed)) return
-              const filesWithDates = parsed
-                .filter(isUploadedFile)
-                .map((f: UploadedFile) => ({
-                  ...f,
-                  uploadedAt: f.uploadedAt != null ? new Date(f.uploadedAt) : new Date(),
-                }))
-              setFiles(filesWithDates)
-            } catch (e) {
-              console.error('Failed to load files from localStorage:', e)
-            }
-          }
-        })
+          })
       })
 
       // Load Lakera scan toggle state from localStorage
@@ -454,13 +464,13 @@ export default function FilesPage() {
           console.error('Check Point TE status check failed:', err)
         })
       }
-      
+
       // Initial check
       const initialTimeout = setTimeout(checkStatus, 500)
-      
+
       // Periodic check every 5 seconds to catch updates from Settings page
       const statusInterval = setInterval(checkStatus, 5000)
-      
+
       // Cleanup interval and timeout on unmount
       return () => {
         clearTimeout(initialTimeout)
@@ -516,20 +526,29 @@ export default function FilesPage() {
 
   // Update file metadata on server. Uses safeFetchJson so non-JSON response never crashes.
   const updateFileMetadataOnServer = async (file: UploadedFile) => {
-    const res = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/store', {
-      ...apiFetchOptions,
-      method: 'POST',
-      headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
-      body: buildStoreBody(file, file.scanStatus, {
-        scanResult: file.scanResult,
-        scanDetails: file.scanDetails,
-        checkpointTeDetails: file.checkpointTeDetails,
-        skipServerLakeraScan: true,
-        lakeraScanRequested: false,
-      }),
-    })
+    const res = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>(
+      '/api/files/store',
+      {
+        ...apiFetchOptions,
+        method: 'POST',
+        headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
+        body: buildStoreBody(file, file.scanStatus, {
+          scanResult: file.scanResult,
+          scanDetails: file.scanDetails,
+          checkpointTeDetails: file.checkpointTeDetails,
+          skipServerLakeraScan: true,
+          lakeraScanRequested: false,
+        }),
+      }
+    )
     if (!res.ok) {
-      const msg = res.error?.message ?? (typeof res.data?.error === 'string' ? res.data.error : (res.data?.error && typeof res.data.error === 'object' && 'message' in res.data.error ? String((res.data.error as { message?: string }).message) : 'Unknown error'))
+      const msg =
+        res.error?.message ??
+        (typeof res.data?.error === 'string'
+          ? res.data.error
+          : res.data?.error && typeof res.data.error === 'object' && 'message' in res.data.error
+            ? String((res.data.error as { message?: string }).message)
+            : 'Unknown error')
       console.error('Failed to update file metadata on server:', msg)
     }
   }
@@ -577,7 +596,10 @@ export default function FilesPage() {
     setStoreError(null)
 
     const headers = { ...ownerHeaders(), 'Content-Type': 'application/json' }
-    const storeResult = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/store', {
+    const storeResult = await safeFetchJson<{
+      ok?: boolean
+      error?: { message?: string } | string
+    }>('/api/files/store', {
       ...apiFetchOptions,
       method: 'POST',
       headers,
@@ -586,12 +608,18 @@ export default function FilesPage() {
     if (storeResult.ok) {
       setStoreError(null)
       // Sync with server so list/store use same owner and file persists after navigation
-      loadFilesFromServer().then((list) => {
+      loadFilesFromServer().then(list => {
         if (list !== null) setFiles(list)
       })
     } else {
       const dataErr = storeResult.data?.error
-      const msg = storeResult.error?.message ?? (typeof dataErr === 'string' ? dataErr : (dataErr && typeof dataErr === 'object' && 'message' in dataErr ? String((dataErr as { message?: string }).message) : 'Failed to save file to server'))
+      const msg =
+        storeResult.error?.message ??
+        (typeof dataErr === 'string'
+          ? dataErr
+          : dataErr && typeof dataErr === 'object' && 'message' in dataErr
+            ? String((dataErr as { message?: string }).message)
+            : 'Failed to save file to server')
       console.error('Failed to store file on server:', msg)
       setStoreError(msg)
     }
@@ -605,25 +633,35 @@ export default function FilesPage() {
       return
     }
 
-    setFiles(prev => prev.map(f =>
-      f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f
-    ))
-    const res = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/store', {
-      ...apiFetchOptions,
-      method: 'POST',
-      headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
-      body: buildStoreBody(newFile, 'not_scanned', { lakeraScanRequested: false }),
-    })
+    setFiles(prev =>
+      prev.map(f => (f.id === newFile.id ? { ...f, scanStatus: 'not_scanned' as const } : f))
+    )
+    const res = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>(
+      '/api/files/store',
+      {
+        ...apiFetchOptions,
+        method: 'POST',
+        headers: { ...ownerHeaders(), 'Content-Type': 'application/json' },
+        body: buildStoreBody(newFile, 'not_scanned', { lakeraScanRequested: false }),
+      }
+    )
     if (res.ok) {
       setStoreError(null)
       triggerRagEmbed([newFile.id]).catch(err => console.warn('RAG embed after store:', err))
       // Sync with server so file list persists after navigation
-      loadFilesFromServer().then((list) => {
+      loadFilesFromServer().then(list => {
         if (list !== null) setFiles(list)
       })
     } else {
       const dataErr = res.data?.error
-      setStoreError(res.error?.message ?? (typeof dataErr === 'string' ? dataErr : (dataErr && typeof dataErr === 'object' && 'message' in dataErr ? String((dataErr as { message?: string }).message) : 'Failed to save file to server')))
+      setStoreError(
+        res.error?.message ??
+          (typeof dataErr === 'string'
+            ? dataErr
+            : dataErr && typeof dataErr === 'object' && 'message' in dataErr
+              ? String((dataErr as { message?: string }).message)
+              : 'Failed to save file to server')
+      )
     }
   }
 
@@ -639,11 +677,14 @@ export default function FilesPage() {
         const list = await loadFilesFromServer()
         if (list !== null) {
           setFiles(list)
-          if (typeof window !== 'undefined') localStorage.setItem('uploadedFiles', JSON.stringify(list))
+          if (typeof window !== 'undefined')
+            localStorage.setItem('uploadedFiles', JSON.stringify(list))
         } else {
-          setFiles((prev) => prev.filter((f) => f.id !== fileId))
+          setFiles(prev => prev.filter(f => f.id !== fileId))
           if (typeof window !== 'undefined') {
-            const rest = JSON.parse(localStorage.getItem('uploadedFiles') || '[]').filter((f: { id: string }) => f.id !== fileId)
+            const rest = JSON.parse(localStorage.getItem('uploadedFiles') || '[]').filter(
+              (f: { id: string }) => f.id !== fileId
+            )
             localStorage.setItem('uploadedFiles', JSON.stringify(rest))
           }
         }
@@ -664,53 +705,73 @@ export default function FilesPage() {
     if (files.length === 0) {
       return
     }
-    
-    if (!confirm(`Are you sure you want to delete all ${files.length} file(s)? This action cannot be undone.`)) {
+
+    if (
+      !confirm(
+        `Are you sure you want to delete all ${files.length} file(s)? This action cannot be undone.`
+      )
+    ) {
       return
     }
-    
+
     try {
-      const result = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>('/api/files/clear', {
-        ...apiFetchOptions,
-        method: 'POST',
-        headers: ownerHeaders(),
-      })
+      const result = await safeFetchJson<{ ok?: boolean; error?: { message?: string } | string }>(
+        '/api/files/clear',
+        {
+          ...apiFetchOptions,
+          method: 'POST',
+          headers: ownerHeaders(),
+        }
+      )
       if (result.ok) {
         const list = await loadFilesFromServer()
         setFiles(list !== null ? list : [])
         if (typeof window !== 'undefined') localStorage.setItem('uploadedFiles', '[]')
       } else {
-        const msg = result.error?.message ?? (typeof result.data?.error === 'string' ? result.data.error : (result.data?.error && typeof result.data.error === 'object' && 'message' in result.data.error ? String((result.data.error as { message?: string }).message) : 'Unknown error'))
+        const msg =
+          result.error?.message ??
+          (typeof result.data?.error === 'string'
+            ? result.data.error
+            : result.data?.error &&
+                typeof result.data.error === 'object' &&
+                'message' in result.data.error
+              ? String((result.data.error as { message?: string }).message)
+              : 'Unknown error')
         alert(`Failed to clear all files: ${msg}`)
       }
     } catch (error) {
       console.error('Error clearing all files:', error)
-      alert(`Failed to clear all files: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(
+        `Failed to clear all files: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
   // Handle Check Point TE sandboxing
   const handleCheckpointTeSandbox = async (fileId: string) => {
     // Get file from current state - need to wait for state update
-    const currentFiles = files.length > 0 ? files : JSON.parse(localStorage.getItem('uploadedFiles') || '[]')
+    const currentFiles =
+      files.length > 0 ? files : JSON.parse(localStorage.getItem('uploadedFiles') || '[]')
     let file = currentFiles.find((f: UploadedFile) => f.id === fileId)
-    
+
     // If still not found, wait a bit and try again
     if (!file) {
       await new Promise(resolve => setTimeout(resolve, 100))
       const updatedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]')
       file = updatedFiles.find((f: UploadedFile) => f.id === fileId)
     }
-    
+
     if (!file) {
       console.error('File not found for Check Point TE sandboxing:', fileId)
       return
     }
 
     // Update file status to scanning
-    setFiles(prev => prev.map(f => 
-      f.id === fileId ? { ...f, scanStatus: 'scanning' as const, scanResult: undefined } : f
-    ))
+    setFiles(prev =>
+      prev.map(f =>
+        f.id === fileId ? { ...f, scanStatus: 'scanning' as const, scanResult: undefined } : f
+      )
+    )
 
     try {
       setIsScanning(true)
@@ -732,7 +793,9 @@ export default function FilesPage() {
       try {
         fileBlob = await uploadedFileToBlob(file)
       } catch (error) {
-        throw new Error(`Failed to read file for Check Point TE: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        throw new Error(
+          `Failed to read file for Check Point TE: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
       }
 
       let sha256: string | undefined
@@ -856,39 +919,41 @@ export default function FilesPage() {
       const teLogFields = teResult?.logFields || {}
       const teStatus = teResult?.status || 'unknown'
       const teVerdict = teResult?.verdict || verdict
-      
+
       // Build detailed scan result message with TE findings
       let scanResultMessage = ''
       let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
-      
+
       if (verdict === 'pending' || verdict === 'unknown') {
         scanResultMessage =
           strategy === 'hash_only'
             ? 'Check Point TE (hash-only): No verdict in Threat Cloud for this SHA-256. File bytes were not sent to Check Point — only reputation lookup. New or rare files will often show this; set server env CHECKPOINT_TE_HASH_LOOKUP_ONLY=false or upload_only for full sandbox, or leave unset for automatic hash-then-upload.'
             : 'Check Point TE analysis completed but verdict is unclear. File allowed.'
-        
-        setFiles(prev => prev.map(f => {
-          if (f.id === fileId) {
-            const updatedFile = {
-              ...f, 
-              scanStatus: 'safe' as const,
-              scanResult: scanResultMessage,
-              scanDetails: { categories: {}, score: 0 },
-              checkpointTeDetails: {
-                logFields: teLogFields,
-                verdict: teVerdict,
-                status: teStatus,
-              },
+
+        setFiles(prev =>
+          prev.map(f => {
+            if (f.id === fileId) {
+              const updatedFile = {
+                ...f,
+                scanStatus: 'safe' as const,
+                scanResult: scanResultMessage,
+                scanDetails: { categories: {}, score: 0 },
+                checkpointTeDetails: {
+                  logFields: teLogFields,
+                  verdict: teVerdict,
+                  status: teStatus,
+                },
+              }
+              // Update server metadata asynchronously
+              updateFileMetadataOnServer(updatedFile).catch(err =>
+                console.error('Failed to update file metadata:', err)
+              )
+              return updatedFile
             }
-            // Update server metadata asynchronously
-            updateFileMetadataOnServer(updatedFile).catch(err => 
-              console.error('Failed to update file metadata:', err)
-            )
-            return updatedFile
-          }
-          return f
-        }))
-        
+            return f
+          })
+        )
+
         addLog({
           type: 'file_scan',
           action: 'scanned',
@@ -916,13 +981,13 @@ export default function FilesPage() {
         const attackInfo = teLogFields.attack_info || ''
         const confidence = teLogFields.confidence_level || teLogFields.confidence
         const determinedBy = teLogFields.te_verdict_determined_by || ''
-        
+
         // Determine threat level from severity
         if (severity === 'Critical') threatLevel = 'critical'
         else if (severity === 'High') threatLevel = 'high'
         else if (severity === 'Medium') threatLevel = 'medium'
         else threatLevel = 'low'
-        
+
         // Build detailed result message
         scanResultMessage = `File blocked by Check Point Threat Emulation`
         const details: string[] = []
@@ -935,32 +1000,34 @@ export default function FilesPage() {
         if (details.length > 0) {
           scanResultMessage += `\n${details.join('\n')}`
         }
-        
-        setFiles(prev => prev.map(f => {
-          if (f.id === fileId) {
-            const updatedFile = {
-              ...f, 
-              scanStatus: 'flagged' as const,
-              scanResult: scanResultMessage,
-              scanDetails: { 
-                categories: { malicious: true, checkpoint_te: true }, 
-                score: teLogFields.file_risk ? teLogFields.file_risk / 10 : 1.0 
-              },
-              checkpointTeDetails: {
-                logFields: teLogFields,
-                verdict: teVerdict,
-                status: teStatus,
-              },
+
+        setFiles(prev =>
+          prev.map(f => {
+            if (f.id === fileId) {
+              const updatedFile = {
+                ...f,
+                scanStatus: 'flagged' as const,
+                scanResult: scanResultMessage,
+                scanDetails: {
+                  categories: { malicious: true, checkpoint_te: true },
+                  score: teLogFields.file_risk ? teLogFields.file_risk / 10 : 1.0,
+                },
+                checkpointTeDetails: {
+                  logFields: teLogFields,
+                  verdict: teVerdict,
+                  status: teStatus,
+                },
+              }
+              // Update server metadata asynchronously
+              updateFileMetadataOnServer(updatedFile).catch(err =>
+                console.error('Failed to update file metadata:', err)
+              )
+              return updatedFile
             }
-            // Update server metadata asynchronously
-            updateFileMetadataOnServer(updatedFile).catch(err => 
-              console.error('Failed to update file metadata:', err)
-            )
-            return updatedFile
-          }
-          return f
-        }))
-        
+            return f
+          })
+        )
+
         addLog({
           type: 'file_scan',
           action: 'blocked',
@@ -982,49 +1049,54 @@ export default function FilesPage() {
           success: false,
         })
 
-        alert(`File blocked: Check Point Threat Emulation detected malicious content.\n\n${details.join('\n')}`)
+        alert(
+          `File blocked: Check Point Threat Emulation detected malicious content.\n\n${details.join('\n')}`
+        )
         return // Don't proceed with other scans
       } else {
         // Safe - proceed with normal flow
         const severity = teLogFields.severity || 'Low'
         const confidence = teLogFields.confidence_level || teLogFields.confidence || 'Medium'
         const analyzedOn = teLogFields.analyzed_on || 'Check Point Threat Emulation Cloud'
-        
+
         scanResultMessage = `File passed Check Point TE sandboxing`
         const details: string[] = []
         if (analyzedOn) details.push(`Analyzed on: ${analyzedOn}`)
         if (severity) details.push(`Severity: ${severity}`)
         if (confidence) details.push(`Confidence: ${confidence}`)
-        if (teLogFields.protection_type) details.push(`Protection type: ${teLogFields.protection_type}`)
+        if (teLogFields.protection_type)
+          details.push(`Protection type: ${teLogFields.protection_type}`)
         if (details.length > 0) {
           scanResultMessage += `\n${details.join('\n')}`
         }
-        
-        setFiles(prev => prev.map(f => {
-          if (f.id === fileId) {
-            const updatedFile = {
-              ...f, 
-              scanStatus: 'safe' as const,
-              scanResult: scanResultMessage,
-              scanDetails: { 
-                categories: { safe: true, checkpoint_te: true }, 
-                score: 0 
-              },
-              checkpointTeDetails: {
-                logFields: teLogFields,
-                verdict: teVerdict,
-                status: teStatus,
-              },
+
+        setFiles(prev =>
+          prev.map(f => {
+            if (f.id === fileId) {
+              const updatedFile = {
+                ...f,
+                scanStatus: 'safe' as const,
+                scanResult: scanResultMessage,
+                scanDetails: {
+                  categories: { safe: true, checkpoint_te: true },
+                  score: 0,
+                },
+                checkpointTeDetails: {
+                  logFields: teLogFields,
+                  verdict: teVerdict,
+                  status: teStatus,
+                },
+              }
+              // Update server metadata asynchronously
+              updateFileMetadataOnServer(updatedFile).catch(err =>
+                console.error('Failed to update file metadata:', err)
+              )
+              return updatedFile
             }
-            // Update server metadata asynchronously
-            updateFileMetadataOnServer(updatedFile).catch(err => 
-              console.error('Failed to update file metadata:', err)
-            )
-            return updatedFile
-          }
-          return f
-        }))
-        
+            return f
+          })
+        )
+
         addLog({
           type: 'file_scan',
           action: 'scanned',
@@ -1056,7 +1128,7 @@ export default function FilesPage() {
       }
     } catch (error) {
       let message = 'Check Point TE sandboxing failed'
-      
+
       if (error instanceof Error) {
         message = error.message
         // API already appends troubleshooting with blank line — do not add generic suffixes (they duplicated 403 text and matched "API key" inside it).
@@ -1067,14 +1139,18 @@ export default function FilesPage() {
             message += ' Check CHECKPOINT_TECLOUD_BASE_URL and Settings.'
           } else if (message.includes('429') || message.includes('rate limit')) {
             message += ' Rate limit exceeded — wait and retry.'
-          } else if (message.includes('network') || message.includes('connect') || message.includes('fetch')) {
+          } else if (
+            message.includes('network') ||
+            message.includes('connect') ||
+            message.includes('fetch')
+          ) {
             message += ' Check network and firewall.'
           } else if (message.includes('timeout')) {
             message += ' Request timed out — file may be large or TE slow.'
           }
         }
       }
-      
+
       const msg = error instanceof Error ? error.message : String(error)
       const isExpectedApiDenial =
         /\b403\b|\b401\b|access denied|Invalid Check Point TE API key/i.test(msg)
@@ -1083,23 +1159,25 @@ export default function FilesPage() {
       } else {
         console.error('Check Point TE sandboxing error:', error)
       }
-      
-      setFiles(prev => prev.map(f => {
-        if (f.id === fileId) {
-          const updatedFile = { 
-            ...f, 
-            scanStatus: 'error' as const, 
-            scanResult: message,
+
+      setFiles(prev =>
+        prev.map(f => {
+          if (f.id === fileId) {
+            const updatedFile = {
+              ...f,
+              scanStatus: 'error' as const,
+              scanResult: message,
+            }
+            // Update server metadata asynchronously
+            updateFileMetadataOnServer(updatedFile).catch(err =>
+              console.error('Failed to update file metadata:', err)
+            )
+            return updatedFile
           }
-          // Update server metadata asynchronously
-          updateFileMetadataOnServer(updatedFile).catch(err => 
-            console.error('Failed to update file metadata:', err)
-          )
-          return updatedFile
-        }
-        return f
-      }))
-      
+          return f
+        })
+      )
+
       addLog({
         type: 'error',
         action: 'error',
@@ -1117,10 +1195,7 @@ export default function FilesPage() {
     }
   }
 
-  const handleFileScan = async (
-    fileId: string,
-    opts?: { teAlreadySafe?: boolean },
-  ) => {
+  const handleFileScan = async (fileId: string, opts?: { teAlreadySafe?: boolean }) => {
     const file = files.find(f => f.id === fileId)
     if (!file) return
 
@@ -1141,9 +1216,11 @@ export default function FilesPage() {
       teVerdictEarly === 'unknown'
 
     // Update file status to scanning
-    setFiles(prev => prev.map(f => 
-      f.id === fileId ? { ...f, scanStatus: 'scanning' as const, scanResult: undefined } : f
-    ))
+    setFiles(prev =>
+      prev.map(f =>
+        f.id === fileId ? { ...f, scanStatus: 'scanning' as const, scanResult: undefined } : f
+      )
+    )
 
     try {
       // Check if Lakera API key is configured (server-side)
@@ -1151,7 +1228,7 @@ export default function FilesPage() {
       // We just need to verify it's configured
       const keysResponse = await fetch('/api/keys', apiFetchOptions).catch(() => null)
       let lakeraConfigured = false
-      
+
       if (keysResponse?.ok) {
         const keysData = await keysResponse.json()
         lakeraConfigured = keysData.configured?.lakeraAiKey || false
@@ -1163,36 +1240,56 @@ export default function FilesPage() {
       }
 
       if (!lakeraConfigured) {
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? { ...f, scanStatus: 'error' as const, scanResult: 'Lakera API key not configured. Please add it in Settings.' } : f
-        ))
+        setFiles(prev =>
+          prev.map(f =>
+            f.id === fileId
+              ? {
+                  ...f,
+                  scanStatus: 'error' as const,
+                  scanResult: 'Lakera API key not configured. Please add it in Settings.',
+                }
+              : f
+          )
+        )
         setIsScanning(false)
         return
       }
 
       // Get keys for endpoint validation
       let endpoint = 'https://api.lakera.ai/v2/guard'
-      
+
       // Try to get endpoint from server-side or localStorage
       if (keysResponse?.ok) {
         const keysData = await keysResponse.json()
         // Fix: Correct operator precedence - check if endpoint is configured OR source is storage
-        const shouldFetchEndpoint = keysData.configured?.lakeraEndpoint || keysData.source?.lakeraEndpoint === 'storage'
-        endpoint = shouldFetchEndpoint ? 
-          (await fetch('/api/keys/retrieve', apiFetchOptions).then(r => r.json()).then(d => d.keys?.lakeraEndpoint || endpoint).catch(() => endpoint)) :
-          endpoint
+        const shouldFetchEndpoint =
+          keysData.configured?.lakeraEndpoint || keysData.source?.lakeraEndpoint === 'storage'
+        endpoint = shouldFetchEndpoint
+          ? await fetch('/api/keys/retrieve', apiFetchOptions)
+              .then(r => r.json())
+              .then(d => d.keys?.lakeraEndpoint || endpoint)
+              .catch(() => endpoint)
+          : endpoint
       } else {
         // Fallback: check localStorage
         const apiKeys = localStorage.getItem('apiKeys')
         const localKeys = apiKeys ? JSON.parse(apiKeys) : {}
         endpoint = localKeys.lakeraEndpoint || endpoint
       }
-      
+
       // Validate endpoint
       if (!endpoint || !endpoint.startsWith('http')) {
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? { ...f, scanStatus: 'error' as const, scanResult: 'Invalid Lakera endpoint. Please check Settings.' } : f
-        ))
+        setFiles(prev =>
+          prev.map(f =>
+            f.id === fileId
+              ? {
+                  ...f,
+                  scanStatus: 'error' as const,
+                  scanResult: 'Invalid Lakera endpoint. Please check Settings.',
+                }
+              : f
+          )
+        )
         setIsScanning(false)
         return
       }
@@ -1213,11 +1310,11 @@ export default function FilesPage() {
         }),
       })
 
-      let data: { 
+      let data: {
         flagged: boolean
         message?: string
         error?: string
-        details?: { 
+        details?: {
           categories?: Record<string, boolean>
           score?: number
           threatLevel?: 'low' | 'medium' | 'high' | 'critical'
@@ -1242,13 +1339,13 @@ export default function FilesPage() {
         }
         logData?: unknown
       }
-      
+
       // Clone response before reading to avoid "body stream already read" error
       // This is especially important for large files (500+ individuals)
       const responseClone = response.clone()
       const contentType = response.headers.get('content-type')
       const isJson = contentType && contentType.includes('application/json')
-      
+
       if (isJson) {
         try {
           // Read from cloned response to avoid stream consumption issues
@@ -1260,7 +1357,9 @@ export default function FilesPage() {
           } catch (fallbackError) {
             // If both fail, try reading as text for better error message
             const text = await response.text()
-            throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}. Response: ${text.substring(0, 500)}`)
+            throw new Error(
+              `Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}. Response: ${text.substring(0, 500)}`
+            )
           }
         }
       } else {
@@ -1272,7 +1371,7 @@ export default function FilesPage() {
       if (!response.ok) {
         // More detailed error message with details if available
         let errorMsg = data?.error || `Scan failed with status ${response.status}`
-        
+
         // Add details if available
         if (data?.details) {
           if (typeof data.details === 'string') {
@@ -1286,7 +1385,7 @@ export default function FilesPage() {
             }
           }
         }
-        
+
         throw new Error(errorMsg)
       }
 
@@ -1323,48 +1422,59 @@ export default function FilesPage() {
             categories: data.details?.categories,
             scores: data.details?.score ? { threat: data.details.score } : undefined,
             message: data.message,
-            payload: data.details?.payload,      // Include official payload data
-            breakdown: data.details?.breakdown,  // Include official breakdown data
+            payload: data.details?.payload, // Include official payload data
+            breakdown: data.details?.breakdown, // Include official breakdown data
           },
           success: true,
           associatedRisks,
         })
       }
 
-      setFiles(prev => prev.map(f => {
-        if (f.id === fileId) {
-          const updatedFile: UploadedFile = {
-            ...f, 
-            scanStatus: data.flagged ? 'flagged' as const : 'safe' as const,
-            scanResult: data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
-            scanDetails: data.details ? {
-              categories: data.details.categories,
-              score: data.details.score,
-              threatLevel: data.details.threatLevel,
-              payload: data.details.payload,      // Include official payload data
-              breakdown: data.details.breakdown,  // Include official breakdown data
-            } : undefined,
+      setFiles(prev =>
+        prev.map(f => {
+          if (f.id === fileId) {
+            const updatedFile: UploadedFile = {
+              ...f,
+              scanStatus: data.flagged ? ('flagged' as const) : ('safe' as const),
+              scanResult:
+                data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
+              scanDetails: data.details
+                ? {
+                    categories: data.details.categories,
+                    score: data.details.score,
+                    threatLevel: data.details.threatLevel,
+                    payload: data.details.payload, // Include official payload data
+                    breakdown: data.details.breakdown, // Include official breakdown data
+                  }
+                : undefined,
+            }
+            // Update server metadata asynchronously
+            updateFileMetadataOnServer(updatedFile).catch(err =>
+              console.error('Failed to update file metadata:', err)
+            )
+            // RAG only after Check Point TE is clear when TE sandboxing is enabled (engines are independent but both must pass).
+            if (!data.flagged && teClearForRag) {
+              triggerRagEmbed([fileId]).catch(err =>
+                console.warn('RAG embed after Lakera safe:', err)
+              )
+            }
+            return updatedFile
           }
-          // Update server metadata asynchronously
-          updateFileMetadataOnServer(updatedFile).catch(err => 
-            console.error('Failed to update file metadata:', err)
-          )
-          // RAG only after Check Point TE is clear when TE sandboxing is enabled (engines are independent but both must pass).
-          if (!data.flagged && teClearForRag) {
-            triggerRagEmbed([fileId]).catch(err => console.warn('RAG embed after Lakera safe:', err))
-          }
-          return updatedFile
-        }
-        return f
-      }))
+          return f
+        })
+      )
     } catch (error) {
       let message = 'Scan failed. Please check your API configuration.'
-      
+
       if (error instanceof Error) {
         message = error.message
-        
+
         // Add helpful suggestions based on error type
-        if (error.message.includes('401') || error.message.includes('Invalid') || error.message.includes('API key')) {
+        if (
+          error.message.includes('401') ||
+          error.message.includes('Invalid') ||
+          error.message.includes('API key')
+        ) {
           message += ' - Please check your Lakera API key in Settings.'
         } else if (error.message.includes('403') || error.message.includes('denied')) {
           message += ' - Please check your API key and project ID in Settings.'
@@ -1376,7 +1486,7 @@ export default function FilesPage() {
           message += ' - Check your internet connection and API endpoint.'
         }
       }
-      
+
       // Log error
       addLog({
         type: 'error',
@@ -1392,17 +1502,19 @@ export default function FilesPage() {
         associatedRisks: ['llm03'], // Supply Chain risk for errors
       })
 
-      setFiles(prev => prev.map(f => {
-        if (f.id === fileId) {
-          const updatedFile = { ...f, scanStatus: 'error' as const, scanResult: message }
-          // Update server metadata asynchronously
-          updateFileMetadataOnServer(updatedFile).catch(err => 
-            console.error('Failed to update file metadata:', err)
-          )
-          return updatedFile
-        }
-        return f
-      }))
+      setFiles(prev =>
+        prev.map(f => {
+          if (f.id === fileId) {
+            const updatedFile = { ...f, scanStatus: 'error' as const, scanResult: message }
+            // Update server metadata asynchronously
+            updateFileMetadataOnServer(updatedFile).catch(err =>
+              console.error('Failed to update file metadata:', err)
+            )
+            return updatedFile
+          }
+          return f
+        })
+      )
     } finally {
       setIsScanning(false)
     }
@@ -1412,218 +1524,283 @@ export default function FilesPage() {
     <div className="min-h-[60vh] flex items-center justify-center p-4">
       <div className="glass-card rounded-xl p-6 max-w-md w-full border-red-400/30">
         <h2 className="text-xl font-semibold text-theme mb-4">File Upload error</h2>
-        <p className="text-theme-muted mb-4">Something went wrong on this page. Please refresh or try again. If the problem continues, check that the server is running and your session is valid.</p>
-        <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-brand-berry px-4 py-2 text-white hover:opacity-90">Reload page</button>
+        <p className="text-theme-muted mb-4">
+          Something went wrong on this page. Please refresh or try again. If the problem continues,
+          check that the server is running and your session is valid.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="rounded-lg bg-brand-berry px-4 py-2 text-white hover:opacity-90"
+        >
+          Reload page
+        </button>
       </div>
     </div>
   )
 
   return (
     <ErrorBoundary fallback={filesPageFallback}>
-    <div className="bento-grid">
-      {/* Sync / store error banners */}
-      {(serverSyncWarning || storeError) && (
-        <div className="bento-span-4 flex flex-col gap-2">
-          {serverSyncWarning && (
-            <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-amber-400/50 bg-amber-500/10 px-4 py-3 text-amber-200">
-              <span className="text-sm">{serverSyncWarning}</span>
-              <button type="button" onClick={() => setServerSyncWarning(null)} className="shrink-0 rounded px-2 py-1 text-xs hover:bg-amber-500/20" aria-label="Dismiss">Dismiss</button>
-            </div>
-          )}
-          {storeError && (
-            <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-red-400/50 bg-red-500/10 px-4 py-3 text-red-200">
-              <span className="text-sm">Save failed: {storeError}</span>
-              <button type="button" onClick={() => setStoreError(null)} className="shrink-0 rounded px-2 py-1 text-xs hover:bg-red-500/20" aria-label="Dismiss">Dismiss</button>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Header Card */}
-      <div className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2" style={{ borderColor: "rgb(var(--border))" }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-theme drop-shadow-lg">File Upload & RAG</h1>
-            <p className="mt-2 text-base text-theme-muted">
-              Upload documents for RAG (Retrieval-Augmented Generation). Files are scanned by Lakera AI for security.
-            </p>
+      <div className="bento-grid">
+        {/* Sync / store error banners */}
+        {(serverSyncWarning || storeError) && (
+          <div className="bento-span-4 flex flex-col gap-2">
+            {serverSyncWarning && (
+              <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-amber-400/50 bg-amber-500/10 px-4 py-3 text-amber-200">
+                <span className="text-sm">{serverSyncWarning}</span>
+                <button
+                  type="button"
+                  onClick={() => setServerSyncWarning(null)}
+                  className="shrink-0 rounded px-2 py-1 text-xs hover:bg-amber-500/20"
+                  aria-label="Dismiss"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            {storeError && (
+              <div className="flex items-center justify-between gap-4 rounded-xl border-2 border-red-400/50 bg-red-500/10 px-4 py-3 text-red-200">
+                <span className="text-sm">Save failed: {storeError}</span>
+                <button
+                  type="button"
+                  onClick={() => setStoreError(null)}
+                  className="shrink-0 rounded px-2 py-1 text-xs hover:bg-red-500/20"
+                  aria-label="Dismiss"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
           </div>
-          <div className="mt-4">
-            <SecurityIndicator isSecure={isSecure} />
+        )}
+        {/* Header Card */}
+        <div
+          className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-theme drop-shadow-lg">File Upload & RAG</h1>
+              <p className="mt-2 text-base text-theme-muted">
+                Upload documents for RAG (Retrieval-Augmented Generation). Files are scanned by
+                Lakera AI for security.
+              </p>
+            </div>
+            <div className="mt-4">
+              <SecurityIndicator isSecure={isSecure} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Upload Section Card */}
-      <div className="bento-card bento-span-2 glass-card p-6 border-2" style={{ borderColor: "rgb(var(--border))" }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-theme">Upload Files</h2>
-        </div>
-        
-        {/* Toggle Options - More Visible */}
-        <div className="mb-6 space-y-4">
-          <div className="glass-card rounded-xl p-4 border-brand-berry/30">
-            <h3 className="text-base font-semibold text-theme mb-3">Scanning Options</h3>
-            
-            {/* Lakera Scan Toggle */}
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-theme">Lakera Scan</span>
-                  {/* Status Dot */}
-                  <div 
-                    className={`h-2 w-2 rounded-full transition-all ${
-                      lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                    title={lakeraScanEnabled ? 'Enabled' : 'Disabled'}
-                    style={{
-                      boxShadow: lakeraScanEnabled 
-                        ? '0 0 8px rgba(34, 197, 94, 0.6)' 
-                        : '0 0 8px rgba(239, 68, 68, 0.6)'
-                    }}
-                  />
-                </div>
-                <span className="text-base text-theme-subtle mt-1">Enable manual file scanning</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={lakeraScanEnabled}
-                    onChange={(e) => {
-                      setLakeraScanEnabled(e.target.checked)
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50"></div>
-                  <span className={`ml-3 text-base font-medium ${lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}>
-                    {lakeraScanEnabled ? 'ON' : 'OFF'}
+        {/* Upload Section Card */}
+        <div
+          className="bento-card bento-span-2 glass-card p-6 border-2"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-theme">Upload Files</h2>
+          </div>
+
+          {/* Toggle Options - More Visible */}
+          <div className="mb-6 space-y-4">
+            <div className="glass-card rounded-xl p-4 border-brand-berry/30">
+              <h3 className="text-base font-semibold text-theme mb-3">Scanning Options</h3>
+
+              {/* Lakera Scan Toggle */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-medium text-theme">Lakera Scan</span>
+                    {/* Status Dot */}
+                    <div
+                      className={`h-2 w-2 rounded-full transition-all ${
+                        lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
+                      }`}
+                      title={lakeraScanEnabled ? 'Enabled' : 'Disabled'}
+                      style={{
+                        boxShadow: lakeraScanEnabled
+                          ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                          : '0 0 8px rgba(239, 68, 68, 0.6)',
+                      }}
+                    />
+                  </div>
+                  <span className="text-base text-theme-subtle mt-1">
+                    Enable manual file scanning
                   </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Lakera after upload (upload pipeline only; chat file context is controlled on the Chat page) */}
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-theme">Lakera after upload</span>
-                  {/* Status Dot */}
-                  <div 
-                    className={`h-2 w-2 rounded-full transition-all ${
-                      ragScanEnabled && lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                    title={ragScanEnabled && lakeraScanEnabled ? 'Active on new uploads' : 'Off'}
-                    style={{
-                      boxShadow: ragScanEnabled && lakeraScanEnabled
-                        ? '0 0 8px rgba(34, 197, 94, 0.6)' 
-                        : '0 0 8px rgba(239, 68, 68, 0.6)'
-                    }}
-                  />
                 </div>
-                <span className="text-base text-theme-subtle mt-1 max-w-md">
-                  When ON: run Lakera on each new upload before RAG indexing, and run Lakera on each snippet retrieved in chat (requires Lakera Scan ON). Chat can still read stored file text when this is OFF — enable &quot;Use uploaded files in chat&quot; on the home page.
-                </span>
+                <div className="flex items-center space-x-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={lakeraScanEnabled}
+                      onChange={e => {
+                        setLakeraScanEnabled(e.target.checked)
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50"></div>
+                    <span
+                      className={`ml-3 text-base font-medium ${lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}
+                    >
+                      {lakeraScanEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </label>
+                </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={ragScanEnabled}
-                    onChange={(e) => setRagScanEnabled(e.target.checked)}
-                    disabled={!lakeraScanEnabled}
-                    className="sr-only peer"
-                  />
-                  <div className={`w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50 ${!lakeraScanEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  <span className={`ml-3 text-base font-medium ${ragScanEnabled && lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}>
-                    {ragScanEnabled && lakeraScanEnabled ? 'ON' : 'OFF'}
+
+              {/* Lakera after upload (upload pipeline only; chat file context is controlled on the Chat page) */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-medium text-theme">Lakera after upload</span>
+                    {/* Status Dot */}
+                    <div
+                      className={`h-2 w-2 rounded-full transition-all ${
+                        ragScanEnabled && lakeraScanEnabled ? 'bg-green-500' : 'bg-red-500'
+                      }`}
+                      title={ragScanEnabled && lakeraScanEnabled ? 'Active on new uploads' : 'Off'}
+                      style={{
+                        boxShadow:
+                          ragScanEnabled && lakeraScanEnabled
+                            ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                            : '0 0 8px rgba(239, 68, 68, 0.6)',
+                      }}
+                    />
+                  </div>
+                  <span className="text-base text-theme-subtle mt-1 max-w-md">
+                    When ON: run Lakera on each new upload before RAG indexing, and run Lakera on
+                    each snippet retrieved in chat (requires Lakera Scan ON). Chat can still read
+                    stored file text when this is OFF — enable &quot;Use uploaded files in
+                    chat&quot; on the home page.
                   </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Check Point TE Sandboxing Toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-medium text-theme">File Sandboxing (Check Point TE)</span>
-                  {/* Status Dot */}
-                  <div 
-                    className={`h-2 w-2 rounded-full transition-all ${
-                      checkpointTeSandboxEnabled && checkpointTeConfigured ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                    title={checkpointTeSandboxEnabled && checkpointTeConfigured ? 'Enabled' : 'Disabled'}
-                    style={{
-                      boxShadow: checkpointTeSandboxEnabled && checkpointTeConfigured
-                        ? '0 0 8px rgba(34, 197, 94, 0.6)' 
-                        : '0 0 8px rgba(239, 68, 68, 0.6)'
-                    }}
-                  />
                 </div>
-                <span className="text-base text-theme-subtle mt-1">
-                  {checkpointTeConfigured
-                    ? teSubmitStrategy === 'hash_only'
-                      ? 'TE hash-only mode: only SHA-256 is sent to Check Point (no file upload). Verdicts if the hash is already known to Threat Cloud.'
-                      : teSubmitStrategy === 'auto'
-                        ? 'Automatic TE mode: reputation lookup by SHA-256 first; full upload only if Threat Cloud has no verdict yet.'
-                        : 'Sandbox files with Check Point Threat Emulation (full upload).'
-                    : '⚠️ API key not configured in Settings'}
-                </span>
+                <div className="flex items-center space-x-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={ragScanEnabled}
+                      onChange={e => setRagScanEnabled(e.target.checked)}
+                      disabled={!lakeraScanEnabled}
+                      className="sr-only peer"
+                    />
+                    <div
+                      className={`w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50 ${!lakeraScanEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    ></div>
+                    <span
+                      className={`ml-3 text-base font-medium ${ragScanEnabled && lakeraScanEnabled ? 'text-brand-berry' : 'text-white/60'}`}
+                    >
+                      {ragScanEnabled && lakeraScanEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </label>
+                </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkpointTeSandboxEnabled && checkpointTeConfigured}
-                    onChange={(e) => {
-                      if (!checkpointTeConfigured) {
-                        alert('Check Point TE API key is not configured. Please configure it in Settings first.')
-                        return
+
+              {/* Check Point TE Sandboxing Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-medium text-theme">
+                      File Sandboxing (Check Point TE)
+                    </span>
+                    {/* Status Dot */}
+                    <div
+                      className={`h-2 w-2 rounded-full transition-all ${
+                        checkpointTeSandboxEnabled && checkpointTeConfigured
+                          ? 'bg-green-500'
+                          : 'bg-red-500'
+                      }`}
+                      title={
+                        checkpointTeSandboxEnabled && checkpointTeConfigured
+                          ? 'Enabled'
+                          : 'Disabled'
                       }
-                      setCheckpointTeSandboxEnabled(e.target.checked)
-                    }}
-                    disabled={!checkpointTeConfigured}
-                    className="sr-only peer"
-                  />
-                  <div className={`w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50 ${!checkpointTeConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  <span className={`ml-3 text-base font-medium ${checkpointTeSandboxEnabled && checkpointTeConfigured ? 'text-brand-berry' : 'text-white/60'}`}>
-                    {checkpointTeSandboxEnabled && checkpointTeConfigured ? 'ON' : 'OFF'}
+                      style={{
+                        boxShadow:
+                          checkpointTeSandboxEnabled && checkpointTeConfigured
+                            ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                            : '0 0 8px rgba(239, 68, 68, 0.6)',
+                      }}
+                    />
+                  </div>
+                  <span className="text-base text-theme-subtle mt-1">
+                    {checkpointTeConfigured
+                      ? teSubmitStrategy === 'hash_only'
+                        ? 'TE hash-only mode: only SHA-256 is sent to Check Point (no file upload). Verdicts if the hash is already known to Threat Cloud.'
+                        : teSubmitStrategy === 'auto'
+                          ? 'Automatic TE mode: reputation lookup by SHA-256 first; full upload only if Threat Cloud has no verdict yet.'
+                          : 'Sandbox files with Check Point Threat Emulation (full upload).'
+                      : '⚠️ API key not configured in Settings'}
                   </span>
-                </label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checkpointTeSandboxEnabled && checkpointTeConfigured}
+                      onChange={e => {
+                        if (!checkpointTeConfigured) {
+                          alert(
+                            'Check Point TE API key is not configured. Please configure it in Settings first.'
+                          )
+                          return
+                        }
+                        setCheckpointTeSandboxEnabled(e.target.checked)
+                      }}
+                      disabled={!checkpointTeConfigured}
+                      className="sr-only peer"
+                    />
+                    <div
+                      className={`w-14 h-7 bg-white/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-berry/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white/30 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-berry/50 ${!checkpointTeConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    ></div>
+                    <span
+                      className={`ml-3 text-base font-medium ${checkpointTeSandboxEnabled && checkpointTeConfigured ? 'text-brand-berry' : 'text-white/60'}`}
+                    >
+                      {checkpointTeSandboxEnabled && checkpointTeConfigured ? 'ON' : 'OFF'}
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
+
+          <FileUploader
+            onFileUpload={handleFileUpload}
+            lakeraScanEnabled={lakeraScanEnabled}
+            ragScanEnabled={ragScanEnabled}
+          />
         </div>
 
-        <FileUploader onFileUpload={handleFileUpload} lakeraScanEnabled={lakeraScanEnabled} ragScanEnabled={ragScanEnabled} />
-      </div>
+        {/* Files List Section Card */}
+        <div
+          className="bento-card bento-span-2 bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col border-2"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <h2 className="text-xl font-semibold text-theme mb-4">Uploaded Files ({files.length})</h2>
+          <FileList
+            files={files}
+            onRemove={handleFileRemove}
+            onClearAll={handleClearAll}
+            onScan={handleFileScan}
+            isScanning={isScanning}
+            lakeraScanEnabled={lakeraScanEnabled}
+          />
+        </div>
 
-      {/* Files List Section Card */}
-      <div className="bento-card bento-span-2 bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col border-2" style={{ borderColor: "rgb(var(--border))" }}>
-        <h2 className="text-xl font-semibold text-theme mb-4">
-          Uploaded Files ({files.length})
-        </h2>
-        <FileList 
-          files={files} 
-          onRemove={handleFileRemove}
-          onClearAll={handleClearAll}
-          onScan={handleFileScan}
-          isScanning={isScanning}
-          lakeraScanEnabled={lakeraScanEnabled}
-        />
+        {/* Info Section Card */}
+        <div
+          className="bento-card bento-span-2 glass-card p-4 border-2"
+          style={{ borderColor: 'rgb(var(--border))' }}
+        >
+          <h3 className="text-brand-berry font-medium mb-2">📁 Supported Features</h3>
+          <ul className="text-base text-theme-muted space-y-1">
+            <li>• RAG supports up to 10 files for chat interaction</li>
+            <li>• Maximum file size: 50 MB per file</li>
+            <li>• Supported formats: PDF, TXT, MD, JSON, CSV, DOCX</li>
+            <li>• Lakera AI security scanning for uploaded content</li>
+            <li>• Files stored persistently on server</li>
+          </ul>
+        </div>
       </div>
-
-      {/* Info Section Card */}
-      <div className="bento-card bento-span-2 glass-card p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
-        <h3 className="text-brand-berry font-medium mb-2">📁 Supported Features</h3>
-        <ul className="text-base text-theme-muted space-y-1">
-          <li>• RAG supports up to 10 files for chat interaction</li>
-          <li>• Maximum file size: 50 MB per file</li>
-          <li>• Supported formats: PDF, TXT, MD, JSON, CSV, DOCX</li>
-          <li>• Lakera AI security scanning for uploaded content</li>
-          <li>• Files stored persistently on server</li>
-        </ul>
-      </div>
-    </div>
     </ErrorBoundary>
   )
 }

@@ -5,6 +5,7 @@ This guide explains how to restart the Secure AI Chat application on a remote pr
 ## Overview
 
 The `restart-production-clear-all.sh` script:
+
 - ✅ Stops the application (systemd or Docker)
 - ✅ Clears Next.js build cache (`.next/`)
 - ✅ Clears Node modules cache (`node_modules/.cache`)
@@ -95,13 +96,13 @@ bash scripts/restart-production-clear-all.sh
 
 ## Configuration Options
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `INSTALL_DIR` | `/opt/secure-ai-chat` | Application installation directory |
-| `APP_USER` | `secureai` | System user that runs the application |
-| `SERVICE_NAME` | `secure-ai-chat` | systemd service name |
-| `DEPLOYMENT_TYPE` | `systemd` | Deployment type: `systemd`, `docker`, or `auto` |
-| `PORT` | `3000` | Application port number |
+| Variable          | Default               | Description                                     |
+| ----------------- | --------------------- | ----------------------------------------------- |
+| `INSTALL_DIR`     | `/opt/secure-ai-chat` | Application installation directory              |
+| `APP_USER`        | `secureai`            | System user that runs the application           |
+| `SERVICE_NAME`    | `secure-ai-chat`      | systemd service name                            |
+| `DEPLOYMENT_TYPE` | `systemd`             | Deployment type: `systemd`, `docker`, or `auto` |
+| `PORT`            | `3000`                | Application port number                         |
 
 ## Deployment Types
 
@@ -115,6 +116,7 @@ bash scripts/restart-production-clear-all.sh
 ```
 
 The script will:
+
 - Stop: `sudo systemctl stop secure-ai-chat`
 - Start: `sudo systemctl start secure-ai-chat`
 - Check status: `sudo systemctl status secure-ai-chat`
@@ -129,6 +131,7 @@ bash scripts/restart-production-clear-all.sh
 ```
 
 The script will:
+
 - Stop: `docker stop secure-ai-chat` or `docker-compose down`
 - Start: `docker-compose up -d` or `docker start secure-ai-chat`
 
@@ -206,11 +209,13 @@ docker logs secure-ai-chat -f
 ### 5. View Logs
 
 **systemd:**
+
 ```bash
 sudo journalctl -u secure-ai-chat -f
 ```
 
 **Docker:**
+
 ```bash
 docker logs secure-ai-chat -f
 ```
@@ -220,6 +225,7 @@ docker logs secure-ai-chat -f
 ### Script Fails with "Do not run as root"
 
 **Solution:** Run as a regular user with sudo privileges, not as root:
+
 ```bash
 # ❌ Don't do this:
 sudo bash scripts/restart-production-clear-all.sh
@@ -231,6 +237,7 @@ bash scripts/restart-production-clear-all.sh
 ### Service Won't Start
 
 **Check logs:**
+
 ```bash
 # systemd
 sudo journalctl -u secure-ai-chat -n 50
@@ -240,6 +247,7 @@ docker logs secure-ai-chat
 ```
 
 **Common issues:**
+
 - Port already in use
 - Node.js version mismatch
 - Missing dependencies
@@ -250,26 +258,30 @@ docker logs secure-ai-chat
 **This should never happen** - the script preserves API keys. If keys are missing:
 
 1. Check if `.secure-storage/api-keys.enc` exists:
+
    ```bash
    ls -la .secure-storage/api-keys.enc
    ```
 
 2. If missing, restore from backup or reconfigure:
+
    ```bash
    # Restore keys (if you have a backup)
    cp /path/to/backup/.secure-storage/api-keys.enc .secure-storage/
-   
+
    # Or reconfigure via settings page
    ```
 
 ### Build Fails
 
 **Check Node.js version:**
+
 ```bash
 node -v  # Should be v25.2.1
 ```
 
 **Check dependencies:**
+
 ```bash
 npm install
 npm run build

@@ -19,26 +19,28 @@ body {
 }
 
 /* Body styles - UniFi-style (neutral, low saturation) */
-:root[data-theme="dark"] body,
-:root[data-theme="light"] body {
+:root[data-theme='dark'] body,
+:root[data-theme='light'] body {
   color: rgb(var(--text-1));
   background: rgb(var(--bg)); /* Solid background (UniFi style) */
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 1rem; /* 16px base - ensure it's set */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Light Mode - Slightly larger base font and medium weight */
-:root[data-theme="light"] body {
+:root[data-theme='light'] body {
   font-size: 1.0625rem; /* 17px - slightly larger for better readability */
   font-weight: 500; /* Medium weight */
 }
 
 /* Subtle gradient overlay (optional, can be removed for pure UniFi style) */
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-theme="light"] body::before {
+  :root[data-theme='light'] body::before {
     content: '';
     position: fixed;
     top: 0;
@@ -57,7 +59,7 @@ body {
     animation: gradientShift 20s ease infinite;
   }
 
-  :root[data-theme="dark"] body::before {
+  :root[data-theme='dark'] body::before {
     content: '';
     position: fixed;
     top: 0;
@@ -78,7 +80,8 @@ body {
 }
 
 @keyframes gradientShift {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {
@@ -115,7 +118,7 @@ body {
     box-shadow: var(--shadow-lg);
     border-color: rgba(var(--accent), 0.3);
   }
-  
+
   @media (prefers-reduced-motion: reduce) {
     .bento-card:hover {
       transform: none;
@@ -160,7 +163,6 @@ body {
     }
   }
 
-
   .liquid-shimmer {
     position: relative;
     overflow: hidden;
@@ -184,37 +186,37 @@ body {
   }
 
   /* Light Mode - Bolder and darker text */
-  :root[data-theme="light"] .text-theme {
+  :root[data-theme='light'] .text-theme {
     color: rgb(var(--text-1));
     font-weight: 500; /* Medium weight for better readability */
   }
 
-  :root[data-theme="light"] .text-theme-muted {
+  :root[data-theme='light'] .text-theme-muted {
     color: rgb(var(--text-2));
     font-weight: 500; /* Medium weight instead of normal */
   }
 
-  :root[data-theme="light"] .text-theme-subtle {
+  :root[data-theme='light'] .text-theme-subtle {
     color: rgba(var(--text-2), 0.9); /* Less opacity, more visible */
     font-weight: 500; /* Medium weight */
   }
 
   /* Light Mode - Chat messages and settings text */
-  :root[data-theme="light"] .glass,
-  :root[data-theme="light"] .glass-button,
-  :root[data-theme="light"] .glass-input,
-  :root[data-theme="light"] .glass-card {
+  :root[data-theme='light'] .glass,
+  :root[data-theme='light'] .glass-button,
+  :root[data-theme='light'] .glass-input,
+  :root[data-theme='light'] .glass-card {
     font-weight: 500; /* Medium weight for better readability */
   }
 
   /* Light Mode - Labels and headings */
-  :root[data-theme="light"] label,
-  :root[data-theme="light"] .text-sm,
-  :root[data-theme="light"] .text-base {
+  :root[data-theme='light'] label,
+  :root[data-theme='light'] .text-sm,
+  :root[data-theme='light'] .text-base {
     font-weight: 500; /* Medium weight */
   }
 
-  :root[data-theme="light"] .text-xs {
+  :root[data-theme='light'] .text-xs {
     font-weight: 500; /* Medium weight for small text too */
   }
 
@@ -227,29 +229,29 @@ body {
   }
 
   /* Override Tailwind text colors for theme compatibility */
-  :root[data-theme="light"] .text-white,
-  :root[data-theme="light"] [class*="text-white/"] {
+  :root[data-theme='light'] .text-white,
+  :root[data-theme='light'] [class*='text-white/'] {
     color: rgb(var(--text-primary)) !important;
   }
 
-  :root[data-theme="dark"] .text-gray-900,
-  :root[data-theme="dark"] .text-gray-800,
-  :root[data-theme="dark"] .text-gray-700,
-  :root[data-theme="dark"] .text-black,
-  :root[data-theme="dark"] .text-slate-900,
-  :root[data-theme="dark"] .text-slate-800,
-  :root[data-theme="dark"] .text-zinc-900,
-  :root[data-theme="dark"] .text-neutral-900 {
+  :root[data-theme='dark'] .text-gray-900,
+  :root[data-theme='dark'] .text-gray-800,
+  :root[data-theme='dark'] .text-gray-700,
+  :root[data-theme='dark'] .text-black,
+  :root[data-theme='dark'] .text-slate-900,
+  :root[data-theme='dark'] .text-slate-800,
+  :root[data-theme='dark'] .text-zinc-900,
+  :root[data-theme='dark'] .text-neutral-900 {
     color: rgb(var(--text-primary)) !important;
   }
 
   /* Ensure input placeholders are readable */
-  :root[data-theme="light"] .glass-input::placeholder {
+  :root[data-theme='light'] .glass-input::placeholder {
     color: rgba(var(--text-secondary), 0.8) !important;
   }
 
-  :root[data-theme="light"] input::placeholder,
-  :root[data-theme="light"] textarea::placeholder {
+  :root[data-theme='light'] input::placeholder,
+  :root[data-theme='light'] textarea::placeholder {
     color: rgba(var(--text-secondary), 0.8) !important;
   }
 
@@ -264,32 +266,33 @@ body {
 
   /* Legacy brand-berry support - mapped to accent-primary */
   .text-brand-berry,
-  :root[data-theme="dark"] .text-brand-berry,
-  :root[data-theme="light"] .text-brand-berry {
+  :root[data-theme='dark'] .text-brand-berry,
+  :root[data-theme='light'] .text-brand-berry {
     color: rgb(var(--accent-primary)) !important;
   }
 
   .bg-brand-berry,
-  :root[data-theme="dark"] .bg-brand-berry,
-  :root[data-theme="light"] .bg-brand-berry {
+  :root[data-theme='dark'] .bg-brand-berry,
+  :root[data-theme='light'] .bg-brand-berry {
     background-color: rgb(var(--accent-primary)) !important;
   }
 
   .border-brand-berry,
-  :root[data-theme="dark"] .border-brand-berry,
-  :root[data-theme="light"] .border-brand-berry {
+  :root[data-theme='dark'] .border-brand-berry,
+  :root[data-theme='light'] .border-brand-berry {
     border-color: rgb(var(--accent-primary)) !important;
   }
 
   .ring-brand-berry,
-  :root[data-theme="dark"] .ring-brand-berry,
-  :root[data-theme="light"] .ring-brand-berry {
+  :root[data-theme='dark'] .ring-brand-berry,
+  :root[data-theme='light'] .ring-brand-berry {
     --tw-ring-color: rgb(var(--accent-primary)) !important;
   }
 
   /* Floating animation */
   @keyframes float {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(0px);
     }
     50% {
@@ -303,7 +306,8 @@ body {
 
   /* Pulse glow (UniFi-style, subtle) */
   @keyframes pulseGlow {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 10px rgba(var(--accent), 0.3);
     }
     50% {
@@ -314,7 +318,7 @@ body {
   .pulse-glow {
     animation: pulseGlow 2s ease-in-out infinite;
   }
-  
+
   @media (prefers-reduced-motion: reduce) {
     .pulse-glow {
       animation: none;
@@ -334,7 +338,7 @@ body {
   border-radius: 10px;
 }
 
-:root[data-theme="light"] ::-webkit-scrollbar-track {
+:root[data-theme='light'] ::-webkit-scrollbar-track {
   background: rgba(var(--bg-tertiary), 0.05);
 }
 
@@ -346,7 +350,7 @@ body {
   background-clip: padding-box;
 }
 
-:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+:root[data-theme='light'] ::-webkit-scrollbar-thumb {
   background: rgba(var(--border), 0.3);
 }
 
@@ -354,7 +358,7 @@ body {
   background: rgba(var(--accent), 0.6);
 }
 
-:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+:root[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--accent), 0.5);
 }
 
@@ -383,38 +387,38 @@ body {
 }
 
 /* Legacy theme variables - mapped to UniFi tokens (for backwards compatibility) */
-:root[data-theme="light"],
-:root[data-theme="dark"] {
+:root[data-theme='light'],
+:root[data-theme='dark'] {
   /* Background mappings */
   --bg-primary: var(--bg);
   --bg-secondary: var(--surface-1);
   --bg-tertiary: var(--surface-2);
-  
+
   /* Surface mappings */
   --surface: var(--surface-1);
   --surface-alt: var(--surface-2);
   --header: var(--surface-1);
-  
+
   /* Text mappings */
   --text: var(--text-1);
   --text-muted: var(--text-2);
   --text-faint: rgba(var(--text-2), 0.6);
-  
+
   /* Accent mappings */
   --primary: var(--accent);
   --primary-hover: var(--accent-hover);
   --primary-active: var(--accent-active);
   --accent-primary: var(--accent);
   --accent-secondary: var(--accent-hover);
-  
+
   /* Status color mappings */
   --safe: var(--success);
   --flagged: var(--danger);
-  
+
   /* Shadow mappings */
   --card-shadow: var(--shadow-md);
   --chip-text: var(--text-1);
-  
+
   /* Input mappings (already defined in tokens.css) */
   --destructive-bg: rgba(var(--danger), 0.1);
 }
@@ -426,7 +430,7 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-:root[data-theme="dark"] .severity-critical {
+:root[data-theme='dark'] .severity-critical {
   background-color: rgba(239, 68, 68, 0.3);
 }
 
@@ -436,7 +440,7 @@ body {
   border: 1px solid rgba(249, 115, 22, 0.3);
 }
 
-:root[data-theme="dark"] .severity-high {
+:root[data-theme='dark'] .severity-high {
   background-color: rgba(249, 115, 22, 0.3);
 }
 
@@ -446,7 +450,7 @@ body {
   border: 1px solid rgba(234, 179, 8, 0.3);
 }
 
-:root[data-theme="dark"] .severity-medium {
+:root[data-theme='dark'] .severity-medium {
   background-color: rgba(234, 179, 8, 0.3);
 }
 
@@ -456,7 +460,7 @@ body {
   border: 1px solid rgba(var(--accent-primary), 0.3);
 }
 
-:root[data-theme="dark"] .severity-low {
+:root[data-theme='dark'] .severity-low {
   background-color: rgba(var(--accent-primary), 0.3);
 }
 
@@ -465,7 +469,7 @@ body {
    ============================================ */
 
 /* Disable text selection (except in input fields and textareas) */
-:not(input):not(textarea):not([contenteditable="true"]) {
+:not(input):not(textarea):not([contenteditable='true']) {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -475,7 +479,7 @@ body {
 /* Allow selection in form fields */
 input,
 textarea,
-[contenteditable="true"] {
+[contenteditable='true'] {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
@@ -508,8 +512,9 @@ body {
 }
 
 /* Re-enable for editable content */
-input, textarea, [contenteditable="true"] {
+input,
+textarea,
+[contenteditable='true'] {
   -webkit-touch-callout: default;
   -webkit-user-select: text;
 }
-

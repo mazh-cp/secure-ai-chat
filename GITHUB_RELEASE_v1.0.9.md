@@ -60,6 +60,7 @@ git push origin v1.0.9
 ## Files Changed
 
 ### Modified
+
 - `package.json` (version: 1.0.8 → 1.0.9)
 - `CHANGELOG.md` (added v1.0.9 entry)
 - `components/LogViewer.tsx` (API errors section)
@@ -74,6 +75,7 @@ git push origin v1.0.9
 - `types/files.ts` (payload/breakdown types)
 
 ### New Files
+
 - `app/api/release-notes/route.ts` (CHANGELOG parser)
 - `LAKERA_ENHANCEMENT_ROLLBACK.md` (rollback guide)
 - `RELEASE_v1.0.9.md` (release notes)
@@ -86,7 +88,7 @@ git push origin v1.0.9
 ✅ TypeScript: PASSED  
 ✅ ESLint: PASSED  
 ✅ Build: PASSED  
-✅ All Tests: PASSED  
+✅ All Tests: PASSED
 
 ---
 
@@ -100,6 +102,7 @@ git push origin v1.0.9
    - Description: Copy from `RELEASE_v1.0.9.md`
 
 2. **Update Remote Installations**:
+
    ```bash
    # On remote servers
    curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash

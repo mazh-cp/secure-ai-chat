@@ -105,14 +105,14 @@ npm run local:verify
 
 ## Troubleshooting
 
-| Symptom | Action |
-|--------|--------|
-| **App not accessible at http://localhost:3000** | 1) Start server: `npm run local:dev`. 2) Wait until the terminal shows "Ready". 3) Open http://localhost:3000 or http://127.0.0.1:3000. 4) If localhost fails but 127.0.0.1 works, use 127.0.0.1 (localhost may be resolving to IPv6). 5) Check nothing else is on port 3000: `lsof -nP -iTCP:3000 -sTCP:LISTEN`. |
-| **GUI shows 404 or "This page could not be found"** | Caused by "EMFILE: too many open files" breaking the dev file watcher. Fix: run `ulimit -n 10240` in the same terminal, then run `npm run local:dev` again. Or use production: `npm run local:prod` (build + start) — production serves the GUI correctly. |
-| Curl returns 000000 | Run dev/prod with `npm run local:dev` or `npm run local:prod`; run smoke with `npm run local:smoke` (scripts set NO_PROXY). |
-| Port 3000 in use | Change port: `PORT=3001 npm run local:dev` and `BASE_URL=http://127.0.0.1:3001 npm run local:smoke`. |
-| Blank page | Check browser console; ensure no client import of server-only code (use `lib/app-release-client.ts` on client, not `lib/app-release.ts`). |
-| Build fails | Run `npm run local:reset` then `npm run build`. |
+| Symptom                                             | Action                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **App not accessible at http://localhost:3000**     | 1) Start server: `npm run local:dev`. 2) Wait until the terminal shows "Ready". 3) Open http://localhost:3000 or http://127.0.0.1:3000. 4) If localhost fails but 127.0.0.1 works, use 127.0.0.1 (localhost may be resolving to IPv6). 5) Check nothing else is on port 3000: `lsof -nP -iTCP:3000 -sTCP:LISTEN`. |
+| **GUI shows 404 or "This page could not be found"** | Caused by "EMFILE: too many open files" breaking the dev file watcher. Fix: run `ulimit -n 10240` in the same terminal, then run `npm run local:dev` again. Or use production: `npm run local:prod` (build + start) — production serves the GUI correctly.                                                        |
+| Curl returns 000000                                 | Run dev/prod with `npm run local:dev` or `npm run local:prod`; run smoke with `npm run local:smoke` (scripts set NO_PROXY).                                                                                                                                                                                       |
+| Port 3000 in use                                    | Change port: `PORT=3001 npm run local:dev` and `BASE_URL=http://127.0.0.1:3001 npm run local:smoke`.                                                                                                                                                                                                              |
+| Blank page                                          | Check browser console; ensure no client import of server-only code (use `lib/app-release-client.ts` on client, not `lib/app-release.ts`).                                                                                                                                                                         |
+| Build fails                                         | Run `npm run local:reset` then `npm run build`.                                                                                                                                                                                                                                                                   |
 
 ## 6. RAG + Chat smoke (regression guardrail)
 
@@ -140,11 +140,11 @@ BASE_URL=http://127.0.0.1:3000 bash scripts/rag-chat-smoke.sh
 
 ## Script reference
 
-| Script | Purpose |
-|--------|--------|
-| `scripts/clean-reinstall.sh` | rm -rf node_modules .next; npm ci; print node/npm -v |
-| `scripts/run-local-dev.sh` | NO_PROXY, PORT=3000 HOSTNAME=127.0.0.1 npm run dev |
-| `scripts/run-local-prod.sh` | NO_PROXY, rm .next, build, PORT=3000 HOSTNAME=127.0.0.1 npm run start |
-| `scripts/smoke.sh` | curl --noproxy GET /, /api/health, /files; fail on 000000 with diagnostics |
-| `scripts/rag-chat-smoke.sh` | Upload file → RAG ready → chat answers from file + "Not found" for out-of-file; exit 1 if regression |
-| `scripts/run-local-verify.sh` | reset → dev smoke → build → prod smoke (background servers, then kill) |
+| Script                        | Purpose                                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `scripts/clean-reinstall.sh`  | rm -rf node_modules .next; npm ci; print node/npm -v                                                 |
+| `scripts/run-local-dev.sh`    | NO_PROXY, PORT=3000 HOSTNAME=127.0.0.1 npm run dev                                                   |
+| `scripts/run-local-prod.sh`   | NO_PROXY, rm .next, build, PORT=3000 HOSTNAME=127.0.0.1 npm run start                                |
+| `scripts/smoke.sh`            | curl --noproxy GET /, /api/health, /files; fail on 000000 with diagnostics                           |
+| `scripts/rag-chat-smoke.sh`   | Upload file → RAG ready → chat answers from file + "Not found" for out-of-file; exit 1 if regression |
+| `scripts/run-local-verify.sh` | reset → dev smoke → build → prod smoke (background servers, then kill)                               |

@@ -30,8 +30,14 @@ export const config = {
   lakeraApiKey: process.env.LAKERA_API_KEY || process.env.LAKERA_AI_KEY || undefined,
   lakeraProjectId: process.env.LAKERA_PROJECT_ID ?? undefined,
   lakeraEndpoint: process.env.LAKERA_ENDPOINT ?? undefined,
-  /** On Lakera API errors: if true, treat as block (fail closed). */
-  lakeraFailClosed: process.env.LAKERA_FAIL_CLOSED === 'true',
+  /**
+   * On Lakera API errors / timeouts: block traffic when true (enterprise).
+   * Production defaults to fail-closed unless LAKERA_FAIL_CLOSED=false.
+   * Non-production defaults to fail-open unless LAKERA_FAIL_CLOSED=true.
+   */
+  lakeraFailClosed: isProduction
+    ? process.env.LAKERA_FAIL_CLOSED !== 'false'
+    : process.env.LAKERA_FAIL_CLOSED === 'true',
   /** Timeout in ms for Lakera requests. */
   lakeraTimeoutMs: parseInt(process.env.LAKERA_TIMEOUT_MS ?? '10000', 10) || 10000,
 }

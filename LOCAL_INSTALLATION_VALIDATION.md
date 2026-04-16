@@ -21,6 +21,7 @@ bash scripts/test-install-dry-run.sh
 ```
 
 This will check:
+
 - Script syntax
 - Required functions
 - Installation steps
@@ -96,6 +97,7 @@ bash scripts/validate-fresh-install.sh
 ```
 
 Expected output:
+
 ```
 ✅ All checks passed! Installation is complete and ready.
 ```
@@ -122,6 +124,7 @@ sudo journalctl -u secure-ai-chat -f
 ```
 
 Look for:
+
 - ✅ "Ready on http://0.0.0.0:3000"
 - ✅ No error messages
 - ✅ Application started successfully
@@ -163,6 +166,7 @@ curl http://localhost:3000/api/keys
 ```
 
 Verify:
+
 - ✅ Home page loads
 - ✅ Settings page accessible
 - ✅ Chat page accessible
@@ -432,17 +436,20 @@ After completing validation, document results:
 **Environment:** [Ubuntu/Debian version]
 
 ## Installation
+
 - [ ] Installation completed successfully
 - [ ] All steps completed without errors
 - [ ] Validation script passed
 
 ## Services
+
 - [ ] Systemd service running
 - [ ] Service starts on boot
 - [ ] Service restarts on failure
 - [ ] Logs are accessible
 
 ## Functionality
+
 - [ ] Health endpoints responding
 - [ ] Web interface accessible
 - [ ] API keys can be saved
@@ -451,21 +458,25 @@ After completing validation, document results:
 - [ ] File upload works
 
 ## Stability
+
 - [ ] Service survives restart
 - [ ] Service survives reboot
 - [ ] No memory leaks observed
 - [ ] Performance acceptable
 
 ## Security
+
 - [ ] Secure storage permissions correct
 - [ ] Keys are encrypted
 - [ ] Firewall configured
 - [ ] Network access controlled
 
 ## Issues Found
+
 [List any issues]
 
 ## Recommendations
+
 [List recommendations]
 ```
 

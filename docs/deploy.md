@@ -27,6 +27,7 @@ git pull origin main
 ```
 
 Or if using a different branch:
+
 ```bash
 git pull origin <branch-name>
 ```
@@ -42,12 +43,14 @@ nvm use 25.2.1
 ```
 
 **Verify Node.js version**:
+
 ```bash
 node -v
 # Must output: v25.2.1
 ```
 
 If the version is incorrect, install it:
+
 ```bash
 nvm install 25.2.1
 nvm use 25.2.1
@@ -61,6 +64,7 @@ npm ci
 ```
 
 **Note**: `npm ci` is preferred over `npm install` for production deployments as it:
+
 - Installs exact versions from `package-lock.json`
 - Removes `node_modules` before installing (clean install)
 - Fails if `package-lock.json` is out of sync
@@ -72,6 +76,7 @@ npm run build
 ```
 
 This will:
+
 - Run TypeScript type checking
 - Run ESLint
 - Build the production bundle
@@ -141,11 +146,13 @@ echo "✨ Deployment complete!"
 ```
 
 Save this as `deploy.sh` in your home directory and make it executable:
+
 ```bash
 chmod +x ~/deploy.sh
 ```
 
 Then run:
+
 ```bash
 ~/deploy.sh
 ```
@@ -194,6 +201,7 @@ curl http://localhost:3000/api/health
 ### Issue: Node.js version incorrect after git pull
 
 **Solution**:
+
 ```bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
@@ -204,6 +212,7 @@ node -v  # Verify it shows v25.2.1
 ### Issue: Build fails
 
 **Solution**:
+
 ```bash
 # Clear cache and rebuild
 rm -rf .next node_modules
@@ -214,6 +223,7 @@ npm run build
 ### Issue: Service fails to start
 
 **Solution**:
+
 ```bash
 # Check logs
 sudo journalctl -u secure-ai-chat -n 50
@@ -231,6 +241,7 @@ sudo systemctl restart secure-ai-chat
 ### Issue: Theme not persisting after restart
 
 **Solution**:
+
 - Verify `ThemeScript` is in `app/layout.tsx` `<head>` section
 - Check browser console for hydration errors
 - Verify `localStorage` is working (check browser DevTools)
@@ -263,6 +274,7 @@ After deployment, verify:
 ## Quick Reference
 
 **Deploy command sequence**:
+
 ```bash
 cd /opt/secure-ai-chat && \
 git pull && \
@@ -275,12 +287,14 @@ sudo systemctl restart secure-ai-chat
 ```
 
 **Check service**:
+
 ```bash
 sudo systemctl status secure-ai-chat
 curl http://localhost:3000/api/health
 ```
 
 **View logs**:
+
 ```bash
 sudo journalctl -u secure-ai-chat -f
 ```

@@ -17,38 +17,43 @@ The app uses this for:
 1. **Stop the app**  
    Stop any running dev or production server (e.g. `Ctrl+C` or kill the process on port 3000).
 
-2. **Remove build and dependencies (optional)**  
+2. **Remove build and dependencies (optional)**
+
    ```bash
    rm -rf node_modules .next
    ```
 
-3. **Install dependencies**  
+3. **Install dependencies**
+
    ```bash
    npm install
    ```
 
-4. **Type-check and build**  
+4. **Type-check and build**
+
    ```bash
    npm run type-check
    npm run build
    ```
 
-5. **Data directory (optional)**  
-   - To start with **no** uploaded files or registry:  
+5. **Data directory (optional)**
+   - To start with **no** uploaded files or registry:
      ```bash
      rm -rf ./data
      ```
    - To **keep** uploads and registry across reinstall, do **not** delete `./data`.
 
-6. **Start the app**  
+6. **Start the app**
+
    ```bash
    npm run start
    ```
+
    `npm run start` runs the server with **absolute data paths** (`REGISTRY_DB_PATH` and `UPLOADS_DIR`) set from the project root so file list and chat RAG use the same data. For raw Next.js start without this, use `npm run start:next`.  
    For development: `npm run dev`.
 
-7. **Validate**  
-   - Run smoke tests:  
+7. **Validate**
+   - Run smoke tests:
      ```bash
      bash scripts/smoke-test.sh
      bash scripts/smoke-rag-pipeline.sh
@@ -91,22 +96,22 @@ In production, if these env vars are not set, the server logs a one-time warning
 
 ## Environment variables
 
-| Variable           | Default              | Description                          |
-|--------------------|----------------------|--------------------------------------|
-| `UPLOADS_DIR`      | `./data/uploads`     | Directory for uploaded file bytes.   |
-| `DATA_DIR`         | `./data`             | Parent directory for DB path.       |
-| `REGISTRY_DB_PATH` | `./data/app.db`      | SQLite registry database path.      |
+| Variable           | Default          | Description                        |
+| ------------------ | ---------------- | ---------------------------------- |
+| `UPLOADS_DIR`      | `./data/uploads` | Directory for uploaded file bytes. |
+| `DATA_DIR`         | `./data`         | Parent directory for DB path.      |
+| `REGISTRY_DB_PATH` | `./data/app.db`  | SQLite registry database path.     |
 
 ## Smoke script: RAG pipeline
 
 `scripts/smoke-rag-pipeline.sh` checks:
 
-1. Health  
-2. Upload file  
-3. List (uploaded file present)  
-4. Chat with RAG (answer uses file content)  
-5. Delete file  
-6. List (file gone)  
+1. Health
+2. Upload file
+3. List (uploaded file present)
+4. Chat with RAG (answer uses file content)
+5. Delete file
+6. List (file gone)
 7. Chat (no file context)
 
 Run with the server already up (start the server **after** `npm run build` so it uses the new storage/registry).

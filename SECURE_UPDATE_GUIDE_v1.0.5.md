@@ -64,11 +64,13 @@ echo "   - Health check passed"
 If you prefer to run commands step-by-step:
 
 ### Step 1: Navigate to Repository
+
 ```bash
 cd /home/adminuser/secure-ai-chat
 ```
 
 ### Step 2: Create Backup
+
 ```bash
 mkdir -p .backups
 tar -czf .backups/backup-$(date +%Y%m%d-%H%M%S).tar.gz .secure-storage .next package.json package-lock.json
@@ -76,31 +78,37 @@ echo "✅ Backup created"
 ```
 
 ### Step 3: Fetch Latest Code
+
 ```bash
 git fetch origin
 ```
 
 ### Step 4: Switch to Release Branch
+
 ```bash
 git checkout release/v1.0.5-new
 ```
 
 ### Step 5: Pull Latest Changes
+
 ```bash
 git pull origin release/v1.0.5-new
 ```
 
 ### Step 6: Install Dependencies
+
 ```bash
 npm ci
 ```
 
 ### Step 7: Build Application
+
 ```bash
 npm run build
 ```
 
 ### Step 8: Verify API Keys
+
 ```bash
 if [ -d ".secure-storage" ]; then
   KEY_COUNT=$(find .secure-storage -type f \( -name "*.enc" -o -name "*.hash" \) 2>/dev/null | wc -l)
@@ -111,6 +119,7 @@ fi
 ```
 
 ### Step 9: Restore Permissions
+
 ```bash
 chmod 700 .secure-storage 2>/dev/null || mkdir -p .secure-storage && chmod 700 .secure-storage
 find .secure-storage -type f -exec chmod 600 {} \; 2>/dev/null || true
@@ -118,12 +127,14 @@ echo "✅ Permissions restored"
 ```
 
 ### Step 10: Restart Service
+
 ```bash
 sudo systemctl restart secure-ai-chat
 sleep 10
 ```
 
 ### Step 11: Verify Service
+
 ```bash
 curl http://localhost:3000/api/health
 curl http://localhost:3000/api/version
@@ -136,23 +147,27 @@ curl http://localhost:3000/api/version
 After update, verify everything is working:
 
 ### Check API Keys Status
+
 ```bash
 curl http://localhost:3000/api/keys
 curl http://localhost:3000/api/te/config
 ```
 
 ### Check Service Status
+
 ```bash
 sudo systemctl status secure-ai-chat
 ```
 
 ### Check Version
+
 ```bash
 curl http://localhost:3000/api/version
 cd /home/adminuser/secure-ai-chat && node -p "require('./package.json').version"
 ```
 
 ### Verify Secure Storage
+
 ```bash
 ls -la .secure-storage/
 stat -c '%a %n' .secure-storage/
@@ -177,6 +192,7 @@ This update process includes:
 ### If Update Fails
 
 1. **Restore from Backup**:
+
    ```bash
    cd /home/adminuser/secure-ai-chat
    tar -xzf .backups/backup-YYYYMMDD-HHMMSS-*.tar.gz
@@ -185,6 +201,7 @@ This update process includes:
    ```
 
 2. **Check Logs**:
+
    ```bash
    sudo journalctl -u secure-ai-chat -n 50
    ```
@@ -199,6 +216,7 @@ This update process includes:
 ### If API Keys Are Missing
 
 1. **Check Backup**:
+
    ```bash
    ls -la .backups/
    ```
@@ -214,11 +232,13 @@ This update process includes:
 ### If Service Won't Start
 
 1. **Check Service Status**:
+
    ```bash
    sudo systemctl status secure-ai-chat
    ```
 
 2. **Check Logs**:
+
    ```bash
    sudo journalctl -u secure-ai-chat -n 100 --no-pager
    ```
@@ -234,12 +254,14 @@ This update process includes:
 ## 📝 What Gets Updated
 
 ✅ **Updated**:
+
 - Application code
 - Dependencies (node_modules)
 - Build artifacts (.next/)
 - Configuration files
 
 🔒 **Preserved**:
+
 - API keys (.secure-storage/)
 - Uploaded files (.storage/)
 - System logs
@@ -250,6 +272,7 @@ This update process includes:
 ## 🎯 Quick Reference
 
 **One-Line Update**:
+
 ```bash
 cd /home/adminuser/secure-ai-chat && git fetch origin && git checkout release/v1.0.5-new && git pull origin release/v1.0.5-new && npm ci && npm run build && sudo systemctl restart secure-ai-chat && sleep 10 && curl http://localhost:3000/api/health
 ```

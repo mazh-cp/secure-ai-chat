@@ -8,7 +8,10 @@ import { buildGuardMessagesFromAugmentedUserTurn } from '@/lib/lakera-guard-mess
 import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 import { detectCommonInjectionPatterns } from '@/lib/lakera-prescan'
 import { detectStructuredSensitiveLeakInAssistantOutput } from '@/lib/lakera-output-structured-leak'
-import { mergeLakeraEffectiveFlag, sortLakeraThreatCategoriesForDisplay } from '@/lib/lakera-sensitive-block'
+import {
+  mergeLakeraEffectiveFlag,
+  sortLakeraThreatCategoriesForDisplay,
+} from '@/lib/lakera-sensitive-block'
 import {
   classifyLakeraBlock,
   buildLakeraChatBlockMessage,
@@ -57,7 +60,7 @@ export function aggregateLakeraResultEntries(results: LakeraResultEntry[]): {
   payload?: LakeraResultEntry['payload']
   breakdown?: LakeraResultEntry['breakdown']
 } {
-  const flagged = results.some((r) => r.flagged === true)
+  const flagged = results.some(r => r.flagged === true)
   const categories: Record<string, boolean> = {}
   for (const r of results) {
     if (!r.categories) continue
@@ -65,8 +68,8 @@ export function aggregateLakeraResultEntries(results: LakeraResultEntry[]): {
       if (v) categories[k] = true
     }
   }
-  const payload = results.flatMap((r) => r.payload ?? [])
-  const breakdown = results.flatMap((r) => r.breakdown ?? [])
+  const payload = results.flatMap(r => r.payload ?? [])
+  const breakdown = results.flatMap(r => r.breakdown ?? [])
   const scores: Record<string, number> = {}
   for (const r of results) {
     if (!r.payload_scores) continue
@@ -184,7 +187,7 @@ function patternsToCategoryRecord(patterns: string[]): Record<string, boolean> {
       acc[pattern.toLowerCase().replace(/\s+/g, '_')] = true
       return acc
     },
-    {} as Record<string, boolean>,
+    {} as Record<string, boolean>
   )
 }
 
@@ -217,7 +220,7 @@ export async function screenChatWithLakera(
   lakeraProjectId: string | null | undefined,
   context?: 'input' | 'output',
   metadata?: GuardMetadata,
-  guardCallOptions?: ChatGuardCallOptions,
+  guardCallOptions?: ChatGuardCallOptions
 ): Promise<GuardChatScanResult> {
   if (!lakeraKey?.trim()) {
     return { scanned: false, flagged: false }
@@ -271,7 +274,7 @@ export async function screenChatWithLakera(
 
   if (process.env.NODE_ENV !== 'production' && !projectId) {
     console.warn(
-      '[Lakera Guard] No project_id — Lakera applies the default policy, not your project policy. Set Project ID in Settings or LAKERA_PROJECT_ID.',
+      '[Lakera Guard] No project_id — Lakera applies the default policy, not your project policy. Set Project ID in Settings or LAKERA_PROJECT_ID.'
     )
   }
 
@@ -327,8 +330,8 @@ export async function screenChatWithLakera(
         console.log('Lakera Guard Breakdown:', {
           request_uuid: requestUuid,
           totalDetectors: breakdown.length,
-          detectedCount: breakdown.filter((d) => d.detected).length,
-          detectors: breakdown.map((d) => ({
+          detectedCount: breakdown.filter(d => d.detected).length,
+          detectors: breakdown.map(d => ({
             id: d.detector_id,
             type: d.detector_type,
             detected: d.detected,
@@ -339,7 +342,7 @@ export async function screenChatWithLakera(
         console.log('Lakera Guard Payload (Detected Threats):', {
           request_uuid: requestUuid,
           totalMatches: payload.length,
-          matches: payload.map((p) => ({
+          matches: payload.map(p => ({
             text: p.text.substring(0, 50) + (p.text.length > 50 ? '...' : ''),
             detector: p.detector_type,
             labels: p.labels,
@@ -369,7 +372,12 @@ export async function screenChatWithLakera(
     flagged = effective.flagged
     categories = effective.categories
 
-    if (context === 'output' && !flagged && message.trim() && detectStructuredSensitiveLeakInAssistantOutput(message)) {
+    if (
+      context === 'output' &&
+      !flagged &&
+      message.trim() &&
+      detectStructuredSensitiveLeakInAssistantOutput(message)
+    ) {
       flagged = true
       categories = {
         ...(categories || {}),
@@ -382,7 +390,7 @@ export async function screenChatWithLakera(
       ? sortLakeraThreatCategoriesForDisplay(
           Object.entries(categories)
             .filter(([, value]) => value)
-            .map(([key]) => key),
+            .map(([key]) => key)
         )
       : []
 
@@ -392,10 +400,16 @@ export async function screenChatWithLakera(
 
     if (flagged) {
       blockPolicy = classification.policy
-      const hasHighRiskCategories = threatCategories.some((cat) => {
+      const hasHighRiskCategories = threatCategories.some(cat => {
         const c = cat.toLowerCase()
         return (
-          ['prompt_injection', 'jailbreak', 'system_override', 'pii', 'structured_sensitive_output'].includes(c) ||
+          [
+            'prompt_injection',
+            'jailbreak',
+            'system_override',
+            'pii',
+            'structured_sensitive_output',
+          ].includes(c) ||
           c.includes('phi') ||
           c.includes('medical')
         )
@@ -409,7 +423,11 @@ export async function screenChatWithLakera(
       } else if (maxScore > 0.4 || preScan.severity === 'medium') {
         threatLevel = 'medium'
       }
-      if (classification.hasContentModeration && !hasHighRiskCategories && threatLevel === 'critical') {
+      if (
+        classification.hasContentModeration &&
+        !hasHighRiskCategories &&
+        threatLevel === 'critical'
+      ) {
         threatLevel = 'high'
       }
     }
@@ -463,7 +481,7 @@ export async function screenChatWithLakera(
 /** Align file scan / upload with client /api/scan truncation rules */
 export function prepareContentForFileScan(
   fileContent: unknown,
-  fileName?: string,
+  fileName?: string
 ): { contentToScan: string; isBase64Placeholder: boolean } {
   const fc = fileContent
   const isBase64 =
@@ -598,7 +616,7 @@ export async function screenTextAsFileUpload(args: {
         console.log('Lakera Guard Breakdown (file):', {
           request_uuid: extracted.requestUuid,
           totalDetectors: breakdown.length,
-          detectedCount: breakdown.filter((d) => d.detected).length,
+          detectedCount: breakdown.filter(d => d.detected).length,
         })
       }
     }
@@ -627,11 +645,13 @@ export async function screenTextAsFileUpload(args: {
     let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
     if (flagged) {
       const catKeys = categories ? Object.keys(categories) : []
-      const hasHighRisk =
-        catKeys.some((cat) =>
-          ['prompt_injection', 'jailbreak', 'system_override', 'pii', ...extras].includes(cat.toLowerCase()),
+      const hasHighRisk = catKeys.some(cat =>
+        ['prompt_injection', 'jailbreak', 'system_override', 'pii', ...extras].includes(
+          cat.toLowerCase()
         )
-      const maxScore = scores && Object.keys(scores).length > 0 ? Math.max(...Object.values(scores)) : 0
+      )
+      const maxScore =
+        scores && Object.keys(scores).length > 0 ? Math.max(...Object.values(scores)) : 0
 
       if (hasHighRisk || maxScore > 0.8 || preScan.severity === 'high') {
         threatLevel = 'critical'

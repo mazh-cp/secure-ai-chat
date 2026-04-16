@@ -59,15 +59,13 @@ export default function ChatHeader() {
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-copper/30 via-harvest-gold/20 to-copper/30 animate-pulse"></div>
         </div>
-        
+
         {/* Content */}
         <div className="relative z-10 text-center">
           <h2 className="text-3xl font-bold text-theme mb-2 drop-shadow-lg">
             {settings.pageHeading || 'Secure AI Chat'}
           </h2>
-          <p className="text-theme-muted text-base">
-            Powered by Lakera AI Security
-          </p>
+          <p className="text-theme-muted text-base">Powered by Lakera AI Security</p>
         </div>
       </div>
     </div>

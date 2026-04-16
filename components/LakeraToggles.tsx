@@ -28,10 +28,10 @@ function readLakeraTogglesFromStorage(): { inputScan: boolean; outputScan: boole
   }
 }
 
-export default function LakeraToggles({ 
-  onInputScanChange, 
+export default function LakeraToggles({
+  onInputScanChange,
   onOutputScanChange,
-  hasLakeraKey 
+  hasLakeraKey,
 }: LakeraTogglesProps) {
   const [{ inputScan, outputScan }, setToggles] = useState(readLakeraTogglesFromStorage)
 
@@ -48,7 +48,7 @@ export default function LakeraToggles({
     return (
       <div className="glass-card rounded-2xl p-3 border-yellow-400/30">
         <p className="text-theme-muted text-xs">
-          ⚠️ Lakera AI keys not configured. 
+          ⚠️ Lakera AI keys not configured.
           <a href="/settings" className="underline hover:text-brand-berry ml-1 transition-colors">
             Configure in Settings
           </a>
@@ -58,7 +58,10 @@ export default function LakeraToggles({
   }
 
   return (
-    <div className="glass-card rounded-2xl p-4 border-2" style={{ borderColor: "rgb(var(--border))" }}>
+    <div
+      className="glass-card rounded-2xl p-4 border-2"
+      style={{ borderColor: 'rgb(var(--border))' }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <h3 className="text-sm font-semibold text-theme mb-3">🛡️ Lakera AI Protection</h3>
@@ -69,15 +72,15 @@ export default function LakeraToggles({
                 <span className="text-sm text-theme">Input Scan</span>
                 <span className="text-xs text-theme-subtle">(User messages)</span>
                 {/* Status Dot */}
-                <div 
+                <div
                   className={`h-2 w-2 rounded-full transition-all ${
                     inputScan ? 'bg-green-500' : 'bg-red-500'
                   }`}
                   title={inputScan ? 'Enabled' : 'Disabled'}
                   style={{
-                    boxShadow: inputScan 
-                      ? '0 0 8px rgba(34, 197, 94, 0.6)' 
-                      : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    boxShadow: inputScan
+                      ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                      : '0 0 8px rgba(239, 68, 68, 0.6)',
                   }}
                 />
               </div>
@@ -85,12 +88,14 @@ export default function LakeraToggles({
                 <input
                   type="checkbox"
                   checked={inputScan}
-                  onChange={(e) => setToggles((prev) => ({ ...prev, inputScan: e.target.checked }))}
+                  onChange={e => setToggles(prev => ({ ...prev, inputScan: e.target.checked }))}
                   className="sr-only peer"
                   disabled={!hasLakeraKey}
                 />
                 <div className="w-11 h-6 bg-palette-bg-secondary/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-palette-accent-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-palette-text-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-palette-text-primary after:border-palette-border-default/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-palette-accent-primary/50"></div>
-                <span className={`ml-2 text-xs ${inputScan ? 'text-brand-berry' : 'text-theme-subtle'}`}>
+                <span
+                  className={`ml-2 text-xs ${inputScan ? 'text-brand-berry' : 'text-theme-subtle'}`}
+                >
                   {inputScan ? 'ON' : 'OFF'}
                 </span>
               </label>
@@ -102,15 +107,15 @@ export default function LakeraToggles({
                 <span className="text-sm text-theme">Output Scan</span>
                 <span className="text-xs text-theme-subtle">(AI responses)</span>
                 {/* Status Dot */}
-                <div 
+                <div
                   className={`h-2 w-2 rounded-full transition-all ${
                     outputScan ? 'bg-green-500' : 'bg-red-500'
                   }`}
                   title={outputScan ? 'Enabled' : 'Disabled'}
                   style={{
-                    boxShadow: outputScan 
-                      ? '0 0 8px rgba(34, 197, 94, 0.6)' 
-                      : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    boxShadow: outputScan
+                      ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                      : '0 0 8px rgba(239, 68, 68, 0.6)',
                   }}
                 />
               </div>
@@ -118,12 +123,14 @@ export default function LakeraToggles({
                 <input
                   type="checkbox"
                   checked={outputScan}
-                  onChange={(e) => setToggles((prev) => ({ ...prev, outputScan: e.target.checked }))}
+                  onChange={e => setToggles(prev => ({ ...prev, outputScan: e.target.checked }))}
                   className="sr-only peer"
                   disabled={!hasLakeraKey}
                 />
                 <div className="w-11 h-6 bg-palette-bg-secondary/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-palette-accent-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-palette-text-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-palette-text-primary after:border-palette-border-default/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-palette-accent-primary/50"></div>
-                <span className={`ml-2 text-xs ${outputScan ? 'text-brand-berry' : 'text-theme-subtle'}`}>
+                <span
+                  className={`ml-2 text-xs ${outputScan ? 'text-brand-berry' : 'text-theme-subtle'}`}
+                >
                   {outputScan ? 'ON' : 'OFF'}
                 </span>
               </label>
@@ -132,7 +139,8 @@ export default function LakeraToggles({
         </div>
       </div>
       <p className="text-xs text-theme-subtle mt-3">
-        When Lakera is configured, the server always scans input and output for prompt injection, jailbreak attempts, and other security threats.
+        When Lakera is configured, the server always scans input and output for prompt injection,
+        jailbreak attempts, and other security threats.
       </p>
     </div>
   )

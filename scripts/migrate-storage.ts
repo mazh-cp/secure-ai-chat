@@ -2,9 +2,9 @@
 /**
  * Storage Migration Runner
  * Idempotent migrations for storage schema changes
- * 
+ *
  * Usage: npm run migrate
- * 
+ *
  * This script:
  * 1. Checks current schema version
  * 2. Runs any pending migrations

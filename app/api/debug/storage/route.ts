@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const filesOnDisk = await listOwnerFilesOnDisk(ownerId ?? '')
     const registryFiles = listFiles({ owner_id: ownerId })
     const registryCount = registryFiles.length
-    const firstFileIds = registryFiles.slice(0, 10).map((f) => f.id)
+    const firstFileIds = registryFiles.slice(0, 10).map(f => f.id)
 
     let recentWriteCheck: { fileId: string; exists: boolean; size?: number } | null = null
     let diskCheckError: string | null = null

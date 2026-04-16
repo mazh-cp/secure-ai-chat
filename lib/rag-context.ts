@@ -29,29 +29,37 @@ const MAX_SLICES_PER_PROSE_FILE = 100
 const TOP_SLICES_PER_PROSE_FILE = 40
 
 const STOPWORDS = new Set(
-  'a an and are as at be by for from has he in is it its of on that the to was were will with'.split(/\s+/)
+  'a an and are as at be by for from has he in is it its of on that the to was were will with'.split(
+    /\s+/
+  )
 )
 
 /** Tokenize user query for fallback matching: lowercase, strip punctuation, drop short/stopwords, take top N. */
 function queryTokens(query: string, topN: number = QUERY_FALLBACK_TOP_TOKENS): string[] {
-  const normalized = query.toLowerCase().replace(/[^\w\s-]/g, ' ').split(/\s+/)
-  const tokens = normalized.filter(
-    (t) => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t)
-  )
+  const normalized = query
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, ' ')
+    .split(/\s+/)
+  const tokens = normalized.filter(t => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t))
   return [...new Set(tokens)].slice(0, topN)
 }
 
 /** Score chunk text by number of query token hits (substring). */
 function scoreChunkByTokens(chunkText: string, tokens: string[]): number {
   const lower = chunkText.toLowerCase()
-  return tokens.filter((t) => lower.includes(t)).length
+  return tokens.filter(t => lower.includes(t)).length
 }
 
 function isProseLikeFile(fileMeta: { name: string; type: string }): boolean {
   const n = fileMeta.name.toLowerCase()
   const t = (fileMeta.type || '').toLowerCase()
   if (t.includes('pdf')) return true
-  if (t.includes('wordprocessing') || t.includes('msword') || n.endsWith('.docx') || n.endsWith('.doc'))
+  if (
+    t.includes('wordprocessing') ||
+    t.includes('msword') ||
+    n.endsWith('.docx') ||
+    n.endsWith('.doc')
+  )
     return true
   if (t.includes('text/plain') || n.endsWith('.txt')) return true
   if (n.endsWith('.rtf')) return true
@@ -63,11 +71,11 @@ function relevanceScore(
   chunkText: string,
   query: string,
   queryLower: string,
-  tokenBudget: string[],
+  tokenBudget: string[]
 ): number {
   let s = scoreChunkByTokens(chunkText, tokenBudget) * 2
   const lower = chunkText.toLowerCase()
-  const words = queryLower.split(/\s+/).filter((w) => w.length > 2)
+  const words = queryLower.split(/\s+/).filter(w => w.length > 2)
   for (const w of words) {
     if (lower.includes(w)) s += w.length > 5 ? 4 : 2
   }
@@ -85,19 +93,19 @@ function rankAndCapChunks(
   chunks: RagChunk[],
   query: string,
   queryLower: string,
-  maxChunks: number,
+  maxChunks: number
 ): RagChunk[] {
   if (chunks.length === 0) return chunks
   if (chunks.length === 1) return chunks.slice(0, maxChunks)
   const rankTokens = queryTokens(query, 48)
-  const scored = chunks.map((c) => ({
+  const scored = chunks.map(c => ({
     c,
     s: relevanceScore(c.text, query, queryLower, rankTokens),
   }))
-  if (scored.some((x) => x.s > 0)) {
+  if (scored.some(x => x.s > 0)) {
     scored.sort((a, b) => b.s - a.s)
   }
-  return scored.slice(0, maxChunks).map((x) => x.c)
+  return scored.slice(0, maxChunks).map(x => x.c)
 }
 
 export type RagChunk = {
@@ -136,9 +144,11 @@ export type RagContext = {
 }
 
 function buildCitationLabel(fileName: string, chunk: Partial<RagChunk>): string {
-  if (chunk.row_number != null && chunk.sheet_name != null) return `File: ${fileName}, Sheet: ${chunk.sheet_name}, Row: ${chunk.row_number}`
+  if (chunk.row_number != null && chunk.sheet_name != null)
+    return `File: ${fileName}, Sheet: ${chunk.sheet_name}, Row: ${chunk.row_number}`
   if (chunk.row_number != null) return `File: ${fileName}, Row: ${chunk.row_number}`
-  if (chunk.heading_path && chunk.heading_path.length > 0) return `File: ${fileName}, Section: ${chunk.heading_path.join(' > ')}`
+  if (chunk.heading_path && chunk.heading_path.length > 0)
+    return `File: ${fileName}, Section: ${chunk.heading_path.join(' > ')}`
   if (chunk.page != null) return `File: ${fileName}, Page: ${chunk.page}`
   return `File: ${fileName}`
 }
@@ -169,7 +179,13 @@ export async function buildRagContext(
   }
 ): Promise<RagContext> {
   const namespace = getRagNamespace(scope)
-  const { listFiles, maxChunks = 20, lakeraRetrievalScan = true, getFileContent, getFileBuffer } = options
+  const {
+    listFiles,
+    maxChunks = 20,
+    lakeraRetrievalScan = true,
+    getFileContent,
+    getFileBuffer,
+  } = options
   const readContent = getFileContent ?? ((_fileId: string) => Promise.resolve(null))
   const readBuffer = getFileBuffer ?? ((_fileId: string) => Promise.resolve(null))
   const useStorage = Boolean(scope.userId && getFileContent)
@@ -182,7 +198,12 @@ export async function buildRagContext(
   if (process.env.NODE_ENV !== 'production' && files.length === 0 && scope.userId) {
     const anyFiles = listFiles()
     if (anyFiles.length > 0) {
-      console.warn('[RAG] listFiles(owner_id) returned 0 files but registry has', anyFiles.length, '- owner_id may not match upload. owner_id=', scope.userId)
+      console.warn(
+        '[RAG] listFiles(owner_id) returned 0 files but registry has',
+        anyFiles.length,
+        '- owner_id may not match upload. owner_id=',
+        scope.userId
+      )
       files = anyFiles
     }
   }
@@ -192,30 +213,33 @@ export async function buildRagContext(
 
   let chunks: RagChunk[] = []
   const queryLower = query.toLowerCase()
-  const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2)
+  const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2)
 
   function appendMatchedTabularChunks(
     rowChunks: CsvRowChunk[],
     fileMeta: RegistryFile,
-    contentLower: string,
+    contentLower: string
   ): void {
     if (rowChunks.length === 0) return
     let matched = rowChunks.filter(
-      (r) =>
-        queryWords.some((w) => r.text.toLowerCase().includes(w)) ||
-        contentLower.includes(queryLower.slice(0, 50)),
+      r =>
+        queryWords.some(w => r.text.toLowerCase().includes(w)) ||
+        contentLower.includes(queryLower.slice(0, 50))
     )
     if (matched.length === 0) {
-      matched = rowChunks.filter((r) =>
-        queryLower.split(/\s+/).some((w) => w.length > 1 && r.text.toLowerCase().includes(w)),
+      matched = rowChunks.filter(r =>
+        queryLower.split(/\s+/).some(w => w.length > 1 && r.text.toLowerCase().includes(w))
       )
     }
     if (matched.length === 0 && rowChunks.length > 0) {
       const fallbackTokens = queryTokens(query, QUERY_FALLBACK_TOP_TOKENS)
       if (fallbackTokens.length > 0) {
-        const scored = rowChunks.map((r) => ({ row: r, score: scoreChunkByTokens(r.text, fallbackTokens) }))
+        const scored = rowChunks.map(r => ({
+          row: r,
+          score: scoreChunkByTokens(r.text, fallbackTokens),
+        }))
         scored.sort((a, b) => b.score - a.score)
-        matched = scored.filter((s) => s.score > 0).map((s) => s.row)
+        matched = scored.filter(s => s.score > 0).map(s => s.row)
       }
       if (matched.length === 0) matched = rowChunks.slice(0, 15)
     }
@@ -238,7 +262,7 @@ export async function buildRagContext(
 
   const isDataQuery =
     /user|person|people|names?|email|id|record|data|field|column|row|list|count|line item|how many|who|what|where|when|find|search|show|display|code|department|bob|alice|key|token|deployment|company|companies|corporat|business|firm|organization|org|individual|employee|employees|customer|clients?|vendors?|suppliers?|contact|details?|information|profile|stakeholder|director|manager|executive|founder|ceo|cfo|address|phone|website|title|role|salary|revenue|account|visa|h-?1b|h1b|work\s+authorization|immigration|citizenship|passport|i-?9|green\s+card|permanent\s+resident/i.test(
-      queryLower,
+      queryLower
     )
 
   /** Extract "line item N" or "row N" from query for deterministic filter. */
@@ -257,29 +281,42 @@ export async function buildRagContext(
     const isNumbers = fileMeta.type?.includes('apple.numbers') || fileMeta.name.endsWith('.numbers')
     if (isNumbers) {
       try {
-        const buffer = useStorage ? await readBuffer(fileMeta.id) : await fileStorage.readFileBuffer(fileMeta.storage_key)
+        const buffer = useStorage
+          ? await readBuffer(fileMeta.id)
+          : await fileStorage.readFileBuffer(fileMeta.storage_key)
         if (!buffer || buffer.length === 0) continue
         const { numbersBufferToChunks } = await import('@/lib/parsers/numbers-to-csv')
-        const { chunks: numbersChunks, error: numbersError } = await numbersBufferToChunks(fileMeta.id, buffer, fileMeta.name)
+        const { chunks: numbersChunks, error: numbersError } = await numbersBufferToChunks(
+          fileMeta.id,
+          buffer,
+          fileMeta.name
+        )
         if (numbersError || numbersChunks.length === 0) continue
         let matched = numbersChunks
         if (requestedRowNumber != null) {
-          matched = numbersChunks.filter((c) => c.metadata.row_number === requestedRowNumber)
-          if (matched.length === 0) matched = numbersChunks.filter((c) => c.text.includes(`Row ${requestedRowNumber}`))
+          matched = numbersChunks.filter(c => c.metadata.row_number === requestedRowNumber)
+          if (matched.length === 0)
+            matched = numbersChunks.filter(c => c.text.includes(`Row ${requestedRowNumber}`))
         }
         if (matched.length === 0) {
           matched = numbersChunks.filter(
-            (r) =>
-              queryWords.some((w) => r.text.toLowerCase().includes(w)) ||
-              queryLower.slice(0, 60).split(/\s+/).some((w) => w.length > 1 && r.text.toLowerCase().includes(w))
+            r =>
+              queryWords.some(w => r.text.toLowerCase().includes(w)) ||
+              queryLower
+                .slice(0, 60)
+                .split(/\s+/)
+                .some(w => w.length > 1 && r.text.toLowerCase().includes(w))
           )
         }
         if (matched.length === 0 && numbersChunks.length > 0) {
           const fallbackTokens = queryTokens(query, QUERY_FALLBACK_TOP_TOKENS)
           if (fallbackTokens.length > 0) {
-            const scored = numbersChunks.map((r) => ({ row: r, score: scoreChunkByTokens(r.text, fallbackTokens) }))
+            const scored = numbersChunks.map(r => ({
+              row: r,
+              score: scoreChunkByTokens(r.text, fallbackTokens),
+            }))
             scored.sort((a, b) => b.score - a.score)
-            matched = scored.filter((s) => s.score > 0).map((s) => s.row)
+            matched = scored.filter(s => s.score > 0).map(s => s.row)
           }
           if (matched.length === 0) matched = numbersChunks.slice(0, 15)
         }
@@ -330,11 +367,18 @@ export async function buildRagContext(
         content = await extractTextFromBinaryForRag(fileMeta, binBuf)
       }
       if (content == null) {
-        content = useStorage ? await readContent(fileMeta.id) : await fileStorage.readFile(fileMeta.storage_key)
+        content = useStorage
+          ? await readContent(fileMeta.id)
+          : await fileStorage.readFile(fileMeta.storage_key)
       }
       if (!content) {
         if (process.env.NODE_ENV !== 'production') {
-          console.warn('[RAG] readFile returned null for', fileMeta.storage_key, 'name=', fileMeta.name)
+          console.warn(
+            '[RAG] readFile returned null for',
+            fileMeta.storage_key,
+            'name=',
+            fileMeta.name
+          )
         }
         continue
       }
@@ -353,7 +397,7 @@ export async function buildRagContext(
         fileMeta.name.endsWith('.xls') ||
         fileMeta.name.endsWith('.xlsm')
       const proseDoc = isProseLikeFile(fileMeta)
-      const hasKeywordMatch = queryWords.some((word) => contentLower.includes(word))
+      const hasKeywordMatch = queryWords.some(word => contentLower.includes(word))
       const shouldInclude = isDataFile || proseDoc || isDataQuery || hasKeywordMatch
 
       if (!shouldInclude && content.length > 5000) continue
@@ -397,14 +441,16 @@ export async function buildRagContext(
       if (isMarkdown) {
         const sectionChunks = parseMarkdownToChunks(content, fileMeta.id)
         let matched = sectionChunks.filter(
-          (s) =>
-            queryWords.some((w) => s.text.toLowerCase().includes(w)) ||
+          s =>
+            queryWords.some(w => s.text.toLowerCase().includes(w)) ||
             s.text.toLowerCase().includes(queryLower.slice(0, 80))
         )
         if (matched.length === 0 && sectionChunks.length > 0) matched = sectionChunks.slice(0, 10)
         for (const s of matched) {
           if (chunks.length >= maxChunks) break
-          const citationLabel = buildCitationLabel(fileMeta.name, { heading_path: s.metadata.heading_path })
+          const citationLabel = buildCitationLabel(fileMeta.name, {
+            heading_path: s.metadata.heading_path,
+          })
           chunks.push({
             chunkId: `${fileMeta.id}:section:${s.metadata.section_index}`,
             fileId: fileMeta.id,
@@ -461,7 +507,7 @@ export async function buildRagContext(
           fileSlices.sort(
             (a, b) =>
               relevanceScore(b.text, query, queryLower, rankTokens) -
-              relevanceScore(a.text, query, queryLower, rankTokens),
+              relevanceScore(a.text, query, queryLower, rankTokens)
           )
           const take = Math.min(TOP_SLICES_PER_PROSE_FILE, fileSlices.length)
           chunks.push(...fileSlices.slice(0, take))
@@ -475,7 +521,7 @@ export async function buildRagContext(
   chunks = rankAndCapChunks(chunks, query, queryLower, maxChunks)
 
   let tabularFieldRestriction: 'name_only' | undefined
-  chunks = chunks.map((c) => {
+  chunks = chunks.map(c => {
     if (!c.tabular_headers?.length || !c.tabular_row_record || c.row_number == null) return c
     const proj = resolveTabularProjection(query, c.tabular_headers)
     if (proj.mode === 'all') return c
@@ -484,7 +530,7 @@ export async function buildRagContext(
       c.row_number,
       c.tabular_row_record,
       c.tabular_headers,
-      proj.allowedHeaders,
+      proj.allowedHeaders
     )
     const normalized = normalizeChunkText(narrowed)
     return { ...c, text: `\n\n${normalized}` }
@@ -504,7 +550,7 @@ export async function buildRagContext(
       lakeraProjectIdOverride: scope.lakeraProjectId ?? undefined,
     }
     const { safeChunks: scannedChunks } = await guardMany(
-      chunks.map((c) => ({
+      chunks.map(c => ({
         id: c.chunkId,
         text: c.text,
         metadata: {
@@ -517,8 +563,8 @@ export async function buildRagContext(
       })),
       scanMeta
     )
-    safeChunks = scannedChunks.map((c) => {
-      const orig = chunks.find((x) => x.chunkId === c.id)
+    safeChunks = scannedChunks.map(c => {
+      const orig = chunks.find(x => x.chunkId === c.id)
       return orig
         ? { ...orig, text: c.text }
         : {
@@ -533,7 +579,7 @@ export async function buildRagContext(
     }) as RagChunk[]
   }
 
-  const citations = safeChunks.map((c) => ({
+  const citations = safeChunks.map(c => ({
     citationLabel: c.citationLabel,
     fileId: c.fileId,
     page: c.page,
@@ -546,13 +592,13 @@ export async function buildRagContext(
   const noContext = files.length > 0 && safeChunks.length === 0
 
   if (process.env.NODE_ENV !== 'production') {
-    const fileIds = files.map((f) => f.id)
+    const fileIds = files.map(f => f.id)
     console.log('[RAG retrieval]', {
       namespace,
       fileIds,
       topK: maxChunks,
       returned_count: safeChunks.length,
-      first_3_meta: safeChunks.slice(0, 3).map((c) => ({
+      first_3_meta: safeChunks.slice(0, 3).map(c => ({
         row_number: c.row_number,
         file_id: c.fileId,
         citationLabel: c.citationLabel?.slice(0, 50),
@@ -583,7 +629,7 @@ export function injectRagContext(
   if (ragContext.chunks.length === 0) {
     if (ragContext.noContext) {
       const sysContent = `You do not have access to the uploaded documents right now (RAG context missing). For questions about file content, respond: "I can't access the uploaded documents right now. Please re-index files or check RAG status." For general knowledge questions, answer normally from your knowledge.`
-      if (!out.some((m) => m.role === 'system')) out.unshift({ role: 'system', content: sysContent })
+      if (!out.some(m => m.role === 'system')) out.unshift({ role: 'system', content: sysContent })
     }
     return out
   }
@@ -591,7 +637,7 @@ export function injectRagContext(
   const contextLabel = groundedOnly
     ? 'RAG_CONTEXT - Answer only from these uploaded documents; cite source for each fact.'
     : 'RAG_CONTEXT - Relevant document excerpts. Use for file/data questions and cite when used; for general knowledge questions answer from your knowledge.'
-  const contextBlock = `\n\n[${contextLabel}]\n${ragContext.chunks.map((c) => `[${c.citationLabel}]\n${c.text}`).join('\n\n---\n\n')}\n\n[End RAG_CONTEXT]`
+  const contextBlock = `\n\n[${contextLabel}]\n${ragContext.chunks.map(c => `[${c.citationLabel}]\n${c.text}`).join('\n\n---\n\n')}\n\n[End RAG_CONTEXT]`
 
   const nameOnlyRule =
     ragContext.tabularFieldRestriction === 'name_only'
@@ -613,7 +659,7 @@ Rules:
 - If the user asked about file content but it's not in RAG_CONTEXT — say so, then you may use general knowledge if helpful.
 - Do not make up facts.${nameOnlyRule}`
 
-  const firstSystemIdx = out.findIndex((m) => m.role === 'system')
+  const firstSystemIdx = out.findIndex(m => m.role === 'system')
   if (firstSystemIdx < 0) {
     out.unshift({ role: 'system', content: systemInstruction })
   } else if (nameOnlyRule) {

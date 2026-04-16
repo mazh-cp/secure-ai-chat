@@ -71,7 +71,7 @@ export default function Logo({ className = '', size = 'medium', asHeader = false
           >
             {/* Large solid pink circle */}
             <circle cx="60" cy="60" r="50" fill="#E91E63" />
-            
+
             {/* Small circular cutout/bite mark on top-right */}
             {/* This is created by masking the pink circle */}
             <defs>
@@ -81,13 +81,13 @@ export default function Logo({ className = '', size = 'medium', asHeader = false
                 <circle cx="95" cy="35" r="14" fill="black" />
               </mask>
             </defs>
-            
+
             {/* Apply mask to create bite mark effect */}
             <circle cx="60" cy="60" r="50" fill="#E91E63" mask="url(#circleMask)" />
-            
+
             {/* Dark gray/black circle revealed by cutout (positioned just outside pink circle) */}
             <circle cx="95" cy="35" r="12" fill="#2C2C2C" />
-            
+
             {/* Stylized network icon inside pink circle - dark gray/black */}
             <g fill="#2C2C2C" stroke="#2C2C2C" strokeWidth="2">
               {/* Small square node on top left */}
@@ -96,25 +96,49 @@ export default function Logo({ className = '', size = 'medium', asHeader = false
               <circle cx="50" cy="60" r="5" />
               <circle cx="70" cy="70" r="5" />
               {/* Lines connecting the nodes */}
-              <line x1="39" y1="39" x2="50" y2="60" stroke="#2C2C2C" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="50" y1="60" x2="70" y2="70" stroke="#2C2C2C" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="35" y1="43" x2="50" y2="60" stroke="#2C2C2C" strokeWidth="2.5" strokeLinecap="round" />
+              <line
+                x1="39"
+                y1="39"
+                x2="50"
+                y2="60"
+                stroke="#2C2C2C"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              <line
+                x1="50"
+                y1="60"
+                x2="70"
+                y2="70"
+                stroke="#2C2C2C"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              <line
+                x1="35"
+                y1="43"
+                x2="50"
+                y2="60"
+                stroke="#2C2C2C"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
             </g>
           </svg>
         </div>
-        
+
         {/* Text "CHECK POINT™" */}
         <div className="flex flex-col justify-center">
           <div className="flex items-baseline">
-            <span 
+            <span
               className={`${sizes.text} font-bold tracking-tight leading-none`}
-              style={{ color: "var(--text)" }}
+              style={{ color: 'var(--text)' }}
             >
               CHECK POINT
             </span>
-            <span 
+            <span
               className="text-[10px] leading-none ml-0.5 align-top"
-              style={{ color: "var(--text)" }}
+              style={{ color: 'var(--text)' }}
             >
               ™
             </span>

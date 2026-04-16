@@ -19,6 +19,7 @@
 ## ✅ Pre-Release Validation
 
 ### Security ✅
+
 - ✅ Security verification passed (`npm run verify-security`)
 - ✅ No API keys in source code
 - ✅ All sensitive files properly ignored
@@ -27,12 +28,14 @@
 - ✅ `.env*` files not tracked
 
 ### Quality Gates ✅
+
 - ✅ TypeScript type-check: PASSED
 - ✅ ESLint: PASSED (only pre-existing warnings)
 - ✅ Production build: PASSED
 - ✅ No sensitive files in changes
 
 ### Documentation ✅
+
 - ✅ CHANGELOG.md updated
 - ✅ RELEASE_v1.0.10.md created
 - ✅ USER_GUIDE_RAG.md created
@@ -58,6 +61,7 @@ git push origin v1.0.10
 ### Step 3: Create Pull Request
 
 **Option A: Using GitHub CLI**
+
 ```bash
 gh pr create \
   --base main \
@@ -90,6 +94,7 @@ Ready for merge to main."
 ```
 
 **Option B: Using GitHub Web Interface**
+
 1. Go to: https://github.com/mazh-cp/secure-ai-chat
 2. Click "Pull requests" → "New pull request"
 3. Base: `main` ← Compare: `release/1.0.10`
@@ -121,6 +126,7 @@ git tag -l v1.0.10
 ## 📋 Files Changed in This Release
 
 ### Modified Files (12)
+
 - `package.json` - Version updated to 1.0.10
 - `CHANGELOG.md` - Added v1.0.10 entry
 - `app/api/chat/route.ts` - Enhanced RAG system
@@ -135,6 +141,7 @@ git tag -l v1.0.10
 - `types/logs.ts` - Payload/breakdown types
 
 ### New Files (16)
+
 - `RELEASE_v1.0.10.md` - Release notes
 - `docs/USER_GUIDE_RAG.md` - RAG user guide
 - `PRE_RELEASE_CHECKLIST_v1.0.10.md` - Pre-release checklist
@@ -169,7 +176,8 @@ When creating the GitHub release, use this content:
 **Title:** Release v1.0.10: Enhanced RAG System
 
 **Description:**
-```markdown
+
+````markdown
 ## 🎯 What's New
 
 ### Enhanced RAG (Retrieval Augmented Generation) System
@@ -177,6 +185,7 @@ When creating the GitHub release, use this content:
 The chat client now automatically searches through uploaded files when answering questions. No more "please upload files" messages - the system intelligently finds relevant information from your uploaded data.
 
 **Key Features:**
+
 - ✅ Automatic file indexing on upload
 - ✅ Intelligent content matching for data queries
 - ✅ Search files first, fall back to LLM knowledge
@@ -187,17 +196,20 @@ The chat client now automatically searches through uploaded files when answering
 ## 📋 Changes
 
 ### Added
+
 - Enhanced RAG system with automatic file indexing
 - Improved content matching algorithm
 - System message for LLM file access instructions
 - Enhanced file context formatting
 
 ### Improved
+
 - File access control (more inclusive filtering)
 - Content matching for data/PII queries
 - LLM instructions about available files
 
 ### Fixed
+
 - Chat client not finding uploaded files issue
 
 ## 🔒 Security
@@ -214,12 +226,15 @@ The chat client now automatically searches through uploaded files when answering
 ## 🚀 Upgrade
 
 For existing installations:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
+````
 
 For new installations:
 See `docs/INSTALL_UBUNTU_VM.md`
+
 ```
 
 ---
@@ -239,12 +254,13 @@ After merging to main:
 
 ## 🎉 Release Complete!
 
-**Version:** 1.0.10  
-**Status:** ✅ Ready for GitHub Push  
-**Branch:** `release/1.0.10`  
+**Version:** 1.0.10
+**Status:** ✅ Ready for GitHub Push
+**Branch:** `release/1.0.10`
 **Tag:** `v1.0.10`
 
 ---
 
-**Prepared By:** AI Assistant  
+**Prepared By:** AI Assistant
 **Date:** January 13, 2025
+```

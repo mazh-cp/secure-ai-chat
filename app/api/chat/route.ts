@@ -4,7 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
 import { screenChatWithLakera, type GuardChatScanResult } from '@/lib/lakera/guard-client'
-import { callOpenAI as callOpenAIAdapter, callAnthropic, callAzureOpenAI, validateModel, type ChatMessage as AdapterChatMessage } from '@/lib/aiAdapter'
+import {
+  callOpenAI as callOpenAIAdapter,
+  callAnthropic,
+  callAzureOpenAI,
+  validateModel,
+  type ChatMessage as AdapterChatMessage,
+} from '@/lib/aiAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
 import {
   validateTokenLimit,
@@ -53,10 +59,10 @@ function isFileOrDataQuestion(query: string): boolean {
     /\b(summarize|outline|parse)\b.*\b(file|document|upload|csv|spreadsheet)\b/i,
     /\bwhat(?:'s|s|\s+is)\s+in\s+(the\s+)?(file|document|upload|csv|spreadsheet)\b/i,
   ]
-  if (fileDataPatterns.some((re) => re.test(q))) return true
+  if (fileDataPatterns.some(re => re.test(q))) return true
   const entityOrOrgCue =
     /\b(company|companies|corporation|corporate|business|firm|organization|org|individual|individuals|employee|employees|person|people|customer|client|vendor|supplier|contact|profile|stakeholder|director|manager|executive|founder|ceo|cfo|corp\.?|inc\.?|llc|ltd\.?)\b/i.test(
-      q,
+      q
     )
   if (entityOrOrgCue) return true
   // Purely general-knowledge phrasing: "what is X", "define X", "explain X" with no data cue
@@ -79,24 +85,19 @@ async function callOpenAI(
 ): Promise<string> {
   // Validate and normalize model
   const validatedModel = validateModel(model)
-  
+
   // Convert ChatMessage[] to AdapterChatMessage[]
   const adapterMessages: AdapterChatMessage[] = messages.map(msg => ({
     role: msg.role,
     content: msg.content,
   }))
-  
+
   // Call adapter with default options
-  const result = await callOpenAIAdapter(
-    adapterMessages,
-    openAiKey,
-    validatedModel,
-    {
-      maxTokens: validatedModel.startsWith('gpt-5') ? 2000 : 1000,
-      temperature: 0.7,
-    }
-  )
-  
+  const result = await callOpenAIAdapter(adapterMessages, openAiKey, validatedModel, {
+    maxTokens: validatedModel.startsWith('gpt-5') ? 2000 : 1000,
+    temperature: 0.7,
+  })
+
   // Log fallback if used
   if (result.usedFallback) {
     console.warn('Model fallback used:', {
@@ -105,7 +106,7 @@ async function callOpenAI(
       reason: result.fallbackReason,
     })
   }
-  
+
   return result.content
 }
 
@@ -125,53 +126,69 @@ export async function POST(request: NextRequest) {
       provider: requestProvider,
     } = body
     const lakeraRetrievalScan = lakeraRetrievalScanBody !== false
-    const provider = (requestProvider === 'anthropic'
-      ? 'anthropic'
-      : requestProvider === 'azure'
-        ? 'azure'
-        : 'openai') as 'openai' | 'anthropic' | 'azure'
+    const provider = (
+      requestProvider === 'anthropic'
+        ? 'anthropic'
+        : requestProvider === 'azure'
+          ? 'azure'
+          : 'openai'
+    ) as 'openai' | 'anthropic' | 'azure'
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Messages array is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Messages array is required' }, { status: 400 })
     }
 
     // Get API keys from server-side storage (priority) or client (fallback for backward compatibility)
     const { getApiKeys } = await import('@/lib/api-keys-storage')
     const serverKeys = await getApiKeys()
-    
+
     // Debug: Log key status (without exposing actual keys)
     console.log('API Keys Status:', {
       serverKeys: {
         openAiKey: !!serverKeys.openAiKey,
       },
       clientApiKeys: {
-        openAiKey: clientApiKeys?.openAiKey ? (clientApiKeys.openAiKey === 'configured' ? 'configured (placeholder)' : 'provided') : 'not provided',
+        openAiKey: clientApiKeys?.openAiKey
+          ? clientApiKeys.openAiKey === 'configured'
+            ? 'configured (placeholder)'
+            : 'provided'
+          : 'not provided',
       },
     })
-    
+
     // Use server-side keys if available (allows site to work from any browser/device)
     // IMPORTANT: Never use client keys that are "configured" placeholder - only use actual keys
     // Fall back to client keys only if they are actual keys (not "configured" placeholder)
     const apiKeys = {
-      openAiKey: serverKeys.openAiKey ||
-                 (clientApiKeys?.openAiKey && clientApiKeys.openAiKey !== 'configured' ? clientApiKeys.openAiKey : null),
-      azureOpenAiKey: serverKeys.azureOpenAiKey ||
-                       (clientApiKeys?.azureOpenAiKey && clientApiKeys.azureOpenAiKey !== 'configured' ? clientApiKeys.azureOpenAiKey : null),
-      azureOpenAiEndpoint: serverKeys.azureOpenAiEndpoint || clientApiKeys?.azureOpenAiEndpoint || null,
-      azureOpenAiApiVersion: serverKeys.azureOpenAiApiVersion || clientApiKeys?.azureOpenAiApiVersion || '2025-04-01-preview',
-      anthropicApiKey: serverKeys.anthropicApiKey ||
-                       (clientApiKeys?.anthropicApiKey && clientApiKeys.anthropicApiKey !== 'configured' ? clientApiKeys.anthropicApiKey : null),
+      openAiKey:
+        serverKeys.openAiKey ||
+        (clientApiKeys?.openAiKey && clientApiKeys.openAiKey !== 'configured'
+          ? clientApiKeys.openAiKey
+          : null),
+      azureOpenAiKey:
+        serverKeys.azureOpenAiKey ||
+        (clientApiKeys?.azureOpenAiKey && clientApiKeys.azureOpenAiKey !== 'configured'
+          ? clientApiKeys.azureOpenAiKey
+          : null),
+      azureOpenAiEndpoint:
+        serverKeys.azureOpenAiEndpoint || clientApiKeys?.azureOpenAiEndpoint || null,
+      azureOpenAiApiVersion:
+        serverKeys.azureOpenAiApiVersion ||
+        clientApiKeys?.azureOpenAiApiVersion ||
+        '2025-04-01-preview',
+      anthropicApiKey:
+        serverKeys.anthropicApiKey ||
+        (clientApiKeys?.anthropicApiKey && clientApiKeys.anthropicApiKey !== 'configured'
+          ? clientApiKeys.anthropicApiKey
+          : null),
       lakeraAiKey: effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey),
       lakeraProjectId: effectiveLakeraProjectId(
         serverKeys.lakeraProjectId,
-        clientApiKeys?.lakeraProjectId,
+        clientApiKeys?.lakeraProjectId
       ),
       lakeraEndpoint: effectiveLakeraEndpoint(
         serverKeys.lakeraEndpoint,
-        clientApiKeys?.lakeraEndpoint,
+        clientApiKeys?.lakeraEndpoint
       ),
     }
 
@@ -192,26 +209,47 @@ export async function POST(request: NextRequest) {
     if (provider === 'anthropic') {
       if (!activeApiKey || activeApiKey === 'configured' || activeApiKey.length < 20) {
         return NextResponse.json(
-          { error: 'Anthropic API key is not configured or is invalid. Please add a valid key in Settings.' },
+          {
+            error:
+              'Anthropic API key is not configured or is invalid. Please add a valid key in Settings.',
+          },
           { status: 400 }
         )
       }
       if (!activeApiKey.startsWith('sk-ant-')) {
         return NextResponse.json(
-          { error: 'Invalid Anthropic API key format. Keys should start with "sk-ant-". Please check your key in Settings.' },
+          {
+            error:
+              'Invalid Anthropic API key format. Keys should start with "sk-ant-". Please check your key in Settings.',
+          },
           { status: 400 }
         )
       }
     } else if (provider === 'azure') {
-      if (!activeApiKey || activeApiKey === 'configured' || (typeof activeApiKey !== 'string') || activeApiKey.length < 10) {
+      if (
+        !activeApiKey ||
+        activeApiKey === 'configured' ||
+        typeof activeApiKey !== 'string' ||
+        activeApiKey.length < 10
+      ) {
         return NextResponse.json(
-          { error: 'Azure OpenAI API key is not configured or is invalid. Please add a valid Azure key in Settings.' },
+          {
+            error:
+              'Azure OpenAI API key is not configured or is invalid. Please add a valid Azure key in Settings.',
+          },
           { status: 400 }
         )
       }
-      if (!apiKeys.azureOpenAiEndpoint || typeof apiKeys.azureOpenAiEndpoint !== 'string' || !apiKeys.azureOpenAiEndpoint.startsWith('http')) {
+      if (
+        !apiKeys.azureOpenAiEndpoint ||
+        typeof apiKeys.azureOpenAiEndpoint !== 'string' ||
+        !apiKeys.azureOpenAiEndpoint.startsWith('http')
+      ) {
         return NextResponse.json(
-          { error: 'Azure OpenAI endpoint is not configured. Please add a valid Azure endpoint in Settings.' },
+          {
+            error:
+              'Azure OpenAI endpoint is not configured. Please add a valid Azure endpoint in Settings.',
+          },
           { status: 400 }
         )
       }
@@ -222,11 +260,13 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
-      if (!activeApiKey ||
-          activeApiKey === 'configured' ||
-          activeApiKey.includes('your_ope') ||
-          activeApiKey.includes('your-api-key') ||
-          activeApiKey.length < 20) {
+      if (
+        !activeApiKey ||
+        activeApiKey === 'configured' ||
+        activeApiKey.includes('your_ope') ||
+        activeApiKey.includes('your-api-key') ||
+        activeApiKey.length < 20
+      ) {
         console.error('OpenAI validation failed:', {
           hasKey: !!activeApiKey,
           isConfiguredPlaceholder: activeApiKey === 'configured',
@@ -234,31 +274,50 @@ export async function POST(request: NextRequest) {
           startsWithSk: activeApiKey ? activeApiKey.startsWith('sk-') : false,
         })
         return NextResponse.json(
-          { error: 'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.' },
+          {
+            error:
+              'OpenAI API key is not configured or is invalid. Please add a valid key in Settings.',
+          },
           { status: 400 }
         )
       }
       if (!activeApiKey.startsWith('sk-')) {
-        console.error('Invalid OpenAI API key format detected:', activeApiKey.substring(0, 10) + '...')
+        console.error(
+          'Invalid OpenAI API key format detected:',
+          activeApiKey.substring(0, 10) + '...'
+        )
         return NextResponse.json(
-          { error: 'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.' },
+          {
+            error:
+              'Invalid OpenAI API key format. Keys should start with "sk-". Please check your key in Settings.',
+          },
           { status: 400 }
         )
       }
     }
 
     // Get the latest user message for security check and RAG
-    const latestUserMessage = messages
-      .filter((m: ChatMessage) => m.role === 'user')
-      .pop()
+    const latestUserMessage = messages.filter((m: ChatMessage) => m.role === 'user').pop()
 
     // RAG: Retrieve context from storage (ragRetrieveForChat), then inject into system message
     let fileContext = ''
     let availableFilesList: string[] = []
-    let ragChunks: Array<{ chunkId: string; fileId: string; text: string; citationLabel: string; source_type?: string; row_number?: number; sheet_name?: string; heading_path?: string[] }> = []
-    let ragContextFromRetrieve: Awaited<ReturnType<typeof import('@/lib/rag-context').buildRagContext>> | null = null
+    let ragChunks: Array<{
+      chunkId: string
+      fileId: string
+      text: string
+      citationLabel: string
+      source_type?: string
+      row_number?: number
+      sheet_name?: string
+      heading_path?: string[]
+    }> = []
+    let ragContextFromRetrieve: Awaited<
+      ReturnType<typeof import('@/lib/rag-context').buildRagContext>
+    > | null = null
     // Only run RAG for file/data questions (e.g. "who is dealing with X"). General questions (e.g. "what is depression") use model only.
-    const useRAG = enableRAG !== false && latestUserMessage && isFileOrDataQuestion(latestUserMessage.content)
+    const useRAG =
+      enableRAG !== false && latestUserMessage && isFileOrDataQuestion(latestUserMessage.content)
     if (useRAG) {
       try {
         const { getOwnerId } = await import('@/lib/owner')
@@ -272,20 +331,24 @@ export async function POST(request: NextRequest) {
         const uploadedFiles = listFiles({ owner_id: ownerId })
         const owner = ownerId ?? ''
         const ragKeys = await getApiKeys()
-        ragContextFromRetrieve = await buildRagContext(latestUserMessage.content, {
-          userId: owner,
-          ipAddress: getUserIP(request),
-          source: 'chat',
-          lakeraApiKey: ragKeys.lakeraAiKey ?? undefined,
-          lakeraEndpoint: ragKeys.lakeraEndpoint ?? undefined,
-          lakeraProjectId: ragKeys.lakeraProjectId ?? undefined,
-        }, {
-          listFiles: (opts) => listFiles(opts ?? { owner_id: owner }),
-          getFileContent: (fileId) => readOwnerFile(owner, fileId),
-          getFileBuffer: (fileId) => readOwnerFileBuffer(owner, fileId),
-          lakeraRetrievalScan,
-          maxChunks: 56,
-        })
+        ragContextFromRetrieve = await buildRagContext(
+          latestUserMessage.content,
+          {
+            userId: owner,
+            ipAddress: getUserIP(request),
+            source: 'chat',
+            lakeraApiKey: ragKeys.lakeraAiKey ?? undefined,
+            lakeraEndpoint: ragKeys.lakeraEndpoint ?? undefined,
+            lakeraProjectId: ragKeys.lakeraProjectId ?? undefined,
+          },
+          {
+            listFiles: opts => listFiles(opts ?? { owner_id: owner }),
+            getFileContent: fileId => readOwnerFile(owner, fileId),
+            getFileBuffer: fileId => readOwnerFileBuffer(owner, fileId),
+            lakeraRetrievalScan,
+            maxChunks: 56,
+          }
+        )
         if (ragContextFromRetrieve.chunks.length > 0) {
           ragChunks = ragContextFromRetrieve.chunks
         }
@@ -293,16 +356,22 @@ export async function POST(request: NextRequest) {
           console.warn(
             '[chat RAG] registry has no files for owner_id prefix=',
             owner.slice(0, 12),
-            '— uploads use a different browser/session cookie than chat, or registry empty.',
+            '— uploads use a different browser/session cookie than chat, or registry empty.'
           )
         }
         if (process.env.NODE_ENV !== 'production') {
-          const ctx = buildForensicContext(request, ownerId, uploadedFiles.length, uploadedFiles.map((f) => f.id))
+          const ctx = buildForensicContext(
+            request,
+            ownerId,
+            uploadedFiles.length,
+            uploadedFiles.map(f => f.id)
+          )
           logForensic('api/chat (RAG)', ctx)
         }
 
         if (uploadedFiles.length > 0 && ragChunks.length === 0) {
-          const { formatFileContentForRAG, validateFilePromptSecurity } = await import('@/lib/file-content-processor')
+          const { formatFileContentForRAG, validateFilePromptSecurity } =
+            await import('@/lib/file-content-processor')
           const userQuery = latestUserMessage.content.toLowerCase()
           const relevantFiles: string[] = []
           const allSafeFiles: string[] = []
@@ -311,8 +380,16 @@ export async function POST(request: NextRequest) {
             const scanStatus = fileMeta.scanStatus as string
             if (scanStatus === 'flagged') continue
             if (fileMeta.checkpointTeDetails?.verdict === 'malicious') continue
-            const scanDetails = fileMeta.scanDetails as { threatLevel?: 'low' | 'medium' | 'high' | 'critical'; categories?: Record<string, boolean>; score?: number } | undefined
-            const threatLevel = scanDetails?.threatLevel || (fileMeta.scanStatus === 'flagged' ? 'high' as const : 'low' as const)
+            const scanDetails = fileMeta.scanDetails as
+              | {
+                  threatLevel?: 'low' | 'medium' | 'high' | 'critical'
+                  categories?: Record<string, boolean>
+                  score?: number
+                }
+              | undefined
+            const threatLevel =
+              scanDetails?.threatLevel ||
+              (fileMeta.scanStatus === 'flagged' ? ('high' as const) : ('low' as const))
             if (threatLevel === 'critical' || threatLevel === 'high') continue
             if (fileMeta.size > 10 * 1024 * 1024) continue
             try {
@@ -341,11 +418,11 @@ export async function POST(request: NextRequest) {
                 fileContent = await readOwnerFile(owner, fileMeta.id)
               }
               if (!fileContent) continue
-              
+
               availableFilesList.push(fileMeta.name)
-              
+
               const contentLower = fileContent.toLowerCase()
-              
+
               // ENHANCEMENT: Improved matching algorithm
               // 1. Always include data files (CSV, JSON, TXT) if they're safe
               // 2. Check for keyword matches (more lenient)
@@ -365,21 +442,22 @@ export async function POST(request: NextRequest) {
                 fileMeta.name.endsWith('.xlsx') ||
                 fileMeta.name.endsWith('.xls') ||
                 fileMeta.name.endsWith('.xlsm')
-              
+
               // Enhanced keyword matching
               const queryWords = userQuery.split(/\s+/).filter((w: string) => w.length > 2)
               const hasKeywordMatch = queryWords.some((word: string) => contentLower.includes(word))
-              
+
               // Check for common data patterns in query
               const isDataQuery =
                 /user|person|people|name|email|id|record|data|field|column|row|list|count|how many|who|what|where|when|find|search|show|display|visa|h-?1b|h1b|work\s+authorization|immigration/i.test(
-                  userQuery,
+                  userQuery
                 )
-              
+
               // ENHANCEMENT: Always include data files, or if query mentions data-related terms
               // OR if there's any keyword match
-              const shouldInclude = isDataFile || (isDataQuery && isDataFile) || hasKeywordMatch || isDataQuery
-              
+              const shouldInclude =
+                isDataFile || (isDataQuery && isDataFile) || hasKeywordMatch || isDataQuery
+
               // SECURITY: Validate prompt security for file-based queries (ADDITIONAL security layer)
               // This works alongside Lakera AI and Check Point TE - does NOT replace them
               // Files must still pass Lakera/Check Point TE checks (lines 562-586) before reaching here
@@ -387,21 +465,26 @@ export async function POST(request: NextRequest) {
                 latestUserMessage.content,
                 fileContent
               )
-              
+
               // Block high-risk prompts (only if both prompt AND file show suspicious patterns)
               if (!promptSecurityCheck.safe) {
-                console.warn(`RAG: Blocked potentially unsafe prompt with file ${fileMeta.name} (risk: ${promptSecurityCheck.riskLevel})`)
+                console.warn(
+                  `RAG: Blocked potentially unsafe prompt with file ${fileMeta.name} (risk: ${promptSecurityCheck.riskLevel})`
+                )
                 continue
               }
-              
+
               if (shouldInclude) {
                 // For large files, include a summary or excerpt
                 let contentToInclude = fileContent
                 if (fileContent.length > 15000) {
                   // For very large files, include first 7500 and last 7500 chars
-                  contentToInclude = fileContent.substring(0, 7500) + '\n\n...[content truncated - showing first and last portions]...\n\n' + fileContent.substring(fileContent.length - 7500)
+                  contentToInclude =
+                    fileContent.substring(0, 7500) +
+                    '\n\n...[content truncated - showing first and last portions]...\n\n' +
+                    fileContent.substring(fileContent.length - 7500)
                 }
-                
+
                 // ENHANCEMENT: Format file content with field information for structured data
                 // This enables field-level access for CSV/JSON files
                 const formattedContent = formatFileContentForRAG(
@@ -411,7 +494,7 @@ export async function POST(request: NextRequest) {
                   false // includeAllFields - can be made configurable in future
                 )
                 relevantFiles.push(`\n\n${formattedContent}`)
-                
+
                 // ENHANCEMENT: Limit to 10 most relevant files (increased from 5)
                 if (relevantFiles.length >= 10) break
               } else {
@@ -425,7 +508,9 @@ export async function POST(request: NextRequest) {
                     fileMeta.type,
                     false
                   )
-                  allSafeFiles.push(`\n\n${formattedContent.replace(/^\[File:/, '[File: (Available for reference)')}`)
+                  allSafeFiles.push(
+                    `\n\n${formattedContent.replace(/^\[File:/, '[File: (Available for reference)')}`
+                  )
                 }
               }
             } catch (fileError) {
@@ -433,12 +518,13 @@ export async function POST(request: NextRequest) {
               console.error(`Failed to read file ${fileMeta.id} for RAG:`, fileError)
             }
           }
-          
+
           // ENHANCEMENT: Include both relevant files and all safe files
-          const allFilesContext = relevantFiles.length > 0 
-            ? relevantFiles.join('\n\n---\n\n')
-            : allSafeFiles.slice(0, 10).join('\n\n---\n\n') // If no matches, include first 10 safe files
-          
+          const allFilesContext =
+            relevantFiles.length > 0
+              ? relevantFiles.join('\n\n---\n\n')
+              : allSafeFiles.slice(0, 10).join('\n\n---\n\n') // If no matches, include first 10 safe files
+
           if (allFilesContext) {
             fileContext = `\n\n[Context from uploaded files (${uploadedFiles.length} files available, ${relevantFiles.length} directly relevant):]\n${allFilesContext}\n\n[End of file context]`
           } else if (availableFilesList.length > 0) {
@@ -470,12 +556,12 @@ export async function POST(request: NextRequest) {
     let enhancedMessages: Array<{ role: string; content: string }> = [...messages]
     if (ragContextFromRetrieve && ragContextFromRetrieve.chunks.length > 0) {
       enhancedMessages = injectRagContext(
-        messages.map((m) => ({ role: m.role, content: m.content })),
+        messages.map(m => ({ role: m.role, content: m.content })),
         ragContextFromRetrieve,
         { groundedOnly: false }
       )
     } else if (fileContext && availableFilesList.length > 0) {
-      const hasSystemMessage = enhancedMessages.some((m) => m.role === 'system')
+      const hasSystemMessage = enhancedMessages.some(m => m.role === 'system')
       if (!hasSystemMessage) {
         enhancedMessages.unshift({
           role: 'system',
@@ -501,7 +587,7 @@ IMPORTANT INSTRUCTIONS:
     }
 
     // Lakera input scan AFTER RAG/file injection: screen what the model actually receives (user text + file/RAG context) for PII/DLP and prompt attacks.
-    const runInputScan = Boolean(apiKeys.lakeraAiKey) && (scanOptions?.scanInput !== false)
+    const runInputScan = Boolean(apiKeys.lakeraAiKey) && scanOptions?.scanInput !== false
     if (latestUserMessage && runInputScan && apiKeys.lakeraAiKey) {
       const lakeraKey = apiKeys.lakeraAiKey
       let inputTextForGuard = latestUserMessage.content
@@ -524,7 +610,7 @@ IMPORTANT INSTRUCTIONS:
           ip_address: userIP,
           internal_request_id: requestId,
         },
-        { inputUserQuestionPrefix: latestUserMessage.content },
+        { inputUserQuestionPrefix: latestUserMessage.content }
       )
 
       if (inputScanResult.flagged) {
@@ -540,7 +626,8 @@ IMPORTANT INSTRUCTIONS:
             error: 'Security block',
             requestBody: {
               messagePreview: latestUserMessage.content.substring(0, 100),
-              scanIncludedAugmentedContext: inputTextForGuard.length > latestUserMessage.content.length,
+              scanIncludedAugmentedContext:
+                inputTextForGuard.length > latestUserMessage.content.length,
             },
           },
           {
@@ -556,7 +643,7 @@ IMPORTANT INSTRUCTIONS:
               payload: inputScanResult.payload,
             },
           }
-        ).catch((error) => {
+        ).catch(error => {
           console.error('Failed to log WAF security block:', error)
         })
 
@@ -584,27 +671,31 @@ IMPORTANT INSTRUCTIONS:
     }
 
     // Validate and normalize the model per provider
-    const validatedModel = provider === 'anthropic'
-      ? (typeof model === 'string' && model.trim() ? model.trim() : 'claude-3-5-sonnet-20241022')
-      : provider === 'azure'
-        ? (typeof model === 'string' && model.trim() ? model.trim() : 'gpt-4o')
-        : validateModel(model || 'gpt-4o-mini')
-    
+    const validatedModel =
+      provider === 'anthropic'
+        ? typeof model === 'string' && model.trim()
+          ? model.trim()
+          : 'claude-3-5-sonnet-20241022'
+        : provider === 'azure'
+          ? typeof model === 'string' && model.trim()
+            ? model.trim()
+            : 'gpt-4o'
+          : validateModel(model || 'gpt-4o-mini')
+
     // Convert messages to adapter format
     const adapterMessages: AdapterChatMessage[] = enhancedMessages.map(msg => ({
       role: msg.role as 'system' | 'user' | 'assistant',
       content: msg.content,
     }))
-    
+
     // Prepare adapter options
-    const maxOutputTokens = provider === 'anthropic'
-      ? 1024
-      : (validatedModel.startsWith('gpt-5') ? 2000 : 1000)
+    const maxOutputTokens =
+      provider === 'anthropic' ? 1024 : validatedModel.startsWith('gpt-5') ? 2000 : 1000
     const adapterOptions = {
       maxTokens: maxOutputTokens,
       temperature: 0.7,
     }
-    
+
     // Estimate tokens before making API call (for self-throttling)
     const tokenEstimation = estimateRequestTokens(adapterMessages, maxOutputTokens)
     console.log('Token estimation before API call:', {
@@ -614,9 +705,14 @@ IMPORTANT INSTRUCTIONS:
       estimatedTotalTokens: tokenEstimation.estimatedTotalTokens,
       breakdown: tokenEstimation.breakdown,
     })
-    
+
     // Self-throttle: Check if estimated tokens would exceed limits
-    const throttleCheck = await shouldThrottleByTokens(adapterMessages, validatedModel, maxOutputTokens, activeApiKey)
+    const throttleCheck = await shouldThrottleByTokens(
+      adapterMessages,
+      validatedModel,
+      maxOutputTokens,
+      activeApiKey
+    )
     if (throttleCheck.shouldThrottle) {
       console.warn('Token-based throttling triggered:', {
         model: validatedModel,
@@ -624,7 +720,7 @@ IMPORTANT INSTRUCTIONS:
         limit: throttleCheck.limit,
         excessTokens: throttleCheck.excessTokens,
       })
-      
+
       return NextResponse.json(
         {
           error: `Request would exceed token limit. Estimated: ${throttleCheck.estimatedTokens} tokens, Limit: ${throttleCheck.limit} tokens.`,
@@ -633,15 +729,21 @@ IMPORTANT INSTRUCTIONS:
             limit: throttleCheck.limit,
             excessTokens: throttleCheck.excessTokens,
             breakdown: tokenEstimation.breakdown,
-            recommendation: throttleCheck.recommendation || 'Please reduce message length or max_output_tokens.',
+            recommendation:
+              throttleCheck.recommendation || 'Please reduce message length or max_output_tokens.',
           },
         },
         { status: 400 }
       )
     }
-    
+
     // Validate token limits before making API call (using dynamic limits)
-    const tokenValidation = await validateTokenLimitAsync(adapterMessages, validatedModel, maxOutputTokens, activeApiKey)
+    const tokenValidation = await validateTokenLimitAsync(
+      adapterMessages,
+      validatedModel,
+      maxOutputTokens,
+      activeApiKey
+    )
     if (!tokenValidation.valid) {
       console.warn('Token limit validation failed:', {
         model: validatedModel,
@@ -650,10 +752,15 @@ IMPORTANT INSTRUCTIONS:
         limit: tokenValidation.limit,
         error: tokenValidation.error,
       })
-      
+
       // Try to truncate messages to fit within limit (using dynamic limits)
-      const truncationResult = await truncateToTokenLimitAsync(adapterMessages, validatedModel, maxOutputTokens, activeApiKey)
-      
+      const truncationResult = await truncateToTokenLimitAsync(
+        adapterMessages,
+        validatedModel,
+        maxOutputTokens,
+        activeApiKey
+      )
+
       if (truncationResult.truncated) {
         console.warn('Messages truncated to fit token limit:', {
           originalTokenCount: truncationResult.originalTokenCount,
@@ -661,23 +768,33 @@ IMPORTANT INSTRUCTIONS:
           messagesRemoved: adapterMessages.length - truncationResult.messages.length,
         })
         // Use truncated messages
-        const truncatedAdapterMessages: AdapterChatMessage[] = truncationResult.messages.map(msg => ({
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-        }))
-        
+        const truncatedAdapterMessages: AdapterChatMessage[] = truncationResult.messages.map(
+          msg => ({
+            role: msg.role as 'user' | 'assistant' | 'system',
+            content: msg.content,
+          })
+        )
+
         // Re-validate with truncated messages (using dynamic limits)
-        const revalidation = await validateTokenLimitAsync(truncatedAdapterMessages, validatedModel, maxOutputTokens, activeApiKey)
+        const revalidation = await validateTokenLimitAsync(
+          truncatedAdapterMessages,
+          validatedModel,
+          maxOutputTokens,
+          activeApiKey
+        )
         if (!revalidation.valid) {
           // Still exceeds limit even after truncation - return error
           return NextResponse.json(
             {
-              error: tokenValidation.error || 'Message exceeds token limit. Please use a model with a larger context window or reduce message length.',
+              error:
+                tokenValidation.error ||
+                'Message exceeds token limit. Please use a model with a larger context window or reduce message length.',
               tokenDetails: {
                 inputTokens: tokenValidation.inputTokens,
                 totalTokens: tokenValidation.totalTokens,
                 limit: tokenValidation.limit,
-                suggestion: 'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
+                suggestion:
+                  'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
               },
             },
             { status: 400 }
@@ -690,19 +807,22 @@ IMPORTANT INSTRUCTIONS:
         // Could not truncate - return error
         return NextResponse.json(
           {
-            error: tokenValidation.error || 'Message exceeds token limit. Please use a model with a larger context window or reduce message length.',
+            error:
+              tokenValidation.error ||
+              'Message exceeds token limit. Please use a model with a larger context window or reduce message length.',
             tokenDetails: {
               inputTokens: tokenValidation.inputTokens,
               totalTokens: tokenValidation.totalTokens,
               limit: tokenValidation.limit,
-              suggestion: 'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
+              suggestion:
+                'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
             },
           },
           { status: 400 }
         )
       }
     }
-    
+
     // Check rate limit before making API call
     const rateLimitCheck = checkRateLimit(activeApiKey, validatedModel)
     if (!rateLimitCheck.allowed) {
@@ -711,14 +831,15 @@ IMPORTANT INSTRUCTIONS:
         retryAfter: rateLimitCheck.retryAfter,
         resetAt: new Date(rateLimitCheck.resetAt).toISOString(),
       })
-      
+
       return NextResponse.json(
         {
           error: `Rate limit exceeded. Please wait ${rateLimitCheck.retryAfter} seconds before trying again.`,
           rateLimitDetails: {
             retryAfter: rateLimitCheck.retryAfter,
             resetAt: new Date(rateLimitCheck.resetAt).toISOString(),
-            suggestion: 'Please wait a moment before making another request, or reduce the frequency of your requests.',
+            suggestion:
+              'Please wait a moment before making another request, or reduce the frequency of your requests.',
           },
         },
         {
@@ -730,42 +851,39 @@ IMPORTANT INSTRUCTIONS:
         }
       )
     }
-    
+
     // Log rate limit status (for monitoring)
     const rateLimitStatus = getRateLimitStatus(activeApiKey, validatedModel)
     const dynamicTokenLimit = await getTokenLimitAsync(validatedModel, activeApiKey)
     console.log('Pre-request status:', {
       model: validatedModel,
       rateLimit: {
-      remaining: rateLimitStatus.remaining,
-      limit: rateLimitStatus.limit,
+        remaining: rateLimitStatus.remaining,
+        limit: rateLimitStatus.limit,
       },
       tokenEstimation: {
         estimatedTotalTokens: tokenEstimation.estimatedTotalTokens,
         limit: dynamicTokenLimit,
-        utilizationPercent: ((tokenEstimation.estimatedTotalTokens / dynamicTokenLimit) * 100).toFixed(2) + '%',
+        utilizationPercent:
+          ((tokenEstimation.estimatedTotalTokens / dynamicTokenLimit) * 100).toFixed(2) + '%',
       },
     })
-    
+
     // Call adapter for the selected provider
-    const adapterResult = provider === 'anthropic'
-      ? await callAnthropic(adapterMessages, activeApiKey!, validatedModel, adapterOptions)
-      : provider === 'azure'
-        ? await callAzureOpenAI(
-            adapterMessages,
-            apiKeys.azureOpenAiKey!,
-            validatedModel,
-            adapterOptions,
-            apiKeys.azureOpenAiEndpoint!,
-            apiKeys.azureOpenAiApiVersion || '2025-04-01-preview'
-          )
-        : await callOpenAIAdapter(
-            adapterMessages,
-            activeApiKey,
-            validatedModel,
-            adapterOptions
-          )
-    
+    const adapterResult =
+      provider === 'anthropic'
+        ? await callAnthropic(adapterMessages, activeApiKey!, validatedModel, adapterOptions)
+        : provider === 'azure'
+          ? await callAzureOpenAI(
+              adapterMessages,
+              apiKeys.azureOpenAiKey!,
+              validatedModel,
+              adapterOptions,
+              apiKeys.azureOpenAiEndpoint!,
+              apiKeys.azureOpenAiApiVersion || '2025-04-01-preview'
+            )
+          : await callOpenAIAdapter(adapterMessages, activeApiKey, validatedModel, adapterOptions)
+
     // Log fallback if used
     if (adapterResult.usedFallback) {
       console.warn('Model fallback triggered:', {
@@ -774,13 +892,13 @@ IMPORTANT INSTRUCTIONS:
         reason: adapterResult.fallbackReason,
       })
     }
-    
+
     const aiResponse = adapterResult.content
 
     let outputScanResult: ScanResult = { scanned: false, flagged: false }
 
     // Lakera output scan: only when key is configured and client has output scan enabled (toggles off = no scan)
-    const runOutputScan = Boolean(apiKeys.lakeraAiKey) && (scanOptions?.scanOutput !== false)
+    const runOutputScan = Boolean(apiKeys.lakeraAiKey) && scanOptions?.scanOutput !== false
     if (runOutputScan && apiKeys.lakeraAiKey) {
       const lakeraKey = apiKeys.lakeraAiKey
       outputScanResult = await screenChatWithLakera(
@@ -797,7 +915,7 @@ IMPORTANT INSTRUCTIONS:
         },
         latestUserMessage?.content
           ? { outputPairedUserContent: latestUserMessage.content }
-          : undefined,
+          : undefined
       )
 
       // If output is flagged, block it
@@ -831,12 +949,12 @@ IMPORTANT INSTRUCTIONS:
               payload: outputScanResult.payload,
             },
           }
-        ).catch((error) => {
+        ).catch(error => {
           console.error('Failed to log WAF security block:', error)
         })
 
         return NextResponse.json(
-          { 
+          {
             error: 'AI response blocked by security filter',
             scanResult: outputScanResult,
             logData: {
@@ -884,7 +1002,7 @@ IMPORTANT INSTRUCTIONS:
       }
       sendLakeraTelemetryFromLog(inputLogData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId, {
         contextOverride: 'chat_input',
-      }).catch((error) => {
+      }).catch(error => {
         console.error('Failed Lakera audit/telemetry for input scan (non-blocking):', error)
       })
     }
@@ -901,7 +1019,7 @@ IMPORTANT INSTRUCTIONS:
       }
       sendLakeraTelemetryFromLog(outputLogData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId, {
         contextOverride: 'chat_output',
-      }).catch((error) => {
+      }).catch(error => {
         console.error('Failed Lakera audit/telemetry for output scan (non-blocking):', error)
       })
     }
@@ -920,22 +1038,27 @@ IMPORTANT INSTRUCTIONS:
     console.error('Chat API error:', error)
     let errorMessage = error instanceof Error ? error.message : 'An error occurred'
     let statusCode = 500
-    
+
     // Handle network/fetch errors specifically
-    if (error instanceof Error && (error.message.includes('Failed to connect') || error.message.includes('Network error') || error.message.includes('fetch failed'))) {
+    if (
+      error instanceof Error &&
+      (error.message.includes('Failed to connect') ||
+        error.message.includes('Network error') ||
+        error.message.includes('fetch failed'))
+    ) {
       statusCode = 503
       // Preserve the detailed error message from the adapter
       if (!errorMessage.includes('Please verify')) {
         errorMessage = `Connection error: ${errorMessage}. Please check your network connection and API endpoint configuration.`
       }
     }
-    
+
     // Handle rate limit errors from adapter
     if (error instanceof Error && (error as any).rateLimit) {
       statusCode = 429
       const retryAfter = (error as any).retryAfter || 60
       errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
-      
+
       // Log rate limit error
       const { addLog } = await import('@/lib/logging')
       addLog({
@@ -946,13 +1069,14 @@ IMPORTANT INSTRUCTIONS:
         success: false,
         associatedRisks: ['llm03'], // Supply Chain risk
       })
-      
+
       return NextResponse.json(
         {
           error: errorMessage,
           rateLimitDetails: {
             retryAfter,
-            suggestion: 'Please wait a moment before making another request, or reduce the frequency of your requests.',
+            suggestion:
+              'Please wait a moment before making another request, or reduce the frequency of your requests.',
           },
         },
         {
@@ -963,12 +1087,14 @@ IMPORTANT INSTRUCTIONS:
         }
       )
     }
-    
+
     // Handle token limit errors from adapter
     if (error instanceof Error && (error as any).tokenLimit) {
       statusCode = 400
-      errorMessage = errorMessage || 'Token limit exceeded. Please reduce message length or use a model with a larger context window.'
-      
+      errorMessage =
+        errorMessage ||
+        'Token limit exceeded. Please reduce message length or use a model with a larger context window.'
+
       // Log token limit error
       const { addLog } = await import('@/lib/logging')
       addLog({
@@ -979,25 +1105,26 @@ IMPORTANT INSTRUCTIONS:
         success: false,
         associatedRisks: ['llm03'], // Supply Chain risk
       })
-      
+
       return NextResponse.json(
         {
           error: errorMessage,
           tokenLimitDetails: {
-            suggestion: 'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
+            suggestion:
+              'Try using gpt-4-turbo or gpt-4o for larger context windows, or shorten your messages.',
           },
         },
         { status: 400 }
       )
     }
-    
+
     // Check if error message contains rate limit or token limit keywords
     const lowerMessage = errorMessage.toLowerCase()
     if (lowerMessage.includes('rate limit') || lowerMessage.includes('429')) {
       statusCode = 429
       const retryMatch = errorMessage.match(/(\d+)\s*seconds?/i)
       const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60
-      
+
       return NextResponse.json(
         {
           error: errorMessage,
@@ -1014,7 +1141,7 @@ IMPORTANT INSTRUCTIONS:
         }
       )
     }
-    
+
     if (lowerMessage.includes('token') || lowerMessage.includes('context_length')) {
       statusCode = 400
       return NextResponse.json(
@@ -1027,7 +1154,7 @@ IMPORTANT INSTRUCTIONS:
         { status: 400 }
       )
     }
-    
+
     // Log generic error
     const { addLog } = await import('@/lib/logging')
     addLog({
@@ -1038,7 +1165,7 @@ IMPORTANT INSTRUCTIONS:
       success: false,
       associatedRisks: ['llm03'], // Supply Chain risk
     })
-    
+
     return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }

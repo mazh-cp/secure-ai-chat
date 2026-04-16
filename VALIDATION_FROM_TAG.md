@@ -5,12 +5,14 @@
 When you checkout a tag (like `v1.0.11`), Git puts you in a "detached HEAD" state. **This is normal and expected behavior.**
 
 ### What This Means:
+
 - ✅ You're viewing the exact code from the v1.0.11 release
 - ✅ This is the correct state for validating a release
 - ✅ You can build, test, and validate without issues
 - ⚠️ Any commits you make won't be on a branch (but that's fine for validation)
 
 ### For Validation:
+
 **You don't need to do anything special** - you can proceed directly with validation.
 
 ---
@@ -18,28 +20,33 @@ When you checkout a tag (like `v1.0.11`), Git puts you in a "detached HEAD" stat
 ## Quick Validation Steps
 
 ### Step 1: Verify You're on the Right Tag
+
 ```bash
 git describe --tags
 # Should output: v1.0.11
 ```
 
 ### Step 2: Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### Step 3: Build
+
 ```bash
 npm run build
 # Should show: ✓ Compiled successfully
 ```
 
 ### Step 4: Start Server
+
 ```bash
 npm start
 ```
 
 ### Step 5: Validate Endpoints
+
 ```bash
 # In another terminal, wait 8 seconds then run:
 curl http://localhost:3000/api/health
@@ -48,6 +55,7 @@ curl http://localhost:3000/api/waf/health
 ```
 
 **Expected Results:**
+
 - Health: `{"status":"ok"}`
 - Version: `{"version":"1.0.11"}`
 - WAF: `{"waf":{"integrated":true}}`
@@ -64,6 +72,7 @@ If you want to run the automated validation:
 ```
 
 This script will:
+
 1. Check Node version
 2. Verify installation
 3. Run type check
@@ -119,16 +128,19 @@ git checkout main
 ## Troubleshooting
 
 ### Issue: "npm install" fails
+
 - Check Node version: `node -v` (should be 25.2.1)
 - Clear cache: `npm cache clean --force`
 - Try: `rm -rf node_modules package-lock.json && npm install`
 
 ### Issue: Build fails
+
 - Check TypeScript: `npm run type-check`
 - Check for errors in output
 - Verify all files are present
 
 ### Issue: Server won't start
+
 - Check port 3000: `lsof -i :3000`
 - Kill existing process: `lsof -ti:3000 | xargs kill -9`
 - Try different port: `PORT=3001 npm start`

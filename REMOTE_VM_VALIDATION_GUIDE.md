@@ -10,6 +10,7 @@
 Replace `YOUR_VM_PUBLIC_IP` with your actual VM public IP address in all commands below.
 
 **Example**: If your VM public IP is `203.0.113.45`, use:
+
 ```bash
 VM_IP="203.0.113.45"
 # or
@@ -21,11 +22,13 @@ VM_IP="your-domain.com"  # If using domain name
 ## 📋 Basic Health Checks
 
 ### 1. Check if Server is Running
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/health
 ```
 
 **Expected Response**:
+
 ```json
 {
   "status": "ok",
@@ -40,11 +43,13 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/health
 ---
 
 ### 2. Check Application Version
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/version
 ```
 
 **Expected Response**:
+
 ```json
 {
   "version": "1.0.11",
@@ -57,11 +62,13 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/version
 ---
 
 ### 3. Check WAF Integration Status
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/waf/health
 ```
 
 **Expected Response**:
+
 ```json
 {
   "status": "ok",
@@ -88,11 +95,13 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/waf/health
 ## 🔍 Detailed System Information
 
 ### 4. Get API Keys Configuration Status
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/keys
 ```
 
 **Response Shows**:
+
 - Which keys are configured
 - Source of keys (environment vs storage)
 - Configuration status for all services
@@ -100,11 +109,13 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/keys
 ---
 
 ### 5. Get Settings Status
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/settings/status
 ```
 
 **Response Shows**:
+
 - All API key configuration status
 - Source of each key
 - Overall configuration state
@@ -112,11 +123,13 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/settings/status
 ---
 
 ### 6. Get Cache/Storage Status
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/health/cache
 ```
 
 **Response Shows**:
+
 - File storage statistics
 - Cache cleanup status
 - Last cleanup time
@@ -127,11 +140,13 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/health/cache
 ## 📊 Logs & Diagnostics
 
 ### 7. Get System Logs
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/logs/system
 ```
 
 **Response**: Array of system log entries with:
+
 - Timestamp
 - Level (info, warning, error)
 - Service name
@@ -139,6 +154,7 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/logs/system
 - Metadata
 
 **Filter by Level**:
+
 ```bash
 # Get only errors
 curl "http://YOUR_VM_PUBLIC_IP:3000/api/logs/system?level=error"
@@ -150,6 +166,7 @@ curl "http://YOUR_VM_PUBLIC_IP:3000/api/logs/system?level=warning"
 ---
 
 ### 8. Get Check Point WAF Logs
+
 ```bash
 # Get all WAF logs (last 100)
 curl http://YOUR_VM_PUBLIC_IP:3000/api/waf/logs
@@ -165,6 +182,7 @@ curl "http://YOUR_VM_PUBLIC_IP:3000/api/waf/logs?startTime=2026-01-15T00:00:00Z&
 ```
 
 **Export as CSV**:
+
 ```bash
 curl -X POST http://YOUR_VM_PUBLIC_IP:3000/api/waf/logs \
   -H "Content-Type: application/json" \
@@ -175,6 +193,7 @@ curl -X POST http://YOUR_VM_PUBLIC_IP:3000/api/waf/logs \
 ---
 
 ### 9. Get Recent Activity
+
 ```bash
 # Get last 50 system logs
 curl "http://YOUR_VM_PUBLIC_IP:3000/api/logs/system?limit=50" | jq '.[0:10]'
@@ -188,17 +207,20 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/waf/health | jq '.statistics'
 ## 🔧 Environment & Configuration Checks
 
 ### 10. Check OpenAI API Key Status
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/health/openai
 ```
 
 **Response**:
+
 - `{"ok": true}` - API key is valid
 - `{"ok": false, "error": "..."}` - API key issue
 
 ---
 
 ### 11. Validate Azure OpenAI Configuration
+
 ```bash
 curl -X POST http://YOUR_VM_PUBLIC_IP:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -210,12 +232,14 @@ curl -X POST http://YOUR_VM_PUBLIC_IP:3000/api/health/azure-openai \
 ```
 
 **Response**:
+
 - `{"ok": true, "message": "..."}` - Valid
 - `{"ok": false, "error": "..."}` - Invalid (with specific error)
 
 ---
 
 ### 12. Check Available Models
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/models
 ```
@@ -227,6 +251,7 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/models
 ## 🛠️ Troubleshooting Commands
 
 ### 13. Test Chat Endpoint (Without Sending Message)
+
 ```bash
 # This will fail but shows if endpoint is accessible
 curl -X POST http://YOUR_VM_PUBLIC_IP:3000/api/chat \
@@ -239,6 +264,7 @@ curl -X POST http://YOUR_VM_PUBLIC_IP:3000/api/chat \
 ---
 
 ### 14. Check File Storage Status
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/files/list
 ```
@@ -248,6 +274,7 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/files/list
 ---
 
 ### 15. Get Release Notes
+
 ```bash
 curl http://YOUR_VM_PUBLIC_IP:3000/api/release-notes
 ```
@@ -259,6 +286,7 @@ curl http://YOUR_VM_PUBLIC_IP:3000/api/release-notes
 ## 📝 Generate Comprehensive Logs Report
 
 ### 16. Generate Full Diagnostic Report
+
 ```bash
 VM_IP="YOUR_VM_PUBLIC_IP"
 REPORT_FILE="diagnostic-report-$(date +%Y%m%d-%H%M%S).txt"
@@ -270,52 +298,52 @@ REPORT_FILE="diagnostic-report-$(date +%Y%m%d-%H%M%S).txt"
   echo "VM IP: $VM_IP"
   echo "=========================================="
   echo ""
-  
+
   echo "=== 1. Health Check ==="
   curl -s http://$VM_IP:3000/api/health
   echo ""
   echo ""
-  
+
   echo "=== 2. Version ==="
   curl -s http://$VM_IP:3000/api/version
   echo ""
   echo ""
-  
+
   echo "=== 3. WAF Health ==="
   curl -s http://$VM_IP:3000/api/waf/health
   echo ""
   echo ""
-  
+
   echo "=== 4. API Keys Status ==="
   curl -s http://$VM_IP:3000/api/keys
   echo ""
   echo ""
-  
+
   echo "=== 5. Settings Status ==="
   curl -s http://$VM_IP:3000/api/settings/status
   echo ""
   echo ""
-  
+
   echo "=== 6. Cache Status ==="
   curl -s http://$VM_IP:3000/api/health/cache
   echo ""
   echo ""
-  
+
   echo "=== 7. Recent System Logs (Last 20) ==="
   curl -s "http://$VM_IP:3000/api/logs/system?limit=20"
   echo ""
   echo ""
-  
+
   echo "=== 8. WAF Logs (Last 20) ==="
   curl -s "http://$VM_IP:3000/api/waf/logs?limit=20"
   echo ""
   echo ""
-  
+
   echo "=== 9. File List ==="
   curl -s http://$VM_IP:3000/api/files/list
   echo ""
   echo ""
-  
+
 } > "$REPORT_FILE"
 
 echo "Diagnostic report saved to: $REPORT_FILE"
@@ -402,6 +430,7 @@ curl -s http://$VM_IP:3000/api/keys | jq '.source'
 ```
 
 **Response shows**:
+
 - `"environment"` - Key from environment variable
 - `"storage"` - Key from encrypted storage
 - `"none"` - Key not configured
@@ -465,12 +494,12 @@ test_endpoint() {
   local name="$1"
   local url="$2"
   local expected="$3"
-  
+
   echo -n "Testing $name... "
   response=$(curl -s -w "\n%{http_code}" "$url" 2>/dev/null)
   http_code=$(echo "$response" | tail -n1)
   body=$(echo "$response" | sed '$d')
-  
+
   if [ "$http_code" = "200" ]; then
     if [ -n "$expected" ]; then
       if echo "$body" | grep -q "$expected"; then
@@ -542,6 +571,7 @@ fi
 ```
 
 **Usage**:
+
 ```bash
 chmod +x validate-remote-vm.sh
 ./validate-remote-vm.sh YOUR_VM_PUBLIC_IP
@@ -564,10 +594,12 @@ echo "Errors (last 5): $(curl -s "http://$VM_IP:3000/api/logs/system?level=error
 ## 🛡️ Firewall & Security Group Configuration
 
 ### Required Ports
+
 - **Port 3000**: HTTP access to application
 - **Port 443**: HTTPS (if using SSL/TLS)
 
 ### Security Group Rules (Example for AWS/Azure/GCP)
+
 ```
 Inbound Rules:
 - Port 3000: TCP from 0.0.0.0/0 (or specific IPs)
@@ -575,6 +607,7 @@ Inbound Rules:
 ```
 
 ### Test Port Accessibility
+
 ```bash
 # From remote machine
 telnet YOUR_VM_PUBLIC_IP 3000
@@ -587,21 +620,25 @@ nc -zv YOUR_VM_PUBLIC_IP 3000
 ## 📋 Complete Remote Validation Checklist
 
 ### Basic Connectivity
+
 - [ ] Server responds: `curl http://VM_IP:3000/api/health`
 - [ ] Version correct: Returns `1.0.11`
 - [ ] WAF integrated: `waf.integrated: true`
 
 ### Configuration
+
 - [ ] API keys status: Check `/api/keys`
 - [ ] Settings status: Check `/api/settings/status`
 - [ ] Cache status: Check `/api/health/cache`
 
 ### Logs & Diagnostics
+
 - [ ] System logs accessible: `/api/logs/system`
 - [ ] WAF logs accessible: `/api/waf/logs`
 - [ ] Error logs: Filter by `level=error`
 
 ### Features
+
 - [ ] Chat endpoint: `/api/chat` (may require keys)
 - [ ] Files endpoint: `/api/files/list`
 - [ ] Release notes: `/api/release-notes`
@@ -611,11 +648,13 @@ nc -zv YOUR_VM_PUBLIC_IP 3000
 ## 🚀 Quick Start Commands
 
 ### Set VM IP Variable
+
 ```bash
 export VM_IP="YOUR_VM_PUBLIC_IP"
 ```
 
 ### Run All Checks
+
 ```bash
 # Health
 curl http://$VM_IP:3000/api/health
@@ -638,6 +677,7 @@ curl "http://$VM_IP:3000/api/logs/system?level=error&limit=10"
 ## 📝 Generate Logs Export
 
 ### Export All Logs
+
 ```bash
 VM_IP="YOUR_VM_PUBLIC_IP"
 
@@ -659,6 +699,7 @@ curl -s http://$VM_IP:3000/api/keys > api-keys.json
 ## 🔧 Troubleshooting Common Issues
 
 ### Issue: Connection Refused
+
 ```bash
 # Check if port is open
 curl -v http://YOUR_VM_PUBLIC_IP:3000/api/health
@@ -669,6 +710,7 @@ curl -v http://YOUR_VM_PUBLIC_IP:3000/api/health
 ```
 
 ### Issue: Timeout
+
 ```bash
 # Increase timeout
 curl --connect-timeout 10 --max-time 30 \
@@ -676,6 +718,7 @@ curl --connect-timeout 10 --max-time 30 \
 ```
 
 ### Issue: SSL/HTTPS Required
+
 ```bash
 # Use HTTPS if configured
 curl https://YOUR_VM_PUBLIC_IP:3000/api/health

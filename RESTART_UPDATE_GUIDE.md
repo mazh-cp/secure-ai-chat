@@ -11,6 +11,7 @@ bash scripts/restart-update.sh
 ```
 
 Or download and run directly:
+
 ```bash
 cd ~/secure-ai-chat
 bash <(curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/restart-update.sh)
@@ -187,6 +188,7 @@ sudo systemctl restart secure-ai-chat
 ## What Gets Preserved
 
 The update process preserves:
+
 - ✅ API keys in `.secure-storage/`
 - ✅ Environment variables in `.env.local`
 - ✅ Uploaded files in `.storage/`
@@ -196,6 +198,7 @@ The update process preserves:
 ## What Gets Updated
 
 The update process updates:
+
 - ✅ Application code
 - ✅ npm dependencies
 - ✅ Build artifacts (`.next/`)

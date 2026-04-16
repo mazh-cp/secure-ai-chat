@@ -9,6 +9,7 @@
 ## 🔍 Problem Summary
 
 When using Azure OpenAI provider, the application throws:
+
 ```
 Error: Failed to connect to Azure OpenAI API. Please verify: fetch failed 1) Your endpoint URL is correct...
 ```
@@ -22,6 +23,7 @@ This indicates a network-level connection failure before the request reaches Azu
 ### 1. Enhanced Network Error Handling
 
 Added comprehensive error handling for:
+
 - **Timeout errors**: 30-second timeout with clear messages
 - **DNS failures**: Specific error for hostname resolution issues
 - **Connection refused**: Clear message for connection problems
@@ -31,6 +33,7 @@ Added comprehensive error handling for:
 ### 2. Request Timeout
 
 Added 30-second timeout to prevent hanging requests:
+
 - Uses `AbortController` for proper timeout handling
 - Clear timeout error messages
 - Prevents indefinite waiting
@@ -38,6 +41,7 @@ Added 30-second timeout to prevent hanging requests:
 ### 3. Better Error Diagnostics
 
 Error messages now include:
+
 - Specific error type (timeout, DNS, connection, etc.)
 - Troubleshooting steps for each error type
 - Endpoint URL validation guidance
@@ -49,11 +53,13 @@ Error messages now include:
 ### Issue 1: "Request timeout (30 seconds)"
 
 **Possible causes:**
+
 - Azure OpenAI service is slow or overloaded
 - Network latency is high
 - Endpoint is incorrect
 
 **Solutions:**
+
 ```bash
 # 1. Test endpoint connectivity
 curl -v https://your-resource.openai.azure.com
@@ -69,11 +75,13 @@ ping your-resource.openai.azure.com
 ### Issue 2: "DNS resolution failed"
 
 **Possible causes:**
+
 - Endpoint hostname is incorrect
 - DNS server issues
 - Network configuration problems
 
 **Solutions:**
+
 ```bash
 # 1. Test DNS resolution
 nslookup your-resource.openai.azure.com
@@ -89,11 +97,13 @@ cat /etc/resolv.conf
 ### Issue 3: "Connection refused"
 
 **Possible causes:**
+
 - Endpoint URL is incorrect
 - Port is blocked
 - Service is not available
 
 **Solutions:**
+
 ```bash
 # 1. Test HTTPS connection
 curl -I https://your-resource.openai.azure.com
@@ -108,11 +118,13 @@ sudo ufw status
 ### Issue 4: "Network connection failed"
 
 **Possible causes:**
+
 - Firewall blocking outbound connections
 - Network configuration issues
 - Proxy settings required
 
 **Solutions:**
+
 ```bash
 # 1. Test outbound HTTPS
 curl -I https://api.openai.com
@@ -133,11 +145,13 @@ echo $HTTPS_PROXY
 ## 📋 Endpoint URL Format
 
 ### ✅ Correct Format
+
 ```
 https://your-resource.openai.azure.com
 ```
 
 ### ❌ Incorrect Formats
+
 ```
 https://your-resource.openai.azure.com/openai/deployments  # Too specific
 http://your-resource.openai.azure.com                      # Must be HTTPS
@@ -225,6 +239,7 @@ curl -X POST \
 ```
 
 **Expected results:**
+
 - **Success**: Returns JSON with chat completion
 - **401**: Authentication error (check API key)
 - **404**: Deployment not found (check deployment name)
@@ -249,11 +264,13 @@ Before using Azure OpenAI, verify:
 ## 🔄 Retry Logic
 
 The application now includes:
+
 - **30-second timeout** to prevent hanging
 - **Clear error messages** for each failure type
 - **Automatic cleanup** of timeouts
 
 If you see timeout errors:
+
 1. Check Azure OpenAI service status
 2. Verify network connectivity
 3. Try again (may be temporary)
@@ -263,18 +280,21 @@ If you see timeout errors:
 ## 🎯 Best Practices
 
 ### Endpoint Configuration
+
 1. Always copy endpoint from Azure Portal
 2. Don't add paths (like `/openai/deployments`)
 3. Use HTTPS (never HTTP)
 4. Remove trailing slashes
 
 ### Network Configuration
+
 1. Ensure outbound HTTPS is allowed
 2. Check DNS resolution works
 3. Verify no proxy blocking Azure
 4. Test connectivity before configuring
 
 ### Deployment Names
+
 1. Use exact name from Azure Portal (case-sensitive)
 2. Common names: `gpt-4o-mini`, `gpt-4o`, `gpt-4`
 3. Verify deployment status is "Succeeded"

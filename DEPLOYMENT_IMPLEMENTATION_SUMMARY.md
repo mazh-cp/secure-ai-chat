@@ -82,6 +82,7 @@ sudo ./scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Options:**
+
 - `--app-dir`: Application directory (required)
 - `--ref`: Git reference to deploy (default: `main`)
 - `--backup-dir`: Custom backup directory (default: `{app-dir}/.backups`)
@@ -94,6 +95,7 @@ sudo ./scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Options:**
+
 - `--app-dir`: Application directory (required, default: `/opt/secure-ai-chat`)
 - `--ref`: Git reference to deploy (default: `main`)
 - `--app-user`: Application user (default: `secureai`)
@@ -129,16 +131,19 @@ git push origin v1.0.12
 ## Assumptions
 
 ### Node.js Version
+
 - **Required**: v24.13.0 (LTS)
 - **Installation**: Via nvm (automatically installed if missing)
 - **Location**: `~/.nvm/versions/node/v24.13.0/`
 
 ### Operating System
+
 - **Primary**: Ubuntu 18.04+ or Debian 10+
 - **Package Manager**: apt-get
 - **Service Manager**: systemd
 
 ### Service Configuration
+
 - **Service Name**: `secure-ai-chat`
 - **Service File**: `/etc/systemd/system/secure-ai-chat.service`
 - **Environment File**: `/etc/secure-ai-chat.env`
@@ -146,13 +151,15 @@ git push origin v1.0.12
 - **App Directory**: `/opt/secure-ai-chat` (default)
 
 ### Ports
+
 - **Application**: 3000 (configurable via PORT env var)
 - **SSH**: 22 (required for remote access)
 
 ### Package Manager Detection
+
 - **Priority**: pnpm > yarn > npm
 - **Detection**: Based on lockfile presence
-- **Install Command**: 
+- **Install Command**:
   - pnpm: `pnpm install --frozen-lockfile`
   - yarn: `yarn install --immutable || yarn install --frozen-lockfile`
   - npm: `npm ci`
@@ -168,12 +175,14 @@ git push origin v1.0.12
 ## Rollback Mechanism
 
 Upgrade script automatically:
+
 1. Creates timestamped backup of build + config
 2. Saves current git commit
 3. On failure, restores previous version
 4. Restarts service with previous version
 
 Manual rollback:
+
 ```bash
 cd /opt/secure-ai-chat
 git checkout <previous-commit>
@@ -184,6 +193,7 @@ sudo systemctl restart secure-ai-chat
 ## Validation
 
 All scripts include:
+
 - `set -euo pipefail` for strict error handling
 - Secret redaction in all output
 - Non-zero exit codes on failure

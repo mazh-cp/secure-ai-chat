@@ -25,6 +25,7 @@ git push origin main
 ```
 
 **Ensure on GitHub:**
+
 - The default branch is `main` (or update script URLs if you use `master`).
 - The repo is **public** if you use the raw one-liner; for private repos use in-place install (clone first, then run the script from the repo).
 
@@ -43,6 +44,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 **What it does (full checklist):**
+
 1. **Phase 1 – System prerequisites:** `apt-get update`, install and verify `curl`, `git`, `build-essential`, `ca-certificates`, `gnupg`, `lsb-release`, `iproute2`.
 2. **Phase 2 – App user:** Create user `secureai` and directory `/opt/secure-ai-chat`.
 3. **Phase 3 – Node.js and npm:** Install nvm and Node.js v24.13.0 (LTS); verify `node` and `npm` before proceeding.
@@ -53,11 +55,13 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 8. **Phase 8+ – Config:** `.env.local`, systemd service, nginx, UFW, start service, smoke checks.
 
 **Override install path or branch (optional):**
+
 ```bash
 INSTALL_DIR=/opt/secure-ai-chat BRANCH=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 ```
 
 **Force clean install** (wipe existing, fresh clone with latest fixes; preserves `.env.local` and `.secure-storage`):
+
 ```bash
 FORCE_CLEAN=1 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 ```
@@ -69,11 +73,13 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 **Requirements on the VM:**
+
 - Ubuntu (or Debian) with `sudo`
 - Internet access
 - Do **not** run as root (script uses `sudo` when needed)
 
 **After install:**
+
 1. Add API keys: `sudo nano /opt/secure-ai-chat/.env.local`
 2. Restart: `sudo systemctl restart secure-ai-chat`
 3. Access: `http://<VM_IP>` (nginx on port 80)

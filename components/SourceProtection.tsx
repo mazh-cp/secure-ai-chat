@@ -1,6 +1,6 @@
 /**
  * Source Protection Component
- * 
+ *
  * Prevents users from viewing source code and accessing developer tools
  * to enhance web page security.
  */
@@ -72,11 +72,7 @@ export default function SourceProtection() {
     const handleSelectStart = (e: Event) => {
       // Allow selection in input fields and textareas
       const target = e.target as HTMLElement
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return true
       }
       e.preventDefault()

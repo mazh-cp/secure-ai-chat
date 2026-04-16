@@ -10,9 +10,8 @@ import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 export async function GET() {
   try {
     // Check Check Point TE API key (can be in env var or secure storage)
-    const checkpointTeConfigured = 
-      !!process.env.CHECKPOINT_TE_API_KEY?.trim() || 
-      isTeApiKeyConfiguredSync()
+    const checkpointTeConfigured =
+      !!process.env.CHECKPOINT_TE_API_KEY?.trim() || isTeApiKeyConfiguredSync()
 
     const status = {
       openAiKey: {
@@ -34,7 +33,11 @@ export async function GET() {
       },
       checkpointTeApiKey: {
         configured: checkpointTeConfigured,
-        source: process.env.CHECKPOINT_TE_API_KEY ? 'environment' : checkpointTeConfigured ? 'secure-storage' : 'not-configured',
+        source: process.env.CHECKPOINT_TE_API_KEY
+          ? 'environment'
+          : checkpointTeConfigured
+            ? 'secure-storage'
+            : 'not-configured',
       },
     }
 

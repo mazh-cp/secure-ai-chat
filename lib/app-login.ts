@@ -82,11 +82,15 @@ export function requireSecureChatSession(request: NextRequest): NextResponse | n
   if (verifySessionToken(token)) return null
   return NextResponse.json(
     { error: 'Authentication required', requiresLogin: true },
-    { status: 401 },
+    { status: 401 }
   )
 }
 
-export function setSessionCookieOnResponse(res: NextResponse, token: string, request?: NextRequest): void {
+export function setSessionCookieOnResponse(
+  res: NextResponse,
+  token: string,
+  request?: NextRequest
+): void {
   const host = request?.headers.get('host') ?? ''
   const isLocalhost = /^localhost(:\d+)?$/i.test(host.trim())
   const secure = process.env.NODE_ENV === 'production' && !isLocalhost

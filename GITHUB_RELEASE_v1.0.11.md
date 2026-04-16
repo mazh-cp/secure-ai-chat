@@ -19,6 +19,7 @@
 ## 📦 What's Included
 
 ### Major Features
+
 - ✅ Full Azure OpenAI Integration
 - ✅ Check Point WAF Integration
 - ✅ Provider Switching (OpenAI/Azure OpenAI)
@@ -26,6 +27,7 @@
 - ✅ Enhanced Error Handling
 
 ### New Files (15)
+
 - `app/api/health/azure-openai/route.ts` - Azure OpenAI validation endpoint
 - `app/api/waf/health/route.ts` - Check Point WAF health check
 - `app/api/waf/logs/route.ts` - Check Point WAF logs API
@@ -41,6 +43,7 @@
 - Additional documentation and scripts
 
 ### Modified Files (16)
+
 - `CHANGELOG.md` - Complete changelog for v1.0.11
 - `USER_GUIDE.md` - Updated with Azure OpenAI and WAF details
 - `package.json` - Version updated to 1.0.11
@@ -68,11 +71,13 @@
 ## 🔗 GitHub Links
 
 ### Repository
+
 - **Main Repository**: https://github.com/mazh-cp/secure-ai-chat
 - **Release Tag**: https://github.com/mazh-cp/secure-ai-chat/releases/tag/v1.0.11
 - **Latest Commit**: https://github.com/mazh-cp/secure-ai-chat/commit/2bd7da8
 
 ### Key Endpoints (Production)
+
 - Health Check: `/api/health`
 - Version: `/api/version` → Returns `1.0.11`
 - Azure OpenAI Validation: `/api/health/azure-openai`
@@ -84,6 +89,7 @@
 ## ✅ Quality Assurance
 
 All quality checks passed:
+
 - ✅ TypeScript Compilation
 - ✅ ESLint Validation
 - ✅ Production Build
@@ -98,6 +104,7 @@ All quality checks passed:
 See `CHANGELOG.md` for complete release notes.
 
 ### Quick Summary
+
 - **Azure OpenAI**: Full integration with validation
 - **Check Point WAF**: Enterprise security integration
 - **Provider Switching**: Seamless OpenAI/Azure switching
@@ -109,22 +116,26 @@ See `CHANGELOG.md` for complete release notes.
 ## 🎯 Deployment Instructions
 
 1. **Pull Latest Code**:
+
    ```bash
    git pull origin main
    git checkout v1.0.11
    ```
 
 2. **Install Dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Build for Production**:
+
    ```bash
    npm run build
    ```
 
 4. **Start Production Server**:
+
    ```bash
    npm start
    ```

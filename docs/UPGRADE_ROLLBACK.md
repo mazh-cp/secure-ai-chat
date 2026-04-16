@@ -3,6 +3,7 @@
 ## Automatic Rollback
 
 The upgrade script automatically rolls back if:
+
 - Release gate fails with **critical security violations**
 - Build fails
 - Service restart fails after build
@@ -18,6 +19,7 @@ The upgrade script automatically rolls back if:
 Backups are stored in: `{APP_DIR}/.backups/upgrade-{TIMESTAMP}/`
 
 Each backup contains:
+
 - `.next/` - Previous build output
 - `.secure-storage/` - API keys (backup only, not restored)
 - `.env.local` - Environment variables (if exists)
@@ -72,6 +74,7 @@ sudo journalctl -u secure-ai-chat -n 50 --no-pager
 ### Critical Failures (Automatic Rollback)
 
 These failures trigger automatic rollback:
+
 - Security violations (API key leakage to client)
 - ThreatCloud API key in client code
 - Server-only modules imported in client components
@@ -79,6 +82,7 @@ These failures trigger automatic rollback:
 ### Non-Critical Failures (Continue)
 
 These failures allow upgrade to continue:
+
 - TypeScript warnings
 - ESLint warnings (non-security)
 - Build warnings (non-critical)
@@ -123,6 +127,7 @@ sudo systemctl start secure-ai-chat
 ```
 
 Better approach:
+
 1. Fix the release gate issues first
 2. Then re-run the upgrade
 
@@ -131,6 +136,7 @@ Better approach:
 To avoid upgrade failures:
 
 1. **Test upgrades locally first**
+
    ```bash
    git pull origin main
    npm ci
@@ -138,11 +144,13 @@ To avoid upgrade failures:
    ```
 
 2. **Check release gate locally**
+
    ```bash
    bash scripts/release-gate.sh
    ```
 
 3. **Verify backups before upgrade**
+
    ```bash
    ls -la .backups/
    ```

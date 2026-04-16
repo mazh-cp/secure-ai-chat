@@ -5,6 +5,7 @@ This document describes how to integrate the Secure AI Chat application behind C
 ## Overview
 
 The application is designed to work seamlessly behind Check Point WAF, providing:
+
 - **Request/Response Logging**: All API calls are logged with metadata for WAF monitoring
 - **Security Event Tracking**: Security blocks and threat detections are logged
 - **Log Access API**: Check Point WAF can read logs via REST API
@@ -73,6 +74,7 @@ Configure Check Point WAF security policies:
 ### 3. Application Configuration
 
 The application automatically:
+
 - Detects Check Point WAF headers
 - Logs all API requests with WAF metadata
 - Handles reverse proxy IP forwarding
@@ -89,6 +91,7 @@ Check application status and WAF integration health.
 **Authentication**: Optional (if `WAF_AUTH_ENABLED=true`)
 
 **Response**:
+
 ```json
 {
   "status": "ok",
@@ -119,6 +122,7 @@ Check application status and WAF integration health.
 Retrieve API call logs and security events.
 
 **Query Parameters**:
+
 - `level`: Filter by log level (`info`, `warning`, `error`, `debug`)
 - `service`: Filter by service name
 - `startTime`: ISO timestamp - only return logs after this time
@@ -132,12 +136,14 @@ Retrieve API call logs and security events.
 **Authentication**: Optional (if `WAF_AUTH_ENABLED=true`)
 
 **Example Request**:
+
 ```bash
 curl -H "Authorization: Bearer your-api-key" \
   "https://your-app.com/api/waf/logs?level=error&blocked=true&limit=50"
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -181,9 +187,10 @@ curl -H "Authorization: Bearer your-api-key" \
 Export logs in CSV or JSON format.
 
 **Request Body**:
+
 ```json
 {
-  "format": "csv",  // or "json"
+  "format": "csv", // or "json"
   "startTime": "2024-01-15T00:00:00.000Z",
   "endTime": "2024-01-15T23:59:59.999Z",
   "services": ["checkpoint-waf"],
@@ -198,6 +205,7 @@ Export logs in CSV or JSON format.
 ### Request Metadata
 
 Each API request logs:
+
 - **Method**: HTTP method (GET, POST, etc.)
 - **Path**: API endpoint path
 - **Query**: Query string parameters
@@ -210,6 +218,7 @@ Each API request logs:
 ### Response Metadata
 
 Each API response logs:
+
 - **Status Code**: HTTP status code
 - **Response Size**: Response content length (if available)
 - **Duration**: Request processing time (ms)
@@ -219,6 +228,7 @@ Each API response logs:
 ### Security Events
 
 Security events are logged when:
+
 - **Input Scan Blocked**: User message flagged by Lakera Guard
 - **Output Scan Blocked**: AI response flagged by security
 - **File Scan Flagged**: Uploaded file contains threats
@@ -291,6 +301,7 @@ The application has built-in rate limiting. Check Point WAF should also implemen
 ### Issue: Check Point WAF cannot access logs
 
 **Solution**:
+
 1. Verify authentication is configured correctly
 2. Check network connectivity between Check Point WAF and application
 3. Verify firewall rules allow Check Point WAF IPs
@@ -299,12 +310,14 @@ The application has built-in rate limiting. Check Point WAF should also implemen
 ### Issue: Client IP shows as Check Point WAF IP
 
 **Solution**:
+
 - Verify Check Point WAF is forwarding original client IP in `X-Forwarded-For` or `X-Real-IP` headers
 - Check middleware configuration
 
 ### Issue: Logs are empty
 
 **Solution**:
+
 1. Verify middleware is running (check `/api/waf/health`)
 2. Check system logs are being written (verify `.secure-storage/system-logs.json`)
 3. Ensure API routes are being accessed (middleware only logs `/api/*` routes)
@@ -321,6 +334,7 @@ The application has built-in rate limiting. Check Point WAF should also implemen
 ## Support
 
 For issues or questions:
+
 1. Check application logs: `/api/logs/system`
 2. Verify Check Point WAF configuration
 3. Review this documentation

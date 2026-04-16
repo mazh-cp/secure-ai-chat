@@ -1,7 +1,7 @@
 /**
  * Test script to verify GPT-5 API response structure
  * Run with: npx tsx scripts/test-gpt5-api.ts
- * 
+ *
  * This script tests:
  * 1. GPT-5 API endpoint and response format
  * 2. Parameter support (max_tokens, temperature)
@@ -42,7 +42,7 @@ async function testGPT5Basic() {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -56,7 +56,7 @@ async function testGPT5Basic() {
 
     const data = await response.json()
     console.log('Response structure:', JSON.stringify(data, null, 2))
-    
+
     return data
   } catch (error) {
     console.error('❌ Error:', error)
@@ -76,7 +76,7 @@ async function testGPT5WithParameters() {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -89,7 +89,7 @@ async function testGPT5WithParameters() {
 
     const data = await response.json()
     console.log('Response with parameters:', JSON.stringify(data, null, 2))
-    
+
     return data
   } catch (error) {
     console.error('❌ Error:', error)
@@ -117,7 +117,7 @@ User: What about 3+3?`
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -128,7 +128,7 @@ User: What about 3+3?`
 
     const data = await response.json()
     console.log('Response with conversation history:', JSON.stringify(data, null, 2))
-    
+
     return data
   } catch (error) {
     console.error('❌ Error:', error)
@@ -155,7 +155,7 @@ async function main() {
   if (results.basic) {
     console.log('\n=== Response Structure Analysis ===')
     console.log('Top-level keys:', Object.keys(results.basic))
-    
+
     // Check common response patterns
     if (results.basic.response) {
       console.log('✅ Response found in: data.response')

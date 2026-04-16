@@ -26,7 +26,10 @@ export default function ReleaseNotesPage() {
     const loadData = async () => {
       try {
         // Load release notes from API
-        const notesResponse = await fetch('/api/release-notes', { credentials: 'include', cache: 'no-store' })
+        const notesResponse = await fetch('/api/release-notes', {
+          credentials: 'include',
+          cache: 'no-store',
+        })
         if (notesResponse.ok) {
           const notesData = await notesResponse.json()
           setReleaseNotes(notesData.releaseNotes || [])
@@ -84,12 +87,12 @@ export default function ReleaseNotesPage() {
   return (
     <div className="bento-grid">
       {/* Header */}
-      <div 
+      <div
         className="bento-card bento-span-4 glass-card p-6 border-2"
         style={{
-          background: "rgb(var(--surface-1))",
-          borderColor: "rgb(var(--border))",
-          boxShadow: "var(--shadow-md)",
+          background: 'rgb(var(--surface-1))',
+          borderColor: 'rgb(var(--border))',
+          boxShadow: 'var(--shadow-md)',
         }}
       >
         <div className="flex items-center justify-between">
@@ -112,13 +115,13 @@ export default function ReleaseNotesPage() {
       </div>
 
       {/* Release Notes List */}
-      <div 
+      <div
         className="bento-card bento-span-4 glass-card p-6 border-2 overflow-y-auto"
         style={{
-          background: "rgb(var(--surface-1))",
-          borderColor: "rgb(var(--border))",
-          boxShadow: "var(--shadow-md)",
-          maxHeight: "calc(100vh - 200px)",
+          background: 'rgb(var(--surface-1))',
+          borderColor: 'rgb(var(--border))',
+          boxShadow: 'var(--shadow-md)',
+          maxHeight: 'calc(100vh - 200px)',
         }}
       >
         <div className="space-y-6">
@@ -127,15 +130,17 @@ export default function ReleaseNotesPage() {
               key={`${release.version}-${index}`}
               className="glass-card p-6 rounded-xl border-2"
               style={{
-                background: "rgb(var(--surface-2))",
-                borderColor: "rgb(var(--border))",
+                background: 'rgb(var(--surface-2))',
+                borderColor: 'rgb(var(--border))',
               }}
             >
               {/* Version Header */}
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-palette-border-default/20">
                 <div className="flex items-center gap-3">
                   <h2 className="text-4xl font-bold text-theme">v{release.version}</h2>
-                  <span className={`px-3 py-1 rounded-full text-base font-semibold border ${getTypeColor(release.type)}`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-base font-semibold border ${getTypeColor(release.type)}`}
+                  >
                     {release.type.toUpperCase()}
                   </span>
                   {index === 0 && (
@@ -232,11 +237,11 @@ export default function ReleaseNotesPage() {
       </div>
 
       {/* Back to Settings Link */}
-      <div 
+      <div
         className="bento-card bento-span-4 glass-card p-4 border-2"
         style={{
-          background: "rgb(var(--surface-1))",
-          borderColor: "rgb(var(--border))",
+          background: 'rgb(var(--surface-1))',
+          borderColor: 'rgb(var(--border))',
         }}
       >
         <Link

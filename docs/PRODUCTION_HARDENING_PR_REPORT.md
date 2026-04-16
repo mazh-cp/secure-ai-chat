@@ -16,20 +16,20 @@
 
 ## What changed (file-by-file)
 
-| File | Change |
-|------|--------|
-| `lib/app-release.ts` | Server-only release/version and `getBuildId()`; used by `/api/health`. |
-| `lib/app-release-client.ts` | **New.** Client-safe APP_VERSION, RELEASE_DATE, RELEASE_NOTES (no `process`/env). Used by home page to avoid server code in client bundle. |
-| `app/page.tsx` | Imports version/release from `lib/app-release-client.ts` (not `app-release.ts`). |
-| `app/api/health/route.ts` | Imports version/build from `lib/app-release.ts`. |
-| `app/loading.tsx` | Root loading UI (spinner) so load is not a blank screen. |
-| `app/error.tsx` | **New.** Root error boundary; “Try again” + “Go home” for uncaught errors. |
-| `package.json` | `dev` uses `next dev -H 0.0.0.0 --no-turbopack`; `dev:turbo` added for optional Turbopack. |
-| `scripts/validate-local.sh` | **New.** Clean (.next, node_modules) → npm ci → lint → typecheck → test → build → start on VALIDATE_PORT (default 3001) → curl GET `/`, `/api/health`, `/api/version`, `/api/files/list`; exits nonzero on failure. macOS zsh / Linux bash. |
-| `docs/RELEASE_VALIDATION.md` | **New.** Stability baseline (v1.0.11), regression checklist: scripts, app routes, API routes, lib release/version, flows, env vars; references `validate-local.sh`. |
-| `docs/SMOKE_TESTS.md` | **New.** Lightweight smoke: home, chat, settings, files, API health; troubleshooting (root 404, blank page). |
-| `.env.example` | `NEXT_PUBLIC_APP_VERSION=1.0.12`; required/optional vars documented. |
-| `README.md` | “Local + Production Requirements” (required/optional/client-safe, link to RELEASE_VALIDATION); “Runbook: Local validation” with exact commands: clean install, dev run, production build+start, `validate-local.sh` and troubleshooting. |
+| File                         | Change                                                                                                                                                                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/app-release.ts`         | Server-only release/version and `getBuildId()`; used by `/api/health`.                                                                                                                                                                      |
+| `lib/app-release-client.ts`  | **New.** Client-safe APP_VERSION, RELEASE_DATE, RELEASE_NOTES (no `process`/env). Used by home page to avoid server code in client bundle.                                                                                                  |
+| `app/page.tsx`               | Imports version/release from `lib/app-release-client.ts` (not `app-release.ts`).                                                                                                                                                            |
+| `app/api/health/route.ts`    | Imports version/build from `lib/app-release.ts`.                                                                                                                                                                                            |
+| `app/loading.tsx`            | Root loading UI (spinner) so load is not a blank screen.                                                                                                                                                                                    |
+| `app/error.tsx`              | **New.** Root error boundary; “Try again” + “Go home” for uncaught errors.                                                                                                                                                                  |
+| `package.json`               | `dev` uses `next dev -H 0.0.0.0 --no-turbopack`; `dev:turbo` added for optional Turbopack.                                                                                                                                                  |
+| `scripts/validate-local.sh`  | **New.** Clean (.next, node_modules) → npm ci → lint → typecheck → test → build → start on VALIDATE_PORT (default 3001) → curl GET `/`, `/api/health`, `/api/version`, `/api/files/list`; exits nonzero on failure. macOS zsh / Linux bash. |
+| `docs/RELEASE_VALIDATION.md` | **New.** Stability baseline (v1.0.11), regression checklist: scripts, app routes, API routes, lib release/version, flows, env vars; references `validate-local.sh`.                                                                         |
+| `docs/SMOKE_TESTS.md`        | **New.** Lightweight smoke: home, chat, settings, files, API health; troubleshooting (root 404, blank page).                                                                                                                                |
+| `.env.example`               | `NEXT_PUBLIC_APP_VERSION=1.0.12`; required/optional vars documented.                                                                                                                                                                        |
+| `README.md`                  | “Local + Production Requirements” (required/optional/client-safe, link to RELEASE_VALIDATION); “Runbook: Local validation” with exact commands: clean install, dev run, production build+start, `validate-local.sh` and troubleshooting.    |
 
 No changes to API contracts, route paths, or UI flows. No refactors for style-only.
 

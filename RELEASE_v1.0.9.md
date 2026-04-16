@@ -46,12 +46,14 @@ This release adds comprehensive API error tracking, dynamic release notes, and f
 ## Files Changed
 
 ### Modified Files
+
 - `package.json` - Version updated to 1.0.9
 - `CHANGELOG.md` - Added version 1.0.9 entry
 - `components/LogViewer.tsx` - Added API errors section
 - `app/release-notes/page.tsx` - Updated to fetch from API dynamically
 
 ### New Files
+
 - `app/api/release-notes/route.ts` - API endpoint for parsing CHANGELOG.md
 - `LAKERA_ENHANCEMENT_ROLLBACK.md` - Rollback guide for Lakera enhancements
 
@@ -63,24 +65,27 @@ This release adds comprehensive API error tracking, dynamic release notes, and f
 ✅ **ESLint**: PASSED (only pre-existing warnings)  
 ✅ **Production Build**: PASSED  
 ✅ **Health Endpoint**: WORKING  
-✅ **Release Notes API**: WORKING  
+✅ **Release Notes API**: WORKING
 
 ---
 
 ## Git Commands for Release
 
 ### 1. Check Current Status
+
 ```bash
 cd secure-ai-chat
 git status
 ```
 
 ### 2. Stage All Changes
+
 ```bash
 git add .
 ```
 
 ### 3. Commit Changes
+
 ```bash
 git commit -m "chore(release): bump version to 1.0.9
 
@@ -92,12 +97,14 @@ git commit -m "chore(release): bump version to 1.0.9
 ```
 
 ### 4. Create Release Branch (Optional)
+
 ```bash
 git checkout -b release/1.0.9
 git push -u origin release/1.0.9
 ```
 
 ### 5. Push to Main Branch
+
 ```bash
 git checkout main
 git merge release/1.0.9  # If you created a release branch
@@ -105,6 +112,7 @@ git push origin main
 ```
 
 ### 6. Create Git Tag
+
 ```bash
 git tag -a v1.0.9 -m "Release v1.0.9: API Error Tracking, Dynamic Release Notes, Lakera API v2 Enhancements"
 git push origin v1.0.9
@@ -152,6 +160,7 @@ After pushing to GitHub, verify:
 ## Rollback Instructions
 
 If issues occur after deployment, refer to:
+
 - `LAKERA_ENHANCEMENT_ROLLBACK.md` for Lakera API changes
 - Git tag `v1.0.8` for previous stable version
 

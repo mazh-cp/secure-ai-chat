@@ -13,19 +13,14 @@
 
 export type ScanLayer = 'ingestion' | 'retrieval' | 'generation'
 
-export type PolicyDecision =
-  | 'allow'
-  | 'allow_restricted'
-  | 'quarantine'
-  | 'drop'
-  | 'block'
+export type PolicyDecision = 'allow' | 'allow_restricted' | 'quarantine' | 'drop' | 'block'
 
 export type PolicySeverity = 'low' | 'medium' | 'high'
 
 const HIGH_RISK_CATEGORIES = ['prompt_injection', 'jailbreak', 'system_override', 'data_poisoning']
 
 function isHighRiskCategory(categories: string[]): boolean {
-  return categories.some((c) => HIGH_RISK_CATEGORIES.includes(c.toLowerCase()))
+  return categories.some(c => HIGH_RISK_CATEGORIES.includes(c.toLowerCase()))
 }
 
 /**

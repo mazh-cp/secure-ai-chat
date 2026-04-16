@@ -25,12 +25,14 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 ## Step 3: Load nvm
 
 For the current shell session:
+
 ```bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 ```
 
 To make nvm available in all new shell sessions, add the above lines to your `~/.bashrc` or `~/.zshrc`:
+
 ```bash
 echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc
 echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' >> ~/.bashrc
@@ -61,6 +63,7 @@ npm -v
 ```
 
 Expected output:
+
 ```
 v25.2.1
 10.x.x (or similar)
@@ -102,11 +105,13 @@ nano .env.local
 ## Step 8: Start the Application
 
 ### Development Mode
+
 ```bash
 npm run dev
 ```
 
 ### Production Mode
+
 ```bash
 npm start
 ```
@@ -222,11 +227,13 @@ node -v  # Should show v25.2.1
 If systemd service fails with "node: command not found":
 
 1. Find the correct path:
+
    ```bash
    which node
    ```
 
 2. Update the systemd service file with the absolute path:
+
    ```bash
    sudo nano /etc/systemd/system/secure-ai-chat.service
    ```
@@ -242,12 +249,14 @@ If systemd service fails with "node: command not found":
 ### nvm Not Available in New Shell
 
 Add to `~/.bashrc`:
+
 ```bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 ```
 
 Then reload:
+
 ```bash
 source ~/.bashrc
 ```
@@ -255,6 +264,7 @@ source ~/.bashrc
 ## Quick Reference
 
 **Install Node.js v25.2.1:**
+
 ```bash
 nvm install 25.2.1
 nvm use 25.2.1
@@ -262,11 +272,13 @@ nvm alias default 25.2.1
 ```
 
 **Verify Node.js version:**
+
 ```bash
 node -v  # Must show v25.2.1
 ```
 
 **Check systemd service:**
+
 ```bash
 sudo systemctl status secure-ai-chat
 sudo journalctl -u secure-ai-chat -f

@@ -86,10 +86,7 @@ const MAX_ROW_CHARS = 2000
  * Parse CSV content into row-level chunks. First row = headers.
  * Each chunk: one line per column (Row N + "Header: value" lines) for independent fields.
  */
-export function parseCsvToChunks(
-  fileContent: string,
-  fileId: string
-): CsvRowChunk[] {
+export function parseCsvToChunks(fileContent: string, fileId: string): CsvRowChunk[] {
   const lines = splitCsvLines(fileContent)
   if (lines.length < 2) return []
 
@@ -135,7 +132,11 @@ export function parseCsvToChunks(
  * Parse delimiter-separated tabular text (comma or tab) into the same row chunks as CSV.
  * Used for Excel sheet_to_csv output and TSV files.
  */
-export function parseDelimitedTableToChunks(raw: string, fileId: string, delimiter: ',' | '\t'): CsvRowChunk[] {
+export function parseDelimitedTableToChunks(
+  raw: string,
+  fileId: string,
+  delimiter: ',' | '\t'
+): CsvRowChunk[] {
   const lines = delimiter === '\t' ? splitTsvLines(raw) : splitCsvLines(raw)
   if (lines.length < 2) return []
 
@@ -179,16 +180,16 @@ export function parseDelimitedTableToChunks(raw: string, fileId: string, delimit
 }
 
 function parseTsvLine(line: string): string[] {
-  return line.split('\t').map((c) => c.trim())
+  return line.split('\t').map(c => c.trim())
 }
 
 function splitTsvLines(raw: string): string[] {
-  return raw.split(/\r?\n/).filter((l) => l.trim().length > 0)
+  return raw.split(/\r?\n/).filter(l => l.trim().length > 0)
 }
 
 /** If the first line has multiple tabs and few commas, treat as TSV; else CSV. */
 export function parseAutoDelimitedTableToChunks(raw: string, fileId: string): CsvRowChunk[] {
-  const first = raw.split(/\r?\n/).find((l) => l.trim().length > 0) ?? ''
+  const first = raw.split(/\r?\n/).find(l => l.trim().length > 0) ?? ''
   const tabCount = (first.match(/\t/g) ?? []).length
   const commaCount = (first.match(/,/g) ?? []).length
   if (tabCount >= 2 && tabCount >= commaCount) {

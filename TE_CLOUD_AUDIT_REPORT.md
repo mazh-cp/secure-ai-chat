@@ -4,29 +4,29 @@
 
 ### File Upload & Storage Infrastructure
 
-| Component/Route | Purpose | Sync/Async | Security Checks | Current Implementation |
-|----------------|---------|------------|-----------------|----------------------|
-| `POST /api/files/store` | Store file on server | Sync | File size validation (50MB) | Stores to `.storage/files/` via `persistent-storage.ts` |
-| `GET /api/files/list` | List stored files | Sync | None | Reads from `.storage/files-metadata.json` |
-| `DELETE /api/files/delete` | Delete file | Sync | None | Removes file and metadata |
-| `lib/persistent-storage.ts` | File storage abstraction | Sync | None | JSON metadata + disk storage |
+| Component/Route             | Purpose                  | Sync/Async | Security Checks             | Current Implementation                                  |
+| --------------------------- | ------------------------ | ---------- | --------------------------- | ------------------------------------------------------- |
+| `POST /api/files/store`     | Store file on server     | Sync       | File size validation (50MB) | Stores to `.storage/files/` via `persistent-storage.ts` |
+| `GET /api/files/list`       | List stored files        | Sync       | None                        | Reads from `.storage/files-metadata.json`               |
+| `DELETE /api/files/delete`  | Delete file              | Sync       | None                        | Removes file and metadata                               |
+| `lib/persistent-storage.ts` | File storage abstraction | Sync       | None                        | JSON metadata + disk storage                            |
 
 ### Check Point TE Integration (Existing)
 
-| Component/Route | Purpose | Sync/Async | Security Checks | Current Implementation |
-|----------------|---------|------------|-----------------|----------------------|
-| `POST /api/te/upload` | Upload file to TE API | Sync (blocking) | API key validation, file size | Direct upload via multipart form-data |
-| `POST /api/te/query` | Query file hash in TE | Sync (blocking) | API key validation | Queries by SHA256/SHA1/MD5 |
-| `GET /api/te/config` | Check TE configuration | Sync | None | Returns API key status |
-| `lib/checkpoint-te.ts` | TE API utilities | Sync | Encrypted key storage | Key management, auth header creation |
-| `TE_API_BASE_URL` | API endpoint | - | - | `https://te-api.checkpoint.com/tecloud/api/v1/file` |
+| Component/Route        | Purpose                | Sync/Async      | Security Checks               | Current Implementation                              |
+| ---------------------- | ---------------------- | --------------- | ----------------------------- | --------------------------------------------------- |
+| `POST /api/te/upload`  | Upload file to TE API  | Sync (blocking) | API key validation, file size | Direct upload via multipart form-data               |
+| `POST /api/te/query`   | Query file hash in TE  | Sync (blocking) | API key validation            | Queries by SHA256/SHA1/MD5                          |
+| `GET /api/te/config`   | Check TE configuration | Sync            | None                          | Returns API key status                              |
+| `lib/checkpoint-te.ts` | TE API utilities       | Sync            | Encrypted key storage         | Key management, auth header creation                |
+| `TE_API_BASE_URL`      | API endpoint           | -               | -                             | `https://te-api.checkpoint.com/tecloud/api/v1/file` |
 
 ### Content Scanning (Lakera)
 
-| Component/Route | Purpose | Sync/Async | Security Checks | Current Implementation |
-|----------------|---------|------------|-----------------|----------------------|
-| `POST /api/scan` | Scan content with Lakera | Sync (blocking) | API key validation | Content scanning for prompt injection |
-| `lib/lakera-telemetry.ts` | Lakera integration | Sync | None | Telemetry and scanning utilities |
+| Component/Route           | Purpose                  | Sync/Async      | Security Checks    | Current Implementation                |
+| ------------------------- | ------------------------ | --------------- | ------------------ | ------------------------------------- |
+| `POST /api/scan`          | Scan content with Lakera | Sync (blocking) | API key validation | Content scanning for prompt injection |
+| `lib/lakera-telemetry.ts` | Lakera integration       | Sync            | None               | Telemetry and scanning utilities      |
 
 ### Current Upload Flow (from `app/files/page.tsx`)
 
@@ -50,6 +50,7 @@
 ### Key Findings
 
 **✅ What Exists:**
+
 - File storage infrastructure (disk-based, JSON metadata)
 - Check Point TE API integration (upload, query endpoints)
 - API key management (encrypted server-side storage)
@@ -57,6 +58,7 @@
 - Scan status states: `pending`, `scanning`, `safe`, `flagged`, `error`, `not_scanned`
 
 **❌ Gaps vs Requirements:**
+
 1. **No hash-first approach**: Current flow uploads file directly, doesn't query hash first
 2. **No polling mechanism**: Query happens once, doesn't poll for PENDING status
 3. **No exponential backoff**: Polling strategy not implemented
@@ -71,6 +73,7 @@
 ### Environment Variables Pattern
 
 Current pattern:
+
 - `CHECKPOINT_TE_API_KEY` - Stored in env or `.secure-storage/checkpoint-te-key.enc`
 - Keys loaded via `lib/checkpoint-te.ts` (encrypted storage)
 - Keys never exposed to browser (server-side only) ✅
@@ -78,6 +81,7 @@ Current pattern:
 ### Background Jobs/Queue
 
 **None found.** Current approach uses:
+
 - `setTimeout` for delayed execution
 - Synchronous API calls
 - No job queue system

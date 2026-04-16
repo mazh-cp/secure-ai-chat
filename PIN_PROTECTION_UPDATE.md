@@ -16,16 +16,19 @@
 ### Implementation Details
 
 **Modified Function: `handleClear(fieldName)`**
+
 - Now checks if PIN is configured before clearing any individual key
 - Shows PIN verification dialog if PIN is configured
 - Stores the key to clear (`keyToClear`) for action after PIN verification
 - Only proceeds with clearing after PIN is verified
 
 **New Function: `performClearKey(fieldName)`**
+
 - Performs the actual key clearing after PIN verification
 - Handles both reset (for Lakera Endpoint) and clear (for other keys)
 
 **Enhanced PIN Dialog:**
+
 - Updated dialog messages for each action type:
   - Clear OpenAI Key
   - Clear Lakera AI Key
@@ -35,6 +38,7 @@
   - Clear All Keys
 
 **PIN Dialog Action Types:**
+
 - `clear-openai`
 - `clear-lakera-ai`
 - `clear-lakera-project-id`
@@ -81,6 +85,7 @@
 **All API key clearing operations are now protected by PIN verification when PIN is configured.**
 
 **Protected Operations:**
+
 - ✅ Clear OpenAI Key
 - ✅ Clear Lakera AI Key
 - ✅ Clear Lakera Project ID

@@ -5,6 +5,7 @@
 ## 🐛 Problem
 
 After saving keys in Settings:
+
 - ✅ Settings page shows keys are saved
 - ❌ Chat page doesn't show ModelSelector
 - ❌ Chat still shows "API key not configured" error
@@ -16,15 +17,18 @@ The `/api/keys/retrieve` endpoint was returning `null` for keys (for security), 
 ## 🔧 Fix Applied
 
 ### 1. Updated `/api/keys/retrieve` endpoint
+
 - Now returns `'configured'` placeholder instead of `null` when key exists
 - This allows client to detect that keys are configured without exposing actual values
 
 ### 2. Updated `ChatInterface` component
+
 - Checks for `'configured'` placeholder or actual key value
 - Added periodic refresh (every 5 seconds) to detect key updates
 - Fixed `hasApiKey` check to work with server-side storage
 
 ### 3. ModelSelector visibility
+
 - Now correctly shows when `hasApiKey` is true
 - Fetches models from `/api/models` which uses server-side keys
 
@@ -63,12 +67,14 @@ After the fix, verify:
 ### Issue: ModelSelector still not showing
 
 **Check 1: Verify keys are actually saved**
+
 ```bash
 # On server, check if keys exist
 ls -la /home/adminuser/secure-ai-chat/.secure-storage/
 ```
 
 **Check 2: Test API endpoint**
+
 ```bash
 # From browser console or curl
 curl http://localhost:3000/api/keys/retrieve
@@ -81,17 +87,20 @@ curl http://localhost:3000/api/keys/retrieve
 ```
 
 **Check 3: Check browser console**
+
 - Open browser DevTools (F12)
 - Check Console for errors
 - Check Network tab for `/api/keys/retrieve` response
 
 **Check 4: Clear browser cache**
+
 - Hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
 - Or clear browser cache and reload
 
 ### Issue: Keys show in Settings but not detected in Chat
 
 **Solution:**
+
 1. Wait 5 seconds (periodic refresh interval)
 2. Or manually refresh the Chat page
 3. Or navigate away and back to Chat page
@@ -99,6 +108,7 @@ curl http://localhost:3000/api/keys/retrieve
 ### Issue: ModelSelector shows but models list is empty
 
 **Check:**
+
 ```bash
 # Test models endpoint
 curl http://localhost:3000/api/models
@@ -107,6 +117,7 @@ curl http://localhost:3000/api/models
 ```
 
 **Possible causes:**
+
 - Invalid OpenAI API key
 - Network issues reaching OpenAI API
 - API key doesn't have model access

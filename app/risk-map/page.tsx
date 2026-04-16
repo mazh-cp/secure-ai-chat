@@ -33,7 +33,7 @@ export default function RiskMapPage() {
 
     logs.forEach(log => {
       const addedRisks = new Set<string>()
-      
+
       // First, use pre-associated risks if available
       if (log.associatedRisks && log.associatedRisks.length > 0) {
         log.associatedRisks.forEach(riskId => {
@@ -46,7 +46,7 @@ export default function RiskMapPage() {
           }
         })
       }
-      
+
       // Map based on Lakera categories
       if (log.lakeraDecision?.categories) {
         Object.keys(log.lakeraDecision.categories).forEach(category => {
@@ -64,7 +64,7 @@ export default function RiskMapPage() {
           }
         })
       }
-      
+
       // Map based on action type
       if (log.action === 'blocked' && !addedRisks.has('llm01')) {
         if (!associations.has('llm01')) {
@@ -75,7 +75,7 @@ export default function RiskMapPage() {
           addedRisks.add('llm01')
         }
       }
-      
+
       // Map file scans to LLM08 (Vector and Embedding Weaknesses)
       if (log.type === 'file_scan' && log.lakeraDecision?.flagged && !addedRisks.has('llm08')) {
         if (!associations.has('llm08')) {
@@ -86,7 +86,7 @@ export default function RiskMapPage() {
           addedRisks.add('llm08')
         }
       }
-      
+
       // Map errors to LLM03 (Supply Chain)
       if (log.type === 'error' && !addedRisks.has('llm03')) {
         if (!associations.has('llm03')) {
@@ -97,9 +97,14 @@ export default function RiskMapPage() {
           addedRisks.add('llm03')
         }
       }
-      
+
       // Map output scans to LLM05 (Improper Output Handling) - when output is scanned
-      if (log.source === 'chat' && log.lakeraDecision?.scanned && log.action === 'scanned' && !addedRisks.has('llm05')) {
+      if (
+        log.source === 'chat' &&
+        log.lakeraDecision?.scanned &&
+        log.action === 'scanned' &&
+        !addedRisks.has('llm05')
+      ) {
         if (!associations.has('llm05')) {
           associations.set('llm05', [])
         }
@@ -108,7 +113,7 @@ export default function RiskMapPage() {
           addedRisks.add('llm05')
         }
       }
-      
+
       // Map all scanned items to relevant risks
       if (log.lakeraDecision?.scanned) {
         // If it's a chat request and was scanned, could be LLM01
@@ -142,14 +147,20 @@ export default function RiskMapPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-4xl font-bold text-theme">
-          AI Risk Map
-        </h1>
+        <h1 className="text-4xl font-bold text-theme">AI Risk Map</h1>
         <p className="mt-1 text-base text-theme-muted">
           OWASP Top 10 for LLMs 2025 - Interactive risk visualization based on your session activity
         </p>
         <p className="mt-2 text-base text-theme-subtle">
-          Based on <a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener noreferrer" className="text-palette-accent-primary hover:underline">OWASP GenAI Security Project</a>
+          Based on{' '}
+          <a
+            href="https://genai.owasp.org/llm-top-10/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-palette-accent-primary hover:underline"
+          >
+            OWASP GenAI Security Project
+          </a>
         </p>
       </div>
 
@@ -157,7 +168,7 @@ export default function RiskMapPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="lg:col-span-2">
           <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
-            <RiskMap 
+            <RiskMap
               risks={OWASP_TOP_10_2025}
               onRiskSelect={handleRiskSelect}
               selectedRisk={selectedRisk}
@@ -170,7 +181,7 @@ export default function RiskMapPage() {
         {selectedRisk && (
           <div className="lg:col-span-2">
             <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
-              <RiskDetail 
+              <RiskDetail
                 risk={selectedRisk}
                 relatedLogs={getRiskLogs(selectedRisk.id)}
                 totalLogs={logs.length}
@@ -183,9 +194,7 @@ export default function RiskMapPage() {
         {!selectedRisk && (
           <div className="lg:col-span-2">
             <div className="glass-card rounded-lg border border-palette-border-default/20 p-6">
-              <h2 className="text-xl font-semibold text-theme mb-4">
-                Risk Overview
-              </h2>
+              <h2 className="text-xl font-semibold text-theme mb-4">Risk Overview</h2>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                   <div className="text-4xl font-bold text-red-600 dark:text-red-400">
@@ -212,14 +221,13 @@ export default function RiskMapPage() {
                   <div className="text-base text-blue-700 dark:text-blue-300 mt-1">Low</div>
                 </div>
                 <div className="text-center p-4 glass-card rounded-lg border border-palette-border-default/20">
-                  <div className="text-4xl font-bold text-theme">
-                    {riskAssociations.size}
-                  </div>
+                  <div className="text-4xl font-bold text-theme">{riskAssociations.size}</div>
                   <div className="text-base text-theme-muted mt-1">Active Risks</div>
                 </div>
               </div>
               <p className="mt-4 text-base text-theme-muted">
-                Click on any risk card above to view detailed information and related session activity.
+                Click on any risk card above to view detailed information and related session
+                activity.
               </p>
             </div>
           </div>
@@ -228,4 +236,3 @@ export default function RiskMapPage() {
     </div>
   )
 }
-

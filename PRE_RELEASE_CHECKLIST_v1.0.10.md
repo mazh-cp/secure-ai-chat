@@ -55,11 +55,13 @@
 ## Next Steps
 
 1. **Push Release Branch:**
+
    ```bash
    git push -u origin release/1.0.10
    ```
 
 2. **Push Tag:**
+
    ```bash
    git push origin v1.0.10
    ```

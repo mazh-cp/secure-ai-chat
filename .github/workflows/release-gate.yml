@@ -14,13 +14,13 @@ jobs:
   release-gate:
     name: Release Gate
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code (with full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: Normalize line endings
         run: |
           git config --global core.autocrlf input
@@ -30,7 +30,7 @@ jobs:
               -exec sed -i 's/\r$//' {} \;
           fi
         continue-on-error: true
-          
+
       - name: Auto-detect package manager
         id: detect-pm
         run: |
@@ -54,18 +54,18 @@ jobs:
           fi
           echo "Detected package manager: ${{ steps.detect-pm.outputs.package-manager }}"
           echo "Lockfile: ${{ steps.detect-pm.outputs.lockfile }}"
-          
+
       - name: Setup Node.js v24.13.0 (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: '24.13.0'  # Pin to exact LTS version
+          node-version: '24.13.0' # Pin to exact LTS version
           cache: ${{ steps.detect-pm.outputs.package-manager }}
           cache-dependency-path: ${{ steps.detect-pm.outputs.lockfile }}
-          
+
       - name: Enable corepack (for pnpm/yarn)
         run: corepack enable
         if: steps.detect-pm.outputs.package-manager != 'npm'
-          
+
       - name: Verify Node.js version
         run: |
           echo "Node.js version: $(node -v)"
@@ -73,13 +73,13 @@ jobs:
           echo "Package manager: ${{ steps.detect-pm.outputs.package-manager }}"
           echo "Lockfile: ${{ steps.detect-pm.outputs.lockfile }}"
           ${{ steps.detect-pm.outputs.package-manager }} --version
-          
+
       - name: Run Release Gate (strict mode with logging)
         run: |
           chmod +x scripts/release-gate.sh
           # Run with -x for verbose output and tee to capture logs
           bash -x scripts/release-gate.sh 2>&1 | tee release-gate.log
-          
+
       - name: Upload release gate log (always)
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,7 +87,7 @@ jobs:
           name: release-gate-log
           path: release-gate.log
           retention-days: 7
-          
+
       - name: Show failure diagnostics
         if: failure()
         run: |
@@ -98,7 +98,7 @@ jobs:
           else
             echo "Log file not found"
           fi
-          
+
       - name: Report status
         if: failure()
         run: |

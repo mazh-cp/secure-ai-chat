@@ -9,50 +9,50 @@ This document defines the **stability baseline** and **regression checklist** fo
 
 ## 1. Package.json scripts (must exist and behave as before)
 
-| Script | Expectation |
-|--------|-------------|
-| `npm run dev` | Starts Next.js dev server (reliable root `/`; use --no-turbopack if needed). |
-| `npm run build` | Production build; sets REGISTRY_DB_PATH/UPLOADS_DIR when using scripts/build-with-data-paths.js. |
-| `npm run start` | Starts production server; uses scripts/start-with-data-paths.js for data paths. |
-| `npm run lint` | next lint. |
-| `npm run type-check` / `npm run typecheck` | tsc --noEmit. |
-| `npm run smoke` | Script-based smoke (endpoints + no secrets). |
-| `npm run doctor` | check:node + lint + type-check + test + build. |
+| Script                                     | Expectation                                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `npm run dev`                              | Starts Next.js dev server (reliable root `/`; use --no-turbopack if needed).                     |
+| `npm run build`                            | Production build; sets REGISTRY_DB_PATH/UPLOADS_DIR when using scripts/build-with-data-paths.js. |
+| `npm run start`                            | Starts production server; uses scripts/start-with-data-paths.js for data paths.                  |
+| `npm run lint`                             | next lint.                                                                                       |
+| `npm run type-check` / `npm run typecheck` | tsc --noEmit.                                                                                    |
+| `npm run smoke`                            | Script-based smoke (endpoints + no secrets).                                                     |
+| `npm run doctor`                           | check:node + lint + type-check + test + build.                                                   |
 
 ## 2. App routes (must resolve, no 404 on valid paths)
 
-| Route | Expectation |
-|-------|-------------|
-| `/` | 200; home page with chat + version/release notes. |
-| `/dashboard` | 200. |
-| `/files` | 200; file upload/list UI. |
-| `/settings` | 200; API keys and settings. |
-| `/release-notes` | 200. |
-| `/risk-map` | 200. |
+| Route            | Expectation                                       |
+| ---------------- | ------------------------------------------------- |
+| `/`              | 200; home page with chat + version/release notes. |
+| `/dashboard`     | 200.                                              |
+| `/files`         | 200; file upload/list UI.                         |
+| `/settings`      | 200; API keys and settings.                       |
+| `/release-notes` | 200.                                              |
+| `/risk-map`      | 200.                                              |
 
 ## 3. API routes (must exist and return expected status)
 
-| Method | Path | Expectation |
-|--------|------|-------------|
-| GET | /api/health | 200; body has status, version. |
-| GET | /api/version | 200; body has version. |
-| GET | /api/files/list | 200; body has files array. |
-| POST | /api/files/store | 200/400/413; stores file. |
-| DELETE | /api/files/delete?fileId= | 200/404. |
-| DELETE | /api/files/clear | 200. |
-| DELETE | /api/files/:id | 200/404. |
-| POST | /api/files/:id/reindex | 200/404. |
-| GET | /api/files/:id/content | 200/404. |
-| POST | /api/chat | 200/400/403; chat completion. |
-| POST | /api/scan | File scan (Lakera). |
-| GET | /api/keys/retrieve | 200; keys status. |
-| GET | /api/settings/status | 200. |
-| GET | /api/models | 200. |
-| GET | /api/health/openai | POST with key check. |
-| GET | /api/health/cache | 200. |
-| GET | /api/waf/health | 200. |
-| GET | /api/waf/logs | 200/401. |
-| TE/config, TE/query, TE/upload | Check Point TE flows. |
+| Method                         | Path                      | Expectation                    |
+| ------------------------------ | ------------------------- | ------------------------------ |
+| GET                            | /api/health               | 200; body has status, version. |
+| GET                            | /api/version              | 200; body has version.         |
+| GET                            | /api/files/list           | 200; body has files array.     |
+| POST                           | /api/files/store          | 200/400/413; stores file.      |
+| DELETE                         | /api/files/delete?fileId= | 200/404.                       |
+| DELETE                         | /api/files/clear          | 200.                           |
+| DELETE                         | /api/files/:id            | 200/404.                       |
+| POST                           | /api/files/:id/reindex    | 200/404.                       |
+| GET                            | /api/files/:id/content    | 200/404.                       |
+| POST                           | /api/chat                 | 200/400/403; chat completion.  |
+| POST                           | /api/scan                 | File scan (Lakera).            |
+| GET                            | /api/keys/retrieve        | 200; keys status.              |
+| GET                            | /api/settings/status      | 200.                           |
+| GET                            | /api/models               | 200.                           |
+| GET                            | /api/health/openai        | POST with key check.           |
+| GET                            | /api/health/cache         | 200.                           |
+| GET                            | /api/waf/health           | 200.                           |
+| GET                            | /api/waf/logs             | 200/401.                       |
+| TE/config, TE/query, TE/upload | Check Point TE flows.     |
 
 ## 4. Lib / release & version
 

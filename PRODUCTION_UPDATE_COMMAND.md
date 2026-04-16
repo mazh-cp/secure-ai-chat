@@ -64,11 +64,13 @@ bash scripts/upgrade-production.sh
 After updating, verify the changes:
 
 1. **Check Service Status**:
+
    ```bash
    sudo systemctl status secure-ai-chat
    ```
 
 2. **Check Health Endpoint**:
+
    ```bash
    curl http://localhost:3000/api/health
    ```
@@ -89,15 +91,15 @@ After updating, verify the changes:
 
 ## 📝 Changes Summary
 
-| Component | Change | Border Style |
-|-----------|--------|--------------|
-| `app/page.tsx` | Main headline, Lakera card, Chat card | 2px border |
-| `components/Layout.tsx` | Sidebar | 2px right border |
-| `components/LakeraToggles.tsx` | Protection card | 2px border |
-| `components/ChatInterface.tsx` | Messages area | 2px border |
-| `components/MessageInput.tsx` | Input frame | White border frame |
-| `app/files/page.tsx` | All sections | 2px borders |
-| `components/SettingsForm.tsx` | Key input fields | 2px borders |
+| Component                      | Change                                | Border Style       |
+| ------------------------------ | ------------------------------------- | ------------------ |
+| `app/page.tsx`                 | Main headline, Lakera card, Chat card | 2px border         |
+| `components/Layout.tsx`        | Sidebar                               | 2px right border   |
+| `components/LakeraToggles.tsx` | Protection card                       | 2px border         |
+| `components/ChatInterface.tsx` | Messages area                         | 2px border         |
+| `components/MessageInput.tsx`  | Input frame                           | White border frame |
+| `app/files/page.tsx`           | All sections                          | 2px borders        |
+| `components/SettingsForm.tsx`  | Key input fields                      | 2px borders        |
 
 ---
 
@@ -125,12 +127,14 @@ After updating, verify the changes:
 ### If Update Fails
 
 1. **Check Git Status**:
+
    ```bash
    cd /home/adminuser/secure-ai-chat
    git status
    ```
 
 2. **Reset and Pull**:
+
    ```bash
    git fetch origin
    git reset --hard origin/release/unifi-theme-safe-final

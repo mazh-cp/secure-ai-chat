@@ -83,6 +83,7 @@ ls -la scripts/deploy/
 ```
 
 Expected output should show:
+
 ```
 -rwxr-xr-x 1 user user  ... upgrade.sh
 -rwxr-xr-x 1 user user  ... common.sh

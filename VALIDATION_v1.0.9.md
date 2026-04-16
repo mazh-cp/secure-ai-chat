@@ -11,6 +11,7 @@
 ### 1. Version Verification ✅
 
 **Test:** Check API version endpoint
+
 ```bash
 curl http://localhost:3000/api/version
 ```
@@ -23,6 +24,7 @@ curl http://localhost:3000/api/version
 ### 2. Health Check ✅
 
 **Test:** Check application health
+
 ```bash
 curl http://localhost:3000/api/health
 ```
@@ -35,6 +37,7 @@ curl http://localhost:3000/api/health
 ### 3. Dynamic Release Notes API ✅
 
 **Test:** Check release notes API endpoint
+
 ```bash
 curl http://localhost:3000/api/release-notes
 ```
@@ -43,6 +46,7 @@ curl http://localhost:3000/api/release-notes
 **Status:** ✅ PASSED
 
 **Validation Points:**
+
 - [x] API endpoint exists and responds
 - [x] Returns structured JSON
 - [x] Includes version 1.0.9
@@ -55,6 +59,7 @@ curl http://localhost:3000/api/release-notes
 **Test:** Navigate to `/release-notes` page
 
 **Expected:**
+
 - Page loads without errors
 - Shows version 1.0.9 as latest
 - Displays all versions from CHANGELOG.md
@@ -63,6 +68,7 @@ curl http://localhost:3000/api/release-notes
 **Status:** ✅ PASSED
 
 **Validation Points:**
+
 - [x] Page renders correctly
 - [x] Fetches data from API
 - [x] Displays all release notes
@@ -75,6 +81,7 @@ curl http://localhost:3000/api/release-notes
 **Test:** Check Logs viewer for API errors section
 
 **Expected:**
+
 - Dedicated "API Errors & Key Failures" section appears
 - Shows errors with full details
 - Key failures (401/403) highlighted
@@ -83,6 +90,7 @@ curl http://localhost:3000/api/release-notes
 **Status:** ✅ TO BE TESTED (requires error trigger)
 
 **Test Steps:**
+
 1. Trigger an API error (e.g., invalid API key)
 2. Navigate to Dashboard → System Logs
 3. Verify "API Errors & Key Failures" section appears
@@ -96,6 +104,7 @@ curl http://localhost:3000/api/release-notes
 **Test:** Verify payload and breakdown data extraction
 
 **Expected:**
+
 - Payload data extracted from Lakera responses
 - Breakdown data extracted from Lakera responses
 - Data displayed in UI (chat, files, logs)
@@ -103,6 +112,7 @@ curl http://localhost:3000/api/release-notes
 **Status:** ✅ TO BE TESTED (requires Lakera scan)
 
 **Test Steps:**
+
 1. Send a chat message with potential injection
 2. Check MessageBubble for payload data display
 3. Upload and scan a file
@@ -148,16 +158,19 @@ curl http://localhost:3000/api/release-notes
 ## Automated Validation Results
 
 ### Build Validation ✅
+
 - TypeScript: PASSED
 - ESLint: PASSED
 - Production Build: PASSED
 
 ### API Endpoints ✅
+
 - `/api/version`: ✅ Returns 1.0.9
 - `/api/health`: ✅ Returns OK
 - `/api/release-notes`: ✅ Returns structured data
 
 ### Application Status ✅
+
 - Dev Server: ✅ Running on port 3000
 - Build: ✅ Successful
 - No Errors: ✅ Confirmed
@@ -188,6 +201,7 @@ curl http://localhost:3000/api/release-notes
 **Overall Status:** ✅ READY FOR VALIDATION
 
 All automated checks passed. Manual testing required for:
+
 - API Errors section (needs error trigger)
 - Lakera payload/breakdown display (needs Lakera API response)
 

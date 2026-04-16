@@ -8,7 +8,7 @@ export type LakeraGuardMessage = { role: string; content: string }
 
 export function buildGuardMessagesFromAugmentedUserTurn(
   fullAugmented: string,
-  userQuestion: string,
+  userQuestion: string
 ): LakeraGuardMessage[] {
   const full = fullAugmented
   const q = userQuestion

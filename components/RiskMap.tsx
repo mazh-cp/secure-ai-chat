@@ -42,23 +42,22 @@ function getSeverityBadge(severity: OWASPRisk['severity']) {
 export default function RiskMap({ risks, onRiskSelect, selectedRisk, getRiskCount }: RiskMapProps) {
   return (
     <div>
-      <h2 className="text-2xl font-semibold text-theme mb-4">
-        OWASP Top 10 for LLMs 2025
-      </h2>
+      <h2 className="text-2xl font-semibold text-theme mb-4">OWASP Top 10 for LLMs 2025</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {risks.map((risk) => {
+        {risks.map(risk => {
           const count = getRiskCount(risk.id)
           const isSelected = selectedRisk?.id === risk.id
-          
+
           return (
             <button
               key={risk.id}
               onClick={() => onRiskSelect(risk)}
               className={`
                 relative p-4 rounded-lg border-2 transition-all text-left
-                ${isSelected 
-                  ? 'ring-4 ring-brand-berry ring-offset-2 scale-105 z-10' 
-                  : 'hover:scale-105 hover:shadow-lg'
+                ${
+                  isSelected
+                    ? 'ring-4 ring-brand-berry ring-offset-2 scale-105 z-10'
+                    : 'hover:scale-105 hover:shadow-lg'
                 }
                 ${getSeverityColor(risk.severity)}
                 ${isSelected ? 'bg-opacity-100' : 'bg-opacity-90'}
@@ -68,24 +67,26 @@ export default function RiskMap({ risks, onRiskSelect, selectedRisk, getRiskCoun
               <div className={`text-sm font-bold ${getSeverityTextColor(risk.severity)} mb-1`}>
                 {risk.code}
               </div>
-              
+
               {/* Risk Name */}
-              <div className={`text-base font-semibold ${getSeverityTextColor(risk.severity)} mb-2 line-clamp-2`}>
+              <div
+                className={`text-base font-semibold ${getSeverityTextColor(risk.severity)} mb-2 line-clamp-2`}
+              >
                 {risk.name}
               </div>
-              
+
               {/* Severity Badge */}
               <div className={`text-sm ${getSeverityTextColor(risk.severity)} mb-2`}>
                 {getSeverityBadge(risk.severity)}
               </div>
-              
+
               {/* Activity Count */}
               {count > 0 && (
                 <div className="absolute top-2 right-2 glass-card text-theme rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
                   {count}
                 </div>
               )}
-              
+
               {/* Click indicator */}
               <div className={`text-sm ${getSeverityTextColor(risk.severity)} opacity-75 mt-2`}>
                 {isSelected ? '✓ Selected' : 'Click for details →'}
@@ -97,4 +98,3 @@ export default function RiskMap({ risks, onRiskSelect, selectedRisk, getRiskCoun
     </div>
   )
 }
-

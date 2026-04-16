@@ -15,6 +15,7 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 ## ✨ Major Features
 
 ### 1. Azure OpenAI Integration
+
 - **Full Provider Support**: Switch between OpenAI and Azure OpenAI seamlessly
 - **Server-Side Storage**: Azure credentials stored securely with encryption
 - **Real-Time Validation**: Validate Azure OpenAI credentials before use
@@ -23,6 +24,7 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 - **API Version**: Updated to `2025-04-01-preview` (matches Azure OpenAI SDK)
 
 ### 2. Check Point WAF Integration
+
 - **Middleware Integration**: Automatic request metadata capture
 - **WAF Logs API**: `/api/waf/logs` for Check Point WAF consumption
 - **WAF Health Check**: `/api/waf/health` for monitoring
@@ -31,6 +33,7 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 - **Optional Authentication**: Secure access via environment variables
 
 ### 3. Enhanced User Experience
+
 - **Non-Blocking Access**: Chat page accessible with at least one functional provider
 - **Provider Switching**: Always visible selector with status indicators
 - **Smart Error Messages**: Suggestions to switch providers when applicable
@@ -38,6 +41,7 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 - **Validation Feedback**: Real-time validation for Azure OpenAI credentials
 
 ### 4. RAG Enhancements
+
 - **Increased File Limit**: From 5 to 10 files for RAG processing
 - **Structured Data Extraction**: Enhanced CSV, JSON, TXT processing
 - **Prompt Security**: Secondary validation layer for file-based interactions
@@ -48,18 +52,21 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 ## 🔧 Technical Improvements
 
 ### API Updates
+
 - **Azure OpenAI API Version**: `2025-04-01-preview`
 - **Error Detection**: "No Suitable backend" error handling
 - **Network Error Handling**: Improved fetch error detection
 - **Deployment Validation**: Verification of Azure deployments
 
 ### Code Quality
+
 - **Type Safety**: All TypeScript types properly defined
 - **Error Handling**: Comprehensive error handling throughout
 - **Code Organization**: Modular structure maintained
 - **Documentation**: Complete inline and external documentation
 
 ### Security
+
 - **Key Storage**: All keys encrypted server-side
 - **Validation**: Real-time credential validation
 - **WAF Integration**: Enterprise-grade security monitoring
@@ -70,9 +77,11 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 ## 📋 Check Point WAF Endpoints
 
 ### Health Check
+
 **Endpoint**: `GET /api/waf/health`
 
 **Response**:
+
 ```json
 {
   "status": "ok",
@@ -97,9 +106,11 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 ```
 
 ### Logs Retrieval
+
 **Endpoint**: `GET /api/waf/logs`
 
 **Query Parameters**:
+
 - `level`: Filter by log level (info, warning, error, debug)
 - `service`: Filter by service name
 - `startTime`: ISO timestamp - logs after this time
@@ -111,11 +122,13 @@ Version 1.0.11 introduces comprehensive Azure OpenAI integration, Check Point WA
 - `limit`: Maximum logs to return (default: 100, max: 1000)
 
 **Example**:
+
 ```bash
 GET /api/waf/logs?level=error&blocked=true&limit=50
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -151,9 +164,11 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 ```
 
 ### Logs Export
+
 **Endpoint**: `POST /api/waf/logs`
 
 **Body**:
+
 ```json
 {
   "format": "json|csv",
@@ -167,6 +182,7 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 **Response**: JSON or CSV format based on `format` parameter
 
 **Authentication** (Optional):
+
 - Set `WAF_AUTH_ENABLED=true` in environment
 - Set `WAF_API_KEY=your-secret-key` in environment
 - Include `Authorization: Bearer your-secret-key` header
@@ -186,12 +202,14 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 ## 📚 Documentation Updates
 
 ### Updated Files
+
 - ✅ **CHANGELOG.md**: Complete changelog for version 1.0.11
 - ✅ **USER_GUIDE.md**: Updated with Azure OpenAI and WAF details
 - ✅ **Release Notes API**: Automatically parses CHANGELOG
 - ✅ **Quality Control Report**: Comprehensive validation report
 
 ### New Documentation
+
 - ✅ **Check Point WAF Endpoints**: Detailed endpoint documentation
 - ✅ **Azure OpenAI Setup**: Step-by-step configuration guide
 - ✅ **Provider Switching**: User guide for provider management
@@ -202,12 +220,14 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 ## ✅ Quality Control Results
 
 ### Build Status
+
 - ✅ TypeScript Compilation: **PASSED**
 - ✅ ESLint: **PASSED** (warnings only)
 - ✅ Production Build: **PASSED**
 - ✅ All Routes: **31 routes compiled**
 
 ### Feature Validation
+
 - ✅ Azure OpenAI Integration: **FULLY FUNCTIONAL**
 - ✅ Check Point WAF: **INTEGRATED**
 - ✅ Provider Switching: **WORKING**
@@ -215,12 +235,14 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 - ✅ RAG Enhancements: **OPERATIONAL**
 
 ### API Endpoints
+
 - ✅ All Core Endpoints: **FUNCTIONAL**
 - ✅ Azure OpenAI Validation: **WORKING**
 - ✅ WAF Endpoints: **OPERATIONAL**
 - ✅ Health Checks: **RESPONDING**
 
 ### Security
+
 - ✅ Key Storage: **SECURE**
 - ✅ Authentication: **VALIDATED**
 - ✅ Error Sanitization: **COMPLETE**
@@ -231,18 +253,21 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 ## 🚀 Deployment Checklist
 
 ### Pre-Deployment
+
 - ✅ All tests passed
 - ✅ Documentation updated
 - ✅ Build successful
 - ✅ Quality control completed
 
 ### Environment Variables
+
 - `AZURE_OPENAI_API_KEY` (optional): Azure OpenAI API key
 - `AZURE_OPENAI_ENDPOINT` (optional): Azure OpenAI endpoint URL
 - `WAF_AUTH_ENABLED` (optional): Enable WAF authentication (true/false)
 - `WAF_API_KEY` (optional): WAF authentication token
 
 ### Post-Deployment
+
 - ✅ Verify health endpoints
 - ✅ Test Azure OpenAI validation
 - ✅ Confirm WAF endpoints accessible
@@ -253,22 +278,23 @@ GET /api/waf/logs?level=error&blocked=true&limit=50
 
 ## 📊 Version Comparison
 
-| Feature | v1.0.10 | v1.0.11 |
-|---------|---------|---------|
-| Azure OpenAI | ❌ | ✅ Full Support |
-| Provider Switching | ❌ | ✅ Seamless |
-| WAF Integration | ❌ | ✅ Complete |
-| Validation Endpoint | ❌ | ✅ Real-time |
-| RAG File Limit | 5 files | 10 files |
-| API Version | 2024-10-21 | 2025-04-01-preview |
-| Error Handling | Basic | Enhanced |
-| Settings Layout | Single column | Two columns |
+| Feature             | v1.0.10       | v1.0.11            |
+| ------------------- | ------------- | ------------------ |
+| Azure OpenAI        | ❌            | ✅ Full Support    |
+| Provider Switching  | ❌            | ✅ Seamless        |
+| WAF Integration     | ❌            | ✅ Complete        |
+| Validation Endpoint | ❌            | ✅ Real-time       |
+| RAG File Limit      | 5 files       | 10 files           |
+| API Version         | 2024-10-21    | 2025-04-01-preview |
+| Error Handling      | Basic         | Enhanced           |
+| Settings Layout     | Single column | Two columns        |
 
 ---
 
 ## 🎉 Summary
 
 Version 1.0.11 represents a significant milestone with:
+
 - **Full Azure OpenAI integration** with validation and error handling
 - **Check Point WAF integration** for enterprise security
 - **Enhanced user experience** with non-blocking access

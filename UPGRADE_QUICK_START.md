@@ -134,12 +134,14 @@ echo "✅ Upgrade complete!"
 ## Troubleshooting
 
 ### If git pull fails:
+
 ```bash
 git fetch origin
 git reset --hard origin/release/unifi-theme-safe-final
 ```
 
 ### If build fails:
+
 ```bash
 rm -rf .next node_modules
 npm ci
@@ -147,6 +149,7 @@ npm run build
 ```
 
 ### If service won't start:
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 50
 sudo systemctl restart secure-ai-chat

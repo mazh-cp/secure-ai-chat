@@ -2,15 +2,15 @@
 
 ## 1) Version comparison
 
-| Area | v1.0.11 | v1.0.13 | v1.0.15 | Current (pre-1.0.16) |
-|------|---------|---------|---------|----------------------|
-| Upload API | POST /api/files/store (JSON body) | Same | Same | Same; ownerId validated; JSON-only errors |
-| Storage path | data/uploads/<ownerId>/<fileId> (single file) | Same | Same + atomic write (tmp→rename) | Same; DATA_DIR env; atomic write |
-| Registry | data/app.db (single SQLite) | Same | Same | Same; REGISTRY_DB_PATH / DATA_DIR |
-| RAG | ingestDocument; scanIngestion (Lakera) then chunk/embed | Same | readOwnerFile only for chat | Client triggers /api/rag/embed after store/scan |
-| Lakera | /api/scan (file); scanIngestion in RAG | Same | Same | Same; chunk-level in ingestDocument |
-| Edge runtime | Not used for file routes | Not used | Not used | All file/chat/rag routes: runtime = 'nodejs' |
-| API error format | Mixed | HTML on 500 → blank screen | JSON { ok: false, error: { code, message } } | Same; safeFetchJson + ErrorBoundary on client |
+| Area             | v1.0.11                                                 | v1.0.13                    | v1.0.15                                      | Current (pre-1.0.16)                            |
+| ---------------- | ------------------------------------------------------- | -------------------------- | -------------------------------------------- | ----------------------------------------------- |
+| Upload API       | POST /api/files/store (JSON body)                       | Same                       | Same                                         | Same; ownerId validated; JSON-only errors       |
+| Storage path     | data/uploads/<ownerId>/<fileId> (single file)           | Same                       | Same + atomic write (tmp→rename)             | Same; DATA_DIR env; atomic write                |
+| Registry         | data/app.db (single SQLite)                             | Same                       | Same                                         | Same; REGISTRY_DB_PATH / DATA_DIR               |
+| RAG              | ingestDocument; scanIngestion (Lakera) then chunk/embed | Same                       | readOwnerFile only for chat                  | Client triggers /api/rag/embed after store/scan |
+| Lakera           | /api/scan (file); scanIngestion in RAG                  | Same                       | Same                                         | Same; chunk-level in ingestDocument             |
+| Edge runtime     | Not used for file routes                                | Not used                   | Not used                                     | All file/chat/rag routes: runtime = 'nodejs'    |
+| API error format | Mixed                                                   | HTML on 500 → blank screen | JSON { ok: false, error: { code, message } } | Same; safeFetchJson + ErrorBoundary on client   |
 
 ## 2) Upload API routes
 

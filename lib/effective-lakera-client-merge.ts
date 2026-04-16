@@ -12,7 +12,7 @@ function trimOrEmpty(v: unknown): string {
 
 export function effectiveLakeraAiKey(
   server: string | null | undefined,
-  client: string | null | undefined,
+  client: string | null | undefined
 ): string | null {
   const s = trimOrEmpty(server)
   if (s) return s
@@ -23,7 +23,7 @@ export function effectiveLakeraAiKey(
 
 export function effectiveLakeraProjectId(
   server: string | null | undefined,
-  client: string | null | undefined,
+  client: string | null | undefined
 ): string | null {
   const s = trimOrEmpty(server)
   if (s) return s
@@ -34,7 +34,7 @@ export function effectiveLakeraProjectId(
 
 export function effectiveLakeraEndpoint(
   server: string | null | undefined,
-  client: string | null | undefined,
+  client: string | null | undefined
 ): string | undefined {
   const s = trimOrEmpty(server)
   if (s) return s

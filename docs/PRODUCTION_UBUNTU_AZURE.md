@@ -226,12 +226,12 @@ sudo systemctl restart secure-ai-chat
 
 ## Summary
 
-| Step | Action |
-|------|--------|
-| 1 | Create Ubuntu VM in Azure, open ports 22 and 80 (and optionally 3000). |
-| 2 | Use **Option A** (install script from repo) or **Option B** (manual clone + build). |
-| 3 | Set `.env.local` (and optional `DATA_DIR` for a data disk). |
-| 4 | Run app with systemd; optionally put nginx in front on port 80. |
-| 5 | Add API keys (Settings or `.env.local`), then verify health and file storage. |
+| Step | Action                                                                              |
+| ---- | ----------------------------------------------------------------------------------- |
+| 1    | Create Ubuntu VM in Azure, open ports 22 and 80 (and optionally 3000).              |
+| 2    | Use **Option A** (install script from repo) or **Option B** (manual clone + build). |
+| 3    | Set `.env.local` (and optional `DATA_DIR` for a data disk).                         |
+| 4    | Run app with systemd; optionally put nginx in front on port 80.                     |
+| 5    | Add API keys (Settings or `.env.local`), then verify health and file storage.       |
 
 This replicates your **local working build** (including file storage fixes) on a **fresh production build** on an Ubuntu VM in Azure.

@@ -15,21 +15,38 @@ export async function GET(request: NextRequest) {
     const files = listFiles({ owner_id: ownerId })
     const total = files.length
 
-    const ctx = buildForensicContext(request, ownerId, total, files.map((f) => f.id))
+    const ctx = buildForensicContext(
+      request,
+      ownerId,
+      total,
+      files.map(f => f.id)
+    )
     logForensic('rag/status', ctx)
 
     if (process.env.NODE_ENV !== 'production') {
       const registryTotal = listFiles().length
       if (total === 0 && registryTotal > 0) {
-        console.warn('[RAG status mismatch]', { owner_id: ownerId, registry_count: registryTotal, scoped_count: total })
+        console.warn('[RAG status mismatch]', {
+          owner_id: ownerId,
+          registry_count: registryTotal,
+          scoped_count: total,
+        })
       }
     }
-    const indexed = files.filter((f) => f.rag_indexed_at).length
+    const indexed = files.filter(f => f.rag_indexed_at).length
     const ready = total > 0
-    const filesDetail = files.map((f) => {
+    const filesDetail = files.map(f => {
       const scanDetails = (f.scanDetails ?? {}) as Record<string, unknown>
-      const chunksCount = typeof scanDetails.rag_chunk_count === 'number' ? scanDetails.rag_chunk_count : 1
-      const sourceType = f.type?.includes('csv') || f.name?.endsWith('.csv') ? 'csv' : f.type?.includes('markdown') || f.name?.endsWith('.md') ? 'markdown' : f.type?.includes('apple.numbers') || f.name?.endsWith('.numbers') ? 'numbers' : 'other'
+      const chunksCount =
+        typeof scanDetails.rag_chunk_count === 'number' ? scanDetails.rag_chunk_count : 1
+      const sourceType =
+        f.type?.includes('csv') || f.name?.endsWith('.csv')
+          ? 'csv'
+          : f.type?.includes('markdown') || f.name?.endsWith('.md')
+            ? 'markdown'
+            : f.type?.includes('apple.numbers') || f.name?.endsWith('.numbers')
+              ? 'numbers'
+              : 'other'
       const embeddingsCount = chunksCount
       return {
         file_id: f.id,
@@ -54,7 +71,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('RAG status error:', error)
     return NextResponse.json(
-      { status: 'error', healthy: false, error: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        status: 'error',
+        healthy: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     )
   }

@@ -77,6 +77,7 @@ BRANCH=develop curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-ch
 ### Post-Installation Steps
 
 1. **Configure Environment Variables:**
+
    ```bash
    cd ~/secure-ai-chat
    nano .env.local
@@ -89,13 +90,15 @@ BRANCH=develop curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-ch
    - `LAKERA_PROJECT_ID` - Optional Lakera project ID
 
 3. **Start the Application:**
-   
+
    **Development Mode:**
+
    ```bash
    npm run dev
    ```
-   
+
    **Production Mode:**
+
    ```bash
    npm start
    ```
@@ -109,6 +112,7 @@ BRANCH=develop curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-ch
 For production environments, consider:
 
 1. **Process Manager (PM2):**
+
    ```bash
    npm install -g pm2
    pm2 start npm --name "secure-ai-chat" -- start
@@ -117,11 +121,12 @@ For production environments, consider:
    ```
 
 2. **Reverse Proxy (Nginx):**
+
    ```nginx
    server {
        listen 80;
        server_name your-domain.com;
-       
+
        location / {
            proxy_pass http://localhost:3000;
            proxy_http_version 1.1;
@@ -134,18 +139,20 @@ For production environments, consider:
    ```
 
 3. **SSL/TLS Certificate:**
+
    ```bash
    sudo apt install certbot python3-certbot-nginx
    sudo certbot --nginx -d your-domain.com
    ```
 
 4. **Firewall Configuration:**
-   
+
    The installation script automatically configures UFW firewall:
    - SSH (port 22) is allowed to prevent lockout
    - Application port (default 3000) is allowed for both localhost and public access
-   
+
    If you need to manually configure additional ports:
+
    ```bash
    sudo ufw allow 22/tcp   # SSH (already configured by script)
    sudo ufw allow 3000/tcp # Application port (already configured by script)
@@ -157,6 +164,7 @@ For production environments, consider:
 ### Troubleshooting
 
 **Issue: Script fails at Node.js installation**
+
 - Solution: Check internet connection and nvm installation
 - Manual: Install nvm and Node.js v24.13.0 manually:
   ```bash
@@ -168,25 +176,30 @@ For production environments, consider:
   ```
 
 **Issue: npm ci fails**
+
 - Solution: Ensure you have sufficient disk space (at least 500MB free)
 - Check: `df -h` to see disk space
 
 **Issue: Build fails**
+
 - Solution: Check Node.js version (requires 24.13.0 LTS): `node -v`
 - Solution: Use correct Node.js version: `nvm use 24.13.0` (if using nvm)
 - Solution: Clear cache and rebuild: `rm -rf .next node_modules && npm ci && npm run build`
 
 **Issue: Deprecated package warnings during npm install**
+
 - If you see `npm warn deprecated eslint@8.57.1` - This is **expected and safe to ignore**
 - ESLint 8.x is required for Next.js 14 compatibility
 - All other deprecated packages have been resolved via npm overrides
 - See [DEPRECATED_PACKAGES_FIX.md](./DEPRECATED_PACKAGES_FIX.md) for complete details
 
 **Issue: Port already in use**
+
 - Solution: Change PORT in .env.local: `PORT=3001`
 - Or: Kill the process using the port: `sudo lsof -ti:3000 | xargs kill -9`
 
 **Issue: Permission denied errors**
+
 - Solution: Don't run as root. The script uses sudo when needed
 - Solution: Ensure your user has sudo privileges
 
@@ -198,7 +211,7 @@ This is a common issue with multiple possible causes:
    - Verify HOSTNAME is set to `0.0.0.0` in `.env.local`
    - Use the provided start script: `./start-app.sh` (created by install script)
    - Or manually: `HOSTNAME=0.0.0.0 npm start`
-   - Check if app is listening: 
+   - Check if app is listening:
      ```bash
      # Modern systems (ss is preferred, available by default)
      sudo ss -tlnp | grep :3000
@@ -214,26 +227,26 @@ This is a common issue with multiple possible causes:
    - Temporarily test without firewall: `sudo ufw disable` (re-enable after testing!)
 
 3. **Cloud Provider Firewall Rules:**
-   
+
    **AWS EC2:**
    - Go to EC2 Dashboard → Security Groups
    - Select your instance's security group
    - Inbound rules: Add rule for port 3000 (TCP) from 0.0.0.0/0 (or specific IP)
-   
+
    **Google Cloud Platform (GCP):**
    - Go to VPC Network → Firewall
    - Create new rule: Allow TCP port 3000 from 0.0.0.0/0
    - Apply to all targets or specific VM tags
-   
+
    **Microsoft Azure:**
    - Go to VM → Networking → Inbound port rules
    - Add inbound rule: Allow TCP port 3000 from Any source IP
    - Or configure Network Security Group (NSG) rules
-   
+
    **DigitalOcean:**
    - Go to Networking → Firewalls
    - Add inbound rule: TCP port 3000 from all IPv4/IPv6
-   
+
    **Linode:**
    - Go to Firewalls → Create Firewall
    - Add inbound rule: TCP port 3000 from all IPv4/IPv6
@@ -244,31 +257,32 @@ This is a common issue with multiple possible causes:
    - Verify app is on correct interface
 
 5. **Testing Steps:**
+
    ```bash
    # 1. Check if app is listening on all interfaces (preferred method)
    sudo ss -tlnp | grep :3000
    # Should show: tcp LISTEN 0 511 0.0.0.0:3000 ... (NOT 127.0.0.1:3000)
    # Alternative (if net-tools installed): sudo netstat -tlnp | grep :3000
    # Install net-tools if needed: sudo apt install net-tools
-   
+
    # 2. Test locally on VM
    curl http://localhost:3000
-   
+
    # 3. Test from VM using public IP
    PUBLIC_IP=$(curl -s ifconfig.me)
    echo "Testing public IP: $PUBLIC_IP"
    curl http://$PUBLIC_IP:3000
-   
+
    # 4. Test from external machine
    curl http://YOUR_VM_PUBLIC_IP:3000
-   
+
    # 5. Check firewall rules
    sudo ufw status numbered
-   
+
    # 6. Check if port is open externally (from external machine)
    # Install nmap if needed: sudo apt install nmap
    nmap -p 3000 YOUR_VM_PUBLIC_IP
-   
+
    # 7. Alternative: Test port connectivity (from external machine)
    telnet YOUR_VM_PUBLIC_IP 3000
    # OR

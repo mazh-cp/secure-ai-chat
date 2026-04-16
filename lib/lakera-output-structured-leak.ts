@@ -27,7 +27,8 @@ export function detectStructuredSensitiveLeakInAssistantOutput(text: string): bo
     /\bcurrent\s+medications?\b/i.test(lower)
 
   const inc =
-    (/\bannual\s+income\b/i.test(lower) || /\bhousehold\s+income\b/i.test(lower)) && hasDollarAmount(t)
+    (/\bannual\s+income\b/i.test(lower) || /\bhousehold\s+income\b/i.test(lower)) &&
+    hasDollarAmount(t)
   const dob = /\bdate\s+of\s+birth\b/i.test(lower) || /\bd\.?o\.?b\.?\s*[:-]/i.test(lower)
   const ssn = /\b(ssn|social\s+security(\s+number)?)\b/i.test(lower) && /[:-]/.test(t)
   const pol = /\bpolitical\s+affiliation\b/i.test(lower)

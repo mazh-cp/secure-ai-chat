@@ -4,15 +4,15 @@
 
 ### Key changes
 
-| Area | v1.0.11 | v1.0.13 |
-|------|---------|---------|
-| **Store API** | `storeFile()` from persistent-storage (single abstraction) | `getOwnerId(request)` + `writeOwnerFile()` + `insertFile()` (registry + disk); runtime `nodejs`; JSON body only |
-| **Request format** | JSON body (fileId, fileName, fileContent, etc.) | Same JSON body; added content-length check (55 MB), file type allowlist |
-| **Owner scoping** | Not explicit in store route | `ownerId` from cookie/header via `getOwnerId(request)`; writes to `data/uploads/<ownerId>/<fileId>` |
-| **List API** | Likely same | Uses `getOwnerId(request)` and `listFiles({ owner_id })`; reads from registry + disk |
-| **Frontend list** | `fetch('/api/files/list')` no special headers | `ownerHeaders()` (X-Client-ID) sent; `loadFilesFromServer` returns list or null; refetch does not overwrite with [] when server empty |
-| **Frontend store** | Store then update UI | Same; added `storeError` state and banner; `response.json().catch(() => ({}))` on error path |
-| **Error handling** | Store returns JSON errors | Same; top-level try/catch returns `{ error: string }` 500 |
+| Area               | v1.0.11                                                    | v1.0.13                                                                                                                               |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Store API**      | `storeFile()` from persistent-storage (single abstraction) | `getOwnerId(request)` + `writeOwnerFile()` + `insertFile()` (registry + disk); runtime `nodejs`; JSON body only                       |
+| **Request format** | JSON body (fileId, fileName, fileContent, etc.)            | Same JSON body; added content-length check (55 MB), file type allowlist                                                               |
+| **Owner scoping**  | Not explicit in store route                                | `ownerId` from cookie/header via `getOwnerId(request)`; writes to `data/uploads/<ownerId>/<fileId>`                                   |
+| **List API**       | Likely same                                                | Uses `getOwnerId(request)` and `listFiles({ owner_id })`; reads from registry + disk                                                  |
+| **Frontend list**  | `fetch('/api/files/list')` no special headers              | `ownerHeaders()` (X-Client-ID) sent; `loadFilesFromServer` returns list or null; refetch does not overwrite with [] when server empty |
+| **Frontend store** | Store then update UI                                       | Same; added `storeError` state and banner; `response.json().catch(() => ({}))` on error path                                          |
+| **Error handling** | Store returns JSON errors                                  | Same; top-level try/catch returns `{ error: string }` 500                                                                             |
 
 ## Root cause candidates
 

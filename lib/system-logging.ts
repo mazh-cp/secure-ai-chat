@@ -26,9 +26,9 @@ export interface SystemLogDetails {
  */
 function redactHeaders(headers?: Record<string, string>): Record<string, string> | undefined {
   if (!headers) return headers
-  
+
   const redacted = { ...headers }
-  
+
   // Redact Authorization headers
   if (redacted.Authorization) {
     const auth = redacted.Authorization
@@ -38,7 +38,7 @@ function redactHeaders(headers?: Record<string, string>): Record<string, string>
       redacted.Authorization = '***[REDACTED]***'
     }
   }
-  
+
   if (redacted.authorization) {
     const auth = redacted.authorization
     if (auth.length > 30) {
@@ -47,14 +47,14 @@ function redactHeaders(headers?: Record<string, string>): Record<string, string>
       redacted.authorization = '***[REDACTED]***'
     }
   }
-  
+
   // Redact any header containing "api-key" or "apikey"
   Object.keys(redacted).forEach(key => {
     if (key.toLowerCase().includes('api-key') || key.toLowerCase().includes('apikey')) {
       redacted[key] = '***[REDACTED]***'
     }
   })
-  
+
   return redacted
 }
 
@@ -64,7 +64,7 @@ function redactHeaders(headers?: Record<string, string>): Record<string, string>
  */
 function redactBody(body: unknown): unknown {
   if (!body || typeof body !== 'object') return body
-  
+
   try {
     const bodyStr = JSON.stringify(body)
     // Redact any patterns that look like API keys (sk- followed by 48+ characters)
@@ -141,15 +141,17 @@ export async function addSystemLog(
 
   try {
     const logs = await readSystemLogs()
-    
+
     // SECURITY: Redact sensitive information from details before logging
-    const safeDetails: SystemLogDetails | undefined = details ? {
-      ...details,
-      requestHeaders: redactHeaders(details.requestHeaders),
-      requestBody: redactBody(details.requestBody),
-      responseBody: redactBody(details.responseBody),
-    } : undefined
-    
+    const safeDetails: SystemLogDetails | undefined = details
+      ? {
+          ...details,
+          requestHeaders: redactHeaders(details.requestHeaders),
+          requestBody: redactBody(details.requestBody),
+          responseBody: redactBody(details.responseBody),
+        }
+      : undefined
+
     const newLog: SystemLogEntry = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
@@ -174,7 +176,11 @@ export async function addSystemLog(
     }
   } catch (error) {
     // Fallback to console if file logging fails
-    console.error(`[System Log ${level.toUpperCase()}] ${service}: ${message}`, details || '', error)
+    console.error(
+      `[System Log ${level.toUpperCase()}] ${service}: ${message}`,
+      details || '',
+      error
+    )
   }
 }
 
@@ -182,15 +188,31 @@ export async function addSystemLog(
  * Convenience functions for different log levels
  */
 export const systemLog = {
-  info: (service: string, message: string, details?: SystemLogDetails, metadata?: Record<string, unknown>) =>
-    addSystemLog('info', service, message, details, metadata),
-  
-  warning: (service: string, message: string, details?: SystemLogDetails, metadata?: Record<string, unknown>) =>
-    addSystemLog('warning', service, message, details, metadata),
-  
-  error: (service: string, message: string, details?: SystemLogDetails, metadata?: Record<string, unknown>) =>
-    addSystemLog('error', service, message, details, metadata),
-  
-  debug: (service: string, message: string, details?: SystemLogDetails, metadata?: Record<string, unknown>) =>
-    addSystemLog('debug', service, message, details, metadata),
+  info: (
+    service: string,
+    message: string,
+    details?: SystemLogDetails,
+    metadata?: Record<string, unknown>
+  ) => addSystemLog('info', service, message, details, metadata),
+
+  warning: (
+    service: string,
+    message: string,
+    details?: SystemLogDetails,
+    metadata?: Record<string, unknown>
+  ) => addSystemLog('warning', service, message, details, metadata),
+
+  error: (
+    service: string,
+    message: string,
+    details?: SystemLogDetails,
+    metadata?: Record<string, unknown>
+  ) => addSystemLog('error', service, message, details, metadata),
+
+  debug: (
+    service: string,
+    message: string,
+    details?: SystemLogDetails,
+    metadata?: Record<string, unknown>
+  ) => addSystemLog('debug', service, message, details, metadata),
 }

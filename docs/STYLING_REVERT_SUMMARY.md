@@ -7,10 +7,12 @@
 - **tailwind.config.js** — Reverted: content order to `pages`, `components`, `app`; removed `./lib/**`; removed copper/harvest-gold/thunder and extra palette keys (border-default, bg-primary, bg-secondary, text-primary, accent-primary in palette); kept v1.0.11 legacy color mappings.
 - **next.config.js** — Reverted: removed webpack watchOptions block; removed swcMinify (Next 16 ignores it). Production build still uses webpack via `scripts/build-with-data-paths.js` (`next build --webpack`).
 
-**Not reverted (unchanged)**  
-- postcss.config.js, lib/utils.ts, components/Layout.tsx, ThemeProvider/contexts — no divergence from v1.0.11.  
+**Not reverted (unchanged)**
+
+- postcss.config.js, lib/utils.ts, components/Layout.tsx, ThemeProvider/contexts — no divergence from v1.0.11.
 - No nested layouts; only `app/layout.tsx` imports globals.css.
 
-**New**  
-- `scripts/check-css-prod.sh`: clean build, start server, curl homepage for `/_next/static/css/`, GET CSS → must be 200 and ≥1000 bytes.  
+**New**
+
+- `scripts/check-css-prod.sh`: clean build, start server, curl homepage for `/_next/static/css/`, GET CSS → must be 200 and ≥1000 bytes.
 - `scripts/release-gate.sh`: step 4c runs `check-css-prod.sh` after 4b.

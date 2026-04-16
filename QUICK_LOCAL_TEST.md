@@ -76,11 +76,13 @@ sudo journalctl -u secure-ai-chat -n 50
 ## Troubleshooting
 
 If service won't start:
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 100
 ```
 
 If health endpoint fails:
+
 ```bash
 # Check if running
 sudo systemctl status secure-ai-chat

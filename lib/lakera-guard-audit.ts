@@ -30,11 +30,11 @@ export function summarizeLakeraBreakdown(breakdown?: BreakdownRow[]): {
   policy_ids: string[]
 } {
   if (!breakdown?.length) return { triggered: 0, detector_types: [], policy_ids: [] }
-  const detected = breakdown.filter((b) => b.detected === true)
+  const detected = breakdown.filter(b => b.detected === true)
   return {
     triggered: detected.length,
-    detector_types: [...new Set(detected.map((d) => d.detector_type).filter(Boolean) as string[])],
-    policy_ids: [...new Set(detected.map((d) => d.policy_id).filter(Boolean) as string[])],
+    detector_types: [...new Set(detected.map(d => d.detector_type).filter(Boolean) as string[])],
+    policy_ids: [...new Set(detected.map(d => d.policy_id).filter(Boolean) as string[])],
   }
 }
 
@@ -57,13 +57,13 @@ export async function recordLakeraGuardAudit(entry: {
 
   const summary = summarizeLakeraBreakdown(entry.breakdown)
   const categoryKeys = entry.categories
-    ? Object.keys(entry.categories).filter((k) => entry.categories![k])
+    ? Object.keys(entry.categories).filter(k => entry.categories![k])
     : []
 
   const missingProject = !entry.projectId?.trim()
   if (missingProject && process.env.NODE_ENV === 'production') {
     console.warn(
-      '[Lakera] No project_id on Guard request — Lakera applies the default policy, not your project guard rails. Set Lakera Project ID in Settings.',
+      '[Lakera] No project_id on Guard request — Lakera applies the default policy, not your project guard rails. Set Lakera Project ID in Settings.'
     )
   }
 
@@ -95,6 +95,6 @@ export async function recordLakeraGuardAudit(entry: {
         platform_note:
           'Guard API calls are logged by Lakera; search the Guard dashboard using request_uuid and project_id.',
       },
-    },
+    }
   )
 }

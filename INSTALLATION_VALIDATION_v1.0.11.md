@@ -7,12 +7,14 @@
 ## Installation Summary
 
 ### Build & Compilation
+
 - ✅ Type check: PASSED
-- ✅ Lint check: PASSED  
+- ✅ Lint check: PASSED
 - ✅ Build: SUCCESS
 - ✅ All build artifacts present
 
 ### Server Status
+
 - ✅ Server: RUNNING
 - ✅ Health endpoint: http://localhost:3000/api/health
 - ✅ Version: 1.0.11
@@ -21,6 +23,7 @@
 ## New Features Validated
 
 ### 1. Dynamic Model Limits
+
 - ✅ GET /api/model-limits endpoint available
 - ✅ Fetches limits from OpenAI API
 - ✅ 24-hour caching implemented
@@ -28,6 +31,7 @@
 - ✅ Supports multiple response formats
 
 ### 2. Token Estimation & Self-Throttling
+
 - ✅ Pre-request token estimation (`estimateRequestTokens`)
 - ✅ Self-throttling before API calls (`shouldThrottleByTokens`)
 - ✅ Enhanced logging with token utilization percentage
@@ -35,6 +39,7 @@
 - ✅ Prevents API calls that would exceed limits
 
 ### 3. Node.js Upgrade Logic
+
 - ✅ Installation scripts detect current Node.js version
 - ✅ Automatically upgrade to v24.13.0 (LTS) if different
 - ✅ Sets v24.13.0 as default via nvm alias
@@ -72,10 +77,12 @@
 ## Files Modified/Created
 
 ### New Files
+
 1. `lib/model-limits-fetcher.ts` - Dynamic limit fetching with caching
 2. `app/api/model-limits/route.ts` - API endpoint for model limits
 
 ### Updated Files
+
 1. `lib/token-counter.ts` - Added async functions and token estimation
 2. `app/api/chat/route.ts` - Integrated dynamic limits and self-throttling
 3. `scripts/install-ubuntu-v1.0.11.sh` - Enhanced Node.js upgrade logic
@@ -88,6 +95,7 @@
 ## API Endpoints
 
 ### Core Endpoints
+
 - `GET /api/health` - Health check
 - `GET /api/version` - Version information
 - `GET /api/models` - Available models
@@ -95,6 +103,7 @@
 - `POST /api/chat` - Chat endpoint with token throttling
 
 ### Security Endpoints
+
 - `GET /api/keys/retrieve` - Key status (no values exposed)
 - `POST /api/keys` - Save API keys (encrypted)
 

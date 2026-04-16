@@ -11,7 +11,7 @@ export default function LogStats({ logs }: LogStatsProps) {
   const chatLogs = logs.filter(log => log.type === 'chat').length
   const fileScanLogs = logs.filter(log => log.type === 'file_scan').length
   const errorLogs = logs.filter(log => log.type === 'error' || log.action === 'error').length
-  
+
   const blockedCount = logs.filter(log => log.action === 'blocked').length
   const allowedCount = logs.filter(log => log.action === 'allowed').length
   const scannedCount = logs.filter(log => log.lakeraDecision?.scanned).length

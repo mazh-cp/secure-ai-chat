@@ -9,6 +9,7 @@
 ## 📋 Pre-Installation Checklist
 
 ### System Requirements
+
 - [ ] Node.js 25.2.1 installed (check with `node -v`)
 - [ ] npm installed (check with `npm -v`)
 - [ ] Git installed (check with `git --version`)
@@ -16,6 +17,7 @@
 - [ ] Port 3000 available (or configure different port)
 
 ### Prerequisites
+
 - [ ] Internet connection for npm install
 - [ ] GitHub access (if cloning from repository)
 - [ ] API keys ready (OpenAI, Azure OpenAI, Lakera AI, etc.)
@@ -25,17 +27,20 @@
 ## 🚀 Installation Steps
 
 ### Step 1: Clone Repository
+
 ```bash
 git clone https://github.com/mazh-cp/secure-ai-chat.git
 cd secure-ai-chat
 ```
 
 ### Step 2: Checkout Release Tag
+
 ```bash
 git checkout v1.0.11
 ```
 
 ### Step 3: Install Dependencies
+
 ```bash
 npm install
 ```
@@ -43,6 +48,7 @@ npm install
 **Expected Output**: Should complete without errors
 
 ### Step 4: Verify Installation
+
 ```bash
 # Check Node version
 npm run check:node
@@ -55,16 +61,19 @@ npm run lint
 ```
 
 **Expected Results**:
+
 - ✅ Node version check: Should show Node 25.2.1 (or warning if different)
 - ✅ Type check: Should complete with no errors
 - ✅ Lint: Should pass (warnings are acceptable)
 
 ### Step 5: Build Application
+
 ```bash
 npm run build
 ```
 
-**Expected Output**: 
+**Expected Output**:
+
 ```
 ✓ Compiled successfully
 ```
@@ -84,12 +93,14 @@ npm start
 **Expected**: Server starts without errors
 
 **Validation Commands**:
+
 ```bash
 # Wait 5 seconds, then test health endpoint
 sleep 5 && curl http://localhost:3000/api/health
 ```
 
 **Expected Response**:
+
 ```json
 {
   "status": "ok",
@@ -110,6 +121,7 @@ curl http://localhost:3000/api/version
 ```
 
 **Expected Response**:
+
 ```json
 {
   "version": "1.0.11",
@@ -124,6 +136,7 @@ curl http://localhost:3000/api/version
 ### 3. Core API Endpoints Validation
 
 #### Health Endpoints
+
 ```bash
 # General health
 curl http://localhost:3000/api/health
@@ -147,11 +160,13 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ### 4. Check Point WAF Endpoints Validation
 
 #### WAF Health Check
+
 ```bash
 curl http://localhost:3000/api/waf/health
 ```
 
 **Expected Response**:
+
 ```json
 {
   "status": "ok",
@@ -178,6 +193,7 @@ curl http://localhost:3000/api/waf/health
 **Status**: ✅ PASS if `waf.integrated` is `true`
 
 #### WAF Logs Endpoint
+
 ```bash
 # GET logs
 curl http://localhost:3000/api/waf/logs?limit=10
@@ -197,7 +213,9 @@ curl -X POST http://localhost:3000/api/waf/logs \
 ### 5. UI Validation
 
 #### Access Main Pages
+
 Open browser and navigate to:
+
 - [ ] `http://localhost:3000` - Main chat page
 - [ ] `http://localhost:3000/settings` - Settings page
 - [ ] `http://localhost:3000/files` - Files page
@@ -213,6 +231,7 @@ Open browser and navigate to:
 ### 6. Settings Page Validation
 
 #### Navigate to Settings
+
 1. Open `http://localhost:3000/settings`
 2. Verify layout:
    - [ ] Two-column layout visible (on larger screens)
@@ -221,6 +240,7 @@ Open browser and navigate to:
    - [ ] Verification PIN section at bottom
 
 #### Test API Key Fields
+
 - [ ] OpenAI API Key field visible
 - [ ] Azure OpenAI API Key field visible
 - [ ] Azure OpenAI Endpoint field visible
@@ -234,6 +254,7 @@ Open browser and navigate to:
 ### 7. Azure OpenAI Validation Feature
 
 #### Test Validation Endpoint
+
 1. In Settings page, enter:
    - Azure OpenAI API Key: `test-key-1234567890`
    - Azure OpenAI Endpoint: `https://test.openai.azure.com`
@@ -251,6 +272,7 @@ Open browser and navigate to:
 ### 8. Chat Interface Validation
 
 #### Access Chat Page
+
 1. Navigate to `http://localhost:3000`
 2. Verify:
    - [ ] Chat interface loads
@@ -258,6 +280,7 @@ Open browser and navigate to:
    - [ ] Initial welcome message displayed
 
 #### Provider Selector (Without Keys)
+
 - [ ] Provider selector visible (even without keys)
 - [ ] Shows "OpenAI" and "Azure OpenAI" options
 - [ ] Options show "(Not configured)" if keys missing
@@ -270,6 +293,7 @@ Open browser and navigate to:
 ### 9. Provider Switching Validation
 
 #### Test Provider Selector
+
 1. If you have OpenAI key configured:
    - [ ] Select "OpenAI" provider
    - [ ] Model selector shows OpenAI models
@@ -288,6 +312,7 @@ Open browser and navigate to:
 ### 10. API Keys Management Validation
 
 #### Test Key Storage
+
 1. Go to Settings page
 2. Paste an API key (use test key for validation)
 3. Click "Save Keys"
@@ -297,11 +322,13 @@ Open browser and navigate to:
    - [ ] Status indicator shows "configured"
 
 #### Test Key Retrieval
+
 ```bash
 curl http://localhost:3000/api/keys
 ```
 
 **Expected Response**:
+
 ```json
 {
   "configured": {
@@ -324,6 +351,7 @@ curl http://localhost:3000/api/keys
 ### 11. File Management Validation
 
 #### Test File Upload
+
 1. Navigate to Files page
 2. Upload a test file (TXT, CSV, or JSON)
 3. Verify:
@@ -332,12 +360,14 @@ curl http://localhost:3000/api/keys
    - [ ] Upload progress shown
 
 #### Test File Deletion
+
 1. Click remove button on a file
 2. Verify:
    - [ ] File removed from list
    - [ ] UI refreshes correctly
 
 #### Test Clear All Files
+
 1. Click "Clear All Files" button
 2. Verify:
    - [ ] All files removed
@@ -351,6 +381,7 @@ curl http://localhost:3000/api/keys
 ### 12. RAG Functionality Validation
 
 #### Test RAG with Files
+
 1. Upload a CSV or JSON file
 2. Go to Chat page
 3. Ask a question about the file content
@@ -366,6 +397,7 @@ curl http://localhost:3000/api/keys
 ### 13. Error Handling Validation
 
 #### Test Invalid Azure OpenAI Credentials
+
 1. Configure invalid Azure OpenAI credentials
 2. Try to send a message with Azure provider selected
 3. Verify:
@@ -381,7 +413,9 @@ curl http://localhost:3000/api/keys
 ### 14. Middleware Validation
 
 #### Test WAF Middleware
+
 1. Make any API request:
+
 ```bash
 curl http://localhost:3000/api/health
 ```
@@ -517,6 +551,7 @@ echo "✅ All checks passed!"
 ## 📊 Validation Checklist Summary
 
 ### Installation Validation
+
 - [ ] Repository cloned successfully
 - [ ] Release tag v1.0.11 checked out
 - [ ] Dependencies installed (`npm install`)
@@ -525,12 +560,14 @@ echo "✅ All checks passed!"
 - [ ] Build successful
 
 ### Server Validation
+
 - [ ] Server starts without errors
 - [ ] Health endpoint responds (`/api/health`)
 - [ ] Version endpoint returns 1.0.11 (`/api/version`)
 - [ ] All core endpoints accessible
 
 ### Feature Validation
+
 - [ ] Settings page loads with two-column layout
 - [ ] Azure OpenAI fields visible and functional
 - [ ] Validation button works for Azure OpenAI
@@ -542,6 +579,7 @@ echo "✅ All checks passed!"
 - [ ] RAG functionality works
 
 ### Integration Validation
+
 - [ ] Check Point WAF health endpoint works
 - [ ] Check Point WAF logs endpoint works
 - [ ] Middleware captures requests
@@ -549,6 +587,7 @@ echo "✅ All checks passed!"
 - [ ] API keys management works
 
 ### Error Handling Validation
+
 - [ ] Invalid keys show helpful errors
 - [ ] Chat page accessible with one provider
 - [ ] Provider switching works
@@ -559,12 +598,15 @@ echo "✅ All checks passed!"
 ## 🐛 Troubleshooting
 
 ### Issue: Build Fails
+
 **Check**:
+
 - Node version: `node -v` (should be 25.2.1)
 - Dependencies: `npm install` completed successfully
 - Disk space: Enough free space
 
 **Solution**:
+
 ```bash
 rm -rf node_modules package-lock.json
 npm install
@@ -572,11 +614,14 @@ npm run build
 ```
 
 ### Issue: Server Won't Start
+
 **Check**:
+
 - Port 3000 available: `lsof -i :3000`
 - Previous process: Kill any existing Node processes
 
 **Solution**:
+
 ```bash
 # Kill process on port 3000
 lsof -ti:3000 | xargs kill -9
@@ -586,34 +631,43 @@ PORT=3001 npm start
 ```
 
 ### Issue: Endpoints Not Responding
+
 **Check**:
+
 - Server is running: `curl http://localhost:3000/api/health`
 - Firewall settings
 - Network connectivity
 
 **Solution**:
+
 - Check server logs for errors
 - Verify server started successfully
 - Check if port is accessible
 
 ### Issue: Azure OpenAI Validation Fails
+
 **Check**:
+
 - Endpoint URL format (must start with http:// or https://)
 - API key length (minimum 10 characters)
 - Network connectivity to Azure
 
 **Solution**:
+
 - Verify endpoint URL in Azure Portal
 - Check API key is correct
 - Test endpoint URL in browser (should show Azure OpenAI page)
 
 ### Issue: WAF Endpoints Not Working
+
 **Check**:
+
 - Middleware file exists: `middleware.ts`
 - Server logs show middleware running
 - No Edge Runtime errors
 
 **Solution**:
+
 - Verify middleware.ts is in root directory
 - Check Next.js configuration
 - Review server logs for errors
@@ -647,18 +701,21 @@ After validation, create a report:
 **Environment**: [Production/Staging/Development]
 
 ## Installation
+
 - [ ] Repository cloned
 - [ ] Tag v1.0.11 checked out
 - [ ] Dependencies installed
 - [ ] Build successful
 
 ## Server Validation
+
 - [ ] Server starts
 - [ ] Health endpoint: [OK/FAIL]
 - [ ] Version endpoint: [1.0.11/OTHER]
 - [ ] WAF health: [OK/FAIL]
 
 ## Feature Validation
+
 - [ ] Settings page: [OK/FAIL]
 - [ ] Chat page: [OK/FAIL]
 - [ ] Provider switching: [OK/FAIL]
@@ -666,9 +723,11 @@ After validation, create a report:
 - [ ] Azure validation: [OK/FAIL]
 
 ## Issues Found
+
 [List any issues]
 
 ## Overall Status
+
 [PASS/FAIL]
 ```
 

@@ -67,7 +67,11 @@ function isSkippablePath(rel) {
   const ext = rel.includes('.') ? '.' + rel.split('.').pop() : ''
   if (rel.endsWith('.md')) return true
   if (rel.endsWith('.map')) return true
-  if (!TEXT_EXTENSIONS.has(ext) && !rel.endsWith('eslint.config.mjs') && !rel.endsWith('next.config.js')) {
+  if (
+    !TEXT_EXTENSIONS.has(ext) &&
+    !rel.endsWith('eslint.config.mjs') &&
+    !rel.endsWith('next.config.js')
+  ) {
     return true
   }
   return false
@@ -78,7 +82,7 @@ function lineAllowed(line) {
   if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return true
   if (t.startsWith('#')) return true
   const lower = line.toLowerCase()
-  return ALLOW_LINE_SUBSTRINGS.some((s) => lower.includes(s))
+  return ALLOW_LINE_SUBSTRINGS.some(s => lower.includes(s))
 }
 
 function scanLine(line, fileRel) {
@@ -94,10 +98,14 @@ function scanLine(line, fileRel) {
 function main() {
   let files = []
   try {
-    const out = execSync('git ls-files', { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const out = execSync('git ls-files', {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
     files = out
       .split('\n')
-      .map((s) => s.trim())
+      .map(s => s.trim())
       .filter(Boolean)
   } catch {
     console.warn('⚠️  check-git-no-api-keys: not a git repository (or git failed); skipping.')
@@ -109,7 +117,10 @@ function main() {
   for (const rel of files) {
     for (const bad of FORBIDDEN_PATH_SUBSTRINGS) {
       if (rel.includes(bad)) {
-        violations.push({ file: rel, reason: `Tracked path must not contain secret storage artifact: "${bad}"` })
+        violations.push({
+          file: rel,
+          reason: `Tracked path must not contain secret storage artifact: "${bad}"`,
+        })
       }
     }
   }
@@ -134,12 +145,16 @@ function main() {
   }
 
   if (violations.length > 0) {
-    console.error('❌ GIT LEAK CHECK FAILED: do not commit API keys or .secure-storage artifacts.\n')
+    console.error(
+      '❌ GIT LEAK CHECK FAILED: do not commit API keys or .secure-storage artifacts.\n'
+    )
     for (const v of violations.slice(0, 40)) {
       console.error(`   ${v.file}${v.line ? `:${v.line}` : ''} — ${v.reason}`)
     }
     if (violations.length > 40) console.error(`   … and ${violations.length - 40} more`)
-    console.error('\n   Fix: remove secrets, rotate keys if they were ever pushed, and ensure .gitignore covers .env* and .secure-storage/')
+    console.error(
+      '\n   Fix: remove secrets, rotate keys if they were ever pushed, and ensure .gitignore covers .env* and .secure-storage/'
+    )
     process.exit(1)
   }
 

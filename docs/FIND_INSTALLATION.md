@@ -88,11 +88,13 @@ find ~ /opt /var/www -type d -name ".next" -path "*/secure-ai-chat/*" 2>/dev/nul
 ### If you can't find the installation:
 
 1. **Check if it was installed at all:**
+
    ```bash
    sudo systemctl list-units | grep secure-ai-chat
    ```
 
 2. **Check for git repositories:**
+
    ```bash
    find ~ /opt -type d -name ".git" -path "*secure-ai-chat*" 2>/dev/null
    ```

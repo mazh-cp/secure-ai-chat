@@ -42,16 +42,21 @@ function LoginForm() {
     <div className="mx-auto max-w-md px-4 py-16">
       <h1 className="text-2xl font-semibold text-theme mb-2">Sign in</h1>
       <p className="text-sm text-theme-muted mb-6">
-        This deployment requires a password. Set <code className="text-xs bg-theme-muted/20 px-1 rounded">SECURE_CHAT_LOGIN_PASSWORD</code> on the server.
+        This deployment requires a password. Set{' '}
+        <code className="text-xs bg-theme-muted/20 px-1 rounded">SECURE_CHAT_LOGIN_PASSWORD</code>{' '}
+        on the server.
       </p>
-      <form onSubmit={onSubmit} className="space-y-4 glass-card p-6 rounded-2xl border border-palette-border-default/30">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-4 glass-card p-6 rounded-2xl border border-palette-border-default/30"
+      >
         <div>
           <label className="block text-sm text-theme-muted mb-1">Username (if configured)</label>
           <input
             type="text"
             autoComplete="username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={e => setUsername(e.target.value)}
             className="w-full rounded-lg border border-palette-border-default/40 bg-palette-bg-primary/80 px-3 py-2 text-theme"
           />
         </div>
@@ -61,7 +66,7 @@ function LoginForm() {
             type="password"
             autoComplete="current-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             className="w-full rounded-lg border border-palette-border-default/40 bg-palette-bg-primary/80 px-3 py-2 text-theme"
             required
           />

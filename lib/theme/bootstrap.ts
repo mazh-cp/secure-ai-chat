@@ -1,12 +1,12 @@
 /**
  * Theme Bootstrap Script
- * 
+ *
  * This script MUST run inline in <head> BEFORE CSS loads to prevent theme flash.
  * It sets the data-theme attribute immediately based on:
  * 1. localStorage preference (if exists)
  * 2. System preference (prefers-color-scheme)
  * 3. Default to "dark"
- * 
+ *
  * This runs synchronously during HTML parsing, before any CSS is applied.
  */
 
@@ -92,4 +92,4 @@ export const bootstrapScript = `
     }
   }
 })();
-`.trim();
+`.trim()

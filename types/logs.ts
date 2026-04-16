@@ -1,7 +1,15 @@
 import { CheckPointTELogFields } from './checkpoint-te'
 
 export type LogType = 'chat' | 'file_scan' | 'error' | 'system'
-export type ActionType = 'request' | 'blocked' | 'allowed' | 'scanned' | 'error' | 'api_failure' | 'api_success' | 'configuration'
+export type ActionType =
+  | 'request'
+  | 'blocked'
+  | 'allowed'
+  | 'scanned'
+  | 'error'
+  | 'api_failure'
+  | 'api_success'
+  | 'configuration'
 
 export interface LogEntry {
   id: string
@@ -72,4 +80,3 @@ export interface LogEntry {
     requestHeaders?: Record<string, string>
   }
 }
-

@@ -9,6 +9,7 @@
 ## 🎯 Upgrade Overview
 
 This guide explains how to upgrade your remote production installation to version 1.0.10, which includes:
+
 - Enhanced RAG System (automatic file indexing, intelligent content search)
 - Dynamic Release Notes (loads from CHANGELOG.md)
 - API Errors & Key Failures section in Logs
@@ -29,6 +30,7 @@ Before starting the upgrade:
 - [ ] **Test environment**: If possible, test upgrade on staging first
 
 **Check current version:**
+
 ```bash
 curl http://YOUR_SERVER_IP/api/version
 # Or if behind nginx:
@@ -42,11 +44,13 @@ curl http://YOUR_SERVER_IP/api/version
 **✅ PR #3 has been merged to `main` branch. All v1.0.10 features are available.**
 
 **Single command upgrade:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
 
 **What this does:**
+
 1. ✅ Creates automatic backup of all settings
 2. ✅ Pulls latest code from `main` branch (includes v1.0.10)
 3. ✅ Preserves all API keys (`.env.local` and `.secure-storage`)
@@ -116,30 +120,35 @@ curl http://localhost:3000/api/health
 After the upgrade completes, verify everything is working:
 
 ### 1. Check Version
+
 ```bash
 curl http://localhost:3000/api/version
 # Expected: {"version":"1.0.10","name":"secure-ai-chat"}
 ```
 
 ### 2. Check Health
+
 ```bash
 curl http://localhost:3000/api/health
 # Expected: {"status":"ok","timestamp":"...","service":"secure-ai-chat"}
 ```
 
 ### 3. Check Service Status
+
 ```bash
 sudo systemctl status secure-ai-chat
 # Should show: active (running)
 ```
 
 ### 4. Check Logs
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 50 --no-pager
 # Look for any errors or warnings
 ```
 
 ### 5. Test Application Features
+
 - [ ] **Chat Interface**: Send a test message
 - [ ] **File Upload**: Upload a test file and verify scanning
 - [ ] **RAG Functionality**: Upload a file, then ask questions about it in chat
@@ -154,6 +163,7 @@ sudo journalctl -u secure-ai-chat -n 50 --no-pager
 ### Service Fails to Start
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 50 --no-pager
 ```
@@ -161,10 +171,11 @@ sudo journalctl -u secure-ai-chat -n 50 --no-pager
 **Common issues:**
 
 1. **Node.js path changed**
+
    ```bash
    # Find correct Node.js path
    sudo -u secureai bash -c 'export HOME=/opt/secure-ai-chat && export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && which npm'
-   
+
    # Update service file if needed
    sudo nano /etc/systemd/system/secure-ai-chat.service
    # Update ExecStart path
@@ -173,6 +184,7 @@ sudo journalctl -u secure-ai-chat -n 50 --no-pager
    ```
 
 2. **Build errors**
+
    ```bash
    cd /opt/secure-ai-chat
    sudo -u secureai bash << 'EOF'
@@ -194,6 +206,7 @@ sudo journalctl -u secure-ai-chat -n 50 --no-pager
 ### Version Not Updated
 
 If version endpoint still shows old version:
+
 1. Check that build completed successfully
 2. Verify service restarted (check logs)
 3. Clear browser cache and try again
@@ -204,6 +217,7 @@ If version endpoint still shows old version:
 **Important:** The upgrade script preserves all API keys automatically. If keys are missing:
 
 1. Check backup directory:
+
    ```bash
    ls -la /opt/secure-ai-chat-backup-*/
    ```
@@ -266,12 +280,14 @@ curl http://localhost:3000/api/version
 **PR Status:** ✅ Merged to main
 
 **What's Preserved:**
+
 - ✅ All API keys (`.env.local` and `.secure-storage`)
 - ✅ All uploaded files (`.storage/`)
 - ✅ All user preferences
 - ✅ All configurations
 
 **What's Updated:**
+
 - ✅ Application code (enhanced RAG system)
 - ✅ Dynamic Release Notes API
 - ✅ API Errors & Key Failures in Logs
@@ -303,6 +319,7 @@ After successful upgrade:
 If you encounter issues:
 
 1. **Check logs first:**
+
    ```bash
    sudo journalctl -u secure-ai-chat -f
    ```

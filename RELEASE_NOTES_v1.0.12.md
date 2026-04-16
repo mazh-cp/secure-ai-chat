@@ -7,6 +7,7 @@ Version 1.0.12 adds **Anthropic (Claude) support** alongside OpenAI, improves **
 ## Highlights
 
 ### Anthropic (Claude) support
+
 - **Provider selection** in chat: choose OpenAI or Anthropic; model list updates per provider.
 - **Anthropic API key** in Settings (paste-only, server-side encrypted, PIN protection for clear).
 - **Chat API** accepts `provider` and uses the same RAG/file context for both providers.
@@ -14,11 +15,13 @@ Version 1.0.12 adds **Anthropic (Claude) support** alongside OpenAI, improves **
 - **Adapter**: `callAnthropic()` in `lib/aiAdapter.ts` calling Anthropic Messages API.
 
 ### Local server and browser access
+
 - **`npm run start:local`** – runs `next start -H 127.0.0.1`.
 - **`npm run start:local:safe`** – frees port 3000 then starts at http://127.0.0.1:3000.
 - **README** updated with steps when http://localhost:3000 is not accessible (use system terminal, 127.0.0.1, free port, `start:local:safe`).
 
 ### Documentation and fixes
+
 - **devdir warning**: README and docs explain one-time fix `npm config delete devdir`.
 - **ChatInterface**: fixed `apiKeys` possibly null when building request body (optional chaining).
 

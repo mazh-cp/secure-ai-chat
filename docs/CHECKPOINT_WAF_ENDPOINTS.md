@@ -5,18 +5,23 @@ This document provides a complete list of API endpoints that need to be configur
 ## Endpoint Categories
 
 ### 1. Public/Health Check Endpoints
+
 These endpoints should have minimal restrictions but should still be monitored.
 
 ### 2. Authentication/Configuration Endpoints
+
 These endpoints handle sensitive operations and require strict security.
 
 ### 3. Data Processing Endpoints
+
 These endpoints process user data and require content inspection.
 
 ### 4. File Upload Endpoints
+
 These endpoints handle file uploads and require strict security policies.
 
 ### 5. Monitoring/Logging Endpoints
+
 These endpoints provide logs and monitoring data.
 
 ---
@@ -26,6 +31,7 @@ These endpoints provide logs and monitoring data.
 ### Health & Status Endpoints
 
 #### 1. `/api/health`
+
 - **Methods**: `GET`
 - **Security Level**: Low (but monitor)
 - **Rate Limit**: 60 requests/minute per IP
@@ -38,6 +44,7 @@ These endpoints provide logs and monitoring data.
   - No content inspection needed
 
 #### 2. `/api/health/openai`
+
 - **Methods**: `GET`, `POST`
 - **Security Level**: Medium
 - **Rate Limit**: 10 requests/minute per IP
@@ -50,6 +57,7 @@ These endpoints provide logs and monitoring data.
   - Rate limit more strictly than general health
 
 #### 3. `/api/health/cache`
+
 - **Methods**: `GET`
 - **Security Level**: Low
 - **Rate Limit**: 30 requests/minute per IP
@@ -61,6 +69,7 @@ These endpoints provide logs and monitoring data.
   - No content inspection needed
 
 #### 4. `/api/waf/health`
+
 - **Methods**: `GET`
 - **Security Level**: Medium
 - **Rate Limit**: 20 requests/minute per IP (or per API key if authenticated)
@@ -77,9 +86,10 @@ These endpoints provide logs and monitoring data.
 ### Chat & AI Processing Endpoints
 
 #### 5. `/api/chat` ⚠️ **HIGH PRIORITY**
+
 - **Methods**: `POST`
 - **Security Level**: **CRITICAL**
-- **Rate Limit**: 
+- **Rate Limit**:
   - Standard users: 20 requests/minute per IP
   - Authenticated users: 100 requests/minute per API key
 - **Content Inspection**: **REQUIRED**
@@ -100,6 +110,7 @@ These endpoints provide logs and monitoring data.
   - **Headers**: Check for `Content-Type: application/json`
 
 #### 6. `/api/models`
+
 - **Methods**: `GET`
 - **Security Level**: Low
 - **Rate Limit**: 30 requests/minute per IP
@@ -115,6 +126,7 @@ These endpoints provide logs and monitoring data.
 ### File Management Endpoints
 
 #### 7. `/api/files/list`
+
 - **Methods**: `GET`
 - **Security Level**: Medium
 - **Rate Limit**: 30 requests/minute per IP
@@ -126,6 +138,7 @@ These endpoints provide logs and monitoring data.
   - Rate limit to prevent enumeration attacks
 
 #### 8. `/api/files/store`
+
 - **Methods**: `POST`
 - **Security Level**: **HIGH**
 - **Rate Limit**: 10 requests/minute per IP
@@ -134,7 +147,7 @@ These endpoints provide logs and monitoring data.
 - **Check Point WAF Configuration**:
   - **Content Inspection**: Enable file upload scanning
   - **File Size Limits**: 50MB maximum
-  - **File Type Restrictions**: 
+  - **File Type Restrictions**:
     - Block executable files (.exe, .bat, .sh, .dll)
     - Block script files (.js, .php, .asp, .jsp)
     - Allow: .txt, .pdf, .docx, .xlsx, .csv, .json, .md, .png, .jpg, .jpeg, .gif
@@ -147,6 +160,7 @@ These endpoints provide logs and monitoring data.
   - **Headers**: Check for `Content-Type: multipart/form-data`
 
 #### 9. `/api/files/delete`
+
 - **Methods**: `DELETE`, `POST`
 - **Security Level**: **HIGH**
 - **Rate Limit**: 20 requests/minute per IP
@@ -163,6 +177,7 @@ These endpoints provide logs and monitoring data.
 ### Security Scanning Endpoints
 
 #### 10. `/api/scan` ⚠️ **HIGH PRIORITY**
+
 - **Methods**: `POST`
 - **Security Level**: **HIGH**
 - **Rate Limit**: 30 requests/minute per IP
@@ -179,6 +194,7 @@ These endpoints provide logs and monitoring data.
   - **Headers**: Check for `Content-Type: application/json`
 
 #### 11. `/api/te/upload` ⚠️ **HIGH PRIORITY**
+
 - **Methods**: `POST`
 - **Security Level**: **CRITICAL**
 - **Rate Limit**: 5 requests/minute per IP (Check Point TE has limits)
@@ -197,6 +213,7 @@ These endpoints provide logs and monitoring data.
   - **Timeout**: Set longer timeout (30+ seconds for sandboxing)
 
 #### 12. `/api/te/query`
+
 - **Methods**: `POST`
 - **Security Level**: **HIGH**
 - **Rate Limit**: 20 requests/minute per IP
@@ -209,6 +226,7 @@ These endpoints provide logs and monitoring data.
   - Rate limit to prevent abuse
 
 #### 13. `/api/te/config`
+
 - **Methods**: `GET`, `POST`
 - **Security Level**: **CRITICAL**
 - **Rate Limit**: 5 requests/minute per IP
@@ -226,6 +244,7 @@ These endpoints provide logs and monitoring data.
 ### Authentication & Settings Endpoints
 
 #### 14. `/api/keys`
+
 - **Methods**: `GET`, `POST`, `PUT`, `DELETE`
 - **Security Level**: **CRITICAL**
 - **Rate Limit**: 10 requests/minute per IP
@@ -242,6 +261,7 @@ These endpoints provide logs and monitoring data.
   - **Headers**: Check for `Content-Type: application/json`
 
 #### 15. `/api/keys/retrieve`
+
 - **Methods**: `GET`
 - **Security Level**: **CRITICAL**
 - **Rate Limit**: 5 requests/minute per IP
@@ -256,6 +276,7 @@ These endpoints provide logs and monitoring data.
   - **Rate Limiting**: Very strict
 
 #### 16. `/api/pin`
+
 - **Methods**: `GET`, `POST`, `PUT`
 - **Security Level**: **HIGH**
 - **Rate Limit**: 5 requests/minute per IP
@@ -268,6 +289,7 @@ These endpoints provide logs and monitoring data.
   - Block excessive failed attempts
 
 #### 17. `/api/settings/status`
+
 - **Methods**: `GET`
 - **Security Level**: Medium
 - **Rate Limit**: 30 requests/minute per IP
@@ -282,9 +304,10 @@ These endpoints provide logs and monitoring data.
 ### Logging & Monitoring Endpoints
 
 #### 18. `/api/logs/system`
+
 - **Methods**: `GET`, `POST`, `DELETE`
 - **Security Level**: **HIGH**
-- **Rate Limit**: 
+- **Rate Limit**:
   - GET: 30 requests/minute per IP
   - POST: 10 requests/minute per IP
   - DELETE: 5 requests/minute per IP
@@ -299,9 +322,10 @@ These endpoints provide logs and monitoring data.
   - **DELETE Method**: Very strict rate limit
 
 #### 19. `/api/waf/logs` ⚠️ **CHECK POINT WAF INTEGRATION**
+
 - **Methods**: `GET`, `POST`
 - **Security Level**: **HIGH**
-- **Rate Limit**: 
+- **Rate Limit**:
   - From Check Point WAF IPs: 60 requests/minute
   - From other IPs: 10 requests/minute per IP (if auth enabled)
 - **Content Inspection**: Query parameters (GET), Request body (POST)
@@ -309,7 +333,7 @@ These endpoints provide logs and monitoring data.
 - **Check Point WAF Configuration**:
   - **Authentication**: Enable if `WAF_AUTH_ENABLED=true`
   - **IP Whitelisting**: Consider whitelisting Check Point WAF IPs
-  - **Content Inspection**: 
+  - **Content Inspection**:
     - Scan query parameters for injection
     - Validate time range parameters
   - **Rate Limiting**: Higher limit for Check Point WAF IPs
@@ -321,6 +345,7 @@ These endpoints provide logs and monitoring data.
 ### Other Endpoints
 
 #### 20. `/api/version`
+
 - **Methods**: `GET`
 - **Security Level**: Low
 - **Rate Limit**: 30 requests/minute per IP
@@ -332,6 +357,7 @@ These endpoints provide logs and monitoring data.
   - No content inspection needed
 
 #### 21. `/api/release-notes`
+
 - **Methods**: `GET`
 - **Security Level**: Low
 - **Rate Limit**: 30 requests/minute per IP
@@ -357,7 +383,9 @@ These endpoints provide logs and monitoring data.
 ### Security Policy Recommendations
 
 #### Content Inspection
+
 Enable for:
+
 - `/api/chat` (request & response)
 - `/api/scan` (request body)
 - `/api/files/store` (multipart file content)
@@ -365,7 +393,9 @@ Enable for:
 - `/api/keys/*` (request & response - block API keys)
 
 #### Rate Limiting
+
 Apply strict limits to:
+
 - `/api/chat` - 20 req/min (standard), 100 req/min (authenticated)
 - `/api/te/upload` - 5 req/min
 - `/api/keys/*` - 5-10 req/min
@@ -373,7 +403,9 @@ Apply strict limits to:
 - `/api/files/store` - 10 req/min
 
 #### File Upload Protection
+
 For `/api/files/store` and `/api/te/upload`:
+
 - Maximum file size: 50MB
 - Block executable files (.exe, .bat, .sh, .dll)
 - Block script files (.js, .php, .asp, .jsp)
@@ -381,14 +413,18 @@ For `/api/files/store` and `/api/te/upload`:
 - Scan for malware
 
 #### API Key Protection
+
 For `/api/keys/*` endpoints:
+
 - Never allow API keys in response bodies
 - Block responses containing patterns like `sk-`, `Bearer `, etc.
 - Log all key management operations
 - Rate limit strictly
 
 #### Threat Detection
+
 Enable for:
+
 - Prompt injection detection (in `/api/chat`)
 - SQL injection detection (all POST endpoints)
 - XSS detection (all endpoints accepting user input)
@@ -398,6 +434,7 @@ Enable for:
 ### Header Validation
 
 Ensure these headers are validated:
+
 - `Content-Type`: Must match expected type (application/json, multipart/form-data)
 - `Content-Length`: Validate file size limits
 - `Authorization`: If authentication enabled
@@ -405,6 +442,7 @@ Ensure these headers are validated:
 ### Monitoring & Alerting
 
 Set up alerts for:
+
 - Rate limit violations (especially `/api/chat`, `/api/te/upload`)
 - Security blocks (403 responses)
 - API key leakage attempts
@@ -416,6 +454,7 @@ Set up alerts for:
 ## Check Point WAF Policy Configuration Template
 
 ### Policy 1: Critical Chat Endpoint
+
 ```
 Path: /api/chat
 Methods: POST
@@ -428,6 +467,7 @@ Logging: All requests and responses
 ```
 
 ### Policy 2: File Upload Endpoints
+
 ```
 Paths: /api/files/store, /api/te/upload
 Methods: POST
@@ -440,6 +480,7 @@ Logging: All uploads
 ```
 
 ### Policy 3: API Key Management
+
 ```
 Paths: /api/keys, /api/keys/retrieve, /api/te/config
 Methods: GET, POST, PUT, DELETE
@@ -450,6 +491,7 @@ Logging: All operations
 ```
 
 ### Policy 4: Health Check Endpoints
+
 ```
 Paths: /api/health, /api/health/openai, /api/health/cache, /api/waf/health
 Methods: GET, POST (for /api/health/openai)
@@ -459,6 +501,7 @@ Logging: Monitor for DDoS patterns
 ```
 
 ### Policy 5: Monitoring Endpoints
+
 ```
 Paths: /api/logs/system, /api/waf/logs
 Methods: GET, POST, DELETE
@@ -472,23 +515,24 @@ IP Whitelisting: Check Point WAF IPs (for /api/waf/logs)
 
 ## Quick Reference Table
 
-| Endpoint | Method | Security | Rate Limit | Content Inspect | Priority |
-|----------|--------|----------|------------|-----------------|----------|
-| `/api/chat` | POST | CRITICAL | 20/min | ✅ Both | ⚠️ HIGH |
-| `/api/te/upload` | POST | CRITICAL | 5/min | ✅ File | ⚠️ HIGH |
-| `/api/scan` | POST | HIGH | 30/min | ✅ Body | ⚠️ HIGH |
-| `/api/keys/*` | ALL | CRITICAL | 5-10/min | ✅ Both | ⚠️ HIGH |
-| `/api/files/store` | POST | HIGH | 10/min | ✅ File | HIGH |
-| `/api/waf/logs` | GET/POST | HIGH | 10-60/min | ✅ Params/Body | HIGH |
-| `/api/files/delete` | DELETE | HIGH | 20/min | ✅ Body | MEDIUM |
-| `/api/te/query` | POST | HIGH | 20/min | ✅ Body | MEDIUM |
-| `/api/pin` | ALL | HIGH | 5/min | ✅ Body | MEDIUM |
-| `/api/logs/system` | ALL | HIGH | 10-30/min | ✅ Params/Body | MEDIUM |
-| `/api/health/*` | GET/POST | LOW | 30-60/min | ⚠️ POST only | LOW |
-| `/api/models` | GET | LOW | 30/min | ❌ None | LOW |
-| `/api/version` | GET | LOW | 30/min | ❌ None | LOW |
+| Endpoint            | Method   | Security | Rate Limit | Content Inspect | Priority |
+| ------------------- | -------- | -------- | ---------- | --------------- | -------- |
+| `/api/chat`         | POST     | CRITICAL | 20/min     | ✅ Both         | ⚠️ HIGH  |
+| `/api/te/upload`    | POST     | CRITICAL | 5/min      | ✅ File         | ⚠️ HIGH  |
+| `/api/scan`         | POST     | HIGH     | 30/min     | ✅ Body         | ⚠️ HIGH  |
+| `/api/keys/*`       | ALL      | CRITICAL | 5-10/min   | ✅ Both         | ⚠️ HIGH  |
+| `/api/files/store`  | POST     | HIGH     | 10/min     | ✅ File         | HIGH     |
+| `/api/waf/logs`     | GET/POST | HIGH     | 10-60/min  | ✅ Params/Body  | HIGH     |
+| `/api/files/delete` | DELETE   | HIGH     | 20/min     | ✅ Body         | MEDIUM   |
+| `/api/te/query`     | POST     | HIGH     | 20/min     | ✅ Body         | MEDIUM   |
+| `/api/pin`          | ALL      | HIGH     | 5/min      | ✅ Body         | MEDIUM   |
+| `/api/logs/system`  | ALL      | HIGH     | 10-30/min  | ✅ Params/Body  | MEDIUM   |
+| `/api/health/*`     | GET/POST | LOW      | 30-60/min  | ⚠️ POST only    | LOW      |
+| `/api/models`       | GET      | LOW      | 30/min     | ❌ None         | LOW      |
+| `/api/version`      | GET      | LOW      | 30/min     | ❌ None         | LOW      |
 
 **Legend**:
+
 - ✅ = Required
 - ⚠️ = Conditional
 - ❌ = Not needed

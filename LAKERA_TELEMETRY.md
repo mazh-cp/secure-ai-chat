@@ -7,6 +7,7 @@
 ## 📋 Overview
 
 This integration automatically sends Lakera scan results back to Platform.lakera.ai, enabling:
+
 - Analytics and insights on security events
 - Threat intelligence and pattern detection
 - Performance monitoring and optimization
@@ -33,6 +34,7 @@ LAKERA_TELEMETRY_ENDPOINT=https://api.lakera.ai/v2/telemetry
 ### Settings UI Configuration
 
 No additional configuration needed! The telemetry automatically uses:
+
 - Your **Lakera API Key** (configured in Settings)
 - Your **Lakera Project ID** (configured in Settings, if provided)
 
@@ -115,11 +117,13 @@ Telemetry is automatically sent after each Lakera scan:
 ### Telemetry Endpoint
 
 The default endpoint is:
+
 ```
 https://api.lakera.ai/v2/telemetry
 ```
 
 If this doesn't work, try:
+
 ```
 https://platform.lakera.ai/api/v2/telemetry
 ```
@@ -151,6 +155,7 @@ You can override via `LAKERA_TELEMETRY_ENDPOINT` environment variable.
 ### Telemetry Not Sending
 
 1. **Check Environment Variable**:
+
    ```bash
    echo $LAKERA_TELEMETRY_ENABLED
    # Should be "true" or not set (defaults to true)
@@ -184,9 +189,11 @@ Or remove the telemetry calls from the code if needed.
 ### Functions
 
 #### `sendLakeraTelemetry(payload, apiKey, projectId?)`
+
 Sends telemetry payload to Lakera Platform.
 
 **Parameters**:
+
 - `payload`: `LakeraTelemetryPayload` - Telemetry data
 - `apiKey`: `string` - Lakera API key
 - `projectId?`: `string` - Optional Lakera Project ID
@@ -194,9 +201,11 @@ Sends telemetry payload to Lakera Platform.
 **Returns**: `Promise<LakeraTelemetryResponse>`
 
 #### `sendLakeraTelemetryFromLog(logEntry, apiKey, projectId?)`
+
 Converts log entry to telemetry and sends it (convenience function).
 
 **Parameters**:
+
 - `logEntry`: Application log entry with Lakera decision
 - `apiKey`: `string` - Lakera API key
 - `projectId?`: `string` - Optional Lakera Project ID
@@ -204,9 +213,11 @@ Converts log entry to telemetry and sends it (convenience function).
 **Returns**: `Promise<void>` (fire and forget)
 
 #### `convertLogToTelemetry(logEntry)`
+
 Converts application log entry to Lakera telemetry payload.
 
 **Parameters**:
+
 - `logEntry`: Application log entry
 
 **Returns**: `LakeraTelemetryPayload | null` (null if not Lakera-related)
@@ -218,6 +229,7 @@ Converts application log entry to Lakera telemetry payload.
 ### Check if Telemetry is Working
 
 1. **Enable Logging**:
+
    ```bash
    # Check console logs for telemetry messages
    npm run dev

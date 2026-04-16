@@ -1,20 +1,24 @@
 # Checkpoint TE UI Status Refresh Fix
 
 ## Issue
+
 After pasting a new Checkpoint TE API key in Settings, the UI was not immediately showing that the key is configured, and the sandboxing toggle remained disabled in the Files page.
 
 ## Root Cause
+
 1. **Settings Page**: Status check was happening immediately after save, but the server might need a moment to process the save operation
 2. **Files Page**: Status was only checked once on page load, so if the key was saved while on the Files page, it wouldn't update until page refresh
 
 ## Fixes Applied
 
 ### 1. Settings Page (`components/SettingsForm.tsx`)
+
 - Added a 200ms delay before re-checking status after saving the key
 - This ensures the server has time to process the save operation
 - Also calls `checkServerStatus()` to ensure consistency across all status indicators
 
 ### 2. Files Page (`app/files/page.tsx`)
+
 - Added periodic status checking every 5 seconds
 - This automatically detects when a key is configured from the Settings page
 - The toggle will automatically become enabled when the key is detected
@@ -41,6 +45,7 @@ After pasting a new Checkpoint TE API key in Settings, the UI was not immediatel
 ## Testing
 
 To test the fix:
+
 1. Go to Settings page
 2. Paste Checkpoint TE API key
 3. Click "Save Key"

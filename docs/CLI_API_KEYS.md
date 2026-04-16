@@ -28,15 +28,15 @@ bash scripts/set-api-keys.sh
 
 ## Command Line Options
 
-| Option | Description | Required |
-|--------|-------------|----------|
-| `--openai-key KEY` | OpenAI API key (must start with `sk-`) | No |
-| `--lakera-key KEY` | Lakera AI API key | No |
-| `--lakera-project-id ID` | Lakera Project ID | No |
-| `--lakera-endpoint URL` | Lakera API endpoint (default: `https://api.lakera.ai/v2/guard`) | No |
-| `--checkpoint-te-key KEY` | Check Point Threat Emulation API key | No |
-| `--api-url URL` | API base URL (default: `http://localhost:3000`) | No |
-| `--help` | Show help message | No |
+| Option                    | Description                                                     | Required |
+| ------------------------- | --------------------------------------------------------------- | -------- |
+| `--openai-key KEY`        | OpenAI API key (must start with `sk-`)                          | No       |
+| `--lakera-key KEY`        | Lakera AI API key                                               | No       |
+| `--lakera-project-id ID`  | Lakera Project ID                                               | No       |
+| `--lakera-endpoint URL`   | Lakera API endpoint (default: `https://api.lakera.ai/v2/guard`) | No       |
+| `--checkpoint-te-key KEY` | Check Point Threat Emulation API key                            | No       |
+| `--api-url URL`           | API base URL (default: `http://localhost:3000`)                 | No       |
+| `--help`                  | Show help message                                               | No       |
 
 ---
 
@@ -91,13 +91,14 @@ bash scripts/set-api-keys.sh
 ```
 
 **Interactive prompts:**
+
 ```
 ℹ Interactive mode - Enter API keys (press Enter to skip)
 
 OpenAI API Key (sk-...): sk-proj-...
 Lakera AI Key: lkr_...
 Lakera Project ID: proj_12345
-Lakera Endpoint [https://api.lakera.ai/v2/guard]: 
+Lakera Endpoint [https://api.lakera.ai/v2/guard]:
 Check Point TE API Key: TE_API_KEY_...
 ```
 
@@ -119,7 +120,7 @@ The script validates:
 
 1. **Connects to Server**: Checks if the server is running at the specified URL
 2. **Validates Keys**: Performs basic format validation
-3. **Sends Requests**: 
+3. **Sends Requests**:
    - POSTs OpenAI/Lakera keys to `/api/keys` endpoint
    - POSTs Check Point TE key to `/api/te/config` endpoint
 4. **Server Storage**: Keys are encrypted and stored server-side:
@@ -150,6 +151,7 @@ The script validates:
 ```
 
 **Solution:**
+
 - Start the server: `npm run dev` or `npm start`
 - Or set `API_BASE_URL` to your remote server
 
@@ -160,6 +162,7 @@ The script validates:
 ```
 
 **Solution:**
+
 - Verify your API key is correct
 - OpenAI keys should start with `sk-`
 - Check for extra spaces or quotes
@@ -171,6 +174,7 @@ The script validates:
 ```
 
 **Solution:**
+
 - Check server logs: `npm run dev` or `journalctl -u secure-ai-chat -f`
 - Verify `.secure-storage` directory has write permissions
 - Ensure server has disk space

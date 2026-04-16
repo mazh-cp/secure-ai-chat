@@ -25,32 +25,42 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   let uploadUrl = `${getTeApiBaseUrl()}/upload`
-  
+
   try {
     let apiKey = getTeApiKeySync()
-    
+
     if (!apiKey) {
-      await systemLog.error('checkpoint_te', 'API key not configured', {
-        endpoint: '/api/te/upload',
-        method: 'POST',
-        statusCode: 400,
-      }, { requestId })
-      
+      await systemLog.error(
+        'checkpoint_te',
+        'API key not configured',
+        {
+          endpoint: '/api/te/upload',
+          method: 'POST',
+          statusCode: 400,
+        },
+        { requestId }
+      )
+
       return NextResponse.json(
         { error: 'Check Point TE API key is not configured. Please configure it in Settings.' },
         { status: 400 }
       )
     }
-    
+
     apiKey = normalizeTeApiKeyInput(apiKey)
-    
+
     if (!apiKey || apiKey.length === 0) {
-      await systemLog.error('checkpoint_te', 'API key is empty', {
-        endpoint: '/api/te/upload',
-        method: 'POST',
-        statusCode: 400,
-      }, { requestId })
-      
+      await systemLog.error(
+        'checkpoint_te',
+        'API key is empty',
+        {
+          endpoint: '/api/te/upload',
+          method: 'POST',
+          statusCode: 400,
+        },
+        { requestId }
+      )
+
       return NextResponse.json(
         { error: 'Check Point TE API key is empty. Please configure a valid API key in Settings.' },
         { status: 400 }
@@ -62,30 +72,37 @@ export async function POST(request: NextRequest) {
     const requestJson = formData.get('request') as string | null
 
     if (!file) {
-      await systemLog.error('checkpoint_te', 'No file provided in upload request', {
-        endpoint: '/api/te/upload',
-        method: 'POST',
-        statusCode: 400,
-      }, { requestId })
-      
-      return NextResponse.json(
-        { error: 'File is required' },
-        { status: 400 }
+      await systemLog.error(
+        'checkpoint_te',
+        'No file provided in upload request',
+        {
+          endpoint: '/api/te/upload',
+          method: 'POST',
+          statusCode: 400,
+        },
+        { requestId }
       )
+
+      return NextResponse.json({ error: 'File is required' }, { status: 400 })
     }
 
     // Validate file size (50 MB limit)
     const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
     if (file.size > MAX_FILE_SIZE) {
-      await systemLog.error('checkpoint_te', 'File size exceeds limit', {
-        endpoint: '/api/te/upload',
-        method: 'POST',
-        statusCode: 400,
-        error: `File size ${file.size} exceeds limit ${MAX_FILE_SIZE}`,
-      }, { requestId, fileName: file.name, fileSize: file.size, maxFileSize: MAX_FILE_SIZE })
-      
+      await systemLog.error(
+        'checkpoint_te',
+        'File size exceeds limit',
+        {
+          endpoint: '/api/te/upload',
+          method: 'POST',
+          statusCode: 400,
+          error: `File size ${file.size} exceeds limit ${MAX_FILE_SIZE}`,
+        },
+        { requestId, fileName: file.name, fileSize: file.size, maxFileSize: MAX_FILE_SIZE }
+      )
+
       return NextResponse.json(
-        { 
+        {
           error: `File size exceeds 50 MB limit. Current size: ${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           fileSize: file.size,
           maxFileSize: MAX_FILE_SIZE,
@@ -101,7 +118,7 @@ export async function POST(request: NextRequest) {
         features: string[]
         te: {
           reports?: string[]
-          images?: Array<{ id: string, revision: number }>
+          images?: Array<{ id: string; revision: number }>
         }
       }>
     }
@@ -113,7 +130,10 @@ export async function POST(request: NextRequest) {
         if (parsed.request && Array.isArray(parsed.request)) {
           requestBody = parsed
           // Validate and fix images format if needed
-          if (requestBody.request[0]?.te?.images && !Array.isArray(requestBody.request[0].te.images)) {
+          if (
+            requestBody.request[0]?.te?.images &&
+            !Array.isArray(requestBody.request[0].te.images)
+          ) {
             // If images is not an array of objects, remove it
             delete requestBody.request[0].te.images
           }
@@ -126,10 +146,7 @@ export async function POST(request: NextRequest) {
           })
         }
       } catch {
-        return NextResponse.json(
-          { error: 'Invalid request JSON format' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Invalid request JSON format' }, { status: 400 })
       }
     } else {
       // TPAPI-aligned defaults (xml report; override via CHECKPOINT_TECLOUD_TE_REPORTS)
@@ -141,19 +158,27 @@ export async function POST(request: NextRequest) {
     // But if images are present, they must be in correct format
     if (requestBody.request[0]?.te?.images && requestBody.request[0].te.images.length > 0) {
       const hasValidImages = requestBody.request[0].te.images.every(
-        (img: unknown) => typeof img === 'object' && img !== null && 'id' in img && 'revision' in img
+        (img: unknown) =>
+          typeof img === 'object' && img !== null && 'id' in img && 'revision' in img
       )
       if (!hasValidImages) {
-        await systemLog.error('checkpoint_te', 'Invalid images format in request', {
-          endpoint: '/api/te/upload',
-          method: 'POST',
-          statusCode: 400,
-        }, { requestId })
-        
+        await systemLog.error(
+          'checkpoint_te',
+          'Invalid images format in request',
+          {
+            endpoint: '/api/te/upload',
+            method: 'POST',
+            statusCode: 400,
+          },
+          { requestId }
+        )
+
         return NextResponse.json(
-          { 
-            error: 'Invalid images format. Images must be array of objects with id and revision fields.',
-            details: 'The te.images field requires format: [{id: string, revision: number}]. Configure CHECKPOINT_TECLOUD_IMAGE_ID and optionally CHECKPOINT_TECLOUD_IMAGE_REVISION.',
+          {
+            error:
+              'Invalid images format. Images must be array of objects with id and revision fields.',
+            details:
+              'The te.images field requires format: [{id: string, revision: number}]. Configure CHECKPOINT_TECLOUD_IMAGE_ID and optionally CHECKPOINT_TECLOUD_IMAGE_REVISION.',
           },
           { status: 400 }
         )
@@ -181,7 +206,8 @@ export async function POST(request: NextRequest) {
       url: uploadUrl,
       hasApiKey: !!apiKey,
       apiKeyLength: apiKey.length,
-      apiKeyPrefix: apiKey.substring(0, Math.min(10, apiKey.length)) + (apiKey.length > 10 ? '...' : ''),
+      apiKeyPrefix:
+        apiKey.substring(0, Math.min(10, apiKey.length)) + (apiKey.length > 10 ? '...' : ''),
       requestBody: JSON.stringify(requestBody),
       defaultTeReports: getDefaultTeReports(),
     })
@@ -189,13 +215,13 @@ export async function POST(request: NextRequest) {
     // Use form-data package for better compatibility with external APIs
     // Native FormData in Node.js might not serialize correctly for external fetch calls
     const teFormData = new FormDataNode()
-    
+
     // Append file as buffer with filename
     teFormData.append('file', fileBuffer, {
       filename: file.name,
       contentType: file.type || 'application/octet-stream',
     })
-    
+
     // Append request as JSON string
     // Check Point TE API expects the request field to contain {"request": [...]} as JSON string
     teFormData.append('request', JSON.stringify(requestBody), {
@@ -251,14 +277,22 @@ export async function POST(request: NextRequest) {
       } catch (fetchError) {
         clearTimeout(timeoutId)
 
-        if (fetchError instanceof Error && (fetchError.name === 'AbortError' || fetchError.message.includes('aborted'))) {
-          await systemLog.error('checkpoint_te', 'Upload request timeout (30s)', {
-            endpoint: uploadUrl,
-            method: 'POST',
-            statusCode: 504,
-            error: 'Request timeout after 30 seconds',
-            duration: Date.now() - startTime,
-          }, { requestId, fileName: file.name })
+        if (
+          fetchError instanceof Error &&
+          (fetchError.name === 'AbortError' || fetchError.message.includes('aborted'))
+        ) {
+          await systemLog.error(
+            'checkpoint_te',
+            'Upload request timeout (30s)',
+            {
+              endpoint: uploadUrl,
+              method: 'POST',
+              statusCode: 504,
+              error: 'Request timeout after 30 seconds',
+              duration: Date.now() - startTime,
+            },
+            { requestId, fileName: file.name }
+          )
 
           return NextResponse.json(
             {
@@ -303,7 +337,10 @@ export async function POST(request: NextRequest) {
 
     if (!response) {
       return NextResponse.json(
-        { error: 'Check Point TE upload failed: no response from gateway', type: 'te_upload_error' },
+        {
+          error: 'Check Point TE upload failed: no response from gateway',
+          type: 'te_upload_error',
+        },
         { status: 502 }
       )
     }
@@ -326,13 +363,14 @@ export async function POST(request: NextRequest) {
       try {
         const contentType = response.headers.get('content-type')
         console.log('Error response content-type:', contentType)
-        
+
         if (contentType && contentType.includes('application/json')) {
           errorDetails = await response.json()
           console.error('Check Point TE error response:', errorDetails)
-          const msg = (errorDetails as { message?: string; error?: string })?.message || 
-                     (errorDetails as { message?: string; error?: string })?.error ||
-                     (errorDetails as { error_description?: string })?.error_description
+          const msg =
+            (errorDetails as { message?: string; error?: string })?.message ||
+            (errorDetails as { message?: string; error?: string })?.error ||
+            (errorDetails as { error_description?: string })?.error_description
           if (msg) errorMessage = typeof msg === 'string' ? msg : errorMessage
         } else {
           const text = await response.text()
@@ -352,30 +390,39 @@ export async function POST(request: NextRequest) {
       }
 
       // Log detailed error to system logs
-      await systemLog.error('checkpoint_te', `Upload failed: ${errorMessage}`, {
-        endpoint: uploadUrl,
-        method: 'POST',
-        statusCode: response.status,
-        error: errorMessage,
-        responseBody: typeof errorDetails === 'string' ? errorDetails.substring(0, 1000) : JSON.stringify(errorDetails).substring(0, 1000),
-        requestHeaders: {
-          Authorization: `${getTeAuthorizationValue(apiKey).substring(0, 28)}...`,
-          'Content-Type': formHeaders['content-type'] || 'not set',
+      await systemLog.error(
+        'checkpoint_te',
+        `Upload failed: ${errorMessage}`,
+        {
+          endpoint: uploadUrl,
+          method: 'POST',
+          statusCode: response.status,
+          error: errorMessage,
+          responseBody:
+            typeof errorDetails === 'string'
+              ? errorDetails.substring(0, 1000)
+              : JSON.stringify(errorDetails).substring(0, 1000),
+          requestHeaders: {
+            Authorization: `${getTeAuthorizationValue(apiKey).substring(0, 28)}...`,
+            'Content-Type': formHeaders['content-type'] || 'not set',
+          },
+          duration: requestDuration,
         },
-        duration: requestDuration,
-      }, {
-        requestId,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        requestBody: JSON.stringify(requestBody),
-      })
+        {
+          requestId,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          requestBody: JSON.stringify(requestBody),
+        }
+      )
 
       // Handle specific error codes
       if (response.status === 401) {
         return NextResponse.json(
-          { 
-            error: 'Invalid Check Point TE API key. Please verify your API key in Settings. The API key may be incorrect or expired.',
+          {
+            error:
+              'Invalid Check Point TE API key. Please verify your API key in Settings. The API key may be incorrect or expired.',
             details: errorDetails,
             troubleshooting:
               'Verify the API key in Settings (paste raw key only). If 401 persists, try server env CHECKPOINT_TE_AUTH_FORMAT=raw (TPAPI) vs te_api_key (TE_API_KEY_ prefix).',
@@ -403,17 +450,18 @@ export async function POST(request: NextRequest) {
       // Handle 400 Bad Request specifically
       if (response.status === 400) {
         return NextResponse.json(
-          { 
+          {
             error: `Check Point TE upload failed: Bad Request (400). This usually means the request format is incorrect. ${errorMessage}`,
             details: errorDetails,
-            troubleshooting: 'Common causes: 1) Invalid file format or unsupported file type, 2) File size exceeds limits, 3) Malformed request JSON, 4) Missing required fields. Check the error details above for specific information.',
+            troubleshooting:
+              'Common causes: 1) Invalid file format or unsupported file type, 2) File size exceeds limits, 3) Malformed request JSON, 4) Missing required fields. Check the error details above for specific information.',
           },
           { status: 400 }
         )
       }
 
       return NextResponse.json(
-        { 
+        {
           error: errorMessage,
           details: errorDetails,
         },
@@ -464,23 +512,26 @@ export async function POST(request: NextRequest) {
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error(`Unexpected content type: ${contentType || 'unknown'}`)
       }
-      
+
       const rawResponse = await response.json()
       console.log('Check Point TE upload raw response:', JSON.stringify(rawResponse, null, 2))
       console.log('Check Point TE upload response type:', typeof rawResponse)
-      console.log('Check Point TE upload response keys:', rawResponse && typeof rawResponse === 'object' ? Object.keys(rawResponse) : 'not an object')
-      
+      console.log(
+        'Check Point TE upload response keys:',
+        rawResponse && typeof rawResponse === 'object' ? Object.keys(rawResponse) : 'not an object'
+      )
+
       // Validate response structure
       if (!rawResponse || typeof rawResponse !== 'object') {
         throw new Error('Invalid response format: expected object')
       }
-      
+
       // Handle different response structures
       // Structure 1: { data: { sha256, sha1, md5, te: { images: [...] } } }
       // Structure 2: { response: { data: { ... } } }
       // Structure 3: { sha256, sha1, md5, te: { images: [...] } } (flat structure)
       // Structure 4: { success: true } or {} (empty/minimal success response)
-      
+
       let responseData: {
         sha256?: string
         sha1?: string
@@ -492,7 +543,7 @@ export async function POST(request: NextRequest) {
           }>
         }
       } | null = null
-      
+
       if (rawResponse.data && typeof rawResponse.data === 'object') {
         responseData = rawResponse.data
       } else if (rawResponse.response?.data && typeof rawResponse.response.data === 'object') {
@@ -500,52 +551,63 @@ export async function POST(request: NextRequest) {
       } else if (rawResponse.sha256 || rawResponse.sha1 || rawResponse.md5 || rawResponse.te) {
         responseData = rawResponse
       }
-      
+
       // If no recognized structure but status is 200, treat as successful upload
       // Some Check Point TE API versions may return minimal success responses
       if (!responseData) {
         const rawResponseStr = JSON.stringify(rawResponse)
-        console.warn('Check Point TE upload response structure not recognized, but status is 200 OK:', rawResponseStr)
+        console.warn(
+          'Check Point TE upload response structure not recognized, but status is 200 OK:',
+          rawResponseStr
+        )
         console.warn('Treating as successful upload with unknown response structure')
-        
+
         // Compute file hash locally for query later
         const crypto = require('crypto')
         const fileBuffer = Buffer.from(await file.arrayBuffer())
         const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex')
         const sha1 = crypto.createHash('sha1').update(fileBuffer).digest('hex')
-        
+
         // Accept the upload as successful and use computed hash
         responseData = {
           sha256,
           sha1,
         }
-        
-        await systemLog.info('checkpoint_te', 'Upload successful (unrecognized response structure, computed hash locally)', {
-          endpoint: uploadUrl,
-          method: 'POST',
-          statusCode: response.status,
-          responseBody: rawResponseStr.substring(0, 500),
-          duration: Date.now() - startTime,
-        }, { requestId, fileName: file.name, computedHash: true })
+
+        await systemLog.info(
+          'checkpoint_te',
+          'Upload successful (unrecognized response structure, computed hash locally)',
+          {
+            endpoint: uploadUrl,
+            method: 'POST',
+            statusCode: response.status,
+            responseBody: rawResponseStr.substring(0, 500),
+            duration: Date.now() - startTime,
+          },
+          { requestId, fileName: file.name, computedHash: true }
+        )
       } else {
         // Check if we have at least one hash or TE image ID
         const hasHash = !!(responseData.sha256 || responseData.sha1 || responseData.md5)
-        const hasTeImage = !!(responseData.te?.images?.[0]?.id)
-        
+        const hasTeImage = !!responseData.te?.images?.[0]?.id
+
         if (!hasHash && !hasTeImage) {
-          console.warn('Check Point TE upload response missing hash/te fields, computing hash locally:', JSON.stringify(responseData, null, 2))
-          
+          console.warn(
+            'Check Point TE upload response missing hash/te fields, computing hash locally:',
+            JSON.stringify(responseData, null, 2)
+          )
+
           // Compute file hash locally as fallback
           const crypto = require('crypto')
           const fileBuffer = Buffer.from(await file.arrayBuffer())
           const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex')
           const sha1 = crypto.createHash('sha1').update(fileBuffer).digest('hex')
-          
+
           responseData.sha256 = responseData.sha256 || sha256
           responseData.sha1 = responseData.sha1 || sha1
         }
       }
-      
+
       // Normalize to expected structure
       data = {
         data: {
@@ -558,16 +620,21 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       const errorMsg = parseError instanceof Error ? parseError.message : 'Failed to parse response'
       console.error('Check Point TE upload response parsing error:', parseError)
-      await systemLog.error('checkpoint_te', `Invalid response format: ${errorMsg}`, {
-        endpoint: uploadUrl,
-        method: 'POST',
-        statusCode: response.status,
-        error: errorMsg,
-        duration: Date.now() - startTime,
-      }, { requestId, fileName: file.name })
-      
+      await systemLog.error(
+        'checkpoint_te',
+        `Invalid response format: ${errorMsg}`,
+        {
+          endpoint: uploadUrl,
+          method: 'POST',
+          statusCode: response.status,
+          error: errorMsg,
+          duration: Date.now() - startTime,
+        },
+        { requestId, fileName: file.name }
+      )
+
       return NextResponse.json(
-        { 
+        {
           error: 'Invalid response from Check Point TE API. Please try again or check system logs.',
           type: 'response_validation_error',
         },
@@ -576,7 +643,7 @@ export async function POST(request: NextRequest) {
     }
 
     const successDuration = Date.now() - startTime
-    
+
     console.log('File uploaded to Check Point TE successfully:', {
       sha256: data.data?.sha256,
       teImageId: data.data?.te?.images?.[0]?.id,
@@ -584,18 +651,23 @@ export async function POST(request: NextRequest) {
     })
 
     // Log successful upload
-    await systemLog.info('checkpoint_te', 'File uploaded successfully', {
-      endpoint: uploadUrl,
-      method: 'POST',
-      statusCode: response.status,
-      duration: successDuration,
-    }, {
-      requestId,
-      fileName: file.name,
-      fileSize: file.size,
-      sha256: data.data?.sha256,
-      teImageId: data.data?.te?.images?.[0]?.id,
-    })
+    await systemLog.info(
+      'checkpoint_te',
+      'File uploaded successfully',
+      {
+        endpoint: uploadUrl,
+        method: 'POST',
+        statusCode: response.status,
+        duration: successDuration,
+      },
+      {
+        requestId,
+        fileName: file.name,
+        fileSize: file.size,
+        sha256: data.data?.sha256,
+        teImageId: data.data?.te?.images?.[0]?.id,
+      }
+    )
 
     return NextResponse.json({
       success: true,
@@ -611,14 +683,15 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorDuration = Date.now() - startTime
     console.error('Check Point TE upload error:', error)
-    
+
     let errorMessage = 'An error occurred during file upload to Check Point TE'
     let statusCode = 500
     let stackTrace: string | undefined
 
     if (error instanceof TypeError) {
       if (error.message.includes('fetch') || error.message.includes('network')) {
-        errorMessage = 'Network error: Could not connect to Check Point TE API. Check your internet connection and firewall settings.'
+        errorMessage =
+          'Network error: Could not connect to Check Point TE API. Check your internet connection and firewall settings.'
         statusCode = 503
       }
       stackTrace = error.stack
@@ -628,20 +701,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Log error to system logs
-    await systemLog.error('checkpoint_te', `Upload exception: ${errorMessage}`, {
-      endpoint: uploadUrl || 'unknown',
-      method: 'POST',
-      statusCode,
-      error: errorMessage,
-      stackTrace,
-      duration: errorDuration,
-    }, {
-      requestId,
-      errorType: error instanceof TypeError ? 'TypeError' : error?.constructor?.name || 'Unknown',
-    })
+    await systemLog.error(
+      'checkpoint_te',
+      `Upload exception: ${errorMessage}`,
+      {
+        endpoint: uploadUrl || 'unknown',
+        method: 'POST',
+        statusCode,
+        error: errorMessage,
+        stackTrace,
+        duration: errorDuration,
+      },
+      {
+        requestId,
+        errorType: error instanceof TypeError ? 'TypeError' : error?.constructor?.name || 'Unknown',
+      }
+    )
 
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         type: error instanceof TypeError ? 'network_error' : 'unknown_error',
       },

@@ -28,8 +28,6 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   },
   {
     title: 'Changed',
-    items: [
-      'Default v3 upgrade tag `GIT_REF=v1.1.8` in scripts and upgrade docs.',
-    ],
+    items: ['Default v3 upgrade tag `GIT_REF=v1.1.8` in scripts and upgrade docs.'],
   },
 ]

@@ -12,6 +12,7 @@ sudo journalctl -u secure-ai-chat -n 100 --no-pager | grep -i "key\|save\|error"
 ```
 
 Look for:
+
 - "Keys saved successfully"
 - "Error saving API keys"
 - "Invalid OpenAI key format"
@@ -69,10 +70,12 @@ curl http://localhost:3000/api/keys/retrieve
 ### Issue 1: Invalid Key Format
 
 **Symptoms:**
+
 - Error in browser console: "Invalid OpenAI API key format"
 - Keys don't save
 
 **Solution:**
+
 - Ensure OpenAI key starts with `sk-`
 - Ensure key is at least 20 characters long
 - Check for extra spaces (will be trimmed automatically)
@@ -80,10 +83,12 @@ curl http://localhost:3000/api/keys/retrieve
 ### Issue 2: Permission Denied
 
 **Symptoms:**
+
 - Error in logs: "Error saving API keys: EACCES"
 - Storage directory exists but can't write
 
 **Solution:**
+
 ```bash
 sudo bash scripts/fix-key-storage.sh
 ```
@@ -91,10 +96,12 @@ sudo bash scripts/fix-key-storage.sh
 ### Issue 3: Empty Keys Being Sent
 
 **Symptoms:**
+
 - Keys appear to save but aren't persisted
 - Network request shows empty values
 
 **Solution:**
+
 - Check browser Network tab
 - Ensure you're pasting the full key
 - Check if key field is actually populated before clicking Save
@@ -102,10 +109,12 @@ sudo bash scripts/fix-key-storage.sh
 ### Issue 4: Environment Variables Override
 
 **Symptoms:**
+
 - Keys save but don't appear in retrieval
 - Logs show keys are being ignored
 
 **Solution:**
+
 - Check if environment variables are set:
   ```bash
   env | grep -i "OPENAI\|LAKERA"

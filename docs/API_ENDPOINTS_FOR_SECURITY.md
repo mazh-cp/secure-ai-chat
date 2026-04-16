@@ -7,20 +7,24 @@ This document provides the recommended API endpoints and prompt locations for co
 ## Primary Chat Endpoint (Recommended)
 
 ### Request URI
+
 ```
 /api/chat
 ```
 
 **Full URL examples:**
+
 - Local: `http://localhost:3000/api/chat`
 - Production: `https://your-domain.com/api/chat`
 
 ### HTTP Method
+
 ```
 POST
 ```
 
 ### Request Body Structure
+
 ```json
 {
   "messages": [
@@ -44,21 +48,26 @@ POST
 ```
 
 ### Prompt Location
+
 **For Input Scanning (User Prompts):**
+
 - **Path**: `messages[].content`
 - **Filter**: Where `messages[].role === "user"`
 - **Description**: The latest user message in the messages array contains the prompt to scan
 
 **JSONPath Expression:**
+
 ```
 $.messages[?(@.role == 'user')].content
 ```
 
 **Example:**
+
 - The prompt is in: `body.messages[].content` where `role === 'user'`
 - The application extracts the latest user message: `messages.filter(m => m.role === 'user').pop()`
 
 ### Response Structure
+
 ```json
 {
   "content": "AI response text",
@@ -85,16 +94,19 @@ $.messages[?(@.role == 'user')].content
 ### 1. File Scan Endpoint
 
 **Request URI:**
+
 ```
 /api/scan
 ```
 
 **HTTP Method:**
+
 ```
 POST
 ```
 
 **Request Body:**
+
 ```json
 {
   "content": "File content to scan",
@@ -104,10 +116,12 @@ POST
 ```
 
 **Prompt Location:**
+
 - **Path**: `content`
 - **Description**: Direct content field for file scanning
 
 **JSONPath Expression:**
+
 ```
 $.content
 ```
@@ -119,21 +133,25 @@ $.content
 ### For Lakera AI Integration
 
 **Request URI:**
+
 ```
 https://your-domain.com/api/chat
 ```
 
 **Prompt Location:**
+
 - **Field Path**: `messages[].content`
 - **Filter**: Messages where `role === "user"`
 - **Note**: The application automatically extracts the latest user message for scanning
 
 **Request Headers:**
+
 ```
 Content-Type: application/json
 ```
 
 **Request Body Example:**
+
 ```json
 {
   "messages": [
@@ -167,12 +185,14 @@ If you're setting up a webhook or proxy to intercept requests:
 ## Security Scanning Flow
 
 ### Input Scanning (User Prompts)
+
 1. User sends message to `/api/chat`
 2. Application extracts latest user message: `messages.filter(m => m.role === 'user').pop()`
 3. Content scanned: `latestUserMessage.content`
 4. If flagged, request is blocked with 403 status
 
 ### Output Scanning (AI Responses)
+
 1. After OpenAI API call succeeds
 2. AI response content scanned: `aiResponse`
 3. If flagged, response is blocked with 403 status
@@ -182,6 +202,7 @@ If you're setting up a webhook or proxy to intercept requests:
 ## Example Request/Response
 
 ### Request
+
 ```bash
 curl -X POST https://your-domain.com/api/chat \
   -H "Content-Type: application/json" \
@@ -200,6 +221,7 @@ curl -X POST https://your-domain.com/api/chat \
 ```
 
 ### Response (Success)
+
 ```json
 {
   "content": "I don't have access to real-time weather data...",
@@ -217,6 +239,7 @@ curl -X POST https://your-domain.com/api/chat \
 ```
 
 ### Response (Blocked)
+
 ```json
 {
   "error": "Message blocked by security filter",
@@ -237,12 +260,14 @@ curl -X POST https://your-domain.com/api/chat \
 ## Summary
 
 **Best Endpoint for Prompt Scanning:**
+
 - **Request URI**: `/api/chat`
 - **Method**: `POST`
 - **Prompt Location**: `messages[].content` (where `role === "user"`)
 - **JSONPath**: `$.messages[?(@.role == 'user')].content`
 
 **For File Content Scanning:**
+
 - **Request URI**: `/api/scan`
 - **Method**: `POST`
 - **Prompt Location**: `content` (direct field)

@@ -21,7 +21,9 @@ function resolveUploadsBase(): string {
     }
   }
   if (process.env.UPLOADS_DIR) {
-    return path.isAbsolute(process.env.UPLOADS_DIR) ? process.env.UPLOADS_DIR : path.resolve(process.cwd(), process.env.UPLOADS_DIR)
+    return path.isAbsolute(process.env.UPLOADS_DIR)
+      ? process.env.UPLOADS_DIR
+      : path.resolve(process.cwd(), process.env.UPLOADS_DIR)
   }
   const defaultDir = path.resolve(process.cwd(), 'data', 'uploads')
   const pathFile = path.join(process.cwd(), 'data', UPLOADS_PATH_FILE)
@@ -38,7 +40,10 @@ function resolveUploadsBase(): string {
   return defaultDir
 }
 
-const globalForStorage = globalThis as unknown as { __uploadsBase?: string; __uploadsWarned?: boolean }
+const globalForStorage = globalThis as unknown as {
+  __uploadsBase?: string
+  __uploadsWarned?: boolean
+}
 function getUploadsBase(): string {
   if (globalForStorage.__uploadsBase) return globalForStorage.__uploadsBase
   const resolved = resolveUploadsBase()
@@ -49,7 +54,11 @@ function getUploadsBase(): string {
   } catch {
     // ignore
   }
-  if (process.env.NODE_ENV === 'production' && !process.env.UPLOADS_DIR && !globalForStorage.__uploadsWarned) {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !process.env.UPLOADS_DIR &&
+    !globalForStorage.__uploadsWarned
+  ) {
     globalForStorage.__uploadsWarned = true
     console.warn(
       '[secure-ai-chat] Production: UPLOADS_DIR is not set. Chat RAG may not find uploaded file content if multiple processes are used. Start with: npm run start (uses data paths) or set UPLOADS_DIR to an absolute path.'

@@ -46,11 +46,11 @@ Threat model and mitigation mapping for the Secure RAG pipeline.
 
 ## Mitigation mapping
 
-| Layer        | Threat                    | Action (HIGH)     | Action (MEDIUM)     |
-|-------------|---------------------------|-------------------|----------------------|
-| Ingestion   | Injection, poisoning, PII  | QUARANTINE, no index | allow_restricted / exclude from default retrieval |
-| Retrieval   | Risky chunk               | DROP chunk, mark tainted | Redact risky spans when possible |
-| Generation  | Unsafe output             | BLOCK, safe message | Allow with stricter grounding/citations |
+| Layer      | Threat                    | Action (HIGH)            | Action (MEDIUM)                                   |
+| ---------- | ------------------------- | ------------------------ | ------------------------------------------------- |
+| Ingestion  | Injection, poisoning, PII | QUARANTINE, no index     | allow_restricted / exclude from default retrieval |
+| Retrieval  | Risky chunk               | DROP chunk, mark tainted | Redact risky spans when possible                  |
+| Generation | Unsafe output             | BLOCK, safe message      | Allow with stricter grounding/citations           |
 
 ---
 

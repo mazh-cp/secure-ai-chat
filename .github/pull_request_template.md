@@ -5,12 +5,14 @@
 ## Release Gate Status
 
 <!-- This will be verified automatically by CI -->
+
 - [ ] Release Gate checks pass locally
 - [ ] Release Gate checks pass on CI
 
 ## Testing
 
 <!-- Describe how this change was tested -->
+
 - [ ] Local testing completed
 - [ ] Smoke tests pass (if applicable)
 
@@ -26,6 +28,7 @@
 ## Tagging
 
 <!-- If this PR should create a new release tag after merge: -->
+
 - [ ] Tag requested: `vX.Y.Z`
 - [ ] Tag will be created after merge by maintainer
 

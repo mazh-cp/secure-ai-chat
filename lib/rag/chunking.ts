@@ -101,7 +101,7 @@ function splitByHeadings(text: string): string[] {
     parts.push(current.join('\n').trim())
   }
 
-  return parts.filter((p) => p.length > 0)
+  return parts.filter(p => p.length > 0)
 }
 
 /**
@@ -142,10 +142,7 @@ export interface ChunkingOptions {
  * Chunk cleaned text; prefer heading boundaries, then token-length split.
  * Returns chunks with stable ids and metadata.
  */
-export function chunkText(
-  text: string,
-  options: ChunkingOptions
-): TextChunk[] {
+export function chunkText(text: string, options: ChunkingOptions): TextChunk[] {
   const cleaned = cleanText(text)
   if (!cleaned) return []
 

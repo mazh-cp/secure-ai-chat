@@ -34,7 +34,7 @@ export async function GET() {
     // ignore — corporate firewall / offline
   }
 
-  const uploadCandidates = getTeUploadCandidateBases().map((b) => `${b}/upload`)
+  const uploadCandidates = getTeUploadCandidateBases().map(b => `${b}/upload`)
 
   return NextResponse.json(
     {
@@ -44,8 +44,7 @@ export async function GET() {
       ...endpoints,
       uploadCandidates,
       suggestedOutboundIp,
-      note:
-        'Upload tries each uploadCandidates host in order when CHECKPOINT_TECLOUD_BASE_URL is unset. Allowlist suggestedOutboundIp if every host returns 403.',
+      note: 'Upload tries each uploadCandidates host in order when CHECKPOINT_TECLOUD_BASE_URL is unset. Allowlist suggestedOutboundIp if every host returns 403.',
     },
     {
       headers: {

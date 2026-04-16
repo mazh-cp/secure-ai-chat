@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const owner = ownerId ?? ''
 
     const list: UploadedFile[] = await Promise.all(
-      files.map(async (meta) => {
+      files.map(async meta => {
         const content = await readOwnerFile(owner, meta.id)
         return {
           id: meta.id,
@@ -42,7 +42,12 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    const ctx = buildForensicContext(request, ownerId, list.length, list.map((f) => f.id))
+    const ctx = buildForensicContext(
+      request,
+      ownerId,
+      list.length,
+      list.map(f => f.id)
+    )
     logForensic('files/list', ctx)
 
     return NextResponse.json({

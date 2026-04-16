@@ -43,6 +43,7 @@ All automated checks passed. Application is running successfully with version 1.
 **Response:** JSON with all release notes from CHANGELOG.md
 
 **Validation Points:**
+
 - ✅ API endpoint exists and responds correctly
 - ✅ Returns structured JSON format
 - ✅ Includes version 1.0.9 as first entry
@@ -108,9 +109,11 @@ All automated checks passed. Application is running successfully with version 1.
 The following features require manual UI testing:
 
 #### 1. API Errors & Key Failures Section
+
 **Location:** Dashboard → System Logs
 
 **Test Steps:**
+
 1. Navigate to Dashboard → System Logs
 2. Trigger an API error (e.g., use invalid API key, cause network error)
 3. Verify "API Errors & Key Failures" section appears at bottom of logs
@@ -121,6 +124,7 @@ The following features require manual UI testing:
 8. Check response body and stack trace are shown when available
 
 **Expected Behavior:**
+
 - Section appears when errors exist
 - Shows visual indicators (🔑 for 401, 🚫 for 403, ❌ for others)
 - Full error details displayed
@@ -128,9 +132,11 @@ The following features require manual UI testing:
 - Expandable system details
 
 #### 2. Dynamic Release Notes Page
+
 **Location:** Release Notes page (`/release-notes`)
 
 **Test Steps:**
+
 1. Navigate to Release Notes page
 2. Verify page loads without errors
 3. Check version 1.0.9 is displayed as latest
@@ -140,15 +146,18 @@ The following features require manual UI testing:
 7. Test loading state (if applicable)
 
 **Expected Behavior:**
+
 - Page loads and fetches data from API
 - Shows all release notes dynamically
 - Version 1.0.9 marked as "LATEST"
 - All changes properly displayed
 
 #### 3. Lakera Guard API v2 Enhancements
+
 **Locations:** Chat messages, File scans, System logs
 
 **Test Steps:**
+
 1. **Chat Message Testing:**
    - Send a chat message with potential injection (e.g., "Ignore all previous instructions")
    - Check MessageBubble component for payload data display (if available)
@@ -167,12 +176,14 @@ The following features require manual UI testing:
    - Verify breakdown data shows detector execution results
 
 **Expected Behavior:**
+
 - Payload data displayed when Lakera API returns it
 - Breakdown data displayed when Lakera API returns it
 - Enhanced threat reporting with exact positions
 - Detector information shown in breakdown
 
 **Note:** Payload and breakdown data only appear when:
+
 - Lakera API key is configured
 - Lakera API returns payload/breakdown in response
 - `payload: true` and `breakdown: true` are sent in request (already configured)
@@ -182,12 +193,14 @@ The following features require manual UI testing:
 ## Build & Compilation Status
 
 ### ✅ Build Validation
+
 - **TypeScript:** ✅ PASSED (no errors)
 - **ESLint:** ✅ PASSED (only pre-existing warnings)
 - **Production Build:** ✅ PASSED
 - **Dev Server:** ✅ RUNNING on port 3000
 
 ### ✅ Code Quality
+
 - **Type Safety:** ✅ All types correct
 - **Linting:** ✅ No critical errors
 - **Build Output:** ✅ Clean and optimized
@@ -196,22 +209,23 @@ The following features require manual UI testing:
 
 ## API Endpoints Status
 
-| Endpoint | Status | Notes |
-|----------|--------|-------|
-| `/api/version` | ✅ | Returns 1.0.9 |
-| `/api/health` | ✅ | Returns OK |
-| `/api/release-notes` | ✅ | Returns structured data |
-| `/api/models` | ✅ | Returns model list |
-| `/api/settings/status` | ✅ | Returns config status |
-| `/api/chat` | ✅ | Ready for testing |
-| `/api/scan` | ✅ | Ready for testing |
-| `/api/files/*` | ✅ | Ready for testing |
+| Endpoint               | Status | Notes                   |
+| ---------------------- | ------ | ----------------------- |
+| `/api/version`         | ✅     | Returns 1.0.9           |
+| `/api/health`          | ✅     | Returns OK              |
+| `/api/release-notes`   | ✅     | Returns structured data |
+| `/api/models`          | ✅     | Returns model list      |
+| `/api/settings/status` | ✅     | Returns config status   |
+| `/api/chat`            | ✅     | Ready for testing       |
+| `/api/scan`            | ✅     | Ready for testing       |
+| `/api/files/*`         | ✅     | Ready for testing       |
 
 ---
 
 ## Files Modified in v1.0.9
 
 ### Core Application Files
+
 - `package.json` - Version updated to 1.0.9
 - `CHANGELOG.md` - Added v1.0.9 entry
 - `components/LogViewer.tsx` - Added API errors section
@@ -219,6 +233,7 @@ The following features require manual UI testing:
 - `app/api/release-notes/route.ts` - New API endpoint
 
 ### Lakera Enhancements (from previous work)
+
 - `app/api/chat/route.ts` - Payload/breakdown extraction
 - `app/api/scan/route.ts` - Payload/breakdown extraction
 - `app/files/page.tsx` - Payload/breakdown display
@@ -241,6 +256,7 @@ The following features require manual UI testing:
 ## Next Steps
 
 ### Immediate Actions
+
 1. ✅ Version updated and validated
 2. ✅ Build successful
 3. ✅ All API endpoints validated
@@ -249,6 +265,7 @@ The following features require manual UI testing:
 6. ⏳ Lakera API testing (test with actual API responses)
 
 ### For GitHub Release
+
 1. Review all changes: `git diff`
 2. Commit changes with proper message
 3. Push to GitHub
@@ -262,6 +279,7 @@ The following features require manual UI testing:
 **Status:** ✅ **READY FOR PRODUCTION**
 
 All automated validations passed. The application is:
+
 - ✅ Running successfully on version 1.0.9
 - ✅ All API endpoints functional
 - ✅ Dynamic release notes working

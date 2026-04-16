@@ -1,6 +1,6 @@
 /**
  * Rate Limiter Utility
- * 
+ *
  * Implements in-memory rate limiting for API calls to prevent hitting rate limits.
  * Uses a sliding window approach for accurate rate limiting.
  */
@@ -50,15 +50,15 @@ function getRateLimitKey(apiKey: string, model: string): string {
  */
 function getRateLimit(model: string): number {
   const limits = DEFAULT_RATE_LIMITS.openai
-  
+
   // Normalize model name to lowercase for matching
   const normalizedModel = model.toLowerCase().trim()
-  
+
   // Check for exact model match first
   if (limits[normalizedModel as keyof typeof limits]) {
     return limits[normalizedModel as keyof typeof limits] as number
   }
-  
+
   // Special handling for GPT-5.x models (they may have suffixes like -pro-2025-12-11)
   // Check for GPT-5.x models first (including gpt-5, gpt-5.1, gpt-5.2, etc.)
   if (normalizedModel.startsWith('gpt-5')) {
@@ -66,29 +66,29 @@ function getRateLimit(model: string): number {
     const gpt5Match = normalizedModel.match(/^gpt-5(\.\d+)?/)
     if (gpt5Match) {
       const baseVersion = gpt5Match[0] // e.g., 'gpt-5' or 'gpt-5.1' or 'gpt-5.2'
-      
+
       // Try exact version match first (e.g., gpt-5.1)
       if (limits[baseVersion as keyof typeof limits]) {
         return limits[baseVersion as keyof typeof limits] as number
       }
-      
+
       // If specific version not found, use gpt-5 as fallback
       if (limits['gpt-5' as keyof typeof limits]) {
         return limits['gpt-5' as keyof typeof limits] as number
       }
     }
-    
+
     // Fallback: if it starts with gpt-5 but doesn't match above, use gpt-5 limit
     return limits['gpt-5' as keyof typeof limits] || limits.default || 100
   }
-  
+
   // Check other models with prefix match (e.g., gpt-4-turbo-preview matches gpt-4-turbo)
   for (const [key, value] of Object.entries(limits)) {
     if (key !== 'default' && normalizedModel.startsWith(key.toLowerCase())) {
       return value
     }
   }
-  
+
   // Return default
   return limits.default || 100
 }
@@ -105,15 +105,15 @@ export function checkRateLimit(
   const limit = getRateLimit(model)
   const now = Date.now()
   const windowMs = 60 * 1000 // 1 minute window
-  
+
   let entry = rateLimitStore.get(key)
-  
+
   // Clean up old entries
   if (entry && entry.resetTime < now) {
     entry = undefined
     rateLimitStore.delete(key)
   }
-  
+
   // Create new entry if none exists
   if (!entry) {
     entry = {
@@ -123,7 +123,7 @@ export function checkRateLimit(
     }
     rateLimitStore.set(key, entry)
   }
-  
+
   // Check if we're within the rate limit
   if (entry.count < limit) {
     entry.count++
@@ -133,7 +133,7 @@ export function checkRateLimit(
       resetAt: entry.resetTime,
     }
   }
-  
+
   // Rate limit exceeded
   const retryAfter = Math.ceil((entry.resetTime - now) / 1000) // seconds until reset
   return {
@@ -163,7 +163,7 @@ export function getRateLimitStatus(
   const limit = getRateLimit(model)
   const entry = rateLimitStore.get(key)
   const now = Date.now()
-  
+
   if (!entry || entry.resetTime < now) {
     return {
       limit,
@@ -171,7 +171,7 @@ export function getRateLimitStatus(
       resetAt: now + 60 * 1000,
     }
   }
-  
+
   return {
     limit,
     remaining: limit - entry.count,

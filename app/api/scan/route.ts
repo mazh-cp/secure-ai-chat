@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
-import {
-  lakeraProjectIdForGuard,
-  resolveLakeraGuardEndpoint,
-} from '@/lib/lakera-guard-endpoint'
+import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 import { prepareContentForFileScan, screenTextAsFileUpload } from '@/lib/lakera/guard-client'
 import {
   effectiveLakeraAiKey,
@@ -14,7 +11,7 @@ import {
 
 function lakeraHttpErrorNextResponse(
   status: number,
-  errorDetails: Record<string, unknown> | string | null | undefined,
+  errorDetails: Record<string, unknown> | string | null | undefined
 ): NextResponse {
   let errorMessage = `Lakera API error: ${status}`
   if (errorDetails && typeof errorDetails === 'object' && !Array.isArray(errorDetails)) {
@@ -30,17 +27,21 @@ function lakeraHttpErrorNextResponse(
 
   if (status === 401) {
     return NextResponse.json(
-      { error: 'Invalid Lakera API key. Please verify your API key in Settings.', details: errorDetails },
-      { status: 401 },
+      {
+        error: 'Invalid Lakera API key. Please verify your API key in Settings.',
+        details: errorDetails,
+      },
+      { status: 401 }
     )
   }
   if (status === 403) {
     return NextResponse.json(
       {
-        error: 'Lakera API access denied. Check your API key, project ID, and permissions in Settings.',
+        error:
+          'Lakera API access denied. Check your API key, project ID, and permissions in Settings.',
         details: errorDetails,
       },
-      { status: 403 },
+      { status: 403 }
     )
   }
   if (status === 400) {
@@ -49,25 +50,28 @@ function lakeraHttpErrorNextResponse(
         error: `Bad request: ${errorMessage}. Please check your API configuration and file content.`,
         details: errorDetails,
       },
-      { status: 400 },
+      { status: 400 }
     )
   }
   if (status === 404) {
     return NextResponse.json(
-      { error: 'Lakera endpoint not found. Please check your endpoint URL in Settings.', details: errorDetails },
-      { status: 404 },
+      {
+        error: 'Lakera endpoint not found. Please check your endpoint URL in Settings.',
+        details: errorDetails,
+      },
+      { status: 404 }
     )
   }
   if (status === 429) {
     return NextResponse.json(
       { error: 'Rate limit exceeded. Please wait a moment and try again.', details: errorDetails },
-      { status: 429 },
+      { status: 429 }
     )
   }
   if (status >= 500) {
     return NextResponse.json(
       { error: 'Lakera API server error. Please try again later.', details: errorDetails },
-      { status: 500 },
+      { status: 500 }
     )
   }
   return NextResponse.json({ error: errorMessage, details: errorDetails }, { status })
@@ -89,18 +93,18 @@ export async function POST(request: NextRequest) {
       lakeraAiKey: effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey),
       lakeraProjectId: effectiveLakeraProjectId(
         serverKeys.lakeraProjectId,
-        clientApiKeys?.lakeraProjectId,
+        clientApiKeys?.lakeraProjectId
       ),
       lakeraEndpoint: effectiveLakeraEndpoint(
         serverKeys.lakeraEndpoint,
-        clientApiKeys?.lakeraEndpoint,
+        clientApiKeys?.lakeraEndpoint
       ),
     }
 
     if (!apiKeys.lakeraAiKey) {
       return NextResponse.json(
         { error: 'Lakera API key is not configured. Please add it in Settings.' },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
@@ -110,14 +114,14 @@ export async function POST(request: NextRequest) {
     if (!guardUrl.startsWith('http://') && !guardUrl.startsWith('https://')) {
       return NextResponse.json(
         { error: 'Invalid Lakera endpoint. Must start with http:// or https://' },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
     const scanProjectId = lakeraProjectIdForGuard(apiKeys.lakeraProjectId)
     if (process.env.NODE_ENV !== 'production' && !scanProjectId) {
       console.warn(
-        '[Lakera Guard scan] No project_id — Lakera uses default policy. Set Project ID in Settings or LAKERA_PROJECT_ID.',
+        '[Lakera Guard scan] No project_id — Lakera uses default policy. Set Project ID in Settings or LAKERA_PROJECT_ID.'
       )
     }
 
@@ -191,19 +195,28 @@ export async function POST(request: NextRequest) {
     }
 
     if (apiKeys.lakeraAiKey) {
-      sendLakeraTelemetryFromLog(logData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId).catch((error) => {
-        console.error('Failed Lakera audit/telemetry (non-blocking):', error)
-      })
+      sendLakeraTelemetryFromLog(logData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId).catch(
+        error => {
+          console.error('Failed Lakera audit/telemetry (non-blocking):', error)
+        }
+      )
     }
 
     return NextResponse.json({
       flagged,
       message: flagged
-        ? `Security threats detected (${threatLevel}): ${categories ? Object.keys(categories).filter((k) => categories![k]).join(', ') : 'unknown'}`
+        ? `Security threats detected (${threatLevel}): ${
+            categories
+              ? Object.keys(categories)
+                  .filter(k => categories![k])
+                  .join(', ')
+              : 'unknown'
+          }`
         : 'File content appears safe',
       details: {
         categories,
-        score: scores && Object.keys(scores).length > 0 ? Math.max(...Object.values(scores)) : undefined,
+        score:
+          scores && Object.keys(scores).length > 0 ? Math.max(...Object.values(scores)) : undefined,
         threatLevel,
         payload,
         breakdown,
@@ -244,7 +257,7 @@ export async function POST(request: NextRequest) {
           success: false,
         },
       },
-      { status: statusCode },
+      { status: statusCode }
     )
   }
 }

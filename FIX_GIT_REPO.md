@@ -47,7 +47,7 @@ else
     sudo mkdir -p /opt/secure-ai-chat
     sudo chown secureai:secureai /opt/secure-ai-chat
     sudo -u secureai git clone https://github.com/mazh-cp/secure-ai-chat.git /opt/secure-ai-chat
-    
+
     # Restore settings
     if [ -f "$BACKUP_DIR/.env.local" ]; then
         sudo cp -a "$BACKUP_DIR/.env.local" /opt/secure-ai-chat/.env.local

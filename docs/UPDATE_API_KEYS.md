@@ -44,6 +44,7 @@ Update keys directly via command line arguments:
 ## Script Location
 
 The script automatically detects the application directory by checking:
+
 1. Current directory (if `package.json` exists)
 2. Parent directory (if `../package.json` exists)
 3. `/opt/secure-ai-chat` (default installation location)
@@ -90,6 +91,7 @@ If the application is running as a systemd service (`secure-ai-chat`), the scrip
 ## Key Storage
 
 Keys are stored in encrypted format at:
+
 - `.secure-storage/api-keys.enc` (OpenAI and Lakera keys)
 - `.secure-storage/threatcloud-key.enc` (Check Point key)
 
@@ -176,6 +178,7 @@ curl -X POST http://localhost:3000/api/keys \
 ```
 
 However, the CLI script is recommended as it:
+
 - Works even when the server is not running
 - Uses the same encryption mechanism as the application
 - Automatically restarts the service

@@ -22,7 +22,7 @@ function cellValueToString(value: unknown): string {
   if (typeof value === 'object') {
     const o = value as Record<string, unknown>
     if (Array.isArray(o.richText)) {
-      return (o.richText as { text?: string }[]).map((r) => r.text ?? '').join('')
+      return (o.richText as { text?: string }[]).map(r => r.text ?? '').join('')
     }
     if (typeof o.text === 'string') return o.text
     if ('result' in o && o.result != null) return String(o.result)
@@ -33,7 +33,7 @@ function cellValueToString(value: unknown): string {
 
 export async function extractTextFromBinaryForRag(
   fileMeta: Pick<RegistryFile, 'name' | 'type'>,
-  buffer: Buffer | null,
+  buffer: Buffer | null
 ): Promise<string | null> {
   if (!buffer || buffer.length === 0) return null
   const e = ext(fileMeta.name)
@@ -55,7 +55,7 @@ export async function extractTextFromBinaryForRag(
     if (e === '.xls' && !t.includes('spreadsheetml')) {
       console.warn(
         '[RAG] Legacy Excel .xls is not indexed for RAG; save as .xlsx for extraction:',
-        fileMeta.name,
+        fileMeta.name
       )
       return null
     }
@@ -71,12 +71,12 @@ export async function extractTextFromBinaryForRag(
       const parts: string[] = []
       for (const worksheet of wb.worksheets) {
         const lines: string[] = []
-        worksheet.eachRow((row) => {
+        worksheet.eachRow(row => {
           const cells: string[] = []
-          row.eachCell({ includeEmpty: true }, (cell) => {
+          row.eachCell({ includeEmpty: true }, cell => {
             cells.push(cellValueToString(cell.value))
           })
-          if (cells.some((c) => c.length > 0)) {
+          if (cells.some(c => c.length > 0)) {
             lines.push(cells.join('\t'))
           }
         })

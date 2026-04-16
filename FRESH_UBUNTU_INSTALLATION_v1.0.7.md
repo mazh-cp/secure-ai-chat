@@ -156,6 +156,7 @@ npm run release-gate
 **Expected Output**: All checks should PASS. If any check fails, fix the issues before proceeding.
 
 The release gate script verifies:
+
 - ✅ Clean install (npm ci)
 - ✅ TypeScript compilation
 - ✅ ESLint validation
@@ -293,6 +294,7 @@ hostname -I | awk '{print $1}'
 ```
 
 **Important**: If accessing from outside the VM, ensure:
+
 - UFW firewall allows port 3000 (Step 8)
 - Cloud provider firewall (AWS Security Groups, GCP Firewall Rules, Azure NSG) allows port 3000
 
@@ -353,18 +355,18 @@ curl http://localhost:3000/api/version
 
 All items below **MUST PASS** before considering installation complete:
 
-| Check | Command | Status |
-|-------|---------|--------|
-| **Clean Install** | `npm ci` | ⬜ |
-| **TypeScript Compilation** | `npm run type-check` | ⬜ |
-| **ESLint Validation** | `npm run lint` | ⬜ |
-| **Security: Client Key Leakage** | `npm run release-gate` | ⬜ |
-| **Security: Build Output Scan** | `npm run release-gate` | ⬜ |
-| **Production Build** | `npm run build` | ⬜ |
-| **Service Running** | `sudo systemctl status secure-ai-chat` | ⬜ |
-| **Health Endpoint** | `curl http://localhost:3000/api/health` | ⬜ |
-| **Version Endpoint** | `curl http://localhost:3000/api/version` | ⬜ |
-| **Application Accessible** | Browser: `http://YOUR_VM_IP:3000` | ⬜ |
+| Check                            | Command                                  | Status |
+| -------------------------------- | ---------------------------------------- | ------ |
+| **Clean Install**                | `npm ci`                                 | ⬜     |
+| **TypeScript Compilation**       | `npm run type-check`                     | ⬜     |
+| **ESLint Validation**            | `npm run lint`                           | ⬜     |
+| **Security: Client Key Leakage** | `npm run release-gate`                   | ⬜     |
+| **Security: Build Output Scan**  | `npm run release-gate`                   | ⬜     |
+| **Production Build**             | `npm run build`                          | ⬜     |
+| **Service Running**              | `sudo systemctl status secure-ai-chat`   | ⬜     |
+| **Health Endpoint**              | `curl http://localhost:3000/api/health`  | ⬜     |
+| **Version Endpoint**             | `curl http://localhost:3000/api/version` | ⬜     |
+| **Application Accessible**       | Browser: `http://YOUR_VM_IP:3000`        | ⬜     |
 
 ---
 
@@ -373,6 +375,7 @@ All items below **MUST PASS** before considering installation complete:
 ### Issue: Node.js version incorrect
 
 **Solution**:
+
 ```bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
@@ -383,6 +386,7 @@ node -v  # Verify: v25.2.1
 ### Issue: Build fails
 
 **Solution**:
+
 ```bash
 # Clear cache and rebuild
 rm -rf .next node_modules
@@ -393,6 +397,7 @@ npm run build
 ### Issue: Service fails to start
 
 **Solution**:
+
 ```bash
 # Check logs
 sudo journalctl -u secure-ai-chat -n 50
@@ -410,11 +415,13 @@ sudo systemctl restart secure-ai-chat
 ### Issue: Application not accessible externally
 
 **Check**:
+
 1. Application binding: `sudo ss -tlnp | grep :3000` (should show `0.0.0.0:3000`)
 2. UFW firewall: `sudo ufw status` (port 3000 should be allowed)
 3. Cloud provider firewall (AWS Security Groups, GCP Firewall Rules, Azure NSG)
 
 **Solution**:
+
 - If binding to `127.0.0.1`, ensure `HOSTNAME=0.0.0.0` in `.env.local` or service file
 - If UFW blocking, allow port: `sudo ufw allow 3000/tcp`
 - If cloud firewall blocking, configure inbound rule for port 3000
@@ -422,6 +429,7 @@ sudo systemctl restart secure-ai-chat
 ### Issue: Release gate fails
 
 **Solution**:
+
 ```bash
 # Run release gate to see specific failures
 npm run release-gate
@@ -436,6 +444,7 @@ npm run release-gate
 ### Issue: Version mismatch
 
 **Solution**:
+
 ```bash
 # Verify version in package.json
 cat package.json | grep '"version"'
@@ -512,6 +521,7 @@ rm -rf ~/.nvm
 ## Summary
 
 ✅ **Installation Complete** when:
+
 - Release gate script passes: `npm run release-gate`
 - Service is running: `sudo systemctl status secure-ai-chat`
 - Health endpoint responds: `curl http://localhost:3000/api/health`

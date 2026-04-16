@@ -60,6 +60,7 @@ const newTheme = toggleTheme()
 ### UniFi-Style Palette
 
 The design follows UniFi principles:
+
 - **Neutral-first**: Low saturation backgrounds and surfaces
 - **Single accent**: Blue (`--accent`) for interactive elements only
 - **Subtle shadows**: Rely on spacing and borders for structure
@@ -68,37 +69,28 @@ The design follows UniFi principles:
 ### Light Theme (Day Mode)
 
 ```css
---bg: #F5F7FA          /* Light gray background */
---surface-1: #FFFFFF   /* White surface */
---surface-2: #F0F2F5   /* Light gray surface */
---text-1: #1F2933      /* Dark text */
---text-2: #5F6C7B      /* Secondary text */
---border: #E1E5EA      /* Light border */
---accent: #006FFF      /* UniFi blue */
---focus: #006FFF       /* Focus ring */
+--bg: #f5f7fa /* Light gray background */ --surface-1: #ffffff /* White surface */
+  --surface-2: #f0f2f5 /* Light gray surface */ --text-1: #1f2933 /* Dark text */ --text-2: #5f6c7b
+  /* Secondary text */ --border: #e1e5ea /* Light border */ --accent: #006fff /* UniFi blue */
+  --focus: #006fff /* Focus ring */;
 ```
 
 ### Dark Theme (Night Mode)
 
 ```css
---bg: #0E1116          /* Near-black background */
---surface-1: #151A21   /* Dark gray surface */
---surface-2: #1B2230   /* Lighter dark surface */
---text-1: #E6EAF0      /* Off-white text */
---text-2: #AAB3C2      /* Gray secondary text */
---border: #232B36      /* Dark border */
---accent: #3B82F6      /* Brighter blue */
---focus: #60A5FA       /* Brighter focus ring */
+--bg: #0e1116 /* Near-black background */ --surface-1: #151a21 /* Dark gray surface */
+  --surface-2: #1b2230 /* Lighter dark surface */ --text-1: #e6eaf0 /* Off-white text */
+  --text-2: #aab3c2 /* Gray secondary text */ --border: #232b36 /* Dark border */ --accent: #3b82f6
+  /* Brighter blue */ --focus: #60a5fa /* Brighter focus ring */;
 ```
 
 ### Shared Tokens
 
 ```css
---success: 34, 197, 94    /* Green */
---warning: 249, 115, 22   /* Orange */
---danger: 239, 68, 68     /* Red */
---radius: 0.5rem          /* Default border radius */
---shadow-sm, --shadow-md, --shadow-lg, --shadow-xl  /* Subtle shadows */
+--success:
+  34, 197, 94 /* Green */ --warning: 249, 115, 22 /* Orange */ --danger: 239, 68,
+  68 /* Red */ --radius: 0.5rem /* Default border radius */ --shadow-sm, --shadow-md, --shadow-lg,
+  --shadow-xl /* Subtle shadows */;
 ```
 
 ## Adding New Tokens
@@ -108,11 +100,11 @@ The design follows UniFi principles:
 Add the token for both themes:
 
 ```css
-:root[data-theme="light"] {
+:root[data-theme='light'] {
   --my-new-token: 255, 255, 255; /* RGB values */
 }
 
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   --my-new-token: 0, 0, 0;
 }
 ```
@@ -132,17 +124,13 @@ Add the token for both themes:
 ### 3. Use Token in Components
 
 ```tsx
-<div style={{ backgroundColor: 'rgb(var(--my-new-token))' }}>
-  Content
-</div>
+<div style={{ backgroundColor: 'rgb(var(--my-new-token))' }}>Content</div>
 ```
 
 Or use Tailwind classes (if configured in `tailwind.config.js`):
 
 ```tsx
-<div className="bg-my-new-token">
-  Content
-</div>
+<div className="bg-my-new-token">Content</div>
 ```
 
 ## Theming New Components
@@ -150,11 +138,13 @@ Or use Tailwind classes (if configured in `tailwind.config.js`):
 ### Step 1: Use CSS Variables
 
 **❌ Don't use hard-coded colors:**
+
 ```tsx
 <div style={{ backgroundColor: '#006FFF' }}>  {/* BAD */}
 ```
 
 **✅ Use CSS variables:**
+
 ```tsx
 <div style={{ backgroundColor: 'rgb(var(--accent))' }}>  {/* GOOD */}
 ```
@@ -162,6 +152,7 @@ Or use Tailwind classes (if configured in `tailwind.config.js`):
 ### Step 2: Use Semantic Tokens
 
 **✅ Use semantic tokens for common patterns:**
+
 ```css
 /* Background */
 .my-component {
@@ -196,8 +187,7 @@ Or use Tailwind classes (if configured in `tailwind.config.js`):
 ```css
 .my-button:focus {
   outline: none;
-  box-shadow: 
-    0 0 0 3px rgba(var(--focus), var(--focus-opacity));
+  box-shadow: 0 0 0 3px rgba(var(--focus), var(--focus-opacity));
 }
 ```
 
@@ -230,18 +220,21 @@ Or use Tailwind classes (if configured in `tailwind.config.js`):
 ### WCAG AA Compliance
 
 All tokens are designed to meet WCAG AA requirements:
+
 - **Normal text**: ≥4.5:1 contrast ratio
 - **Large text/UI components**: ≥3:1 contrast ratio
 
 ### Focus Rings
 
 Focus rings use `--focus` and `--focus-opacity` tokens and are always visible:
+
 - Light mode: `rgba(0, 111, 255, 0.3)`
 - Dark mode: `rgba(96, 165, 250, 0.4)`
 
 ### Color and Meaning
 
 Never use color alone to convey meaning. Always include:
+
 - Icons
 - Text labels
 - Border patterns
@@ -313,7 +306,7 @@ If you see a flash of the wrong theme:
     border: '1px solid rgb(var(--border))',
     color: 'rgb(var(--text-1))',
   }}
-  onFocus={(e) => {
+  onFocus={e => {
     e.currentTarget.style.boxShadow = `0 0 0 3px rgba(var(--focus), var(--focus-opacity))`
   }}
 >

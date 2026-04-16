@@ -1,6 +1,6 @@
 /**
  * UniFi-Style Theme Toggle Component
- * 
+ *
  * Simple, instant theme switching using the theme utility module.
  * Changes only the html[data-theme] attribute for instant switching.
  */
@@ -63,8 +63,8 @@ export default function ThemeToggle() {
     )
   }
 
-  const prefersReducedMotion = typeof window !== 'undefined' && 
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   return (
     <button
@@ -86,23 +86,23 @@ export default function ThemeToggle() {
         gap: '0.5rem',
         transition: prefersReducedMotion ? 'none' : 'all 100ms ease',
       }}
-      onMouseEnter={(e) => {
+      onMouseEnter={e => {
         if (!prefersReducedMotion) {
           e.currentTarget.style.background = 'rgb(var(--hover))'
           e.currentTarget.style.borderColor = 'rgba(var(--accent), 0.3)'
         }
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={e => {
         if (!prefersReducedMotion) {
           e.currentTarget.style.background = 'rgb(var(--surface-1))'
           e.currentTarget.style.borderColor = 'rgb(var(--border))'
         }
       }}
-      onFocus={(e) => {
+      onFocus={e => {
         e.currentTarget.style.outline = `2px solid rgba(var(--focus), var(--focus-opacity))`
         e.currentTarget.style.outlineOffset = '2px'
       }}
-      onBlur={(e) => {
+      onBlur={e => {
         e.currentTarget.style.outline = 'none'
       }}
     >

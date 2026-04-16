@@ -19,7 +19,10 @@ export default function Home() {
     const loadApiKeys = async () => {
       try {
         // Try to get keys from server-side storage first
-        const response = await fetch('/api/keys/retrieve', { credentials: 'include', cache: 'no-store' }).catch(() => null)
+        const response = await fetch('/api/keys/retrieve', {
+          credentials: 'include',
+          cache: 'no-store',
+        }).catch(() => null)
         if (response?.ok) {
           const data = await response.json()
           if (data.keys) {
@@ -36,7 +39,7 @@ export default function Home() {
       } catch (error) {
         console.error('Failed to load API keys from server:', error)
       }
-      
+
       // Fallback to localStorage for backward compatibility
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('apiKeys')
@@ -49,7 +52,7 @@ export default function Home() {
         }
       }
     }
-    
+
     loadApiKeys()
   }, [])
 
@@ -59,12 +62,12 @@ export default function Home() {
   return (
     <div className="bento-grid">
       {/* Header Card - Full Width */}
-      <div 
+      <div
         className="bento-card bento-span-4 glass-card p-6 liquid-shimmer border-2"
         style={{
-          background: "rgb(var(--surface-1))",
-          borderColor: "rgb(var(--border))",
-          boxShadow: "var(--shadow-md)",
+          background: 'rgb(var(--surface-1))',
+          borderColor: 'rgb(var(--border))',
+          boxShadow: 'var(--shadow-md)',
         }}
       >
         <div className="flex items-center justify-between">
@@ -81,12 +84,12 @@ export default function Home() {
       </div>
 
       {/* Banner Card - Full Width (Mobile) */}
-      <div 
+      <div
         className="bento-card bento-span-4 md:hidden glass-card rounded-2xl overflow-hidden"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--card-shadow)',
         }}
       >
         <ChatHeader />
@@ -94,12 +97,12 @@ export default function Home() {
 
       {/* Lakera Toggles Card */}
       {hasApiKey && (
-        <div 
+        <div
           className="bento-card bento-span-2 md:bento-span-2 glass-card p-6 border-2"
           style={{
-            background: "rgb(var(--surface-1))",
-            borderColor: "rgb(var(--border))",
-            boxShadow: "var(--shadow-md)",
+            background: 'rgb(var(--surface-1))',
+            borderColor: 'rgb(var(--border))',
+            boxShadow: 'var(--shadow-md)',
           }}
         >
           <LakeraToggles
@@ -111,12 +114,12 @@ export default function Home() {
       )}
 
       {/* Chat Interface Card - Takes remaining space */}
-      <div 
+      <div
         className={`bento-card ${hasApiKey ? 'bento-span-2' : 'bento-span-4'} bento-row-span-2 glass-card p-6 overflow-hidden flex flex-col border-2`}
         style={{
-          background: "rgb(var(--surface-1))",
-          borderColor: "rgb(var(--border))",
-          boxShadow: "var(--shadow-md)",
+          background: 'rgb(var(--surface-1))',
+          borderColor: 'rgb(var(--border))',
+          boxShadow: 'var(--shadow-md)',
         }}
       >
         <ChatInterface />

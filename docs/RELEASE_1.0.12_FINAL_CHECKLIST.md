@@ -17,24 +17,32 @@ Use this after running the restore-local-stability work and scripts.
 ## Validation (run locally)
 
 1. **Dev works**
+
    ```bash
    npm run local:reset
    npm run local:dev
    ```
+
    In another terminal:
+
    ```bash
    npm run local:smoke
    ```
+
    Then open http://127.0.0.1:3000 in browser — page loads (no blank page). Stop dev with Ctrl+C.
 
 2. **Prod works**
+
    ```bash
    npm run local:prod
    ```
+
    In another terminal:
+
    ```bash
    npm run local:smoke
    ```
+
    Open http://127.0.0.1:3000 — page loads. Stop prod with Ctrl+C.
 
 3. **Smoke passes**

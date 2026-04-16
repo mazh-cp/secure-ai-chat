@@ -16,6 +16,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **Getting 404?** The URL must point to a repo that has this script on the given branch. Replace `mazh-cp/secure-ai-chat` with your actual `owner/repo`, and `main` with your default branch if different (e.g. `master`). For **private repos**, the raw URL often returns 404; use the in-place upgrade instead: SSH to the server, `cd` to the app directory, then run `sudo bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main` (see [Deployment](DEPLOYMENT.md) or README).
 
 This script will:
+
 - ✅ Create automatic backup of all settings
 - ✅ Fetch and apply **all** latest code (if `git pull` fails, resets to `origin/<branch>` so remote changes are never missed)
 - ✅ Preserve all API keys (`.env.local` and `.secure-storage`)
@@ -129,16 +130,19 @@ sudo systemctl status secure-ai-chat
 ### Service Fails to Start After Upgrade
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 50
 ```
 
 **Common causes:**
+
 1. **Node.js path changed** - Update systemd service file:
+
    ```bash
    # Find new Node.js path
    sudo -u secureai bash -c 'export HOME=/opt/secure-ai-chat && export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && which npm'
-   
+
    # Update service file
    sudo nano /etc/systemd/system/secure-ai-chat.service
    # Update ExecStart path
@@ -147,6 +151,7 @@ sudo journalctl -u secure-ai-chat -n 50
    ```
 
 2. **Build errors** - Rebuild manually:
+
    ```bash
    cd /opt/secure-ai-chat
    sudo -u secureai bash << 'EOF'
@@ -199,11 +204,13 @@ sudo systemctl start secure-ai-chat
 ## Upgrade Checklist
 
 Before upgrading:
+
 - [ ] Verify current version: `curl http://localhost:3000/api/version`
 - [ ] Check service is running: `sudo systemctl status secure-ai-chat`
 - [ ] Note current port (if custom): `grep PORT /opt/secure-ai-chat/.env.local`
 
 After upgrading:
+
 - [ ] Verify new version: `curl http://localhost:3000/api/version`
 - [ ] Check service status: `sudo systemctl status secure-ai-chat`
 - [ ] Test health endpoint: `curl http://localhost:3000/api/health`
@@ -216,6 +223,7 @@ After upgrading:
 ### Upgrading to 1.0.8
 
 **New features:**
+
 - Ubuntu VM installation scripts
 - Auto-port detection
 - Improved nginx configuration
@@ -233,6 +241,7 @@ After upgrading:
 ## Support
 
 If you encounter issues during upgrade:
+
 1. Check logs: `sudo journalctl -u secure-ai-chat -n 100`
 2. Review troubleshooting section above
 3. Check [INSTALL_UBUNTU_VM.md](INSTALL_UBUNTU_VM.md) for installation details

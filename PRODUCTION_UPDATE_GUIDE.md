@@ -14,6 +14,7 @@ sudo bash update-production.sh
 ```
 
 This script will:
+
 1. ✅ Backup current state
 2. ✅ Fix repository permissions
 3. ✅ Fetch latest changes from GitHub
@@ -104,6 +105,7 @@ sudo journalctl -u secure-ai-chat -f
 ### Script Location
 
 The update script is located at:
+
 ```
 /home/adminuser/secure-ai-chat/update-production.sh
 ```
@@ -161,6 +163,7 @@ The update script updates:
 ### Automatic Backup
 
 The update script automatically backs up your `.env` file before updating:
+
 ```
 .env.backup.YYYYMMDD_HHMMSS
 ```
@@ -220,11 +223,13 @@ git reset --hard origin/release/v1.0.2
 If the build fails:
 
 1. Check Node.js version:
+
    ```bash
    node -v  # Should be 25.2.1
    ```
 
 2. Clear build cache:
+
    ```bash
    rm -rf .next node_modules
    npm ci
@@ -241,16 +246,19 @@ If the build fails:
 If the service fails to start:
 
 1. Check service status:
+
    ```bash
    sudo systemctl status secure-ai-chat
    ```
 
 2. Check logs:
+
    ```bash
    sudo journalctl -u secure-ai-chat -n 100
    ```
 
 3. Check environment file:
+
    ```bash
    cat /home/adminuser/secure-ai-chat/.env
    ```

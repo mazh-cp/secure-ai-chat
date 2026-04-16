@@ -58,4 +58,4 @@ You should no longer see `Crypto.randomUUID is not a function`. If you do, confi
 
 ## Note: Standalone start
 
-This app uses `output: 'standalone'` in `next.config.js`. `npm start` runs `scripts/start-standalone.js`, which starts `node .next/standalone/server.js` (with static/public copied) when a standalone build exists, so you do **not** need to change the systemd service. If you see the warning *"next start" does not work with "output: standalone"*, ensure you have pulled the latest code (which uses the start-standalone script) and restarted the service.
+This app uses `output: 'standalone'` in `next.config.js`. `npm start` runs `scripts/start-standalone.js`, which starts `node .next/standalone/server.js` (with static/public copied) when a standalone build exists, so you do **not** need to change the systemd service. If you see the warning _"next start" does not work with "output: standalone"_, ensure you have pulled the latest code (which uses the start-standalone script) and restarted the service.

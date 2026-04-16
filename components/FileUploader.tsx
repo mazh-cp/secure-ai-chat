@@ -11,9 +11,23 @@ interface FileUploaderProps {
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 const MAX_FILES = 10 // Maximum number of files that can be uploaded simultaneously
-const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.json', '.csv', '.docx', '.xlsx', '.xls', '.xlsm']
+const ALLOWED_EXTENSIONS = [
+  '.pdf',
+  '.txt',
+  '.md',
+  '.json',
+  '.csv',
+  '.docx',
+  '.xlsx',
+  '.xls',
+  '.xlsm',
+]
 
-export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, ragScanEnabled = true }: FileUploaderProps) {
+export default function FileUploader({
+  onFileUpload,
+  lakeraScanEnabled = true,
+  ragScanEnabled = true,
+}: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -42,10 +56,10 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
         reject(new Error(`File size exceeds ${MAX_FILE_SIZE / (1024 * 1024)} MB limit`))
         return
       }
-      
+
       const reader = new FileReader()
-      
-      reader.onload = (e) => {
+
+      reader.onload = e => {
         try {
           const result = e.target?.result
           if (typeof result === 'string') {
@@ -56,14 +70,14 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
             // The client-side sequential processing prevents memory bloat from multiple files
             const bytes = new Uint8Array(result)
             let binary = ''
-            
+
             // Convert bytes to binary string (optimized for modern browsers)
             // For files up to 50MB, this is acceptable and doesn't block the event loop
             // The browser's FileReader already handles this asynchronously
             for (let i = 0; i < bytes.length; i++) {
               binary += String.fromCharCode(bytes[i])
             }
-            
+
             resolve(btoa(binary))
           } else {
             reject(new Error('Failed to read file'))
@@ -72,9 +86,9 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
           reject(error instanceof Error ? error : new Error('Failed to read file'))
         }
       }
-      
+
       reader.onerror = () => reject(new Error('Failed to read file'))
-      
+
       // Read as text for text files, as ArrayBuffer for binary
       if (file.type.startsWith('text/') || file.type === 'application/json') {
         reader.readAsText(file)
@@ -86,13 +100,15 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
 
   const processFile = async (file: File, fileIndex: number, total: number): Promise<void> => {
     const fileId = `${file.name}-${fileIndex}`
-    
+
     try {
       setProcessingFiles(prev => new Set(prev).add(fileId))
-      
+
       const validationError = validateFile(file)
       if (validationError) {
-        setError(prev => prev ? `${prev}\n${file.name}: ${validationError}` : `${file.name}: ${validationError}`)
+        setError(prev =>
+          prev ? `${prev}\n${file.name}: ${validationError}` : `${file.name}: ${validationError}`
+        )
         return
       }
 
@@ -112,7 +128,7 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
       setProcessedCount(prev => prev + 1)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to process file'
-      setError(prev => prev ? `${prev}\n${file.name}: ${errorMsg}` : `${file.name}: ${errorMsg}`)
+      setError(prev => (prev ? `${prev}\n${file.name}: ${errorMsg}` : `${file.name}: ${errorMsg}`))
     } finally {
       setProcessingFiles(prev => {
         const next = new Set(prev)
@@ -154,7 +170,7 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
 
     setIsProcessing(false)
     setProcessingFiles(new Set())
-    
+
     // Reset after a short delay
     setTimeout(() => {
       setProcessedCount(0)
@@ -208,9 +224,10 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
         className={`
           relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer
           transition-all duration-300
-          ${isDragging 
-            ? 'glass-card border-brand-berry/50 scale-105' 
-            : 'glass border-brand-berry/30 hover:border-brand-berry/50 hover:scale-[1.02]'
+          ${
+            isDragging
+              ? 'glass-card border-brand-berry/50 scale-105'
+              : 'glass border-brand-berry/30 hover:border-brand-berry/50 hover:scale-[1.02]'
           }
           ${isProcessing ? 'opacity-50 pointer-events-none' : ''}
         `}
@@ -228,21 +245,47 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
           {/* Upload Icon */}
           <div className="mx-auto w-16 h-16 rounded-full glass flex items-center justify-center border-brand-berry/30">
             {isProcessing ? (
-              <svg className="animate-spin h-8 w-8 text-brand-berry" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                className="animate-spin h-8 w-8 text-brand-berry"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
             ) : (
-              <svg className="h-8 w-8 text-brand-berry" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <svg
+                className="h-8 w-8 text-brand-berry"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
               </svg>
             )}
           </div>
 
           <div>
             <p className="text-theme font-medium">
-              {isProcessing 
-                ? `Processing ${processedCount}/${totalFiles} files...` 
+              {isProcessing
+                ? `Processing ${processedCount}/${totalFiles} files...`
                 : 'Drop files here or click to upload'}
             </p>
             <p className="text-theme-muted text-base mt-1">
@@ -253,7 +296,7 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
             </p>
             {isProcessing && totalFiles > 0 && (
               <div className="mt-3 w-full bg-white/10 rounded-full h-2">
-                <div 
+                <div
                   className="bg-brand-berry h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(processedCount / totalFiles) * 100}%` }}
                 />
@@ -273,12 +316,11 @@ export default function FileUploader({ onFileUpload, lakeraScanEnabled = true, r
       {/* Info */}
       <div className="glass rounded-2xl p-3 border-brand-berry/20">
         <p className="text-theme-muted text-base">
-          {ragScanEnabled && lakeraScanEnabled 
+          {ragScanEnabled && lakeraScanEnabled
             ? '🔒 Files are processed locally and automatically scanned by Lakera AI for RAG security threats on upload.'
             : lakeraScanEnabled
-            ? '⚠️ RAG auto-scan is disabled. Files can be manually scanned using the Scan button.'
-            : '⚠️ Lakera scanning is disabled. Files will not be scanned for security threats.'
-          }
+              ? '⚠️ RAG auto-scan is disabled. Files can be manually scanned using the Scan button.'
+              : '⚠️ Lakera scanning is disabled. Files will not be scanned for security threats.'}
         </p>
       </div>
     </div>

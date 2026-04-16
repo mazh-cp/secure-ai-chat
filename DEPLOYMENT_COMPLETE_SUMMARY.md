@@ -93,12 +93,14 @@ sudo ./scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Options:**
+
 - `--app-dir`: Application directory (required)
 - `--ref`: Git reference to deploy (default: `main`)
 - `--backup-dir`: Custom backup directory (default: `{app-dir}/.backups`)
 - `--no-rollback`: Disable automatic rollback on failure
 
 **What it does:**
+
 1. Validates git repository is clean (or stashes changes)
 2. Fetches latest code and checks out target ref
 3. Creates timestamped backup of current build + config
@@ -116,12 +118,14 @@ sudo ./scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Options:**
+
 - `--app-dir`: Application directory (required, default: `/opt/secure-ai-chat`)
 - `--ref`: Git reference to deploy (default: `main`)
 - `--app-user`: Application user (default: `secureai`)
 - `--skip-os-deps`: Skip OS dependency check
 
 **What it does:**
+
 1. Checks/installs OS prerequisites (curl, git, build-essential)
 2. Installs Node.js v24.13.0 via nvm
 3. Creates app user (`secureai`) and app directory
@@ -165,18 +169,21 @@ git push origin v1.0.12
 ## 3. Assumptions Made
 
 ### Node.js Version
+
 - **Required**: v24.13.0 (LTS)
 - **Installation**: Via nvm (automatically installed if missing)
 - **Location**: `~/.nvm/versions/node/v24.13.0/`
 - **Default**: Set as default via `nvm alias default 24.13.0`
 
 ### Operating System
+
 - **Primary**: Ubuntu 18.04+ or Debian 10+
 - **Package Manager**: apt-get
 - **Service Manager**: systemd
 - **Detection**: Scripts detect OS and print commands if prerequisites missing
 
 ### Service Configuration
+
 - **Service Name**: `secure-ai-chat`
 - **Service File**: `/etc/systemd/system/secure-ai-chat.service`
 - **Environment File**: `/etc/secure-ai-chat.env`
@@ -184,10 +191,12 @@ git push origin v1.0.12
 - **App Directory**: `/opt/secure-ai-chat` (default, configurable via `--app-dir`)
 
 ### Ports
+
 - **Application**: 3000 (configurable via PORT env var)
 - **SSH**: 22 (required for remote access)
 
 ### Package Manager Detection
+
 - **Priority**: pnpm > yarn > npm
 - **Detection**: Based on lockfile presence
   - `pnpm-lock.yaml` → pnpm
@@ -199,6 +208,7 @@ git push origin v1.0.12
   - npm: `npm ci`
 
 ### Security Assumptions
+
 - **Secret Storage**: Environment variables in `/etc/secure-ai-chat.env` (server-side only)
 - **API Keys**: Can be configured via Settings UI (stored in `.secure-storage/`)
 - **File Permissions**: `.secure-storage/` is 700, env file is 600
@@ -206,6 +216,7 @@ git push origin v1.0.12
 - **Log Redaction**: All scripts redact secrets from output
 
 ### Build Assumptions
+
 - **Build Command**: `npm run build` (or detected PM equivalent)
 - **Start Command**: `npm start` (or detected PM equivalent)
 - **Build Output**: `.next/` directory (Next.js standard)
@@ -253,17 +264,20 @@ git push origin v1.0.12
 ## 5. Security Features
 
 ### Secret Protection
+
 - ✅ All scripts redact secrets from output
 - ✅ No secrets in repository
 - ✅ Environment variables stored server-side only
 - ✅ API keys can be configured via Settings UI (stored securely)
 
 ### File Permissions
+
 - ✅ `.secure-storage/` is 700 (owner read/write/execute only)
 - ✅ Environment file is 600 (owner read/write only)
 - ✅ Service runs as dedicated user (not root)
 
 ### Log Security
+
 - ✅ All logs redact secrets
 - ✅ Smoke tests scan for secret leakage
 - ✅ Release gate validates no client-side secret leakage
@@ -275,6 +289,7 @@ git push origin v1.0.12
 ### Automatic Rollback (upgrade.sh)
 
 On any failure during upgrade:
+
 1. Restores previous git commit
 2. Restores previous build (`.next/` directory)
 3. Restores previous config files
@@ -307,6 +322,7 @@ sudo systemctl restart secure-ai-chat
 ### Script Documentation
 
 All scripts include:
+
 - Header comments with purpose and usage
 - Inline comments for complex logic
 - Clear error messages
@@ -319,11 +335,13 @@ All scripts include:
 ### For Production Deployment
 
 1. **Test on staging first**
+
    ```bash
    sudo ./scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-chat-test --ref main
    ```
 
 2. **Verify smoke tests pass**
+
    ```bash
    BASE_URL=http://your-server:3000 ./scripts/smoke-test.sh
    ```
@@ -336,6 +354,7 @@ All scripts include:
 ### For Development
 
 1. **Local validation**
+
    ```bash
    ./scripts/release-gate.sh
    npm run build

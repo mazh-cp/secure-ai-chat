@@ -49,15 +49,18 @@ GIT_REF=v1.0.11 APP_DIR=/opt/secure-ai-chat curl -fsSL https://raw.githubusercon
 ## What Gets Fixed
 
 ### Storage Permissions
+
 - ✅ `.storage/` directory: Fixed to `0o755` (was `0o700`)
 - ✅ `.storage/files/` directory: Fixed to `0o755` (was `0o700`)
 - ✅ Existing files: Fixed to `0o644` for persistence
 - ✅ Metadata file: Fixed to `0o644`
 
 ### File Limit
+
 - ✅ Maximum files: Increased from 5 to 10
 
 ### Application Code
+
 - ✅ `lib/persistent-storage.ts`: Fixed directory and file permissions
 - ✅ `components/FileUploader.tsx`: Updated MAX_FILES to 10
 
@@ -146,11 +149,13 @@ sudo chown -R $(sudo cat /etc/systemd/system/secure-ai-chat.service | grep "^Use
 ## Expected Behavior After Fix
 
 ### Before Fix
+
 - ❌ Files lost after service restart
 - ❌ Directories have 0o700 permissions (too restrictive)
 - ❌ Files have restrictive permissions
 
 ### After Fix
+
 - ✅ Files persist across restarts
 - ✅ Directories have 0o755 permissions (persistent)
 - ✅ Files have 0o644 permissions (accessible)
@@ -164,6 +169,7 @@ sudo chown -R $(sudo cat /etc/systemd/system/secure-ai-chat.service | grep "^Use
    - Verify they appear in the list
 
 2. **Restart Test**:
+
    ```bash
    sudo systemctl restart secure-ai-chat
    # Wait 10 seconds

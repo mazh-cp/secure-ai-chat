@@ -59,7 +59,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   // Ensure cleanup service is initialized
   ensureCleanupInitialized()
-  
+
   try {
     const body = await request.json().catch(() => ({}))
     const { action } = body

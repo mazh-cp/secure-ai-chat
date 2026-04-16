@@ -31,6 +31,6 @@ export function getRagScope(
     owner_id: params.owner_id ?? undefined,
     session_id: params.session_id ?? undefined,
   })
-  const fileIds = files.map((f) => f.id)
+  const fileIds = files.map(f => f.id)
   return { namespace, fileIds }
 }

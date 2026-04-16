@@ -8,6 +8,7 @@
 ## Executive Summary
 
 The merge from `release/1.0.8` to `main` is **SAFE** and will **NOT break**:
+
 - ✅ Existing application functionality
 - ✅ Remote upgrade processes
 - ✅ Settings and API keys
@@ -18,6 +19,7 @@ The merge from `release/1.0.8` to `main` is **SAFE** and will **NOT break**:
 ## What Changed
 
 ### Files Added (New Scripts & Documentation)
+
 - `scripts/install_ubuntu_public.sh` - New installation script
 - `scripts/upgrade_remote.sh` - New upgrade script (preserves settings)
 - `scripts/cleanup_reset_vm.sh` - New cleanup script
@@ -27,10 +29,12 @@ The merge from `release/1.0.8` to `main` is **SAFE** and will **NOT break**:
 - `FIX_GIT_REPO.md` - Git fix documentation
 
 ### Files Modified
+
 - `package.json` - Version: 1.0.7 → 1.0.8
 - `README.md` - Added Quick Install and Upgrade sections
 
 ### Application Code Changes
+
 - ❌ **NONE** - Zero application code files changed
 - ❌ **NONE** - No API route changes
 - ❌ **NONE** - No component changes
@@ -41,12 +45,14 @@ The merge from `release/1.0.8` to `main` is **SAFE** and will **NOT break**:
 ## Safety Verification
 
 ### ✅ Build & Quality Gates
+
 - `npm ci` - ✅ Passed
 - `npm run type-check` - ✅ Passed (no type errors)
 - `npm run lint` - ✅ Passed (only expected warnings)
 - `npm run build` - ✅ Passed (production build successful)
 
 ### ✅ Backward Compatibility
+
 - ✅ All existing API endpoints unchanged
 - ✅ All existing settings formats unchanged
 - ✅ No database schema changes
@@ -55,7 +61,9 @@ The merge from `release/1.0.8` to `main` is **SAFE** and will **NOT break**:
 - ✅ No breaking changes to `.secure-storage` format
 
 ### ✅ Upgrade Script Safety
+
 The `upgrade_remote.sh` script:
+
 - ✅ Creates automatic backup before any changes
 - ✅ Preserves `.env.local` (all API keys)
 - ✅ Preserves `.secure-storage/` (encrypted server-side keys)
@@ -65,6 +73,7 @@ The `upgrade_remote.sh` script:
 - ✅ Verifies upgrade success
 
 ### ✅ No Breaking Changes
+
 - ✅ Existing installations (v1.0.7) continue working
 - ✅ No forced upgrade required
 - ✅ Settings preserved during upgrade
@@ -76,17 +85,20 @@ The `upgrade_remote.sh` script:
 ## Impact Analysis
 
 ### On Existing Installations (v1.0.7)
+
 - ✅ **Zero Impact** - Existing installations continue working unchanged
 - ✅ **No Forced Upgrade** - Systems remain on 1.0.7 until manually upgraded
 - ✅ **Settings Intact** - All API keys and configurations remain preserved
 
 ### On Upgrade Process (v1.0.7 → 1.0.8)
+
 - ✅ **Safe Upgrade** - Script automatically backs up and preserves all settings
 - ✅ **No Data Loss** - All settings, API keys, and data preserved
 - ✅ **Automatic Rollback** - Backup created for safety
 - ✅ **Verification** - Script verifies upgrade success
 
 ### On New Installations
+
 - ✅ **Improved Experience** - Better installation script with auto-port detection
 - ✅ **Production Ready** - Includes nginx and systemd configuration
 - ✅ **Node.js LTS** - Uses Node.js LTS 20.x for production stability
@@ -95,20 +107,21 @@ The `upgrade_remote.sh` script:
 
 ## Risk Assessment
 
-| Risk | Level | Status | Mitigation |
-|------|-------|--------|------------|
-| **Breaking existing installations** | ❌ None | ✅ Safe | No application code changes |
-| **Settings loss during upgrade** | ❌ None | ✅ Safe | Automatic backup and restore |
-| **API compatibility issues** | ❌ None | ✅ Safe | No API changes |
-| **Data format changes** | ❌ None | ✅ Safe | No data structure changes |
-| **Service disruption** | ⚠️ Low | ✅ Acceptable | Brief restart during upgrade (expected) |
-| **Upgrade script failures** | ⚠️ Low | ✅ Mitigated | Backup created, rollback available |
+| Risk                                | Level   | Status        | Mitigation                              |
+| ----------------------------------- | ------- | ------------- | --------------------------------------- |
+| **Breaking existing installations** | ❌ None | ✅ Safe       | No application code changes             |
+| **Settings loss during upgrade**    | ❌ None | ✅ Safe       | Automatic backup and restore            |
+| **API compatibility issues**        | ❌ None | ✅ Safe       | No API changes                          |
+| **Data format changes**             | ❌ None | ✅ Safe       | No data structure changes               |
+| **Service disruption**              | ⚠️ Low  | ✅ Acceptable | Brief restart during upgrade (expected) |
+| **Upgrade script failures**         | ⚠️ Low  | ✅ Mitigated  | Backup created, rollback available      |
 
 ---
 
 ## Upgrade Script Guarantees
 
 ### What Gets Preserved ✅
+
 1. **`.env.local`** - All environment variables:
    - `OPENAI_API_KEY`
    - `LAKERA_AI_KEY`
@@ -127,11 +140,13 @@ The `upgrade_remote.sh` script:
    - User preferences
 
 ### What Gets Updated ✅
+
 1. **Application code** - Latest version from repository
 2. **Dependencies** - Updated via `npm ci`
 3. **Build artifacts** - Fresh `.next/` directory
 
 ### What Doesn't Change ✅
+
 1. **Settings format** - No migration needed
 2. **API contracts** - All endpoints unchanged
 3. **Data structures** - No schema changes
@@ -142,18 +157,21 @@ The `upgrade_remote.sh` script:
 ## Testing Results
 
 ### ✅ Local Verification
+
 - Build: ✅ Passes
 - Type check: ✅ Passes
 - Lint: ✅ Passes (only expected warnings)
 - Runtime: ✅ Works correctly
 
 ### ✅ Script Verification
+
 - Upgrade script syntax: ✅ Valid
 - Backup mechanism: ✅ Works
 - Settings preservation: ✅ Verified
 - Rollback capability: ✅ Available
 
 ### ⚠️ Release Gate Note
+
 - Release gate shows false positive for type import (types are safe, erased at compile time)
 - This is a pre-existing condition, not introduced by merge
 - Does not affect functionality or security
@@ -167,6 +185,7 @@ The `upgrade_remote.sh` script:
 **Confidence Level**: ✅ **HIGH**
 
 The merge:
+
 - ✅ Adds only new scripts and documentation
 - ✅ Updates version number (1.0.7 → 1.0.8)
 - ✅ **No application code changes**

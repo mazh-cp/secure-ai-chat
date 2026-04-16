@@ -22,6 +22,7 @@ The Enhanced RAG system automatically searches through your uploaded files when 
 - **TXT files**: Plain text files (e.g., notes, logs, documentation)
 
 **File Size Limits:**
+
 - Maximum file size: 10MB per file
 - Maximum files processed: 5 most relevant files per query
 
@@ -30,17 +31,20 @@ The Enhanced RAG system automatically searches through your uploaded files when 
 ## Example Queries
 
 ### Data Queries
+
 - "How many users are in the files?"
 - "What is the email of user John?"
 - "Show me all records from California"
 - "What data fields are available?"
 
 ### User Queries
+
 - "Find information about user with ID PID-123456"
 - "List all users with email addresses"
 - "Show me users from New York"
 
 ### Analysis Queries
+
 - "What's the average income in the data?"
 - "How many records have health insurance?"
 - "Count users by state"
@@ -61,6 +65,7 @@ The Enhanced RAG system automatically searches through your uploaded files when 
 ### Chat says "please upload files" even after uploading
 
 **Solution:**
+
 1. Check that files have completed security scanning
 2. Verify files are in CSV, JSON, or TXT format
 3. Ensure files are under 10MB
@@ -69,6 +74,7 @@ The Enhanced RAG system automatically searches through your uploaded files when 
 ### Chat can't find information in files
 
 **Solution:**
+
 1. Check that your question mentions data-related terms (user, record, data, etc.)
 2. Verify the information exists in the uploaded files
 3. Try rephrasing your question with specific keywords
@@ -77,6 +83,7 @@ The Enhanced RAG system automatically searches through your uploaded files when 
 ### Files not being searched
 
 **Solution:**
+
 1. Ensure RAG is enabled (check Files page toggle)
 2. Verify files passed security scans
 3. Check file size (must be under 10MB)

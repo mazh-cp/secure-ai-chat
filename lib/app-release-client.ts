@@ -14,7 +14,9 @@ export interface ReleaseNoteItem {
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Fixed',
-    items: ['Standalone `server.js` can live under `.next/standalone/<app>/` — start + verify-build find it.'],
+    items: [
+      'Standalone `server.js` can live under `.next/standalone/<app>/` — start + verify-build find it.',
+    ],
   },
   {
     title: 'Changed',

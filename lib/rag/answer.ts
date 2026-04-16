@@ -32,7 +32,7 @@ export interface AnswerResult {
  */
 export function buildContextFromChunks(chunks: RetrievedChunk[]): string {
   return chunks
-    .map((c) => {
+    .map(c => {
       const label = (c.metadata?.filename as string) ?? c.id
       const page = c.metadata?.page as number | undefined
       const part = page != null ? ` [${label}, page ${page}]` : ` [${label}]`
@@ -45,7 +45,7 @@ export function buildContextFromChunks(chunks: RetrievedChunk[]): string {
  * Build citation list from chunk metadata (Phase F will use for UI).
  */
 export function buildCitations(chunks: RetrievedChunk[]): Citation[] {
-  return chunks.map((c) => ({
+  return chunks.map(c => ({
     chunkId: c.id,
     docLabel: (c.metadata?.filename as string) ?? c.id,
     excerpt: c.text.slice(0, 150) + (c.text.length > 150 ? '...' : ''),
@@ -87,7 +87,8 @@ export async function generateAnswer(
 
   if (notEnoughContext) {
     return {
-      answer: 'Not enough context from uploaded documents to answer. Please upload more relevant files or rephrase.',
+      answer:
+        'Not enough context from uploaded documents to answer. Please upload more relevant files or rephrase.',
       citations: [],
       blocked: false,
       notEnoughContext: true,

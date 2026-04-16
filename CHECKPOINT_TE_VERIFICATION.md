@@ -30,12 +30,14 @@ When a file is uploaded with Check Point TE Sandboxing enabled:
 ### 2. Check Point TE API Integration
 
 **Upload Endpoint** (`app/api/te/upload/route.ts`):
+
 - Receives file content (base64 or binary)
 - Creates multipart form data
 - Submits to Check Point TE API: `https://te-api.checkpoint.com/tecloud/api/v1/file`
 - Returns `request_id` for polling
 
 **Query Endpoint** (`app/api/te/query/route.ts`):
+
 - Queries Check Point TE API with `request_id`
 - Returns scan status: `FOUND`, `PARTIALLY_FOUND`, `NOT_FOUND`, `PENDING`
 - Returns threat verdict: `safe`, `malicious`, `unknown`
@@ -44,6 +46,7 @@ When a file is uploaded with Check Point TE Sandboxing enabled:
 ### 3. File Status Updates
 
 File status is updated based on Check Point TE results:
+
 - `pending` - Scan in progress
 - `safe` - File is safe (verdict: safe)
 - `malicious` - File is malicious (verdict: malicious)
@@ -53,29 +56,34 @@ File status is updated based on Check Point TE results:
 ## Verification Checklist
 
 ### ✅ Configuration
+
 - [ ] Check Point TE API key is configured in Settings
 - [ ] File Sandboxing toggle is enabled
 - [ ] API key is valid and has proper permissions
 
 ### ✅ File Upload
+
 - [ ] File upload triggers Check Point TE sandboxing when enabled
 - [ ] Upload request is sent to `/api/te/upload`
 - [ ] File is successfully submitted to Check Point TE API
 - [ ] `request_id` is received from Check Point TE
 
 ### ✅ Polling
+
 - [ ] Polling starts after successful upload
 - [ ] Polls `/api/te/query` every 2 seconds
 - [ ] Polling continues until status is `FOUND`, `PARTIALLY_FOUND`, or `NOT_FOUND`
 - [ ] Polling times out after 60 seconds (30 attempts)
 
 ### ✅ Results Processing
+
 - [ ] Scan results are correctly parsed
 - [ ] Threat verdict is extracted (`safe`, `malicious`, `unknown`)
 - [ ] File status is updated based on verdict
 - [ ] Detailed threat information is stored in file metadata
 
 ### ✅ UI Display
+
 - [ ] File status is displayed in FileList component
 - [ ] Malicious files show appropriate warning/indicator
 - [ ] Safe files show success indicator
@@ -144,6 +152,7 @@ File status is updated based on Check Point TE results:
 ### When File Sandboxing is Enabled:
 
 1. **File Upload**:
+
    ```
    User uploads file
    → handleFileUpload called
@@ -155,6 +164,7 @@ File status is updated based on Check Point TE results:
    ```
 
 2. **Polling**:
+
    ```
    Start polling loop
    → GET /api/te/query?request_id=...
@@ -181,6 +191,7 @@ File status is updated based on Check Point TE results:
 ## Code Locations
 
 ### Key Files:
+
 - `app/files/page.tsx` - File upload UI and Check Point TE integration
 - `app/api/te/upload/route.ts` - File upload to Check Point TE API
 - `app/api/te/query/route.ts` - Query Check Point TE scan status
@@ -188,6 +199,7 @@ File status is updated based on Check Point TE results:
 - `components/FileList.tsx` - Display file status and scan results
 
 ### Key Functions:
+
 - `handleFileUpload` - Main file upload handler
 - `handleCheckpointTeSandbox` - Check Point TE sandboxing handler
 - `pollCheckpointTeStatus` - Polling function for scan results
@@ -195,6 +207,7 @@ File status is updated based on Check Point TE results:
 ## Debugging
 
 ### Check Server Logs:
+
 ```bash
 # Look for Check Point TE API calls
 grep -i "checkpoint\|te-api" /path/to/logs
@@ -204,12 +217,14 @@ grep -i "error\|failed" /path/to/logs | grep -i checkpoint
 ```
 
 ### Check Browser Console:
+
 - Open browser DevTools
 - Check Network tab for `/api/te/upload` and `/api/te/query` requests
 - Verify request/response payloads
 - Check for JavaScript errors
 
 ### Verify API Key:
+
 - Check Settings page for Check Point TE API key status
 - Verify API key is valid in Check Point TE dashboard
 - Test API key directly with curl:

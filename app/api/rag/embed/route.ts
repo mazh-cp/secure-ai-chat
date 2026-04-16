@@ -37,10 +37,11 @@ export async function POST(request: NextRequest) {
     }
 
     const files = fileIds?.length
-      ? listFiles({ owner_id: owner }).filter((f) => fileIds.includes(f.id))
+      ? listFiles({ owner_id: owner }).filter(f => fileIds.includes(f.id))
       : listFiles({ owner_id: owner })
 
-    const results: { fileId: string; indexed: boolean; quarantined?: boolean; error?: string }[] = []
+    const results: { fileId: string; indexed: boolean; quarantined?: boolean; error?: string }[] =
+      []
 
     for (const file of files) {
       try {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       message: 'Embed completed',
       results,
       total: results.length,
-      indexed: results.filter((r) => r.indexed).length,
+      indexed: results.filter(r => r.indexed).length,
     })
   } catch (error) {
     console.error('RAG embed error:', error)

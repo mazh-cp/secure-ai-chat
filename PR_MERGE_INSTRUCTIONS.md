@@ -17,12 +17,14 @@
 ## Step 2: Merge PR to Main
 
 ### Option A: Merge via GitHub Web Interface
+
 1. Go to the PR page
 2. Click "Merge pull request"
 3. Choose merge strategy (recommended: "Create a merge commit")
 4. Confirm merge
 
 ### Option B: Merge via GitHub CLI
+
 ```bash
 # Checkout main and pull latest
 git checkout main
@@ -40,13 +42,14 @@ git push origin main
 ## Step 3: Create GitHub Release
 
 ### Option A: Via GitHub Web Interface
+
 1. Go to: https://github.com/mazh-cp/secure-ai-chat/releases
 2. Click "Draft a new release"
 3. **Tag:** Select `v1.0.10` (or type `v1.0.10`)
 4. **Title:** `Release v1.0.10: Enhanced RAG System`
 5. **Description:** Copy from `RELEASE_v1.0.10.md` or use:
 
-```markdown
+````markdown
 ## 🎯 What's New
 
 ### Enhanced RAG (Retrieval Augmented Generation) System
@@ -54,6 +57,7 @@ git push origin main
 The chat client now automatically searches through uploaded files when answering questions. No more "please upload files" messages - the system intelligently finds relevant information from your uploaded data.
 
 **Key Features:**
+
 - ✅ Automatic file indexing on upload
 - ✅ Intelligent content matching for data queries
 - ✅ Search files first, fall back to LLM knowledge
@@ -64,17 +68,20 @@ The chat client now automatically searches through uploaded files when answering
 ## 📋 Changes
 
 ### Added
+
 - Enhanced RAG system with automatic file indexing
 - Improved content matching algorithm
 - System message for LLM file access instructions
 - Enhanced file context formatting
 
 ### Improved
+
 - File access control (more inclusive filtering)
 - Content matching for data/PII queries
 - LLM instructions about available files
 
 ### Fixed
+
 - Chat client not finding uploaded files issue
 
 ## 🔒 Security
@@ -91,13 +98,16 @@ The chat client now automatically searches through uploaded files when answering
 ## 🚀 Upgrade
 
 For existing installations:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade_remote.sh | bash
 ```
+````
 
 For new installations:
 See `docs/INSTALL_UBUNTU_VM.md`
-```
+
+````
 
 6. Click "Publish release"
 
@@ -106,7 +116,7 @@ See `docs/INSTALL_UBUNTU_VM.md`
 gh release create v1.0.10 \
   --title "Release v1.0.10: Enhanced RAG System" \
   --notes-file RELEASE_v1.0.10.md
-```
+````
 
 ---
 

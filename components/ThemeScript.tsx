@@ -7,6 +7,6 @@ export default function ThemeScript() {
     document.documentElement.setAttribute("data-theme", t);
     document.documentElement.style.colorScheme = (t === "dark") ? "dark" : "light";
   } catch (e) {}
-})();`;
-  return <script dangerouslySetInnerHTML={{ __html: code }} />;
+})();`
+  return <script dangerouslySetInnerHTML={{ __html: code }} />
 }

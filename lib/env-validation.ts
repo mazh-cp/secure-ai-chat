@@ -33,25 +33,33 @@ export function validateEnv(): EnvValidationResult {
 
   // Check for NEXT_PUBLIC_ variables that might leak secrets
   const nextPublicVars = Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_'))
-  const unsafeNextPublic = nextPublicVars.filter(key => 
-    key.includes('KEY') || key.includes('SECRET') || key.includes('TOKEN') || key.includes('PASSWORD')
+  const unsafeNextPublic = nextPublicVars.filter(
+    key =>
+      key.includes('KEY') ||
+      key.includes('SECRET') ||
+      key.includes('TOKEN') ||
+      key.includes('PASSWORD')
   )
   if (unsafeNextPublic.length > 0) {
-    errors.push(`SECURITY: NEXT_PUBLIC_ variables found that might leak secrets: ${unsafeNextPublic.join(', ')}`)
+    errors.push(
+      `SECURITY: NEXT_PUBLIC_ variables found that might leak secrets: ${unsafeNextPublic.join(', ')}`
+    )
   }
 
   // Safe NEXT_PUBLIC_ variables
   const safeNextPublic = ['NEXT_PUBLIC_APP_NAME', 'NEXT_PUBLIC_APP_VERSION']
   nextPublicVars.forEach(key => {
     if (!safeNextPublic.includes(key)) {
-      warnings.push(`NEXT_PUBLIC_ variable '${key}' is exposed to client. Ensure it doesn't contain secrets.`)
+      warnings.push(
+        `NEXT_PUBLIC_ variable '${key}' is exposed to client. Ensure it doesn't contain secrets.`
+      )
     }
   })
 
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -66,17 +74,17 @@ export function logEnvValidation(): void {
   }
 
   const result = validateEnv()
-  
+
   if (result.errors.length > 0) {
     console.error('⚠️  Environment Validation Errors:')
     result.errors.forEach(error => console.error(`  ❌ ${error}`))
   }
-  
+
   if (result.warnings.length > 0) {
     console.warn('⚠️  Environment Validation Warnings:')
     result.warnings.forEach(warning => console.warn(`  ⚠️  ${warning}`))
   }
-  
+
   if (result.valid && result.warnings.length === 0) {
     console.log('✅ Environment validation passed')
   }

@@ -39,7 +39,7 @@ export default function SettingsForm() {
     logoUrl: '',
     logoData: '',
   })
-  
+
   const [logoPreview, setLogoPreview] = useState<string>('')
 
   const [isSaving, setIsSaving] = useState(false)
@@ -65,24 +65,49 @@ export default function SettingsForm() {
   const [isCheckingTeStatus, setIsCheckingTeStatus] = useState<boolean>(false)
   const [isSavingTeKey, setIsSavingTeKey] = useState<boolean>(false)
 
+  const [lakeraVerifyLoading, setLakeraVerifyLoading] = useState(false)
+  const [lakeraVerifyMessage, setLakeraVerifyMessage] = useState<string | null>(null)
+  const [lakeraVerifyOk, setLakeraVerifyOk] = useState<boolean | null>(null)
+
   // PIN verification state
   const [pinConfigured, setPinConfigured] = useState<boolean>(false)
   const [pin, setPin] = useState<string>('')
   const [currentPin, setCurrentPin] = useState<string>('')
   const [pinForVerification, setPinForVerification] = useState<string>('')
   const [showPinDialog, setShowPinDialog] = useState<boolean>(false)
-  const [pinDialogAction, setPinDialogAction] = useState<'remove-te-key' | 'clear-all' | 'clear-openai' | 'clear-anthropic' | 'clear-lakera-ai' | 'clear-lakera-project-id' | 'clear-lakera-endpoint' | null>(null)
+  const [pinDialogAction, setPinDialogAction] = useState<
+    | 'remove-te-key'
+    | 'clear-all'
+    | 'clear-openai'
+    | 'clear-anthropic'
+    | 'clear-lakera-ai'
+    | 'clear-lakera-project-id'
+    | 'clear-lakera-endpoint'
+    | null
+  >(null)
   const [keyToClear, setKeyToClear] = useState<keyof ApiKeys | null>(null)
   const [isManagingPin, setIsManagingPin] = useState<boolean>(false)
 
   // Load keys from server-side storage and check status
   const loadApiKeys = async () => {
-    let statusData: { configured?: { openAiKey?: boolean; anthropicApiKey?: boolean; azureOpenAiKey?: boolean; lakeraAiKey?: boolean; lakeraProjectId?: boolean; lakeraEndpoint?: string } } | null = null
+    let statusData: {
+      configured?: {
+        openAiKey?: boolean
+        anthropicApiKey?: boolean
+        azureOpenAiKey?: boolean
+        lakeraAiKey?: boolean
+        lakeraProjectId?: boolean
+        lakeraEndpoint?: string
+      }
+    } | null = null
     let statusResponse: Response | null = null
-    
+
     try {
       // Check server-side status first
-      statusResponse = await fetch('/api/keys', { credentials: 'include', cache: 'no-store' }).catch(() => null)
+      statusResponse = await fetch('/api/keys', {
+        credentials: 'include',
+        cache: 'no-store',
+      }).catch(() => null)
       if (statusResponse?.ok) {
         statusData = await statusResponse.json()
         // Update server status
@@ -96,7 +121,7 @@ export default function SettingsForm() {
           checkpointTeApiKey: false, // Handled separately
         })
       }
-      
+
       // Try to load from localStorage for backward compatibility (migration)
       const stored = localStorage.getItem('apiKeys')
       if (stored) {
@@ -127,11 +152,52 @@ export default function SettingsForm() {
     }
   }
 
+  const verifyLakeraGuard = async () => {
+    setLakeraVerifyMessage(null)
+    setLakeraVerifyOk(null)
+    setLakeraVerifyLoading(true)
+    try {
+      const res = await fetch('/api/lakera/verify', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lakeraAiKey: keys.lakeraAiKey.trim() || undefined,
+          lakeraEndpoint: keys.lakeraEndpoint.trim() || undefined,
+          lakeraProjectId: keys.lakeraProjectId.trim() || undefined,
+        }),
+      })
+      const data = (await res.json()) as {
+        ok?: boolean
+        error?: string
+        requestUuid?: string | null
+        note?: string
+        projectIdConfigured?: boolean
+      }
+      if (res.ok && data.ok) {
+        setLakeraVerifyOk(true)
+        const uuid = data.requestUuid ? `request_uuid: ${data.requestUuid}. ` : ''
+        const proj = data.projectIdConfigured
+          ? 'Project ID sent on probe. '
+          : 'No project_id on probe (default policy). '
+        setLakeraVerifyMessage(`${proj}${uuid}${data.note ?? ''}`)
+      } else {
+        setLakeraVerifyOk(false)
+        setLakeraVerifyMessage(data.error || `Request failed (${res.status})`)
+      }
+    } catch (e) {
+      setLakeraVerifyOk(false)
+      setLakeraVerifyMessage(e instanceof Error ? e.message : 'Request failed')
+    } finally {
+      setLakeraVerifyLoading(false)
+    }
+  }
+
   // Load keys and settings on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       loadApiKeys()
-      
+
       const storedSettings = localStorage.getItem('appSettings')
       if (storedSettings) {
         try {
@@ -171,10 +237,12 @@ export default function SettingsForm() {
     try {
       // Check both status endpoints
       const [statusResponse, keysResponse] = await Promise.all([
-        fetch('/api/settings/status', { credentials: 'include', cache: 'no-store' }).catch(() => null),
+        fetch('/api/settings/status', { credentials: 'include', cache: 'no-store' }).catch(
+          () => null
+        ),
         fetch('/api/keys', { credentials: 'include', cache: 'no-store' }).catch(() => null),
       ])
-      
+
       if (statusResponse?.ok) {
         const statusData = await statusResponse.json()
         setServerStatus(prev => ({
@@ -187,7 +255,7 @@ export default function SettingsForm() {
           checkpointTeApiKey: statusData.hasCheckpointTeApiKey || false,
         }))
       }
-      
+
       if (keysResponse?.ok) {
         const keysData = await keysResponse.json()
         setServerStatus(prev => ({
@@ -197,7 +265,8 @@ export default function SettingsForm() {
           azureOpenAiKey: keysData.configured?.azureOpenAiKey ?? prev.azureOpenAiKey ?? false,
           lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
           lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
-          lakeraEndpoint: keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || LAKERA_GUARD_URL_DEFAULT,
+          lakeraEndpoint:
+            keysData.configured?.lakeraEndpoint || prev.lakeraEndpoint || LAKERA_GUARD_URL_DEFAULT,
         }))
       }
     } catch (error) {
@@ -278,13 +347,13 @@ export default function SettingsForm() {
         setCheckpointTeKey('')
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 3000)
-        
+
         // Re-check the status from server to ensure UI reflects actual state
         // This is important when replacing an old key with a new one
         // Add a small delay to ensure the server has processed the save
         await new Promise(resolve => setTimeout(resolve, 200))
         await checkCheckpointTeStatus()
-        
+
         // Also update server status to ensure consistency
         await checkServerStatus()
       } else {
@@ -367,7 +436,7 @@ export default function SettingsForm() {
     setIsSavingTeKey(true)
     try {
       const requestBody: { pin?: string } = {}
-      
+
       // Include PIN if configured
       if (pinConfigured && pinForVerification) {
         requestBody.pin = pinForVerification
@@ -391,13 +460,13 @@ export default function SettingsForm() {
         setSaveStatus('success')
         setShowPinDialog(false)
         setPinForVerification('')
-        
+
         // Clear any client-side cache
         if (typeof window !== 'undefined') {
           // Clear any cached API keys from localStorage
           localStorage.removeItem('apiKeys')
         }
-        
+
         // Re-check status to ensure UI is accurate and sync with server
         await checkCheckpointTeStatus()
         setTimeout(() => setSaveStatus('idle'), 3000)
@@ -442,8 +511,13 @@ export default function SettingsForm() {
       await performRemoveCheckpointTeKey()
     } else if (pinDialogAction === 'clear-all') {
       await performClearAll()
-    } else if (              pinDialogAction === 'clear-openai' || pinDialogAction === 'clear-anthropic' || pinDialogAction === 'clear-lakera-ai' || 
-               pinDialogAction === 'clear-lakera-project-id' || pinDialogAction === 'clear-lakera-endpoint') {
+    } else if (
+      pinDialogAction === 'clear-openai' ||
+      pinDialogAction === 'clear-anthropic' ||
+      pinDialogAction === 'clear-lakera-ai' ||
+      pinDialogAction === 'clear-lakera-project-id' ||
+      pinDialogAction === 'clear-lakera-endpoint'
+    ) {
       // Clear individual key
       if (keyToClear) {
         await performClearKey(keyToClear)
@@ -462,12 +536,12 @@ export default function SettingsForm() {
     if (e.key === 'Tab') {
       return
     }
-    
+
     // Allow Ctrl/Cmd + V for paste
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
       return
     }
-    
+
     // Block everything else including Ctrl+C, Ctrl+X, typing, backspace, delete
     e.preventDefault()
   }
@@ -492,9 +566,9 @@ export default function SettingsForm() {
     e.preventDefault()
     const pastedText = e.clipboardData.getData('text').trim()
     const fieldName = e.currentTarget.name as keyof ApiKeys
-    
+
     if (!pastedText) return
-    
+
     // For endpoints, only allow valid URLs
     if (fieldName === 'lakeraEndpoint' || fieldName === 'azureOpenAiEndpoint') {
       if (pastedText.startsWith('http://') || pastedText.startsWith('https://')) {
@@ -594,15 +668,15 @@ export default function SettingsForm() {
         lakeraProjectId: 'lakeraProjectId',
         lakeraEndpoint: 'lakeraEndpoint',
       }
-      
+
       const serverKeyName = serverKeyMap[fieldName]
-      
+
       // Call server API to delete the key
       const requestBody: { pin?: string } = {}
       if (pinConfigured && pinForVerification) {
         requestBody.pin = pinForVerification
       }
-      
+
       const response = await fetch(`/api/keys?key=${encodeURIComponent(serverKeyName)}`, {
         method: 'DELETE',
         headers: {
@@ -618,15 +692,15 @@ export default function SettingsForm() {
         } else {
           setKeys(prev => ({ ...prev, [fieldName]: '' }))
         }
-        
+
         // Clear localStorage cache
         if (typeof window !== 'undefined') {
           localStorage.removeItem('apiKeys')
         }
-        
+
         // Refresh server status to ensure UI is accurate
         await checkServerStatus()
-        
+
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 3000)
       } else {
@@ -673,7 +747,7 @@ export default function SettingsForm() {
       if (pinConfigured && pinForVerification) {
         requestBody.pin = pinForVerification
       }
-      
+
       const response = await fetch('/api/keys?all=true', {
         method: 'DELETE',
         credentials: 'include',
@@ -696,15 +770,15 @@ export default function SettingsForm() {
           lakeraEndpoint: LAKERA_GUARD_URL_DEFAULT,
           lakeraProjectId: '',
         })
-        
+
         // Clear localStorage cache
         if (typeof window !== 'undefined') {
           localStorage.removeItem('apiKeys')
         }
-        
+
         // Refresh server status to ensure UI is accurate
         await checkServerStatus()
-        
+
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 3000)
       } else {
@@ -786,7 +860,11 @@ export default function SettingsForm() {
 
   // Handle PIN removal
   const handleRemovePin = async () => {
-    if (!confirm('Are you sure you want to remove the verification PIN? This will disable PIN protection for API key removal.')) {
+    if (
+      !confirm(
+        'Are you sure you want to remove the verification PIN? This will disable PIN protection for API key removal.'
+      )
+    ) {
       return
     }
 
@@ -834,7 +912,14 @@ export default function SettingsForm() {
     if (!file) return
 
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+    ]
     if (!validTypes.includes(file.type)) {
       alert('Please upload a valid image file (JPEG, PNG, GIF, WebP, or SVG)')
       return
@@ -884,23 +969,27 @@ export default function SettingsForm() {
     }
     // Save immediately when cleared
     if (typeof window !== 'undefined') {
-      localStorage.setItem('appSettings', JSON.stringify({
-        ...settings,
-        logoUrl: '',
-        logoData: '',
-      }))
+      localStorage.setItem(
+        'appSettings',
+        JSON.stringify({
+          ...settings,
+          logoUrl: '',
+          logoData: '',
+        })
+      )
       window.dispatchEvent(new CustomEvent('settingsUpdated'))
     }
   }
 
-  const inputClass = "w-full glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none font-mono text-base transition-all border-2"
+  const inputClass =
+    'w-full glass-input text-theme placeholder-theme-subtle rounded-xl px-4 py-3 focus:outline-none font-mono text-base transition-all border-2'
   const inputStyle = {
-    background: "rgb(var(--surface-1))",
-    borderColor: "rgb(var(--border))",
+    background: 'rgb(var(--surface-1))',
+    borderColor: 'rgb(var(--border))',
     borderWidth: '2px',
     borderStyle: 'solid',
   }
-  const labelClass = "block text-base font-medium text-theme-muted mb-2"
+  const labelClass = 'block text-base font-medium text-theme-muted mb-2'
 
   // Common input props for security
   const secureInputProps = {
@@ -925,68 +1014,74 @@ export default function SettingsForm() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column: API Keys */}
           <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-theme mb-4 pb-2 border-b-2" style={{ borderColor: "rgb(var(--border))" }}>
+            <h2
+              className="text-2xl font-semibold text-theme mb-4 pb-2 border-b-2"
+              style={{ borderColor: 'rgb(var(--border))' }}
+            >
               API Keys
             </h2>
-            <p className="text-sm text-theme-muted mb-2">OpenAI (GPT), Anthropic (Claude), and Lakera (security scanning).</p>
-            
+            <p className="text-sm text-theme-muted mb-2">
+              OpenAI (GPT), Anthropic (Claude), and Lakera (security scanning).
+            </p>
+
             {/* OpenAI Key */}
-          <div>
-            <label htmlFor="openAiKey" className={`${labelClass} flex items-center gap-2`}>
-              <span>OpenAI Key</span>
-              <span className="text-red-300">*</span>
-              {/* Status Dot */}
-              {serverStatus.openAiKey || keys.openAiKey ? (
-                <div 
-                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
-                  title="Configured and working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
-                  }}
+            <div>
+              <label htmlFor="openAiKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>OpenAI Key</span>
+                <span className="text-red-300">*</span>
+                {/* Status Dot */}
+                {serverStatus.openAiKey || keys.openAiKey ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                    }}
+                  />
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  id="openAiKey"
+                  name="openAiKey"
+                  value={keys.openAiKey}
+                  placeholder="Paste your OpenAI API key here (Ctrl/Cmd + V)"
+                  {...secureInputProps}
                 />
-              ) : (
-                <div 
-                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
-                  title="Not configured or not working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                  }}
-                />
+                {keys.openAiKey && (
+                  <button
+                    type="button"
+                    onClick={() => handleClear('openAiKey')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-theme-subtle mt-1">
+                🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
+              </p>
+              {serverStatus.openAiKey && !keys.openAiKey && (
+                <p className="text-sm text-green-400 mt-1">
+                  ✓ Configured via environment variable (server-side)
+                </p>
               )}
-            </label>
-            <div className="relative">
-              <input
-                type="password"
-                id="openAiKey"
-                name="openAiKey"
-                value={keys.openAiKey}
-                placeholder="Paste your OpenAI API key here (Ctrl/Cmd + V)"
-                {...secureInputProps}
-              />
-              {keys.openAiKey && (
-              <button
-                type="button"
-                onClick={() => handleClear('openAiKey')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
-              >
-                Clear
-              </button>
+              {!serverStatus.openAiKey && !keys.openAiKey && (
+                <p className="text-sm text-yellow-400 mt-1">
+                  ⚠ Not configured - Please set API key or configure OPENAI_API_KEY environment
+                  variable
+                </p>
               )}
             </div>
-            <p className="text-sm text-theme-subtle mt-1">
-              🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
-            </p>
-            {serverStatus.openAiKey && !keys.openAiKey && (
-              <p className="text-sm text-green-400 mt-1">
-                ✓ Configured via environment variable (server-side)
-              </p>
-            )}
-            {!serverStatus.openAiKey && !keys.openAiKey && (
-              <p className="text-sm text-yellow-400 mt-1">
-                ⚠ Not configured - Please set API key or configure OPENAI_API_KEY environment variable
-              </p>
-            )}
-          </div>
 
             {/* Azure OpenAI Key */}
             <div>
@@ -998,7 +1093,7 @@ export default function SettingsForm() {
                     className="h-2 w-2 rounded-full bg-green-500 transition-all"
                     title="Configured and working"
                     style={{
-                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
+                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
                     }}
                   />
                 ) : (
@@ -1006,7 +1101,7 @@ export default function SettingsForm() {
                     className="h-2 w-2 rounded-full bg-red-500 transition-all"
                     title="Not configured or not working"
                     style={{
-                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
                     }}
                   />
                 )}
@@ -1033,19 +1128,23 @@ export default function SettingsForm() {
 
             {/* Azure OpenAI Endpoint */}
             <div>
-              <label htmlFor="azureOpenAiEndpoint" className={`${labelClass} flex items-center gap-2`}>
+              <label
+                htmlFor="azureOpenAiEndpoint"
+                className={`${labelClass} flex items-center gap-2`}
+              >
                 <span>Azure OpenAI Endpoint</span>
                 <div
                   className={
-                    (keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.startsWith('http'))
+                    keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.startsWith('http')
                       ? 'h-2 w-2 rounded-full bg-green-500 transition-all'
                       : 'h-2 w-2 rounded-full bg-red-500 transition-all'
                   }
                   title={keys.azureOpenAiEndpoint ? 'Endpoint provided' : 'Endpoint not provided'}
                   style={{
-                    boxShadow: (keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.startsWith('http'))
-                      ? '0 0 8px rgba(34, 197, 94, 0.6)'
-                      : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    boxShadow:
+                      keys.azureOpenAiEndpoint && keys.azureOpenAiEndpoint.startsWith('http')
+                        ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                        : '0 0 8px rgba(239, 68, 68, 0.6)',
                   }}
                 />
               </label>
@@ -1058,15 +1157,21 @@ export default function SettingsForm() {
                 {...secureInputProps}
               />
               <p className="text-sm text-theme-subtle mt-1">
-                Base URL only (no <code className="text-xs">/openai/deployments/...</code>). Native Azure:{' '}
-                <code className="text-xs">https://&lt;resource&gt;.openai.azure.com</code>. API Management:{' '}
-                <code className="text-xs break-all">https://staging-openai.azure-api.net/openai-gw-proxy-dev</code>
+                Base URL only (no <code className="text-xs">/openai/deployments/...</code>). Native
+                Azure: <code className="text-xs">https://&lt;resource&gt;.openai.azure.com</code>.
+                API Management:{' '}
+                <code className="text-xs break-all">
+                  https://staging-openai.azure-api.net/openai-gw-proxy-dev
+                </code>
               </p>
             </div>
 
             {/* Azure OpenAI API Version */}
             <div>
-              <label htmlFor="azureOpenAiApiVersion" className={`${labelClass} flex items-center gap-2`}>
+              <label
+                htmlFor="azureOpenAiApiVersion"
+                className={`${labelClass} flex items-center gap-2`}
+              >
                 <span>Azure OpenAI API Version</span>
               </label>
               <input
@@ -1126,375 +1231,452 @@ export default function SettingsForm() {
               )}
               {!serverStatus.anthropicApiKey && !keys.anthropicApiKey && (
                 <p className="text-sm text-yellow-400 mt-1">
-                  ⚠ Optional - Set for Claude models or configure ANTHROPIC_API_KEY environment variable
+                  ⚠ Optional - Set for Claude models or configure ANTHROPIC_API_KEY environment
+                  variable
                 </p>
               )}
             </div>
 
-          {/* Lakera AI Key */}
-          <div>
-            <label htmlFor="lakeraAiKey" className={`${labelClass} flex items-center gap-2`}>
-              <span>Lakera AI Key</span>
-              {/* Status Dot */}
-              {serverStatus.lakeraAiKey || keys.lakeraAiKey ? (
-                <div 
-                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
-                  title="Configured and working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
-                  }}
-                />
-              ) : (
-                <div 
-                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
-                  title="Not configured or not working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                  }}
-                />
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type="password"
-                id="lakeraAiKey"
-                name="lakeraAiKey"
-                value={keys.lakeraAiKey}
-                placeholder="Paste your Lakera AI key here (Ctrl/Cmd + V)"
-                {...secureInputProps}
-              />
-              {keys.lakeraAiKey && (
-                <button
-                  type="button"
-                  onClick={() => handleClear('lakeraAiKey')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            <p className="text-sm text-theme-subtle mt-1">
-              🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
-            </p>
-            {serverStatus.lakeraAiKey && !keys.lakeraAiKey && (
-              <p className="text-sm text-green-400 mt-1">
-                ✓ Configured via environment variable (server-side)
-              </p>
-            )}
-            {!serverStatus.lakeraAiKey && !keys.lakeraAiKey && (
-              <p className="text-sm text-theme-muted mt-1">
-                Optional - Configure via Settings or LAKERA_AI_KEY environment variable
-              </p>
-            )}
-          </div>
-
-          {/* Lakera Endpoint */}
-          <div>
-            <label htmlFor="lakeraEndpoint" className={`${labelClass} flex items-center gap-2`}>
-              <span>Lakera Endpoint</span>
-              {/* Status Dot - Always green (endpoint is always valid, default or custom) */}
-              <div 
-                className="h-2 w-2 rounded-full bg-green-500 transition-all"
-                title="Endpoint configured (using default or custom)"
-                style={{
-                  boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
-                }}
-              />
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="lakeraEndpoint"
-                name="lakeraEndpoint"
-                value={keys.lakeraEndpoint}
-                placeholder={LAKERA_GUARD_URL_DEFAULT}
-                {...secureInputProps}
-              />
-              {keys.lakeraEndpoint !== LAKERA_GUARD_URL_DEFAULT && (
-                <button
-                  type="button"
-                  onClick={() => handleClear('lakeraEndpoint')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-            <p className="text-sm text-theme-subtle mt-1">
-              🔒 Paste only (Ctrl/Cmd + V). POST target is <code className="text-xs">/v2/guard</code> per{' '}
-              <a href="https://docs.lakera.ai/docs/api/guard" className="underline" target="_blank" rel="noreferrer">
-                Lakera Guard API
-              </a>
-              . You can paste <code className="text-xs">https://api.lakera.ai/v2</code> or the full guard URL; both work.
-            </p>
-          </div>
-
-          {/* Lakera Project ID */}
-          <div>
-            <label htmlFor="lakeraProjectId" className={`${labelClass} flex items-center gap-2`}>
-              <span>Lakera Project ID</span>
-              {/* Status Dot */}
-              {serverStatus.lakeraProjectId || keys.lakeraProjectId ? (
-                <div 
-                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
-                  title="Configured and working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
-                  }}
-                />
-              ) : (
-                <div 
-                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
-                  title="Not configured or not working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                  }}
-                />
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="lakeraProjectId"
-                name="lakeraProjectId"
-                value={keys.lakeraProjectId}
-                placeholder="Paste your Lakera Project ID here (Ctrl/Cmd + V)"
-                {...secureInputProps}
-              />
-              {keys.lakeraProjectId && (
-                <button
-                  type="button"
-                  onClick={() => handleClear('lakeraProjectId')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            <p className="text-sm text-theme-subtle mt-1">
-              Saving Settings stores this value in encrypted server storage so every user and browser uses the same{' '}
-              <code className="text-xs">project_id</code> on Guard requests (portal logging stays under one project). Required for your project&apos;s policy: Guard reads{' '}
-              <code className="text-xs">project_id</code> from this app&apos;s JSON body (not a separate policy download). If empty, Lakera uses the{' '}
-              <a href="https://docs.lakera.ai/docs/api/guard" className="underline" target="_blank" rel="noreferrer">
-                default policy
-              </a>
-              .
-            </p>
-            {keys.lakeraProjectId && (
-              <p className="text-sm text-theme-muted mt-1">
-                ℹ️ Current Project ID: <span className="font-mono font-semibold">{keys.lakeraProjectId}</span>
-              </p>
-            )}
-          </div>
-
-          </div>
-          
-          {/* Right Column: Security & Settings */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-theme mb-4 pb-2 border-b-2" style={{ borderColor: "rgb(var(--border))" }}>
-              Security & Settings
-            </h2>
-            
-            {/* Check Point ThreatCloud / Threat Emulation API Key */}
-            <div className="pt-6 border-t border-palette-border-default/20">
-            <label htmlFor="checkpointTeKey" className={`${labelClass} flex items-center gap-2`}>
-              <span>Check Point ThreatCloud / Threat Emulation (TE) API Key</span>
-              {/* Status Dot */}
-              {checkpointTeConfigured ? (
-                <div 
-                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
-                  title="Configured and working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)'
-                  }}
-                />
-              ) : (
-                <div 
-                  className="h-2 w-2 rounded-full bg-red-500 transition-all"
-                  title="Not configured or not working"
-                  style={{
-                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                  }}
-                />
-              )}
-            </label>
-            <div className="space-y-2">
-              {/* Status Indicator */}
-              <div className="flex items-center space-x-2 mb-2">
-                {isCheckingTeStatus ? (
-                  <span className="text-sm text-theme-subtle">Checking status...</span>
+            {/* Lakera AI Key */}
+            <div>
+              <label htmlFor="lakeraAiKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>Lakera AI Key</span>
+                {/* Status Dot */}
+                {serverStatus.lakeraAiKey || keys.lakeraAiKey ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
+                    }}
+                  />
                 ) : (
-                  <>
-                    <span className={`text-sm font-medium ${checkpointTeConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {checkpointTeConfigured ? '✓ Configured' : '⚠ Not configured'}
-                    </span>
-                    {checkpointTeConfigured && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveCheckpointTeKey}
-                        disabled={isSavingTeKey}
-                        className="text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </>
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                    }}
+                  />
                 )}
-              </div>
-
-              {/* Input Field */}
+              </label>
               <div className="relative">
                 <input
                   type="password"
-                  id="checkpointTeKey"
-                  name="checkpointTeKey"
-                  value={checkpointTeKey}
-                  placeholder={checkpointTeConfigured ? "Enter new key to replace (Ctrl/Cmd + V)" : "Paste your Check Point TE API key here (Ctrl/Cmd + V)"}
-                  onKeyDown={handleKeyDown}
-                  onCopy={handleCopy}
-                  onCut={handleCut}
-                  onContextMenu={handleContextMenu}
-                  onPaste={handleCheckpointTeKeyPaste}
-                  onChange={handleChange}
-                  className={inputClass}
-                  style={inputStyle}
-                  disabled={isSavingTeKey}
+                  id="lakeraAiKey"
+                  name="lakeraAiKey"
+                  value={keys.lakeraAiKey}
+                  placeholder="Paste your Lakera AI key here (Ctrl/Cmd + V)"
+                  {...secureInputProps}
                 />
-                {checkpointTeKey && (
+                {keys.lakeraAiKey && (
                   <button
                     type="button"
-                    onClick={() => setCheckpointTeKey('')}
+                    onClick={() => handleClear('lakeraAiKey')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
                   >
                     Clear
                   </button>
                 )}
               </div>
-              
-              {/* Save Button */}
-              {checkpointTeKey && (
-                <button
-                  type="button"
-                  onClick={handleSaveCheckpointTeKey}
-                  disabled={isSavingTeKey || !checkpointTeKey.trim()}
-                  className="glass-button text-theme px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  style={{
-                    backgroundColor: "var(--primary)",
-                    color: "white",
-                  }}
-                >
-                  {isSavingTeKey ? 'Saving...' : checkpointTeConfigured ? 'Update Key' : 'Save Key'}
-                </button>
-              )}
-
               <p className="text-sm text-theme-subtle mt-1">
-                <span className="block mb-1">
-                  {checkpointTeConfigured 
-                    ? '✅ Check Point TE API key is configured (stored server-side, encrypted)'
-                    : '⚠️ Check Point TE API key is not configured'}
-                </span>
-                <span className="block mt-2 text-sm opacity-75">
-                  🔒 Server-side storage - Key is stored securely on the server and never exposed to the browser. Paste only (Ctrl/Cmd + V).
-                </span>
-                <span className="block mt-2 text-sm opacity-75 border-l-2 border-yellow-500/50 pl-2">
-                  <strong>Important:</strong> Enter only the API key value (without the &quot;TE_API_KEY_&quot; prefix).
-                  If you see <strong>403 access denied</strong> with a new key, Check Point usually blocks by <strong>source IP</strong> or <strong>wrong regional TE host</strong> — not a typo in the key (401 is more common for bad keys).
-                  Allowlist the <strong>outbound IP of the machine running this app</strong> (open <code className="text-xs">/api/te/diagnostic</code> on that server for a suggested IP).
-                  Default TE host matches v1.0.17+ docs (<code className="text-xs break-all">te-api.checkpoint.com</code>). If Check Point returns 403, set <code className="text-xs">CHECKPOINT_TECLOUD_BASE_URL</code> on the server to your tenant region, e.g. <code className="text-xs break-all">https://te-na.checkpoint.com/tecloud/api/v1/file</code>.
-                  <br /><br />
-                  <strong>TE submission mode</strong> (server env <code className="text-xs">CHECKPOINT_TE_HASH_LOOKUP_ONLY</code>): <strong>unset</strong> = automatic (hash reputation first, then full upload if needed). <code className="text-xs">true</code> = hash-only (no file bytes). <code className="text-xs">false</code> or <code className="text-xs">upload_only</code> = always upload.
-                  {teSubmitStrategyServer === 'hash_only' ? (
-                    <span className="block mt-1 text-green-400/90">This server uses hash-only mode (no file upload to Check Point).</span>
-                  ) : teSubmitStrategyServer === 'auto' ? (
-                    <span className="block mt-1 text-emerald-400/90">This server uses automatic mode (hash-first, then upload if needed).</span>
-                  ) : null}
-                </span>
+                🔒 Paste only (Ctrl/Cmd + V) - Typing and copying disabled for security
+              </p>
+              {serverStatus.lakeraAiKey && !keys.lakeraAiKey && (
+                <p className="text-sm text-green-400 mt-1">
+                  ✓ Configured via environment variable (server-side)
+                </p>
+              )}
+              {!serverStatus.lakeraAiKey && !keys.lakeraAiKey && (
+                <p className="text-sm text-theme-muted mt-1">
+                  Optional - Configure via Settings or LAKERA_AI_KEY environment variable
+                </p>
+              )}
+            </div>
+
+            {/* Lakera Endpoint */}
+            <div>
+              <label htmlFor="lakeraEndpoint" className={`${labelClass} flex items-center gap-2`}>
+                <span>Lakera Endpoint</span>
+                {/* Status Dot - Always green (endpoint is always valid, default or custom) */}
+                <div
+                  className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                  title="Endpoint configured (using default or custom)"
+                  style={{
+                    boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
+                  }}
+                />
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="lakeraEndpoint"
+                  name="lakeraEndpoint"
+                  value={keys.lakeraEndpoint}
+                  placeholder={LAKERA_GUARD_URL_DEFAULT}
+                  {...secureInputProps}
+                />
+                {keys.lakeraEndpoint !== LAKERA_GUARD_URL_DEFAULT && (
+                  <button
+                    type="button"
+                    onClick={() => handleClear('lakeraEndpoint')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-theme-subtle mt-1">
+                🔒 Paste only (Ctrl/Cmd + V). POST target is{' '}
+                <code className="text-xs">/v2/guard</code> per{' '}
+                <a
+                  href="https://docs.lakera.ai/docs/api/guard"
+                  className="underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Lakera Guard API
+                </a>
+                . You can paste <code className="text-xs">https://api.lakera.ai/v2</code> or the
+                full guard URL; both work.
               </p>
             </div>
+
+            {/* Lakera Project ID */}
+            <div>
+              <label htmlFor="lakeraProjectId" className={`${labelClass} flex items-center gap-2`}>
+                <span>Lakera Project ID</span>
+                {/* Status Dot */}
+                {serverStatus.lakeraProjectId || keys.lakeraProjectId ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                    }}
+                  />
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="lakeraProjectId"
+                  name="lakeraProjectId"
+                  value={keys.lakeraProjectId}
+                  placeholder="Paste your Lakera Project ID here (Ctrl/Cmd + V)"
+                  {...secureInputProps}
+                />
+                {keys.lakeraProjectId && (
+                  <button
+                    type="button"
+                    onClick={() => handleClear('lakeraProjectId')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-theme-subtle mt-1">
+                Saving Settings stores this value in encrypted server storage so every user and
+                browser uses the same <code className="text-xs">project_id</code> on Guard requests
+                (portal logging stays under one project). Required for your project&apos;s policy:
+                Guard reads <code className="text-xs">project_id</code> from this app&apos;s JSON
+                body (not a separate policy download). If empty, Lakera uses the{' '}
+                <a
+                  href="https://docs.lakera.ai/docs/api/guard"
+                  className="underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  default policy
+                </a>
+                .
+              </p>
+              {keys.lakeraProjectId && (
+                <p className="text-sm text-theme-muted mt-1">
+                  ℹ️ Current Project ID:{' '}
+                  <span className="font-mono font-semibold">{keys.lakeraProjectId}</span>
+                </p>
+              )}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => void verifyLakeraGuard()}
+                  disabled={
+                    lakeraVerifyLoading || (!keys.lakeraAiKey.trim() && !serverStatus.lakeraAiKey)
+                  }
+                  className="rounded-lg border border-palette-border-default/40 bg-theme-surface-elevated px-4 py-2 text-sm font-medium text-theme hover:bg-theme-surface-muted disabled:opacity-50"
+                >
+                  {lakeraVerifyLoading ? 'Verifying…' : 'Verify Lakera (Guard probe)'}
+                </button>
+                <p className="text-xs text-theme-subtle max-w-xl">
+                  Sends one minimal <code className="text-xs">POST /v2/guard</code> using the key
+                  and project fields above (draft values count). Lakera evaluates the latest project
+                  policy on each Guard call; this does not download policy JSON into the app.
+                </p>
+              </div>
+              {lakeraVerifyMessage && (
+                <p
+                  className={`mt-2 text-sm ${lakeraVerifyOk ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                  role="status"
+                >
+                  {lakeraVerifyMessage}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Security & Settings */}
+          <div className="space-y-6">
+            <h2
+              className="text-xl font-semibold text-theme mb-4 pb-2 border-b-2"
+              style={{ borderColor: 'rgb(var(--border))' }}
+            >
+              Security & Settings
+            </h2>
+
+            {/* Check Point ThreatCloud / Threat Emulation API Key */}
+            <div className="pt-6 border-t border-palette-border-default/20">
+              <label htmlFor="checkpointTeKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>Check Point ThreatCloud / Threat Emulation (TE) API Key</span>
+                {/* Status Dot */}
+                {checkpointTeConfigured ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                    }}
+                  />
+                )}
+              </label>
+              <div className="space-y-2">
+                {/* Status Indicator */}
+                <div className="flex items-center space-x-2 mb-2">
+                  {isCheckingTeStatus ? (
+                    <span className="text-sm text-theme-subtle">Checking status...</span>
+                  ) : (
+                    <>
+                      <span
+                        className={`text-sm font-medium ${checkpointTeConfigured ? 'text-green-400' : 'text-yellow-400'}`}
+                      >
+                        {checkpointTeConfigured ? '✓ Configured' : '⚠ Not configured'}
+                      </span>
+                      {checkpointTeConfigured && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveCheckpointTeKey}
+                          disabled={isSavingTeKey}
+                          className="text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Input Field */}
+                <div className="relative">
+                  <input
+                    type="password"
+                    id="checkpointTeKey"
+                    name="checkpointTeKey"
+                    value={checkpointTeKey}
+                    placeholder={
+                      checkpointTeConfigured
+                        ? 'Enter new key to replace (Ctrl/Cmd + V)'
+                        : 'Paste your Check Point TE API key here (Ctrl/Cmd + V)'
+                    }
+                    onKeyDown={handleKeyDown}
+                    onCopy={handleCopy}
+                    onCut={handleCut}
+                    onContextMenu={handleContextMenu}
+                    onPaste={handleCheckpointTeKeyPaste}
+                    onChange={handleChange}
+                    className={inputClass}
+                    style={inputStyle}
+                    disabled={isSavingTeKey}
+                  />
+                  {checkpointTeKey && (
+                    <button
+                      type="button"
+                      onClick={() => setCheckpointTeKey('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Save Button */}
+                {checkpointTeKey && (
+                  <button
+                    type="button"
+                    onClick={handleSaveCheckpointTeKey}
+                    disabled={isSavingTeKey || !checkpointTeKey.trim()}
+                    className="glass-button text-theme px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    style={{
+                      backgroundColor: 'var(--primary)',
+                      color: 'white',
+                    }}
+                  >
+                    {isSavingTeKey
+                      ? 'Saving...'
+                      : checkpointTeConfigured
+                        ? 'Update Key'
+                        : 'Save Key'}
+                  </button>
+                )}
+
+                <p className="text-sm text-theme-subtle mt-1">
+                  <span className="block mb-1">
+                    {checkpointTeConfigured
+                      ? '✅ Check Point TE API key is configured (stored server-side, encrypted)'
+                      : '⚠️ Check Point TE API key is not configured'}
+                  </span>
+                  <span className="block mt-2 text-sm opacity-75">
+                    🔒 Server-side storage - Key is stored securely on the server and never exposed
+                    to the browser. Paste only (Ctrl/Cmd + V).
+                  </span>
+                  <span className="block mt-2 text-sm opacity-75 border-l-2 border-yellow-500/50 pl-2">
+                    <strong>Important:</strong> Enter only the API key value (without the
+                    &quot;TE_API_KEY_&quot; prefix). If you see <strong>403 access denied</strong>{' '}
+                    with a new key, Check Point usually blocks by <strong>source IP</strong> or{' '}
+                    <strong>wrong regional TE host</strong> — not a typo in the key (401 is more
+                    common for bad keys). Allowlist the{' '}
+                    <strong>outbound IP of the machine running this app</strong> (open{' '}
+                    <code className="text-xs">/api/te/diagnostic</code> on that server for a
+                    suggested IP). Default TE host matches v1.0.17+ docs (
+                    <code className="text-xs break-all">te-api.checkpoint.com</code>). If Check
+                    Point returns 403, set{' '}
+                    <code className="text-xs">CHECKPOINT_TECLOUD_BASE_URL</code> on the server to
+                    your tenant region, e.g.{' '}
+                    <code className="text-xs break-all">
+                      https://te-na.checkpoint.com/tecloud/api/v1/file
+                    </code>
+                    .
+                    <br />
+                    <br />
+                    <strong>TE submission mode</strong> (server env{' '}
+                    <code className="text-xs">CHECKPOINT_TE_HASH_LOOKUP_ONLY</code>):{' '}
+                    <strong>unset</strong> = automatic (hash reputation first, then full upload if
+                    needed). <code className="text-xs">true</code> = hash-only (no file bytes).{' '}
+                    <code className="text-xs">false</code> or{' '}
+                    <code className="text-xs">upload_only</code> = always upload.
+                    {teSubmitStrategyServer === 'hash_only' ? (
+                      <span className="block mt-1 text-green-400/90">
+                        This server uses hash-only mode (no file upload to Check Point).
+                      </span>
+                    ) : teSubmitStrategyServer === 'auto' ? (
+                      <span className="block mt-1 text-emerald-400/90">
+                        This server uses automatic mode (hash-first, then upload if needed).
+                      </span>
+                    ) : null}
+                  </span>
+                </p>
+              </div>
             </div>
 
             {/* Page Heading Setting */}
             <div className="pt-6 border-t border-palette-border-default/20">
               <h3 className="text-lg font-semibold text-theme mb-4">Page Customization</h3>
-            
-            <div className="mb-4">
-              <label htmlFor="pageHeading" className={labelClass}>
-                Page Heading
-              </label>
-              <input
-                type="text"
-                id="pageHeading"
-                name="pageHeading"
-                value={settings.pageHeading}
-                onChange={(e) => setSettings(prev => ({ ...prev, pageHeading: e.target.value }))}
-                placeholder="Enter page heading"
-                className={inputClass}
-                style={inputStyle}
-              />
-              <p className="text-sm text-theme-subtle mt-1">
-                Custom heading text displayed on the main chat page
-              </p>
-            </div>
+
+              <div className="mb-4">
+                <label htmlFor="pageHeading" className={labelClass}>
+                  Page Heading
+                </label>
+                <input
+                  type="text"
+                  id="pageHeading"
+                  name="pageHeading"
+                  value={settings.pageHeading}
+                  onChange={e => setSettings(prev => ({ ...prev, pageHeading: e.target.value }))}
+                  placeholder="Enter page heading"
+                  className={inputClass}
+                  style={inputStyle}
+                />
+                <p className="text-sm text-theme-subtle mt-1">
+                  Custom heading text displayed on the main chat page
+                </p>
+              </div>
             </div>
 
             {/* Site Logo */}
             <div className="pt-6 border-t border-palette-border-default/20">
-            <h3 className="text-sm font-medium text-theme mb-4">Site Logo</h3>
-            
-            <div className="mb-4">
-              <label htmlFor="logoFile" className={labelClass}>
-                Upload Logo File
-              </label>
-              <div className="space-y-3">
-                <div className="relative">
-                  <input
-                    type="file"
-                    id="logoFile"
-                    name="logoFile"
-                    accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                    onChange={handleLogoFileUpload}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="logoFile"
-                    className="block w-full glass-input text-center py-3 rounded-xl cursor-pointer transition-all hover:scale-[1.02] hover:border-copper/50"
-                  >
-                    {settings.logoData ? '✓ Logo Uploaded' : 'Choose Logo File'}
-                  </label>
-                </div>
-                
-                {(logoPreview || settings.logoData) && (
+              <h3 className="text-sm font-medium text-theme mb-4">Site Logo</h3>
+
+              <div className="mb-4">
+                <label htmlFor="logoFile" className={labelClass}>
+                  Upload Logo File
+                </label>
+                <div className="space-y-3">
                   <div className="relative">
-                    <div className="glass-card p-4 rounded-xl">
-                      <p className="text-sm text-theme-subtle mb-2">Logo Preview:</p>
-                      <div className="relative w-full h-32 bg-palette-bg-tertiary/10 rounded-lg overflow-hidden flex items-center justify-center">
-                        {/* Dynamic base64/data URL; Next/Image requires static src */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={logoPreview || settings.logoData}
-                          alt="Logo preview"
-                          className="max-w-full max-h-full object-contain"
-                          onError={() => setLogoPreview('')}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleClearLogo}
-                        className="mt-2 px-3 py-1 text-sm glass-button text-theme-subtle hover:text-red-400 rounded-lg transition-colors"
-                        style={{
-                          backgroundColor: "var(--destructive-bg, transparent)",
-                        }}
-                      >
-                        Remove Logo
-                      </button>
-                    </div>
+                    <input
+                      type="file"
+                      id="logoFile"
+                      name="logoFile"
+                      accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                      onChange={handleLogoFileUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="logoFile"
+                      className="block w-full glass-input text-center py-3 rounded-xl cursor-pointer transition-all hover:scale-[1.02] hover:border-copper/50"
+                    >
+                      {settings.logoData ? '✓ Logo Uploaded' : 'Choose Logo File'}
+                    </label>
                   </div>
-                )}
+
+                  {(logoPreview || settings.logoData) && (
+                    <div className="relative">
+                      <div className="glass-card p-4 rounded-xl">
+                        <p className="text-sm text-theme-subtle mb-2">Logo Preview:</p>
+                        <div className="relative w-full h-32 bg-palette-bg-tertiary/10 rounded-lg overflow-hidden flex items-center justify-center">
+                          {/* Dynamic base64/data URL; Next/Image requires static src */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={logoPreview || settings.logoData}
+                            alt="Logo preview"
+                            className="max-w-full max-h-full object-contain"
+                            onError={() => setLogoPreview('')}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearLogo}
+                          className="mt-2 px-3 py-1 text-sm glass-button text-theme-subtle hover:text-red-400 rounded-lg transition-colors"
+                          style={{
+                            backgroundColor: 'var(--destructive-bg, transparent)',
+                          }}
+                        >
+                          Remove Logo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-theme-subtle mt-1">
+                  Upload a logo file (PNG, JPG, or SVG, max 5MB). Logo will appear in the top
+                  header.
+                </p>
               </div>
-              <p className="text-sm text-theme-subtle mt-1">
-                Upload a logo file (PNG, JPG, or SVG, max 5MB). Logo will appear in the top header.
-              </p>
-            </div>
             </div>
           </div>
         </div>
@@ -1506,7 +1688,7 @@ export default function SettingsForm() {
             onClick={handleClearAll}
             className="glass-button text-theme-subtle hover:text-red-400 transition-colors text-sm px-4 py-2 rounded-xl"
             style={{
-              backgroundColor: "var(--destructive-bg, transparent)",
+              backgroundColor: 'var(--destructive-bg, transparent)',
             }}
           >
             Clear All Keys
@@ -1523,8 +1705,8 @@ export default function SettingsForm() {
               disabled={isSaving}
               className="glass-button px-6 py-2 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               style={{
-                backgroundColor: "rgb(var(--accent))",
-                color: "white",
+                backgroundColor: 'rgb(var(--accent))',
+                color: 'white',
               }}
             >
               {isSaving ? 'Saving...' : 'Save Keys'}
@@ -1539,26 +1721,32 @@ export default function SettingsForm() {
             Verification PIN
           </h3>
           <p className="text-sm text-theme-subtle mb-4">
-            Set up a PIN code to protect against unauthorized API key removal. PIN must be 4-8 digits.
+            Set up a PIN code to protect against unauthorized API key removal. PIN must be 4-8
+            digits.
           </p>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-2">
-              <span className={`text-sm font-medium ${pinConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
+              <span
+                className={`text-sm font-medium ${pinConfigured ? 'text-green-400' : 'text-yellow-400'}`}
+              >
                 {pinConfigured ? '✓ PIN Configured' : '⚠ PIN Not configured'}
               </span>
             </div>
-            
+
             {pinConfigured && (
               <div>
-                <label htmlFor="currentPin" className="block text-sm font-medium text-theme-muted mb-1">
+                <label
+                  htmlFor="currentPin"
+                  className="block text-sm font-medium text-theme-muted mb-1"
+                >
                   Current PIN (required to update)
                 </label>
                 <input
                   type="password"
                   id="currentPin"
                   value={currentPin}
-                  onChange={(e) => setCurrentPin(e.target.value.replace(/[^0-9]/g, ''))}
+                  onChange={e => setCurrentPin(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="Enter current PIN"
                   className={inputClass}
                   style={inputStyle}
@@ -1568,7 +1756,7 @@ export default function SettingsForm() {
                 />
               </div>
             )}
-            
+
             <div>
               <label htmlFor="pin" className="block text-sm font-medium text-theme-muted mb-1">
                 {pinConfigured ? 'New PIN' : 'Set PIN'}
@@ -1577,8 +1765,10 @@ export default function SettingsForm() {
                 type="password"
                 id="pin"
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder={pinConfigured ? "Enter new PIN (4-8 digits)" : "Enter PIN (4-8 digits)"}
+                onChange={e => setPin(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder={
+                  pinConfigured ? 'Enter new PIN (4-8 digits)' : 'Enter PIN (4-8 digits)'
+                }
                 className={inputClass}
                 style={inputStyle}
                 maxLength={8}
@@ -1586,7 +1776,7 @@ export default function SettingsForm() {
                 pattern="[0-9]*"
               />
             </div>
-            
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -1607,9 +1797,9 @@ export default function SettingsForm() {
                 </button>
               )}
             </div>
-            
+
             <p className="text-sm text-theme-subtle mt-2">
-              {pinConfigured 
+              {pinConfigured
                 ? '✓ PIN protection is active. PIN verification required to remove API keys.'
                 : '⚠ No PIN protection. API keys can be removed without verification.'}
             </p>
@@ -1617,123 +1807,133 @@ export default function SettingsForm() {
         </div>
 
         {/* PIN Verification Dialog */}
-          {showPinDialog && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => {
+        {showPinDialog && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => {
               setShowPinDialog(false)
               setPinForVerification('')
               setPinDialogAction(null)
               setKeyToClear(null)
-            }}>
-              <div className="glass-card p-6 rounded-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold text-theme mb-4">PIN Verification Required</h3>
-                <p className="text-sm text-theme-subtle mb-4">
-                  {pinDialogAction === 'remove-te-key' 
-                    ? 'Please enter your PIN to remove the Check Point TE API key.'
-                    : pinDialogAction === 'clear-all'
+            }}
+          >
+            <div
+              className="glass-card p-6 rounded-xl max-w-md w-full mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-theme mb-4">PIN Verification Required</h3>
+              <p className="text-sm text-theme-subtle mb-4">
+                {pinDialogAction === 'remove-te-key'
+                  ? 'Please enter your PIN to remove the Check Point TE API key.'
+                  : pinDialogAction === 'clear-all'
                     ? 'Please enter your PIN to clear all API keys.'
                     : pinDialogAction === 'clear-openai'
-                    ? 'Please enter your PIN to clear the OpenAI API key.'
-                    : pinDialogAction === 'clear-anthropic'
-                    ? 'Please enter your PIN to clear the Anthropic API key.'
-                    : pinDialogAction === 'clear-lakera-ai'
-                    ? 'Please enter your PIN to clear the Lakera AI key.'
-                    : pinDialogAction === 'clear-lakera-project-id'
-                    ? 'Please enter your PIN to clear the Lakera Project ID.'
-                    : pinDialogAction === 'clear-lakera-endpoint'
-                    ? 'Please enter your PIN to reset the Lakera Endpoint.'
-                    : 'Please enter your PIN to perform this action.'}
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="pinForVerification" className="block text-sm font-medium text-theme-muted mb-2">
-                      Enter PIN
-                    </label>
-                    <input
-                      type="password"
-                      id="pinForVerification"
-                      value={pinForVerification}
-                      onChange={(e) => setPinForVerification(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="Enter your PIN (4-8 digits)"
-                      className={inputClass}
-                      style={inputStyle}
-                      maxLength={8}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handlePinDialogConfirm()
-                        } else if (e.key === 'Escape') {
-                          setShowPinDialog(false)
-                          setPinForVerification('')
-                          setPinDialogAction(null)
-                          setKeyToClear(null)
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
+                      ? 'Please enter your PIN to clear the OpenAI API key.'
+                      : pinDialogAction === 'clear-anthropic'
+                        ? 'Please enter your PIN to clear the Anthropic API key.'
+                        : pinDialogAction === 'clear-lakera-ai'
+                          ? 'Please enter your PIN to clear the Lakera AI key.'
+                          : pinDialogAction === 'clear-lakera-project-id'
+                            ? 'Please enter your PIN to clear the Lakera Project ID.'
+                            : pinDialogAction === 'clear-lakera-endpoint'
+                              ? 'Please enter your PIN to reset the Lakera Endpoint.'
+                              : 'Please enter your PIN to perform this action.'}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="pinForVerification"
+                    className="block text-sm font-medium text-theme-muted mb-2"
+                  >
+                    Enter PIN
+                  </label>
+                  <input
+                    type="password"
+                    id="pinForVerification"
+                    value={pinForVerification}
+                    onChange={e => setPinForVerification(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="Enter your PIN (4-8 digits)"
+                    className={inputClass}
+                    style={inputStyle}
+                    maxLength={8}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoFocus
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        handlePinDialogConfirm()
+                      } else if (e.key === 'Escape') {
                         setShowPinDialog(false)
                         setPinForVerification('')
                         setPinDialogAction(null)
                         setKeyToClear(null)
-                      }}
-                      className="px-4 py-2 glass-button text-sm font-medium rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handlePinDialogConfirm}
-                      disabled={!pinForVerification.trim() || isSavingTeKey}
-                      className="px-4 py-2 glass-button text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      style={{
-                        backgroundColor: "var(--primary)",
-                        color: "white",
-                      }}
-                    >
-                      {isSavingTeKey ? 'Verifying...' : 'Verify & Continue'}
-                    </button>
-                  </div>
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPinDialog(false)
+                      setPinForVerification('')
+                      setPinDialogAction(null)
+                      setKeyToClear(null)
+                    }}
+                    className="px-4 py-2 glass-button text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePinDialogConfirm}
+                    disabled={!pinForVerification.trim() || isSavingTeKey}
+                    className="px-4 py-2 glass-button text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    style={{
+                      backgroundColor: 'var(--primary)',
+                      color: 'white',
+                    }}
+                  >
+                    {isSavingTeKey ? 'Verifying...' : 'Verify & Continue'}
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Release Notes Section */}
-          <div className="pt-6 border-t border-palette-border-default/20">
-            <h3 className="text-lg font-semibold text-theme mb-4">Release Notes</h3>
-            <div className="glass-card p-4 rounded-xl">
-              <p className="text-sm text-theme-muted mb-4">
-                View the latest updates, bug fixes, and new features in the application.
-              </p>
-              <Link
-                href="/release-notes"
-                className="inline-flex items-center gap-2 glass-button px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-[1.02]"
-                style={{
-                  backgroundColor: "rgb(var(--accent))",
-                  color: "white",
-                }}
-              >
-                <span>📋</span>
-                <span>View Release Notes</span>
-                <span>→</span>
-              </Link>
-            </div>
           </div>
+        )}
 
-          {/* Security Notice */}
-          <div className="mt-6 p-4 glass-card border-yellow-400/30 rounded-xl">
-            <p className="text-sm text-theme">
-              <strong className="text-yellow-400">Security Notice:</strong> All keys are stored locally in your browser&apos;s localStorage. 
-              They are never transmitted to any server except when making API calls. 
-              Copying of keys is disabled to prevent accidental exposure.
+        {/* Release Notes Section */}
+        <div className="pt-6 border-t border-palette-border-default/20">
+          <h3 className="text-lg font-semibold text-theme mb-4">Release Notes</h3>
+          <div className="glass-card p-4 rounded-xl">
+            <p className="text-sm text-theme-muted mb-4">
+              View the latest updates, bug fixes, and new features in the application.
             </p>
+            <Link
+              href="/release-notes"
+              className="inline-flex items-center gap-2 glass-button px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-[1.02]"
+              style={{
+                backgroundColor: 'rgb(var(--accent))',
+                color: 'white',
+              }}
+            >
+              <span>📋</span>
+              <span>View Release Notes</span>
+              <span>→</span>
+            </Link>
           </div>
-        </form>
+        </div>
+
+        {/* Security Notice */}
+        <div className="mt-6 p-4 glass-card border-yellow-400/30 rounded-xl">
+          <p className="text-sm text-theme">
+            <strong className="text-yellow-400">Security Notice:</strong> All keys are stored
+            locally in your browser&apos;s localStorage. They are never transmitted to any server
+            except when making API calls. Copying of keys is disabled to prevent accidental
+            exposure.
+          </p>
+        </div>
+      </form>
     </div>
   )
 }

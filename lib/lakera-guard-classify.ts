@@ -157,14 +157,15 @@ export function classifyLakeraBlock(args: {
 export function buildLakeraChatBlockMessage(
   context: 'input' | 'output',
   classification: LakeraClassification,
-  threatCategories: string[],
+  threatCategories: string[]
 ): string {
   const detail =
-    threatCategories.length > 0
-      ? ` Categories flagged: ${threatCategories.join(', ')}.`
-      : ''
+    threatCategories.length > 0 ? ` Categories flagged: ${threatCategories.join(', ')}.` : ''
 
-  if (classification.policy === 'pii' || (classification.hasPii && !classification.hasContentModeration && !classification.hasSecurity)) {
+  if (
+    classification.policy === 'pii' ||
+    (classification.hasPii && !classification.hasContentModeration && !classification.hasSecurity)
+  ) {
     return context === 'input'
       ? `This message was blocked because it may contain sensitive personal or confidential data. Please remove or redact PII and try again.${detail}`
       : `The assistant reply was blocked because it may expose sensitive personal or confidential data.${detail}`
@@ -179,7 +180,10 @@ export function buildLakeraChatBlockMessage(
       : `The assistant reply was blocked by content moderation so harmful or policy-violating content is not shown.${detail}`
   }
 
-  if (classification.policy === 'security' || (classification.hasSecurity && !classification.hasPii && !classification.hasContentModeration)) {
+  if (
+    classification.policy === 'security' ||
+    (classification.hasSecurity && !classification.hasPii && !classification.hasContentModeration)
+  ) {
     return context === 'input'
       ? `This message was blocked for security reasons (possible prompt injection or unsafe instructions).${detail}`
       : `The assistant reply was blocked for security reasons.${detail}`

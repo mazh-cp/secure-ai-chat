@@ -20,18 +20,18 @@ function parseChangelog(): ReleaseNote[] {
   try {
     const changelogPath = path.join(process.cwd(), 'CHANGELOG.md')
     const content = fs.readFileSync(changelogPath, 'utf-8')
-    
+
     const releases: ReleaseNote[] = []
     const sections = content.split(/^## \[/m)
-    
+
     for (const section of sections.slice(1)) {
       const versionMatch = section.match(/^(\d+\.\d+\.\d+)\]/)
       if (!versionMatch) continue
-      
+
       const version = versionMatch[1]
       const dateMatch = section.match(/- (\d{4}-\d{2}-\d{2})/)
       const date = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0]
-      
+
       // Determine type based on version
       const [major, minor, patch] = version.split('.').map(Number)
       let type: 'major' | 'minor' | 'patch' | 'hotfix' = 'patch'
@@ -42,14 +42,14 @@ function parseChangelog(): ReleaseNote[] {
       } else {
         type = 'patch'
       }
-      
+
       const release: ReleaseNote = {
         version,
         date,
         type,
         changes: {},
       }
-      
+
       // Parse Added section
       const addedMatch = section.match(/### Added\n([\s\S]*?)(?=### |$)/)
       if (addedMatch) {
@@ -59,14 +59,14 @@ function parseChangelog(): ReleaseNote[] {
           .map(line => line.replace(/^-\s*/, '').trim())
           .filter(Boolean)
       }
-      
+
       // Parse Changed section (CHANGELOG convention)
       const changedMatch = section.match(/### Changed\n([\s\S]*?)(?=### |$)/)
       if (changedMatch) {
         release.changes.changed = changedMatch[1]
           .split('\n')
-          .filter((line) => line.trim().startsWith('-'))
-          .map((line) => line.replace(/^-\s*/, '').trim())
+          .filter(line => line.trim().startsWith('-'))
+          .map(line => line.replace(/^-\s*/, '').trim())
           .filter(Boolean)
       }
 
@@ -79,7 +79,7 @@ function parseChangelog(): ReleaseNote[] {
           .map(line => line.replace(/^-\s*/, '').trim())
           .filter(Boolean)
       }
-      
+
       // Parse Improved section
       const improvedMatch = section.match(/### Improved\n([\s\S]*?)(?=### |$)/)
       if (improvedMatch) {
@@ -89,7 +89,7 @@ function parseChangelog(): ReleaseNote[] {
           .map(line => line.replace(/^-\s*/, '').trim())
           .filter(Boolean)
       }
-      
+
       // Parse Security section
       const securityMatch = section.match(/### Security\n([\s\S]*?)(?=### |$)/)
       if (securityMatch) {
@@ -99,10 +99,10 @@ function parseChangelog(): ReleaseNote[] {
           .map(line => line.replace(/^-\s*/, '').trim())
           .filter(Boolean)
       }
-      
+
       releases.push(release)
     }
-    
+
     // Sort by version (newest first)
     return releases.sort((a, b) => {
       const aParts = a.version.split('.').map(Number)
@@ -126,9 +126,6 @@ export async function GET() {
     return NextResponse.json({ releaseNotes })
   } catch (error) {
     console.error('Failed to load release notes:', error)
-    return NextResponse.json(
-      { error: 'Failed to load release notes' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to load release notes' }, { status: 500 })
   }
 }

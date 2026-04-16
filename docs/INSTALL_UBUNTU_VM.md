@@ -25,6 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 **What the script does (order enforced):**
+
 1. **Phase 1 – System prerequisites:** Installs and verifies curl, git, build-essential, ca-certificates, gnupg, lsb-release, iproute2. Fails fast if any required package is missing.
 2. **Phase 2 – App user:** Creates user `secureai` and install directory.
 3. **Phase 3 – Node.js and npm:** Installs nvm and Node.js v24.13.0 (LTS); verifies `node` and `npm` before proceeding.
@@ -44,9 +45,11 @@ sudo nano /opt/secure-ai-chat/.env.local
 ```
 
 **Required:**
+
 - `OPENAI_API_KEY` - Your OpenAI API key (required for chat)
 
 **Optional:**
+
 - `LAKERA_AI_KEY` - Lakera AI API key (for file scanning)
 - `LAKERA_ENDPOINT` - Lakera API endpoint (default: https://api.lakera.ai/v2/guard)
 - `LAKERA_PROJECT_ID` - Lakera project ID
@@ -85,10 +88,12 @@ curl http://localhost/api/health
 ### 3. Access Application
 
 **Local access:**
+
 - http://localhost (via nginx)
 - http://localhost:3000 (direct)
 
 **Public access:**
+
 ```bash
 # Get public IP
 curl ifconfig.me
@@ -98,6 +103,7 @@ curl ifconfig.me
 ```
 
 **Important**: Ensure your cloud provider firewall allows:
+
 - **Port 22** (SSH)
 - **Port 80** (HTTP/nginx)
 
@@ -145,6 +151,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 This will:
+
 - Pull latest code from the repository
 - Reinstall dependencies
 - Rebuild application
@@ -195,6 +202,7 @@ sudo bash /tmp/cleanup.sh --remove-user
 ```
 
 **What cleanup does:**
+
 - Stops and disables systemd service
 - Removes systemd service file
 - Kills node/next processes on ports 3000-3999
@@ -213,19 +221,21 @@ sudo bash /tmp/cleanup.sh --remove-user
 **Causes & Solutions:**
 
 1. **Service not running:**
+
    ```bash
    sudo systemctl status secure-ai-chat
    sudo systemctl start secure-ai-chat
    ```
 
 2. **Wrong port in nginx config:**
+
    ```bash
    # Check port in .env.local
    sudo cat /opt/secure-ai-chat/.env.local | grep PORT
-   
+
    # Check nginx config
    sudo cat /etc/nginx/sites-available/secure-ai-chat
-   
+
    # If mismatch, update nginx config or re-run install script
    ```
 
@@ -264,6 +274,7 @@ sudo nginx -t && sudo systemctl reload nginx
 **Symptoms**: `systemctl status` shows failed/inactive
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 50
 ```
@@ -272,6 +283,7 @@ sudo journalctl -u secure-ai-chat -n 50
 
 1. **Missing API keys (non-fatal, but check logs)**
 2. **Build errors** - Rebuild manually:
+
    ```bash
    sudo -u secureai bash
    cd /opt/secure-ai-chat
@@ -294,6 +306,7 @@ sudo journalctl -u secure-ai-chat -n 50
 **Symptoms**: Permission denied errors
 
 **Solution:**
+
 ```bash
 # Fix ownership
 sudo chown -R secureai:secureai /opt/secure-ai-chat
@@ -307,16 +320,19 @@ ls -la /opt/secure-ai-chat
 **Symptoms**: Nginx fails to start/reload
 
 **Check nginx config:**
+
 ```bash
 sudo nginx -t
 ```
 
 **Check logs:**
+
 ```bash
 sudo tail -f /var/log/nginx/error.log
 ```
 
 **Common fixes:**
+
 - Remove conflicting sites from `/etc/nginx/sites-enabled/`
 - Ensure default site is disabled if using custom site
 - Check port conflicts
@@ -324,6 +340,7 @@ sudo tail -f /var/log/nginx/error.log
 ### Cannot Access from Outside VM
 
 **Check firewall:**
+
 ```bash
 # UFW status
 sudo ufw status
@@ -333,12 +350,14 @@ sudo ufw status
 ```
 
 **Check binding:**
+
 ```bash
 # Should show 0.0.0.0:3000
 sudo ss -tlnp | grep :3000
 ```
 
 **Check nginx:**
+
 ```bash
 # Should show 0.0.0.0:80
 sudo ss -tlnp | grep :80
@@ -363,6 +382,7 @@ Internet → Port 80 (nginx) → Port 3000+ (Secure AI Chat)
 ## Production Recommendations
 
 1. **SSL/TLS**: Configure Let's Encrypt for HTTPS
+
    ```bash
    sudo apt install certbot python3-certbot-nginx
    sudo certbot --nginx -d your-domain.com
@@ -388,6 +408,7 @@ For development, you may use Node.js 25.2.1 as specified in `package.json`.
 ## Support
 
 For issues or questions:
+
 - Check logs: `sudo journalctl -u secure-ai-chat -f`
 - Review troubleshooting section above
 - Check [README.md](../README.md) for general information

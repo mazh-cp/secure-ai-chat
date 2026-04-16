@@ -70,6 +70,7 @@ npm run lint
 #### A. Chat Message Scanning
 
 1. **Start the application:**
+
    ```bash
    npm run dev
    ```
@@ -193,6 +194,7 @@ If git rollback is not available, manually revert changes:
 **File:** `app/api/chat/route.ts` and `app/api/scan/route.ts`
 
 **Remove:**
+
 ```typescript
 // Official fields (when payload=true)
 payload?: Array<{...}>
@@ -208,6 +210,7 @@ metadata?: {...}
 ```
 
 **Keep only:**
+
 ```typescript
 interface LakeraResponse {
   flagged: boolean
@@ -224,6 +227,7 @@ interface LakeraResponse {
 **File:** `app/api/chat/route.ts` (around line 208-223)
 
 **Remove:**
+
 ```typescript
 let payload: Array<{...}> | undefined
 let breakdown: Array<{...}> | undefined
@@ -242,6 +246,7 @@ if (payload && payload.length > 0) {
 ```
 
 **Keep only:**
+
 ```typescript
 let flagged = false
 let categories: Record<string, boolean> | undefined
@@ -265,6 +270,7 @@ if (data.results && Array.isArray(data.results) && data.results.length > 0) {
 **File:** `app/api/chat/route.ts` (around line 262-271)
 
 **Remove:**
+
 ```typescript
 payload,      // Include official payload data
 breakdown,    // Include official breakdown data
@@ -273,6 +279,7 @@ breakdown,    // Include official breakdown data
 **File:** `app/api/scan/route.ts` (around line 486-494 and 510-523)
 
 **Remove:**
+
 ```typescript
 payload,      // Include official payload data
 breakdown,    // Include official breakdown data
@@ -283,6 +290,7 @@ breakdown,    // Include official breakdown data
 **File:** `types/chat.ts`
 
 **Remove:**
+
 ```typescript
 payload?: Array<{...}>
 breakdown?: Array<{...}>
@@ -291,6 +299,7 @@ breakdown?: Array<{...}>
 **File:** `types/logs.ts`
 
 **Remove:**
+
 ```typescript
 payload?: Array<{...}>
 breakdown?: Array<{...}>
@@ -299,6 +308,7 @@ breakdown?: Array<{...}>
 **File:** `types/files.ts`
 
 **Remove:**
+
 ```typescript
 payload?: Array<{...}>
 breakdown?: Array<{...}>
@@ -321,6 +331,7 @@ breakdown?: Array<{...}>
 **File:** `app/files/page.tsx`
 
 **Remove:**
+
 ```typescript
 payload: data.details.payload,
 breakdown: data.details.breakdown,
@@ -344,6 +355,7 @@ npm run dev
 ### Issue: TypeScript Errors After Rollback
 
 **Solution:**
+
 ```bash
 # Clean TypeScript cache
 rm -rf tsconfig.tsbuildinfo
@@ -354,6 +366,7 @@ npm run type-check
 ### Issue: UI Not Displaying Correctly
 
 **Solution:**
+
 1. Clear browser cache (Ctrl+Shift+Delete)
 2. Hard refresh (Ctrl+Shift+R)
 3. Restart dev server:
@@ -365,14 +378,16 @@ npm run type-check
 ### Issue: API Responses Not Working
 
 **Solution:**
+
 1. Check Lakera API key configuration
 2. Verify endpoint URL is correct
 3. Check browser console for errors
 4. Check server logs:
+
    ```bash
    # If using systemd
    sudo journalctl -u secure-ai-chat -f
-   
+
    # If running locally
    # Check terminal where npm run dev is running
    ```
@@ -380,6 +395,7 @@ npm run type-check
 ### Issue: Payload/Breakdown Data Not Appearing
 
 **Possible Causes:**
+
 1. Lakera API may not return payload/breakdown if:
    - `payload: true` or `breakdown: true` not sent in request
    - API key doesn't have permissions
@@ -414,6 +430,7 @@ After rollback, verify:
 If issues persist after rollback:
 
 1. **Check Git History:**
+
    ```bash
    git log --oneline --all
    git diff HEAD~1 HEAD

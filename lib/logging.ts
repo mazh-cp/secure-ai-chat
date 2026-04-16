@@ -13,19 +13,19 @@ export function getUserIP(request?: Request | NextRequest): string {
     // Client-side: we can't get real IP
     return 'N/A'
   }
-  
+
   if (request) {
     // Server-side: try to get IP from headers
     const headers = request.headers as Headers
     const forwarded = headers.get('x-forwarded-for')
     const realIP = headers.get('x-real-ip')
     const cfConnectingIP = headers.get('cf-connecting-ip')
-    
+
     if (cfConnectingIP) return cfConnectingIP
     if (realIP) return realIP
     if (forwarded) return forwarded.split(',')[0].trim()
   }
-  
+
   return 'Unknown'
 }
 
@@ -64,10 +64,10 @@ export function getLogs(): LogEntry[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return []
-    
+
     const logs = JSON.parse(stored) as Array<Omit<LogEntry, 'timestamp'> & { timestamp: string }>
     // Convert timestamp strings back to Date objects
-    return logs.map((log) => ({
+    return logs.map(log => ({
       ...log,
       timestamp: new Date(log.timestamp),
     }))
@@ -82,7 +82,7 @@ export function getLogs(): LogEntry[] {
  */
 export function clearLogs(): void {
   if (typeof window === 'undefined') return
-  
+
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch (error) {
@@ -95,15 +95,14 @@ export function clearLogs(): void {
  */
 export function filterLogs(logs: LogEntry[], type?: LogType, action?: ActionType): LogEntry[] {
   let filtered = logs
-  
+
   if (type) {
     filtered = filtered.filter(log => log.type === type)
   }
-  
+
   if (action) {
     filtered = filtered.filter(log => log.action === action)
   }
-  
+
   return filtered
 }
-

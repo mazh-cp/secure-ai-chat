@@ -21,27 +21,29 @@ export async function GET() {
     // This ensures we get the actual state from storage, not a stale cache
     const key = await getTeApiKey()
     const configured = !!key
-    
-    return NextResponse.json({
-      configured,
-      teSubmitStrategy: getTeSubmitStrategy(),
-      hashLookupOnly: isTeHashLookupOnlyMode(),
-      /** TPAPI 1.0: raw key in Authorization; default te_api_key = TE_API_KEY_ prefix (CHECKPOINT_TE_AUTH_FORMAT). */
-      teAuthFormat: getTeAuthFormatMode(),
-      message: configured ? 'Check Point TE API key is configured' : 'Check Point TE API key is not configured',
-    }, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+
+    return NextResponse.json(
+      {
+        configured,
+        teSubmitStrategy: getTeSubmitStrategy(),
+        hashLookupOnly: isTeHashLookupOnlyMode(),
+        /** TPAPI 1.0: raw key in Authorization; default te_api_key = TE_API_KEY_ prefix (CHECKPOINT_TE_AUTH_FORMAT). */
+        teAuthFormat: getTeAuthFormatMode(),
+        message: configured
+          ? 'Check Point TE API key is configured'
+          : 'Check Point TE API key is not configured',
       },
-    })
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error checking TE API key status:', error)
-    return NextResponse.json(
-      { error: 'Failed to check API key status' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to check API key status' }, { status: 500 })
   }
 }
 
@@ -62,19 +64,25 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmedKey = normalizeTeApiKeyInput(apiKey)
-    
+
     // Basic validation - Check Point TE keys are typically alphanumeric
     if (trimmedKey.length < 10) {
       return NextResponse.json(
-        { error: 'Invalid API key format. Key appears too short. Please verify your Check Point TE API key.' },
+        {
+          error:
+            'Invalid API key format. Key appears too short. Please verify your Check Point TE API key.',
+        },
         { status: 400 }
       )
     }
-    
+
     // Additional validation: Check Point TE keys should not contain spaces (except at start/end which we trim)
     if (trimmedKey.includes(' ')) {
       return NextResponse.json(
-        { error: 'Invalid API key format. Key should not contain spaces. Please verify your Check Point TE API key.' },
+        {
+          error:
+            'Invalid API key format. Key should not contain spaces. Please verify your Check Point TE API key.',
+        },
         { status: 400 }
       )
     }
@@ -82,15 +90,15 @@ export async function POST(request: NextRequest) {
     // Store the key (persists to encrypted file)
     try {
       await setTeApiKey(trimmedKey)
-      
+
       // Force reload to ensure cache is updated
       await reloadTeApiKey()
-      
+
       // Verify the key was actually saved by checking if file exists
       const { promises: fs } = await import('fs')
       const path = await import('path')
       const keyFilePath = path.join(process.cwd(), '.secure-storage', 'checkpoint-te-key.enc')
-      
+
       try {
         const stats = await fs.stat(keyFilePath)
         if (stats.size === 0) {
@@ -99,29 +107,34 @@ export async function POST(request: NextRequest) {
         console.log(`Check Point TE API key verified: file exists (${stats.size} bytes)`)
       } catch (verifyError) {
         console.error('Key file verification failed after save:', verifyError)
-        throw new Error(`Key was saved but verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`)
+        throw new Error(
+          `Key was saved but verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`
+        )
       }
 
       console.log('Check Point TE API key configured and saved successfully')
 
-      return NextResponse.json({
-        success: true,
-        message: 'Check Point TE API key configured successfully',
-        configured: true,
-      }, {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Check Point TE API key configured successfully',
+          configured: true,
         },
-      })
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        }
+      )
     } catch (saveError) {
       const errorMessage = saveError instanceof Error ? saveError.message : 'Unknown error'
       console.error('Error saving Check Point TE API key:', saveError)
-      
+
       // Provide detailed error to client for debugging
       return NextResponse.json(
-        { 
+        {
           error: `Failed to save Check Point TE API key: ${errorMessage}`,
           details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
         },
@@ -130,10 +143,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error in POST /api/te/config:', error)
-    return NextResponse.json(
-      { error: 'Failed to set API key' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to set API key' }, { status: 500 })
   }
 }
 
@@ -145,7 +155,7 @@ export async function DELETE(request: NextRequest) {
   try {
     // Check if PIN is configured
     const pinConfigured = await isPinConfigured()
-    
+
     if (pinConfigured) {
       // Require PIN verification
       const body = await request.json().catch(() => ({}))
@@ -153,7 +163,7 @@ export async function DELETE(request: NextRequest) {
 
       if (!pin || typeof pin !== 'string') {
         return NextResponse.json(
-          { 
+          {
             error: 'PIN verification required to remove API key',
             requiresPin: true,
           },
@@ -165,7 +175,7 @@ export async function DELETE(request: NextRequest) {
       const isValid = await verifyPinCode(pin)
       if (!isValid) {
         return NextResponse.json(
-          { 
+          {
             error: 'PIN is incorrect',
             requiresPin: true,
           },
@@ -176,28 +186,28 @@ export async function DELETE(request: NextRequest) {
 
     // PIN verified (or not configured), proceed with removal
     await setTeApiKey(null)
-    
+
     // Force reload to ensure cache is cleared and fresh state for subsequent GET requests
     await reloadTeApiKey()
-    
+
     console.log('Check Point TE API key removed')
 
-    return NextResponse.json({
-      success: true,
-      message: 'Check Point TE API key removed successfully',
-      configured: false,
-    }, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Check Point TE API key removed successfully',
+        configured: false,
       },
-    })
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error removing TE API key:', error)
-    return NextResponse.json(
-      { error: 'Failed to remove API key' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to remove API key' }, { status: 500 })
   }
 }

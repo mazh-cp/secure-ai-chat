@@ -20,7 +20,14 @@ export async function GET(request: NextRequest) {
     const { ownerId } = await getOwnerId(request)
     if (!ownerId || typeof ownerId !== 'string' || ownerId.length === 0) {
       return NextResponse.json(
-        { ok: false, error: { code: 'OWNER_REQUIRED', message: 'Owner ID is required (cookie or X-Client-ID)', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'OWNER_REQUIRED',
+            message: 'Owner ID is required (cookie or X-Client-ID)',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -29,7 +36,14 @@ export async function GET(request: NextRequest) {
     const fileId = searchParams.get('fileId')
     if (!fileId || fileId.trim() === '') {
       return NextResponse.json(
-        { ok: false, error: { code: 'MISSING_FILE_ID', message: 'Query parameter fileId is required', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'MISSING_FILE_ID',
+            message: 'Query parameter fileId is required',
+            details: null,
+          },
+        },
         { status: 400 }
       )
     }
@@ -37,7 +51,14 @@ export async function GET(request: NextRequest) {
     const file = getById(fileId.trim())
     if (!file || file.owner_id !== ownerId) {
       return NextResponse.json(
-        { ok: false, error: { code: 'FILE_NOT_FOUND', message: 'File not found or access denied', details: null } },
+        {
+          ok: false,
+          error: {
+            code: 'FILE_NOT_FOUND',
+            message: 'File not found or access denied',
+            details: null,
+          },
+        },
         { status: 404 }
       )
     }

@@ -63,11 +63,13 @@ BASE_URL=http://your-server:3000 ./scripts/test-azure-openai-errors.sh
 **Location:** Console output where the Next.js server is running
 
 **What to look for:**
+
 - `console.log('Azure OpenAI request:', ...)` - Request details
 - `console.error('Azure OpenAI fetch error:', ...)` - Network/connection errors
 - Error stack traces
 
 **How to view:**
+
 ```bash
 # If running manually
 npm start  # View console output
@@ -81,11 +83,13 @@ sudo journalctl -u secure-ai-chat -f
 **Location:** Browser Developer Tools (F12 → Console)
 
 **What to look for:**
+
 - Network request errors
 - API response errors
 - Client-side error messages
 
 **How to view:**
+
 1. Open browser Developer Tools (F12)
 2. Go to Console tab
 3. Look for red error messages
@@ -96,10 +100,12 @@ sudo journalctl -u secure-ai-chat -f
 **Location:** API endpoint responses
 
 **Endpoints:**
+
 - `/api/health/azure-openai` - Validation endpoint
 - `/api/chat` - Chat endpoint
 
 **What to look for:**
+
 - `ok: false` - Validation failed
 - `error: "..."` - Error message
 - HTTP status codes (400, 401, 404, 500, etc.)
@@ -109,6 +115,7 @@ sudo journalctl -u secure-ai-chat -f
 **Location:** System journal
 
 **How to view:**
+
 ```bash
 # View all logs
 sudo journalctl -u secure-ai-chat
@@ -128,6 +135,7 @@ sudo journalctl -u secure-ai-chat | grep -i "azure"
 ### Scenario 1: Invalid API Key
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -138,16 +146,19 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error:**
+
 - HTTP 401 (Unauthorized)
 - Error: "Azure OpenAI authentication failed"
 
 **Logs to Check:**
+
 - Server console: `console.error('Azure OpenAI fetch error:', ...)`
 - API response: `{ ok: false, error: "..." }`
 
 ### Scenario 2: Invalid Endpoint URL
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -158,15 +169,18 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error:**
+
 - HTTP 400 (Bad Request)
 - Error: "Invalid endpoint URL. Must start with http:// or https://"
 
 **Logs to Check:**
+
 - API response validation error
 
 ### Scenario 3: Wrong Endpoint (Not Azure OpenAI)
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -177,16 +191,19 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error:**
+
 - HTTP 500 or network error
 - Error: "Cannot connect to Azure OpenAI endpoint"
 
 **Logs to Check:**
+
 - Server console: Network connection errors
 - API response: Connection failed message
 
 ### Scenario 4: Deployment Not Found
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -198,16 +215,19 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error:**
+
 - HTTP 404 (Not Found)
 - Error: "Deployment 'non-existent-deployment' not found"
 
 **Logs to Check:**
+
 - API response: Deployment not found error
 - Available deployments list (if provided)
 
 ### Scenario 5: Deployment Unavailable
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -219,16 +239,19 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error (if deployment unavailable):**
+
 - HTTP 503 (Service Unavailable)
 - Error: "Deployment is unavailable. Possible causes: 1) Deployment name doesn't match exactly..."
 
 **Logs to Check:**
+
 - API response: Deployment unavailable message
 - Server console: "No Suitable backend" errors
 
 ### Scenario 6: Network Timeout
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -239,16 +262,19 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error:**
+
 - HTTP 408 (Request Timeout)
 - Error: "Request timeout. Please check your endpoint URL and network connection."
 
 **Logs to Check:**
+
 - Server console: Timeout errors
 - API response: Timeout message
 
 ### Scenario 7: DNS Resolution Failure
 
 **Test:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/azure-openai \
   -H "Content-Type: application/json" \
@@ -259,10 +285,12 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ```
 
 **Expected Error:**
+
 - HTTP 500 (Internal Server Error)
 - Error: "Cannot connect to Azure OpenAI endpoint. Please verify: 1) Endpoint URL..."
 
 **Logs to Check:**
+
 - Server console: DNS resolution errors
 - API response: Network error message
 
@@ -271,6 +299,7 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ### Method 1: Server Console (Manual)
 
 If running `npm start` manually:
+
 ```bash
 cd /path/to/secure-ai-chat
 npm start
@@ -280,6 +309,7 @@ npm start
 ### Method 2: Systemd Journal
 
 If using systemd service:
+
 ```bash
 # Real-time logs
 sudo journalctl -u secure-ai-chat -f
@@ -305,6 +335,7 @@ sudo journalctl -u secure-ai-chat -p err
 ### Method 4: API Response Logs
 
 Save API responses to files:
+
 ```bash
 # Test validation endpoint
 curl -X POST http://localhost:3000/api/health/azure-openai \
@@ -325,15 +356,18 @@ cat validation-test.json
 #### 1. Authentication Errors (401)
 
 **Symptoms:**
+
 - HTTP 401 status
 - Error: "Azure OpenAI authentication failed"
 
 **Causes:**
+
 - Invalid API key
 - API key expired
 - Wrong API key for endpoint
 
 **Logs to Check:**
+
 ```bash
 # Server logs
 sudo journalctl -u secure-ai-chat | grep -i "401\|auth"
@@ -345,15 +379,18 @@ curl ... | jq '.error'
 #### 2. Deployment Not Found (404)
 
 **Symptoms:**
+
 - HTTP 404 status
 - Error: "Deployment 'X' not found"
 
 **Causes:**
+
 - Deployment name doesn't match (case-sensitive)
 - Deployment doesn't exist
 - Wrong resource/endpoint
 
 **Logs to Check:**
+
 ```bash
 # Check available deployments
 curl -X POST http://localhost:3000/api/health/azure-openai \
@@ -367,16 +404,19 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 #### 3. Network Errors (500/408)
 
 **Symptoms:**
+
 - HTTP 500 or 408 status
 - Error: "Cannot connect to Azure OpenAI endpoint"
 
 **Causes:**
+
 - DNS resolution failure
 - Network connectivity issues
 - Firewall blocking connection
 - Endpoint URL incorrect
 
 **Logs to Check:**
+
 ```bash
 # Server console for network errors
 sudo journalctl -u secure-ai-chat | grep -i "fetch\|network\|timeout"
@@ -391,15 +431,18 @@ curl -v https://your-resource.openai.azure.com
 #### 4. Deployment Unavailable (503)
 
 **Symptoms:**
+
 - HTTP 503 status
 - Error: "No Suitable backend was found"
 
 **Causes:**
+
 - Deployment not in "Succeeded" state
 - Model capacity exhausted
 - Deployment throttled
 
 **Logs to Check:**
+
 ```bash
 # Check deployment status in Azure Portal
 # Or test with different deployment name
@@ -427,6 +470,7 @@ export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
 ### Test Output
 
 The script generates:
+
 - Individual test logs in `./azure-openai-test-logs/`
 - Summary report: `./azure-openai-test-logs/summary_TIMESTAMP.md`
 - JSON responses for each test
@@ -457,6 +501,7 @@ ls -lh ./azure-openai-test-logs/
 ### Logs Not Appearing
 
 1. **Check service status:**
+
    ```bash
    sudo systemctl status secure-ai-chat
    ```
@@ -473,6 +518,7 @@ ls -lh ./azure-openai-test-logs/
 ### Logs Too Verbose
 
 Filter logs:
+
 ```bash
 # Only errors
 sudo journalctl -u secure-ai-chat -p err

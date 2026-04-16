@@ -10,7 +10,7 @@ After installing or updating to **v1.0.12**, use this to confirm Anthropic setti
   - **OpenAI Key**
   - **Anthropic API Key** ← paste your `sk-ant-...` key here
   - **Lakera AI Key**
-- Subtext under the heading: *"OpenAI (GPT), Anthropic (Claude), and Lakera (security scanning)."*
+- Subtext under the heading: _"OpenAI (GPT), Anthropic (Claude), and Lakera (security scanning)."_
 
 ### 2. Chat page (home `/`)
 
@@ -25,6 +25,7 @@ After installing or updating to **v1.0.12**, use this to confirm Anthropic setti
    - Response should include `"version": "1.0.12"`. If it shows an older version, the running app is not v1.0.12.
 
 2. **Rebuild and restart** (if you pulled code on the server)
+
    ```bash
    cd /opt/secure-ai-chat   # or your install path
    git pull origin main

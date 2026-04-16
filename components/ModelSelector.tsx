@@ -21,7 +21,13 @@ interface ModelSelectorProps {
   apiKey: string | null
 }
 
-export default function ModelSelector({ provider, onProviderChange, selectedModel, onModelChange, apiKey }: ModelSelectorProps) {
+export default function ModelSelector({
+  provider,
+  onProviderChange,
+  selectedModel,
+  onModelChange,
+  apiKey,
+}: ModelSelectorProps) {
   const [models, setModels] = useState<Model[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -35,24 +41,29 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
       setWarning(null)
 
       try {
-        const response = await fetch(`/api/models?provider=${provider}`, { credentials: 'include', cache: 'no-store' })
+        const response = await fetch(`/api/models?provider=${provider}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        })
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}))
           const errorMsg = data.error || 'Failed to fetch models'
           if (errorMsg.includes('API key') || response.status === 400) {
-            setError(provider === 'anthropic'
-              ? 'Anthropic API key not configured. Please configure it in Settings.'
-              : provider === 'azure'
-                ? 'Azure OpenAI API key/endpoint not configured. Please configure it in Settings.'
-                : 'OpenAI API key not configured. Please configure it in Settings.')
+            setError(
+              provider === 'anthropic'
+                ? 'Anthropic API key not configured. Please configure it in Settings.'
+                : provider === 'azure'
+                  ? 'Azure OpenAI API key/endpoint not configured. Please configure it in Settings.'
+                  : 'OpenAI API key not configured. Please configure it in Settings.'
+            )
           } else {
             throw new Error(errorMsg)
           }
           return
         }
 
-        const data = await response.json() as {
+        const data = (await response.json()) as {
           models?: Model[]
           azureDeploymentListFailed?: boolean
           message?: string
@@ -85,19 +96,11 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
   // Note: We no longer check apiKey prop since the API endpoint gets it from server-side storage
 
   if (isLoading) {
-    return (
-      <div className="text-sm text-theme-subtle">
-        Loading models...
-      </div>
-    )
+    return <div className="text-sm text-theme-subtle">Loading models...</div>
   }
 
   if (error) {
-    return (
-      <div className="text-sm text-red-400">
-        ⚠️ {error}
-      </div>
-    )
+    return <div className="text-sm text-red-400">⚠️ {error}</div>
   }
 
   const selectStyle = {
@@ -117,32 +120,44 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor="provider-select" className="text-base font-medium text-theme-muted whitespace-nowrap">
+        <label
+          htmlFor="provider-select"
+          className="text-base font-medium text-theme-muted whitespace-nowrap"
+        >
           Provider:
         </label>
         <select
           id="provider-select"
           value={provider}
-          onChange={(e) => onProviderChange(e.target.value as ChatProvider)}
+          onChange={e => onProviderChange(e.target.value as ChatProvider)}
           className="glass-input text-theme px-3 py-2 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 cursor-pointer"
           style={selectStyle}
         >
-          <option value="openai" style={selectStyle}>OpenAI</option>
-          <option value="azure" style={selectStyle}>Azure OpenAI</option>
-          <option value="anthropic" style={selectStyle}>Anthropic</option>
+          <option value="openai" style={selectStyle}>
+            OpenAI
+          </option>
+          <option value="azure" style={selectStyle}>
+            Azure OpenAI
+          </option>
+          <option value="anthropic" style={selectStyle}>
+            Anthropic
+          </option>
         </select>
-        <label htmlFor="model-select" className="text-base font-medium text-theme-muted whitespace-nowrap">
+        <label
+          htmlFor="model-select"
+          className="text-base font-medium text-theme-muted whitespace-nowrap"
+        >
           Model:
         </label>
         {models.length > 0 ? (
           <select
             id="model-select"
             value={selectedModel}
-            onChange={(e) => onModelChange(e.target.value)}
+            onChange={e => onModelChange(e.target.value)}
             className="glass-input text-theme px-3 py-2 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50 transition-all cursor-pointer"
             style={{ ...selectStyle, minWidth: '200px' }}
           >
-            {models.map((model) => (
+            {models.map(model => (
               <option key={model.id} value={model.id} style={selectStyle}>
                 {model.name}
               </option>
@@ -153,7 +168,7 @@ export default function ModelSelector({ provider, onProviderChange, selectedMode
             id="model-select"
             type="text"
             value={selectedModel || ''}
-            onChange={(e) => onModelChange(e.target.value)}
+            onChange={e => onModelChange(e.target.value)}
             placeholder={
               provider === 'azure'
                 ? `Deployment id (e.g. ${DEFAULT_AZURE_DEPLOYMENT_ID})`

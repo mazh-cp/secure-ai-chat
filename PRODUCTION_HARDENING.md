@@ -3,6 +3,7 @@
 ## Files Changed
 
 ### Theme + Stability Changes
+
 1. **`app/globals.css`** - Added safe fallbacks to CSS variables (e.g., `rgb(var(--text-primary, 240, 237, 244))`)
 2. **`components/ErrorBoundary.tsx`** - NEW: Minimal React error boundary component
 3. **`app/layout.tsx`** - Wrapped app with ErrorBoundary
@@ -11,6 +12,7 @@
 6. **`next.config.js`** - Added `output: 'standalone'` for Docker support
 
 ### Operational Config Files (NEW)
+
 7. **`docker-compose.yml`** - NEW: Docker Compose with restart policy and healthcheck
 8. **`Dockerfile`** - NEW: Multi-stage Docker build with healthcheck support
 9. **`secure-ai-chat.service`** - NEW: systemd service file with restart policy
@@ -28,19 +30,23 @@
 ## How to Run Locally
 
 ### Development
+
 ```bash
 npm install
 npm run dev
 ```
+
 App runs on http://localhost:3000
 
 ### Production Build
+
 ```bash
 npm run build
 npm start
 ```
 
 ### Run Checks Before Committing
+
 ```bash
 npm run check          # Typecheck + lint
 npm run check:ci       # Typecheck + lint + format check
@@ -49,6 +55,7 @@ npm run check:ci       # Typecheck + lint + format check
 ## Verify Restart Behavior
 
 ### Local Process (using PM2 or similar)
+
 ```bash
 # Start with PM2
 pm2 start npm --name "secure-ai-chat" -- start
@@ -60,6 +67,7 @@ pm2 kill secure-ai-chat
 ```
 
 ### Docker
+
 ```bash
 # Start container
 docker-compose up -d
@@ -74,6 +82,7 @@ curl http://localhost:3000/api/health
 ```
 
 ### systemd
+
 ```bash
 # Install service
 sudo cp secure-ai-chat.service /etc/systemd/system/
@@ -92,6 +101,7 @@ curl http://localhost:3000/api/health
 ```
 
 ### Kubernetes
+
 ```bash
 # Deploy
 kubectl apply -f k8s-deployment.yaml
@@ -123,6 +133,7 @@ curl http://localhost:3000/api/health
 ## CSS Variable Fallbacks
 
 All critical CSS variables now have fallback values:
+
 - `rgb(var(--text-primary, 240, 237, 244))` - Dark mode fallback
 - `rgb(var(--text-primary, 15, 23, 42))` - Light mode fallback
 - Similar fallbacks for all theme tokens

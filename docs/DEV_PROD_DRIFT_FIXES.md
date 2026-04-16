@@ -3,36 +3,43 @@
 ## Root Causes Found
 
 ### 1. Missing Directory Creation in Deploy Scripts
+
 - **Issue**: Production deploy scripts did not create `.secure-storage` and `.storage` directories before application start
 - **Evidence**: Application code creates directories on first use, but may fail with permission issues if app user differs from deploy user
 - **Fix**: Added directory creation step in `upgrade.sh` (Step 6a) and `clean-install.sh` (Step 7a) with correct permissions and ownership
 
 ### 2. No Startup Validation
+
 - **Issue**: Application did not validate environment variables and required directories on startup
 - **Evidence**: Silent failures when directories don't exist or have wrong permissions
 - **Fix**: Created `scripts/validate-startup.sh` that checks env vars, creates directories, and validates permissions before Next.js starts
 
 ### 3. Systemd Service Missing Startup Validation
+
 - **Issue**: Systemd service started application directly without validating prerequisites
 - **Evidence**: Service could start even if directories missing or permissions wrong
 - **Fix**: Added `ExecStartPre` to systemd service template to run `validate-startup.sh` before starting application
 
 ### 4. Missing Diagnostics in Deploy Scripts
+
 - **Issue**: Deploy scripts did not print non-secret diagnostics (Node version, PM, git rev, disk space, dir perms)
 - **Evidence**: Hard to debug production issues without visibility into runtime environment
 - **Fix**: Added diagnostics output to `upgrade.sh` and `clean-install.sh` (Node version, package manager, git revision, disk free, app user, directory permissions)
 
 ### 5. Smoke Tests Not Production-Specific
+
 - **Issue**: Smoke tests did not validate production-specific behavior (settings read/write, file upload, RAG, ThreatCloud)
 - **Evidence**: Production-specific endpoints not tested
 - **Fix**: Enhanced `scripts/smoke-test.sh` with production-specific endpoint checks
 
 ### 6. No Local Production Build Testing
+
 - **Issue**: No way to test production build locally before deploying
 - **Evidence**: Dev uses `npm run dev`, but prod uses `npm run build` + `npm start` - different behavior
 - **Fix**: Created `scripts/reproduce-prod-local.sh` to run exact production build process locally
 
 ### 7. No Drift Detection Tool
+
 - **Issue**: No automated way to detect differences between dev and prod environments
 - **Evidence**: Manual checks required to identify drift
 - **Fix**: Created `scripts/check-drift.sh` to automatically detect Node.js version, package manager, env vars, paths, and permissions differences

@@ -9,25 +9,25 @@
 
 All checks below **MUST PASS** before deployment. Failure = DO NOT DEPLOY.
 
-| Check | Command | Status | Action on Fail |
-|-------|---------|--------|----------------|
-| **Clean Install** | `npm ci` or detected package manager | ✅ REQUIRED | Fix dependency issues |
-| **TypeScript Compilation** | `npm run type-check` | ✅ REQUIRED | Fix all type errors |
-| **ESLint Validation** | `npm run lint` | ✅ REQUIRED | Fix all errors (warnings OK) |
-| **Security: Client Key Leakage** | `grep -r checkpoint-te components/` | ✅ REQUIRED | Remove client imports |
-| **Security: Build Output Scan** | `grep -r "sk-" .next/static` | ✅ REQUIRED | Remove keys from build |
-| **Production Build** | `npm run build` | ✅ REQUIRED | Fix build errors |
-| **Git Secret Scan** | `git grep "sk-[a-zA-Z0-9]\{48\}"` | ✅ REQUIRED | Remove keys from code |
+| Check                            | Command                              | Status      | Action on Fail               |
+| -------------------------------- | ------------------------------------ | ----------- | ---------------------------- |
+| **Clean Install**                | `npm ci` or detected package manager | ✅ REQUIRED | Fix dependency issues        |
+| **TypeScript Compilation**       | `npm run type-check`                 | ✅ REQUIRED | Fix all type errors          |
+| **ESLint Validation**            | `npm run lint`                       | ✅ REQUIRED | Fix all errors (warnings OK) |
+| **Security: Client Key Leakage** | `grep -r checkpoint-te components/`  | ✅ REQUIRED | Remove client imports        |
+| **Security: Build Output Scan**  | `grep -r "sk-" .next/static`         | ✅ REQUIRED | Remove keys from build       |
+| **Production Build**             | `npm run build`                      | ✅ REQUIRED | Fix build errors             |
+| **Git Secret Scan**              | `git grep "sk-[a-zA-Z0-9]\{48\}"`    | ✅ REQUIRED | Remove keys from code        |
 
 ---
 
 ## 🟡 Warnings (Non-Blocking but Recommended)
 
-| Check | Status | Action |
-|-------|--------|--------|
+| Check            | Status         | Action                         |
+| ---------------- | -------------- | ------------------------------ |
 | **Format Check** | ⚠️ Recommended | Run `npm run format` if failed |
-| **Node Version** | ⚠️ Recommended | Use Node 25.2.1 |
-| **Git Status** | ⚠️ Recommended | Commit/stash changes |
+| **Node Version** | ⚠️ Recommended | Use Node 25.2.1                |
+| **Git Status**   | ⚠️ Recommended | Commit/stash changes           |
 
 ---
 
@@ -61,13 +61,13 @@ npm run release-gate
 
 ## 🚨 Common Failures & Fixes
 
-| Failure | Fix |
-|---------|-----|
-| TypeScript errors | Run `npm run type-check` and fix errors |
-| ESLint errors | Run `npm run lint` and fix errors |
+| Failure            | Fix                                                   |
+| ------------------ | ----------------------------------------------------- |
+| TypeScript errors  | Run `npm run type-check` and fix errors               |
+| ESLint errors      | Run `npm run lint` and fix errors                     |
 | Client key leakage | Remove `checkpoint-te` imports from client components |
-| Build failures | Check build logs, fix compilation errors |
-| Secret leakage | Remove API keys from source code |
+| Build failures     | Check build logs, fix compilation errors              |
+| Secret leakage     | Remove API keys from source code                      |
 
 ---
 

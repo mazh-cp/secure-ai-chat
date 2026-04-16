@@ -41,9 +41,11 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 File storage uses a **DATA_DIR**-based canonical layout. All paths are under one root so upgrades and backups are predictable.
 
 **Environment**
+
 - `DATA_DIR` — Dev default: `./data`. Production recommended: `/var/lib/secure-ai-chat` (or leave unset to use `./data` inside the app directory).
 
 **Directory structure**
+
 ```
 DATA_DIR/
   uploads/<tenant>/<fileId>/raw.bin    # file bytes (atomic write)
@@ -67,16 +69,19 @@ See [docs/DATA_STORAGE_AND_REINSTALL.md](docs/DATA_STORAGE_AND_REINSTALL.md) and
 For a **fresh Ubuntu VM**, use the clean-install script so nothing is missed (prerequisites, Node/npm, clone, clean build, systemd, nginx). See [docs/SYNC_AND_FRESH_INSTALL.md](docs/SYNC_AND_FRESH_INSTALL.md) to sync your changes to main first.
 
 **Clean install (recommended):**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 ```
 
 **Force clean install** (wipes existing install, preserves API keys, fresh clone with latest fixes including RAG+Model chat):
+
 ```bash
 FORCE_CLEAN=1 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 ```
 
 **Standard install:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_public.sh | bash
 ```
@@ -84,6 +89,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **What the scripts do:** Prerequisites (curl, git, build-essential, etc.) → user `secureai` and `/opt/secure-ai-chat` → Node.js v24.13.0 and npm via nvm → clone repo → dependencies → clean build (clean script also removes `.next` and `node_modules/.cache`) → systemd, nginx, UFW. Auto-detect free port from 3000.
 
 **Post-installation:**
+
 1. Add API keys: `sudo nano /opt/secure-ai-chat/.env.local`
 2. Restart service: `sudo systemctl restart secure-ai-chat`
 3. Access: `http://YOUR_VM_IP`
@@ -155,6 +161,7 @@ sudo bash scripts/deploy/upgrade.sh --app-dir "$APP_DIR" --ref main
 If `scripts/deploy/upgrade.sh` doesn’t exist in that directory, the app tree may be incomplete; clone the repo there or use the curl upgrade command with a valid repo URL instead.
 
 The curl scripts automatically:
+
 - Back up all settings and API keys
 - Pull latest code (or checkout the requested ref)
 - Preserve all configurations
@@ -162,15 +169,19 @@ The curl scripts automatically:
 - **Retry with `main`** if the build fails (so upgrades stay seamless)
 
 **In-place upgrade (v1.0.16)** — From the app directory, run:
+
 ```bash
 GIT_REF=v1.0.16 bash scripts/upgrade.sh
 ```
+
 Upgrade **never** deletes or moves `DATA_DIR`; it only checks out code, runs `npm ci`, builds, and restarts the service. Run `scripts/preflight.sh` first to verify Node version and `DATA_DIR` writable.
 
 **Storage permissions** — After install or upgrade, enforce safe ownership and modes:
+
 ```bash
 DATA_DIR=/path/to/data APP_USER=secureai sudo bash scripts/storage-perms.sh
 ```
+
 No 777 permissions; dirs 755, files 644.
 
 See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instructions.
@@ -178,6 +189,7 @@ See [docs/UPGRADE_REMOTE.md](docs/UPGRADE_REMOTE.md) for detailed upgrade instru
 ### Single-Step Installation (Ubuntu/Debian)
 
 ⚠️ **Important**: Before using the remote installation script, ensure the repository is pushed to GitHub first:
+
 ```bash
 ./scripts/push-to-github.sh "Initial release"
 ```
@@ -202,6 +214,7 @@ TAG=v1.0.12 bash scripts/install-ubuntu.sh
 ```
 
 This script will automatically:
+
 - Install system dependencies (curl, git, build tools)
 - Install Node.js v24.13.0 (LTS) via nvm
 - Clone the repository
@@ -214,6 +227,7 @@ This script will automatically:
 **New remote VM (v1.0.12):** See [docs/INSTALL_REMOTE_VM_v1.0.12.md](docs/INSTALL_REMOTE_VM_v1.0.12.md) for one-command install by tag or branch.
 
 **After installation:**
+
 1. Edit `.env.local` to add your API keys
 2. Run `npm run dev` for development or `npm start` for production
 3. Open the exact URL printed by the dev server (e.g. `http://localhost:3000`; if it shows 3001, use that). Using the wrong port causes cookie/origin mismatch and files will not persist.
@@ -221,6 +235,7 @@ This script will automatically:
 ### Quick Setup (Manual - Unix/Linux/macOS)
 
 **Unix/Linux/macOS:**
+
 ```bash
 git clone https://github.com/mazh-cp/secure-ai-chat.git
 cd secure-ai-chat
@@ -229,6 +244,7 @@ chmod +x scripts/setup.sh
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 git clone https://github.com/mazh-cp/secure-ai-chat.git
 cd secure-ai-chat
@@ -238,12 +254,14 @@ cd secure-ai-chat
 ### Manual Setup
 
 1. **Clone the repository:**
+
 ```bash
 git clone <repository-url>
 cd Secure-Ai-Chat
 ```
 
 2. **Install dependencies:**
+
 ```bash
 npm install
 # or
@@ -253,12 +271,14 @@ pnpm install
 ```
 
 3. **Run smoke tests (recommended after installation):**
+
 ```bash
 npm run smoke
 # This verifies lint and build pass - catches restart issues early
 ```
 
 4. **Set up environment variables:**
+
 ```bash
 cp .env.example .env.local
 ```
@@ -266,6 +286,7 @@ cp .env.example .env.local
 Edit `.env.local` and add your API keys and configuration values. See `.env.example` for required variables.
 
 5. **Run the development server:**
+
 ```bash
 npm run dev
 # or
@@ -326,12 +347,14 @@ The production server will start on port 3000 by default. You can change this by
 The application includes production-ready configurations for multiple deployment methods:
 
 **Docker:**
+
 ```bash
 docker-compose up -d
 # Health check: curl http://localhost:3000/api/health
 ```
 
 **systemd:**
+
 ```bash
 sudo cp secure-ai-chat.service /etc/systemd/system/
 sudo systemctl enable secure-ai-chat
@@ -339,17 +362,20 @@ sudo systemctl start secure-ai-chat
 ```
 
 **Kubernetes:**
+
 ```bash
 kubectl apply -f k8s-deployment.yaml
 ```
 
 **Deployment Guide**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment workflows:
+
 - **Upgrade Existing Installation**: Safe, idempotent, rollback-friendly upgrades
 - **Clean Install on New Server**: Full setup from scratch
 - **Stable Build Validation**: Release gate and smoke tests
 - **Systemd Service Configuration**: Service management and troubleshooting
 
 **Release Process**: See [RELEASE.md](RELEASE.md) for:
+
 - Release gate validation
 - GitHub publishing steps
 - Security hard gates
@@ -433,7 +459,7 @@ Secure-Ai-Chat/
   - Referrer-Policy
   - Permissions-Policy
 
-- **Check Point WAF Integration**: 
+- **Check Point WAF Integration**:
   - Full support for Check Point WAF as reverse proxy
   - Request/response logging for WAF monitoring
   - Log access API endpoints for Check Point WAF
@@ -469,6 +495,7 @@ npm run release-gate
 ```
 
 **What it checks** (ALL must pass):
+
 - ✅ Clean install (fresh dependencies)
 - ✅ TypeScript type checking (no errors)
 - ✅ ESLint validation (no errors, warnings OK)
@@ -492,12 +519,14 @@ npm run smoke
 ```
 
 This script:
+
 - Verifies Node.js and npm versions
 - Runs linting checks
 - Builds the production bundle
 - Catches restart issues and build problems early
 
 **When to run smoke tests:**
+
 - After `npm install` or dependency updates
 - Before committing changes
 - After pulling from git
@@ -530,41 +559,49 @@ Update the encryption functions in `lib/security.ts` with your preferred encrypt
 ### Build Errors
 
 **Error: Module not found**
+
 - Run `npm install` to ensure all dependencies are installed
 - Delete `node_modules` and `package-lock.json`, then run `npm install` again
 
 **Error: TypeScript errors**
+
 - Run `npm run type-check` to see detailed error messages
 - Ensure all types are properly defined (avoid `any` types)
 
 **Error: ESLint errors**
+
 - Run `npm run lint` to see linting issues
 - Run `npm run format` to auto-fix formatting issues
 
 ### Deprecated Package Warnings
 
 **npm warn deprecated eslint@8.57.1**
+
 - This warning is **expected and safe to ignore**
 - ESLint 8.x is required for Next.js 14 compatibility
 - All other deprecated packages (inflight, rimraf@3, glob@7, @humanwhocodes) have been resolved via npm overrides
 - See [DEPRECATED_PACKAGES_FIX.md](./DEPRECATED_PACKAGES_FIX.md) for details
 
 **Other deprecated warnings during installation**
+
 - If you see warnings for inflight, rimraf@3, glob@7, or @humanwhocodes packages, ensure `package-lock.json` is up-to-date
 - Run `npm ci` for production deployments to use exact versions from lock file
 
 ### Runtime Errors
 
 **Port already in use**
+
 - Change the port: `PORT=3001 npm run dev`
 - Or kill the process using port 3000
 
 **API key errors**
+
 - Verify your API keys are correctly set in Settings or `.env.local`
 - Check that API keys have the necessary permissions
 - Ensure API keys are not expired
 
 **Lakera API errors**
+
 - Verify your Lakera API key is valid
 - Check your API endpoint URL is correct
 - Ensure you have sufficient API credits/quota
@@ -572,10 +609,12 @@ Update the encryption functions in `lib/security.ts` with your preferred encrypt
 ### Development Issues
 
 **Hot reload not working**
+
 - Restart the development server
 - Clear `.next` directory: `rm -rf .next` (Unix) or `rmdir /s .next` (Windows)
 
 **TypeScript errors in IDE**
+
 - Restart your IDE/editor
 - Run `npm run type-check` to verify types
 - Ensure your IDE is using the workspace TypeScript version
@@ -583,6 +622,7 @@ Update the encryption functions in `lib/security.ts` with your preferred encrypt
 ## How to Publish a Release
 
 1. **Update version** in `package.json`:
+
    ```json
    "version": "0.2.0"
    ```
@@ -590,18 +630,21 @@ Update the encryption functions in `lib/security.ts` with your preferred encrypt
 2. **Update CHANGELOG.md** with release notes following [Keep a Changelog](https://keepachangelog.com/) format
 
 3. **Commit changes**:
+
    ```bash
    git add package.json CHANGELOG.md
    git commit -m "chore: bump version to 0.2.0"
    ```
 
 4. **Create a git tag**:
+
    ```bash
    git tag -a v0.2.0 -m "Release version 0.2.0"
    git push origin v0.2.0
    ```
 
 5. **Push to main branch**:
+
    ```bash
    git push origin main
    ```

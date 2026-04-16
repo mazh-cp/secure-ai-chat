@@ -22,10 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to add system log:', error)
-    return NextResponse.json(
-      { error: 'Failed to add system log' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to add system log' }, { status: 500 })
   }
 }
 
@@ -57,10 +54,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ logs })
   } catch (error) {
     console.error('Failed to retrieve system logs:', error)
-    return NextResponse.json(
-      { error: 'Failed to retrieve system logs' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to retrieve system logs' }, { status: 500 })
   }
 }
 
@@ -73,9 +67,6 @@ export async function DELETE() {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to clear system logs:', error)
-    return NextResponse.json(
-      { error: 'Failed to clear system logs' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to clear system logs' }, { status: 500 })
   }
 }

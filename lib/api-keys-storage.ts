@@ -8,10 +8,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
-import {
-  LAKERA_GUARD_URL_DEFAULT,
-  resolveLakeraGuardEndpoint,
-} from '@/lib/lakera-guard-endpoint'
+import { LAKERA_GUARD_URL_DEFAULT, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
 // Storage file path
 const STORAGE_DIR = path.join(process.cwd(), '.secure-storage')
@@ -35,7 +32,7 @@ const getEncryptionKey = (): Buffer => {
     // Use provided key (should be 32 bytes for AES-256)
     return crypto.createHash('sha256').update(envKey).digest()
   }
-  
+
   // Use a default key based on a secret (not secure for production, but better than plaintext)
   // In production, this should be set via environment variable
   const defaultSecret = 'secure-ai-chat-api-keys-storage-encryption-key-v1'
@@ -66,11 +63,11 @@ function encryptKeys(keys: StoredApiKeys): string {
     const encryptionKey = getEncryptionKey()
     const iv = crypto.randomBytes(16)
     const cipher = crypto.createCipheriv(algorithm, encryptionKey, iv)
-    
+
     const keysJson = JSON.stringify(keys)
     let encrypted = cipher.update(keysJson, 'utf8', 'hex')
     encrypted += cipher.final('hex')
-    
+
     // Prepend IV to encrypted data
     return iv.toString('hex') + ':' + encrypted
   } catch (error) {
@@ -91,11 +88,11 @@ function decryptKeys(encryptedData: string): StoredApiKeys {
       const algorithm = 'aes-256-cbc'
       const encryptionKey = getEncryptionKey()
       const iv = Buffer.from(ivHex, 'hex')
-      
+
       const decipher = crypto.createDecipheriv(algorithm, encryptionKey, iv)
       let decrypted = decipher.update(encrypted, 'hex', 'utf8')
       decrypted += decipher.final('utf8')
-      
+
       return JSON.parse(decrypted)
     } else {
       // Old base64 format (backward compatibility)
@@ -115,37 +112,58 @@ function decryptKeys(encryptedData: string): StoredApiKeys {
 async function loadApiKeys(): Promise<StoredApiKeys> {
   // First check environment variables (highest priority)
   const envKeys: StoredApiKeys = {}
-  
+
   if (process.env.OPENAI_API_KEY) {
     const envKey = process.env.OPENAI_API_KEY.trim()
     // Validate it's not a placeholder
-    if (envKey && !envKey.includes('your_ope') && !envKey.includes('your-api-key') && envKey.length >= 20) {
+    if (
+      envKey &&
+      !envKey.includes('your_ope') &&
+      !envKey.includes('your-api-key') &&
+      envKey.length >= 20
+    ) {
       envKeys.openAiKey = envKey
     } else {
-      console.warn('OPENAI_API_KEY environment variable contains placeholder or invalid value, ignoring')
+      console.warn(
+        'OPENAI_API_KEY environment variable contains placeholder or invalid value, ignoring'
+      )
     }
   }
-  
+
   if (process.env.LAKERA_AI_KEY) {
     const envKey = process.env.LAKERA_AI_KEY.trim()
     // Validate it's not a placeholder
-    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 20) {
+    if (
+      envKey &&
+      !envKey.includes('your') &&
+      !envKey.includes('placeholder') &&
+      envKey.length >= 20
+    ) {
       envKeys.lakeraAiKey = envKey
     } else {
-      console.warn('LAKERA_AI_KEY environment variable contains placeholder or invalid value, ignoring')
+      console.warn(
+        'LAKERA_AI_KEY environment variable contains placeholder or invalid value, ignoring'
+      )
     }
   }
-  
+
   if (process.env.LAKERA_PROJECT_ID) {
     const envKey = process.env.LAKERA_PROJECT_ID.trim()
     // Validate it's not a placeholder
-    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 5) {
+    if (
+      envKey &&
+      !envKey.includes('your') &&
+      !envKey.includes('placeholder') &&
+      envKey.length >= 5
+    ) {
       envKeys.lakeraProjectId = envKey
     } else {
-      console.warn('LAKERA_PROJECT_ID environment variable contains placeholder or invalid value, ignoring')
+      console.warn(
+        'LAKERA_PROJECT_ID environment variable contains placeholder or invalid value, ignoring'
+      )
     }
   }
-  
+
   if (process.env.LAKERA_ENDPOINT) {
     const envKey = process.env.LAKERA_ENDPOINT.trim()
     // Validate it's a valid URL
@@ -158,10 +176,17 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
 
   if (process.env.ANTHROPIC_API_KEY) {
     const envKey = process.env.ANTHROPIC_API_KEY.trim()
-    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 20) {
+    if (
+      envKey &&
+      !envKey.includes('your') &&
+      !envKey.includes('placeholder') &&
+      envKey.length >= 20
+    ) {
       envKeys.anthropicApiKey = envKey
     } else {
-      console.warn('ANTHROPIC_API_KEY environment variable contains placeholder or invalid value, ignoring')
+      console.warn(
+        'ANTHROPIC_API_KEY environment variable contains placeholder or invalid value, ignoring'
+      )
     }
   }
 
@@ -169,10 +194,17 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
   if (process.env.AZURE_OPENAI_API_KEY) {
     const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
     // Azure keys are not guaranteed to have a fixed prefix; validate by length and placeholder filtering.
-    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder') && envKey.length >= 10) {
+    if (
+      envKey &&
+      !envKey.toLowerCase().includes('your') &&
+      !envKey.toLowerCase().includes('placeholder') &&
+      envKey.length >= 10
+    ) {
       envKeys.azureOpenAiKey = envKey
     } else {
-      console.warn('AZURE_OPENAI_API_KEY environment variable contains placeholder or invalid value, ignoring')
+      console.warn(
+        'AZURE_OPENAI_API_KEY environment variable contains placeholder or invalid value, ignoring'
+      )
     }
   }
 
@@ -187,7 +219,11 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
 
   if (process.env.AZURE_OPENAI_API_VERSION) {
     const envKey = process.env.AZURE_OPENAI_API_VERSION.trim()
-    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder')) {
+    if (
+      envKey &&
+      !envKey.toLowerCase().includes('your') &&
+      !envKey.toLowerCase().includes('placeholder')
+    ) {
       envKeys.azureOpenAiApiVersion = envKey
     }
   } else if (envKeys.azureOpenAiEndpoint) {
@@ -198,7 +234,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
   // If any env vars are set, merge them with file storage (env vars take priority)
   try {
     await ensureStorageDir()
-    
+
     // Try to read from file
     try {
       const encryptedData = await fs.readFile(KEYS_FILE_PATH, 'utf8')
@@ -247,7 +283,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
   } catch (error) {
     console.error('Error loading API keys:', error)
   }
-  
+
   // Return env keys if available, otherwise empty object
   cachedKeys = envKeys
   keysLoaded = true
@@ -260,13 +296,13 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
 async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
   try {
     await ensureStorageDir()
-    
+
     // Merge with existing keys (don't overwrite env vars)
     const existingKeys = await loadApiKeys()
-    
+
     // Build keys to save - merge new keys with existing, but don't overwrite env vars
     const keysToSave: StoredApiKeys = {}
-    
+
     // Handle OpenAI key
     if (keys.openAiKey !== undefined) {
       // New key provided
@@ -286,7 +322,11 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     if (keys.azureOpenAiKey !== undefined) {
       if (keys.azureOpenAiKey && keys.azureOpenAiKey.trim() && !process.env.AZURE_OPENAI_API_KEY) {
         keysToSave.azureOpenAiKey = keys.azureOpenAiKey.trim()
-      } else if (!keys.azureOpenAiKey && existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
+      } else if (
+        !keys.azureOpenAiKey &&
+        existingKeys.azureOpenAiKey &&
+        !process.env.AZURE_OPENAI_API_KEY
+      ) {
         keysToSave.azureOpenAiKey = existingKeys.azureOpenAiKey
       }
     } else if (existingKeys.azureOpenAiKey && !process.env.AZURE_OPENAI_API_KEY) {
@@ -295,9 +335,17 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
 
     if (keys.azureOpenAiEndpoint !== undefined) {
       const endpoint = keys.azureOpenAiEndpoint?.trim()
-      if (endpoint && (endpoint.startsWith('http://') || endpoint.startsWith('https://')) && !process.env.AZURE_OPENAI_ENDPOINT) {
+      if (
+        endpoint &&
+        (endpoint.startsWith('http://') || endpoint.startsWith('https://')) &&
+        !process.env.AZURE_OPENAI_ENDPOINT
+      ) {
         keysToSave.azureOpenAiEndpoint = endpoint.replace(/\/+$/, '')
-      } else if (!endpoint && existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
+      } else if (
+        !endpoint &&
+        existingKeys.azureOpenAiEndpoint &&
+        !process.env.AZURE_OPENAI_ENDPOINT
+      ) {
         keysToSave.azureOpenAiEndpoint = existingKeys.azureOpenAiEndpoint
       }
     } else if (existingKeys.azureOpenAiEndpoint && !process.env.AZURE_OPENAI_ENDPOINT) {
@@ -306,15 +354,24 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
 
     if (keys.azureOpenAiApiVersion !== undefined) {
       const apiVersion = keys.azureOpenAiApiVersion?.trim()
-      if (apiVersion && !apiVersion.toLowerCase().includes('your') && !apiVersion.toLowerCase().includes('placeholder') && !process.env.AZURE_OPENAI_API_VERSION) {
+      if (
+        apiVersion &&
+        !apiVersion.toLowerCase().includes('your') &&
+        !apiVersion.toLowerCase().includes('placeholder') &&
+        !process.env.AZURE_OPENAI_API_VERSION
+      ) {
         keysToSave.azureOpenAiApiVersion = apiVersion
-      } else if (!apiVersion && existingKeys.azureOpenAiApiVersion && !process.env.AZURE_OPENAI_API_VERSION) {
+      } else if (
+        !apiVersion &&
+        existingKeys.azureOpenAiApiVersion &&
+        !process.env.AZURE_OPENAI_API_VERSION
+      ) {
         keysToSave.azureOpenAiApiVersion = existingKeys.azureOpenAiApiVersion
       }
     } else if (existingKeys.azureOpenAiApiVersion && !process.env.AZURE_OPENAI_API_VERSION) {
       keysToSave.azureOpenAiApiVersion = existingKeys.azureOpenAiApiVersion
     }
-    
+
     // Handle Lakera AI key
     if (keys.lakeraAiKey !== undefined) {
       if (keys.lakeraAiKey && keys.lakeraAiKey.trim() && !process.env.LAKERA_AI_KEY) {
@@ -325,12 +382,16 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     } else if (existingKeys.lakeraAiKey && !process.env.LAKERA_AI_KEY) {
       keysToSave.lakeraAiKey = existingKeys.lakeraAiKey
     }
-    
+
     // Handle Lakera Project ID
     if (keys.lakeraProjectId !== undefined) {
       if (keys.lakeraProjectId && keys.lakeraProjectId.trim() && !process.env.LAKERA_PROJECT_ID) {
         keysToSave.lakeraProjectId = keys.lakeraProjectId.trim()
-      } else if (!keys.lakeraProjectId && existingKeys.lakeraProjectId && !process.env.LAKERA_PROJECT_ID) {
+      } else if (
+        !keys.lakeraProjectId &&
+        existingKeys.lakeraProjectId &&
+        !process.env.LAKERA_PROJECT_ID
+      ) {
         keysToSave.lakeraProjectId = existingKeys.lakeraProjectId
       }
     } else if (existingKeys.lakeraProjectId && !process.env.LAKERA_PROJECT_ID) {
@@ -341,7 +402,11 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     if (keys.anthropicApiKey !== undefined) {
       if (keys.anthropicApiKey && keys.anthropicApiKey.trim() && !process.env.ANTHROPIC_API_KEY) {
         keysToSave.anthropicApiKey = keys.anthropicApiKey.trim()
-      } else if (!keys.anthropicApiKey && existingKeys.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
+      } else if (
+        !keys.anthropicApiKey &&
+        existingKeys.anthropicApiKey &&
+        !process.env.ANTHROPIC_API_KEY
+      ) {
         keysToSave.anthropicApiKey = existingKeys.anthropicApiKey
       }
     } else if (existingKeys.anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
@@ -352,7 +417,11 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     if (keys.lakeraEndpoint !== undefined) {
       if (keys.lakeraEndpoint && keys.lakeraEndpoint.trim() && !process.env.LAKERA_ENDPOINT) {
         keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(keys.lakeraEndpoint.trim())
-      } else if (!keys.lakeraEndpoint && existingKeys.lakeraEndpoint && !process.env.LAKERA_ENDPOINT) {
+      } else if (
+        !keys.lakeraEndpoint &&
+        existingKeys.lakeraEndpoint &&
+        !process.env.LAKERA_ENDPOINT
+      ) {
         keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(existingKeys.lakeraEndpoint)
       } else if (!keys.lakeraEndpoint) {
         // Default endpoint
@@ -363,11 +432,11 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     } else {
       keysToSave.lakeraEndpoint = LAKERA_GUARD_URL_DEFAULT
     }
-    
+
     // Check if we have any keys to save
     // Always save at least the lakeraEndpoint if it exists, even if no other keys
     const hasKeysToSave = Object.keys(keysToSave).length > 0 || keysToSave.lakeraEndpoint
-    
+
     if (!hasKeysToSave) {
       console.warn('No keys to save - all may be set via environment variables or empty')
       // Still update cache with existing keys and env vars
@@ -381,7 +450,12 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
 
       if (process.env.AZURE_OPENAI_API_KEY) {
         const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
-        if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder') && envKey.length >= 10) {
+        if (
+          envKey &&
+          !envKey.toLowerCase().includes('your') &&
+          !envKey.toLowerCase().includes('placeholder') &&
+          envKey.length >= 10
+        ) {
           envKeys.azureOpenAiKey = envKey
         }
       }
@@ -393,7 +467,11 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       }
       if (process.env.AZURE_OPENAI_API_VERSION) {
         const envKey = process.env.AZURE_OPENAI_API_VERSION.trim()
-        if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder')) {
+        if (
+          envKey &&
+          !envKey.toLowerCase().includes('your') &&
+          !envKey.toLowerCase().includes('placeholder')
+        ) {
           envKeys.azureOpenAiApiVersion = envKey
         }
       } else if (envKeys.azureOpenAiEndpoint) {
@@ -422,15 +500,15 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       keysLoaded = true
       return
     }
-    
+
     const encryptedKeys = encryptKeys(keysToSave)
-    
+
     // Ensure directory exists and has correct permissions
     await ensureStorageDir()
-    
+
     // Write with restrictive permissions (owner read/write only)
     await fs.writeFile(KEYS_FILE_PATH, encryptedKeys, { mode: 0o600, flag: 'w' })
-    
+
     console.log('Keys saved successfully. Keys saved:', {
       openAiKey: !!keysToSave.openAiKey,
       anthropicApiKey: !!keysToSave.anthropicApiKey,
@@ -441,12 +519,17 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     // Update cache with merged keys (env vars take priority)
     const envKeys: StoredApiKeys = {}
     if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
-    if (process.env.ANTHROPIC_API_KEY) envKeys.anthropicApiKey = process.env.ANTHROPIC_API_KEY.trim()
-    if (process.env.AZURE_OPENAI_API_KEY) envKeys.azureOpenAiKey = process.env.AZURE_OPENAI_API_KEY.trim()
-    if (process.env.AZURE_OPENAI_ENDPOINT) envKeys.azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT.trim().replace(/\/+$/, '')
-    if (process.env.AZURE_OPENAI_API_VERSION) envKeys.azureOpenAiApiVersion = process.env.AZURE_OPENAI_API_VERSION.trim()
+    if (process.env.ANTHROPIC_API_KEY)
+      envKeys.anthropicApiKey = process.env.ANTHROPIC_API_KEY.trim()
+    if (process.env.AZURE_OPENAI_API_KEY)
+      envKeys.azureOpenAiKey = process.env.AZURE_OPENAI_API_KEY.trim()
+    if (process.env.AZURE_OPENAI_ENDPOINT)
+      envKeys.azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT.trim().replace(/\/+$/, '')
+    if (process.env.AZURE_OPENAI_API_VERSION)
+      envKeys.azureOpenAiApiVersion = process.env.AZURE_OPENAI_API_VERSION.trim()
     if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
-    if (process.env.LAKERA_PROJECT_ID) envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
+    if (process.env.LAKERA_PROJECT_ID)
+      envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
     if (process.env.LAKERA_ENDPOINT) {
       envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(process.env.LAKERA_ENDPOINT.trim())
     }
@@ -467,7 +550,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
 export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> {
   try {
     const existingKeys = await loadApiKeys()
-    
+
     // Don't delete keys that are set via environment variables
     if (keyName === 'openAiKey' && process.env.OPENAI_API_KEY) {
       return
@@ -496,11 +579,11 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
     // Delete the key from existing keys
     delete existingKeys[keyName]
     await saveApiKeys(existingKeys)
-    
+
     // Force cache invalidation to ensure fresh data on next access
     cachedKeys = null
     keysLoaded = false
-    
+
     // Reload to update cache with deleted key removed
     await loadApiKeys()
   } catch (error) {
@@ -519,10 +602,10 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
 export async function deleteAllApiKeys(): Promise<void> {
   try {
     await ensureStorageDir()
-    
+
     // Only delete keys not set via environment variables
     const keysToDelete: StoredApiKeys = {}
-    
+
     if (!process.env.OPENAI_API_KEY) {
       keysToDelete.openAiKey = ''
     }
@@ -548,11 +631,11 @@ export async function deleteAllApiKeys(): Promise<void> {
       keysToDelete.anthropicApiKey = ''
     }
     await saveApiKeys(keysToDelete)
-    
+
     // Force cache invalidation to ensure fresh data on next access
     cachedKeys = null
     keysLoaded = false
-    
+
     // Reload to update cache with all keys deleted
     await loadApiKeys()
   } catch (error) {
@@ -575,7 +658,7 @@ export async function getApiKeys(forceReload: boolean = false): Promise<StoredAp
     cachedKeys = null
     keysLoaded = false
   }
-  
+
   if (keysLoaded && cachedKeys && !forceReload) {
     return cachedKeys
   }
@@ -591,21 +674,31 @@ export function getApiKeysSync(): StoredApiKeys {
   if (cachedKeys) {
     return cachedKeys
   }
-  
+
   // Check environment variables (always available synchronously)
   const envKeys: StoredApiKeys = {}
-  
+
   if (process.env.OPENAI_API_KEY) {
     const envKey = process.env.OPENAI_API_KEY.trim()
     // Validate it's not a placeholder
-    if (envKey && !envKey.includes('your_ope') && !envKey.includes('your-api-key') && envKey.length >= 20) {
+    if (
+      envKey &&
+      !envKey.includes('your_ope') &&
+      !envKey.includes('your-api-key') &&
+      envKey.length >= 20
+    ) {
       envKeys.openAiKey = envKey
     }
   }
 
   if (process.env.AZURE_OPENAI_API_KEY) {
     const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
-    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder') && envKey.length >= 10) {
+    if (
+      envKey &&
+      !envKey.toLowerCase().includes('your') &&
+      !envKey.toLowerCase().includes('placeholder') &&
+      envKey.length >= 10
+    ) {
       envKeys.azureOpenAiKey = envKey
     }
   }
@@ -619,29 +712,43 @@ export function getApiKeysSync(): StoredApiKeys {
 
   if (process.env.AZURE_OPENAI_API_VERSION) {
     const envKey = process.env.AZURE_OPENAI_API_VERSION.trim()
-    if (envKey && !envKey.toLowerCase().includes('your') && !envKey.toLowerCase().includes('placeholder')) {
+    if (
+      envKey &&
+      !envKey.toLowerCase().includes('your') &&
+      !envKey.toLowerCase().includes('placeholder')
+    ) {
       envKeys.azureOpenAiApiVersion = envKey
     }
   } else if (envKeys.azureOpenAiEndpoint) {
     envKeys.azureOpenAiApiVersion = '2025-04-01-preview'
   }
-  
+
   if (process.env.LAKERA_AI_KEY) {
     const envKey = process.env.LAKERA_AI_KEY.trim()
     // Validate it's not a placeholder
-    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 20) {
+    if (
+      envKey &&
+      !envKey.includes('your') &&
+      !envKey.includes('placeholder') &&
+      envKey.length >= 20
+    ) {
       envKeys.lakeraAiKey = envKey
     }
   }
-  
+
   if (process.env.LAKERA_PROJECT_ID) {
     const envKey = process.env.LAKERA_PROJECT_ID.trim()
     // Validate it's not a placeholder
-    if (envKey && !envKey.includes('your') && !envKey.includes('placeholder') && envKey.length >= 5) {
+    if (
+      envKey &&
+      !envKey.includes('your') &&
+      !envKey.includes('placeholder') &&
+      envKey.length >= 5
+    ) {
       envKeys.lakeraProjectId = envKey
     }
   }
-  
+
   if (process.env.LAKERA_ENDPOINT) {
     const envKey = process.env.LAKERA_ENDPOINT.trim()
     // Validate it's a valid URL
@@ -678,7 +785,13 @@ export async function setApiKeys(keys: StoredApiKeys): Promise<void> {
  */
 export async function areApiKeysConfigured(): Promise<boolean> {
   const keys = await getApiKeys()
-  return !!(keys.openAiKey || keys.anthropicApiKey || keys.azureOpenAiKey || keys.lakeraAiKey || keys.lakeraProjectId)
+  return !!(
+    keys.openAiKey ||
+    keys.anthropicApiKey ||
+    keys.azureOpenAiKey ||
+    keys.lakeraAiKey ||
+    keys.lakeraProjectId
+  )
 }
 
 /**
@@ -691,7 +804,7 @@ export async function isApiKeyConfigured(keyName: keyof StoredApiKeys): Promise<
 
 // Initialize: Load keys on module load (for server-side)
 if (typeof window === 'undefined') {
-  loadApiKeys().catch((error) => {
+  loadApiKeys().catch(error => {
     console.error('Failed to load API keys on initialization:', error)
   })
 }

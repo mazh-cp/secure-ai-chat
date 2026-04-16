@@ -60,14 +60,17 @@ curl http://localhost:3000/api/health
 After updating, verify:
 
 1. **Service Status**:
+
    ```bash
    sudo systemctl status secure-ai-chat
    ```
 
 2. **Health Check**:
+
    ```bash
    curl http://localhost:3000/api/health
    ```
+
    Expected: `{"status":"ok",...}`
 
 3. **Application Features**:
@@ -110,16 +113,19 @@ sudo systemctl restart secure-ai-chat
 If the update fails:
 
 1. Check git access:
+
    ```bash
    git fetch origin
    ```
 
 2. Check Node.js version:
+
    ```bash
    node -v  # Should be v25.2.1
    ```
 
 3. Check service logs:
+
    ```bash
    sudo journalctl -u secure-ai-chat -n 50
    ```

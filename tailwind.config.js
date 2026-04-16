@@ -10,14 +10,14 @@ module.exports = {
     extend: {
       colors: {
         // UniFi-Style Color Palette - Uses CSS variables that change with theme
-        'palette': {
-          'bg': 'rgb(var(--bg))',
+        palette: {
+          bg: 'rgb(var(--bg))',
           'surface-1': 'rgb(var(--surface-1))',
           'surface-2': 'rgb(var(--surface-2))',
-          'accent': 'rgb(var(--accent))', // UniFi blue
+          accent: 'rgb(var(--accent))', // UniFi blue
           'text-1': 'rgb(var(--text-1))',
           'text-2': 'rgb(var(--text-2))',
-          'border': 'rgb(var(--border))',
+          border: 'rgb(var(--border))',
         },
         // Legacy compatibility - mapped to UniFi tokens
         'brand-berry': 'rgb(var(--accent))', // Maps to UniFi accent
@@ -38,8 +38,7 @@ module.exports = {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic':
-          'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
     },
   },

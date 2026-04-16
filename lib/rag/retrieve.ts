@@ -25,7 +25,11 @@ export interface RetrieveResult {
 }
 
 export interface VectorStoreQueryAdapter {
-  query(vector: number[], topK: number, filters?: Record<string, unknown>): Promise<RetrievedChunk[]>
+  query(
+    vector: number[],
+    topK: number,
+    filters?: Record<string, unknown>
+  ): Promise<RetrievedChunk[]>
 }
 
 let vectorStoreQueryAdapter: VectorStoreQueryAdapter | null = null
@@ -64,14 +68,14 @@ export async function retrieve(
     options.filters
   )
 
-  const chunksForScan = rawChunks.map((c) => ({
+  const chunksForScan = rawChunks.map(c => ({
     id: c.id,
     text: c.text,
     metadata: c.metadata,
   }))
 
   const scanResult = await scanRetrieval(chunksForScan, meta)
-  const safeChunks: RetrievedChunk[] = scanResult.safeChunks.map((c) => ({
+  const safeChunks: RetrievedChunk[] = scanResult.safeChunks.map(c => ({
     id: c.id,
     text: c.text,
     metadata: c.metadata,

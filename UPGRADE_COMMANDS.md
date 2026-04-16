@@ -114,6 +114,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 This script:
+
 - Uses app dir `/home/adminuser/secure-ai-chat` by default (or pass path: `curl ... | bash -s -- /opt/secure-ai-chat`)
 - Backs up `.env.local`, `.secure-storage`, and `.storage` to `/tmp`
 - Fetches `main` by default (override with `GIT_REF`), runs `npm install`, builds, restarts `secure-ai-chat`
@@ -141,6 +142,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/unif
 ```
 
 That's it! The script will automatically:
+
 - ✅ Backup current deployment
 - ✅ Pull latest code from GitHub
 - ✅ Install dependencies
@@ -210,18 +212,19 @@ sudo journalctl -u secure-ai-chat -n 50
 
 ## 🔧 Default Configuration
 
-| Variable | Default Value |
-|----------|---------------|
-| `REPO_DIR` | `/home/adminuser/secure-ai-chat` |
-| `BRANCH` | `release/unifi-theme-safe-final` |
-| `SERVICE_USER` | `adminuser` |
-| `SERVICE_NAME` | `secure-ai-chat` |
+| Variable       | Default Value                    |
+| -------------- | -------------------------------- |
+| `REPO_DIR`     | `/home/adminuser/secure-ai-chat` |
+| `BRANCH`       | `release/unifi-theme-safe-final` |
+| `SERVICE_USER` | `adminuser`                      |
+| `SERVICE_NAME` | `secure-ai-chat`                 |
 
 ---
 
 ## 📚 Detailed Documentation
 
 For more information, see:
+
 - `PRODUCTION_UPGRADE.md` - Complete upgrade guide with troubleshooting
 - `RELEASE_NOTES_v1.0.4.md` - Release notes for version 1.0.4
 - `RELEASE_CHECKLIST_v1.0.4.md` - Pre-deployment checklist
@@ -239,17 +242,20 @@ That file is not on GitHub `main` yet. Use **Option A1** above, or push `scripts
 The tag is not on GitHub yet. Either push it (`git tag v1.1.8 && git push origin v1.1.8`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
 
 ### Permission Errors
+
 ```bash
 sudo chown -R adminuser:adminuser /home/adminuser/secure-ai-chat
 ```
 
 ### Service Not Starting
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 100
 sudo systemctl restart secure-ai-chat
 ```
 
 ### Build Fails
+
 ```bash
 cd /home/adminuser/secure-ai-chat
 rm -rf .next node_modules

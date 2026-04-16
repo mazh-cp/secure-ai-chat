@@ -11,6 +11,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 This script will:
+
 - ✅ Create automatic backup
 - ✅ Download latest upgrade scripts
 - ✅ Stop service safely
@@ -22,11 +23,13 @@ This script will:
 ## What Gets Upgraded
 
 ### Hotfixes Included
+
 1. **File Storage Persistence** (0o755 directories, 0o644 files)
 2. **10-File Upload Limit** (was 5)
 3. **Storage Permissions Fix** (ensures files persist after restarts)
 
 ### Latest Features
+
 - All bug fixes and enhancements
 - Improved error handling
 - Better diagnostics
@@ -141,12 +144,14 @@ chown $(whoami):$(whoami) .storage -R
 ## Expected Changes
 
 ### File Storage
+
 - `.storage/` directory: Mode `755` (persistent after restarts)
 - `.storage/files/` directory: Mode `755` (persistent after restarts)
 - Files: Mode `644` (accessible after restarts)
 - Metadata: Mode `644` (accessible after restarts)
 
 ### File Limit
+
 - Maximum files per upload: **10 files** (was 5)
 - RAG supports up to 10 files in context
 

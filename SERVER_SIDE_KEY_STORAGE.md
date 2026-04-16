@@ -41,6 +41,7 @@ All API keys (OpenAI, Lakera AI, Lakera Project ID, Lakera Endpoint) are now sto
 ## Encryption Details
 
 ### Algorithm
+
 - **AES-256-CBC** (Advanced Encryption Standard, 256-bit key, CBC mode)
 - **IV** (Initialization Vector): Random 16 bytes per encryption
 - **Key Derivation**: SHA-256 hash of encryption key or environment variable
@@ -48,6 +49,7 @@ All API keys (OpenAI, Lakera AI, Lakera Project ID, Lakera Endpoint) are now sto
 ### Encryption Key Source
 
 1. **Environment Variable** (Recommended for production):
+
    ```bash
    API_KEYS_ENCRYPTION_KEY=your-secret-encryption-key-32-bytes-or-more
    # or
@@ -59,11 +61,13 @@ All API keys (OpenAI, Lakera AI, Lakera Project ID, Lakera Endpoint) are now sto
    - **Not recommended for production**
 
 ### File Format
+
 ```
 <IV_HEX>:<ENCRYPTED_DATA_HEX>
 ```
 
 Example:
+
 ```
 a1b2c3d4e5f6...:9f8e7d6c5b4a...
 ```
@@ -73,9 +77,11 @@ a1b2c3d4e5f6...:9f8e7d6c5b4a...
 ## API Endpoints
 
 ### 1. GET `/api/keys`
+
 **Purpose**: Get API key configuration status (without exposing keys)
 
 **Response**:
+
 ```json
 {
   "configured": {
@@ -94,9 +100,11 @@ a1b2c3d4e5f6...:9f8e7d6c5b4a...
 ```
 
 ### 2. POST `/api/keys`
+
 **Purpose**: Set or update API keys (encrypted server-side)
 
 **Request Body**:
+
 ```json
 {
   "keys": {
@@ -109,6 +117,7 @@ a1b2c3d4e5f6...:9f8e7d6c5b4a...
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -122,15 +131,18 @@ a1b2c3d4e5f6...:9f8e7d6c5b4a...
 ```
 
 ### 3. DELETE `/api/keys?key=openAiKey` or `/api/keys?all=true`
+
 **Purpose**: Remove API key(s)
 
 **Query Parameters**:
+
 - `key`: Specific key name to delete (e.g., `openAiKey`, `lakeraAiKey`)
 - `all`: Delete all keys (requires `all=true`)
 
 **PIN Protection**: Requires PIN verification if PIN is configured
 
 **Request Body** (if PIN configured):
+
 ```json
 {
   "pin": "1234"
@@ -138,9 +150,11 @@ a1b2c3d4e5f6...:9f8e7d6c5b4a...
 ```
 
 ### 4. GET `/api/keys/retrieve`
+
 **Purpose**: Retrieve API keys for client-side use (for API calls)
 
 **Response**:
+
 ```json
 {
   "keys": {
@@ -235,12 +249,14 @@ The system automatically migrates keys from localStorage to server-side storage:
 ### Encryption Key Management
 
 **Recommended for Production**:
+
 ```bash
 # Set a strong encryption key via environment variable
 export API_KEYS_ENCRYPTION_KEY="your-strong-random-key-32-bytes-minimum"
 ```
 
 **Generate a secure key**:
+
 ```bash
 # Generate a 32-byte (256-bit) random key
 openssl rand -hex 32
@@ -313,17 +329,20 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
 ## Benefits
 
 ### ✅ Universal Access
+
 - **Works from any browser** - Keys stored server-side, not browser-specific
 - **Works from any device** - Mobile, tablet, desktop all work
 - **No reconfiguration** - Set once, works everywhere
 
 ### ✅ Security
+
 - **Encrypted at rest** - AES-256-CBC encryption
 - **Secure storage** - Files in `.secure-storage/` with restricted permissions
 - **No client exposure** - Keys never in browser storage or JavaScript
 - **PIN protection** - Required for sensitive operations
 
 ### ✅ Flexibility
+
 - **Environment variables** - Can be set via `.env` or system environment
 - **UI configuration** - Can be set via Settings page
 - **Easy backup** - Encrypted files can be backed up
@@ -342,6 +361,7 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
 ```
 
 **Permissions**:
+
 - Directory: `700` (owner read/write/execute only)
 - Files: `600` (owner read/write only)
 
@@ -354,6 +374,7 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
 **Issue**: Keys configured in localStorage but not working after migration
 
 **Solution**:
+
 1. Go to Settings page
 2. Keys from localStorage should be displayed
 3. Click "Save Keys" to migrate to server-side storage
@@ -364,6 +385,7 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
 **Issue**: Keys configured but lost after server restart
 
 **Solution**:
+
 1. Check `.secure-storage/api-keys.enc` exists and has permissions 600
 2. Check encryption key is set: `API_KEYS_ENCRYPTION_KEY` or `CHECKPOINT_TE_ENCRYPTION_KEY`
 3. Verify directory permissions: `.secure-storage/` should be 700
@@ -373,6 +395,7 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
 **Issue**: Environment variables set but not being used
 
 **Solution**:
+
 1. Verify environment variables are set correctly
 2. Restart the application after setting environment variables
 3. Check environment variables are accessible: `process.env.OPENAI_API_KEY`
@@ -383,6 +406,7 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
 ## Best Practices
 
 1. **Use Environment Variables for Production**:
+
    ```bash
    # Set in .env or system environment
    OPENAI_API_KEY=sk-...
@@ -391,18 +415,21 @@ CHECKPOINT_TE_ENCRYPTION_KEY=your-strong-random-encryption-key
    ```
 
 2. **Set Strong Encryption Key**:
+
    ```bash
    # Generate a secure 32-byte key
    openssl rand -hex 32
    ```
 
 3. **Backup `.secure-storage/` Directory**:
+
    ```bash
    # Backup encrypted storage
    tar -czf secure-storage-backup.tar.gz .secure-storage/
    ```
 
 4. **Restrict File Permissions**:
+
    ```bash
    # Ensure proper permissions
    chmod 700 .secure-storage/

@@ -11,11 +11,13 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 Or with custom options:
+
 ```bash
 APP_DIR=/opt/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-inline.sh | bash
 ```
 
 **What it does:**
+
 - Auto-detects installation directory
 - Creates comprehensive backup (API keys, files, config, build)
 - Updates code from repository
@@ -34,7 +36,7 @@ APP_DIR=/opt/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubuserconten
 
 - **OS**: Ubuntu 18.04+ or Debian 10+
 - **Node.js**: v24.13.0 (LTS) - installed automatically by scripts
-- **Ports**: 
+- **Ports**:
   - 3000 (application) - configurable via PORT env var
   - 22 (SSH) - required for remote access
 - **Disk Space**: Minimum 2GB free (for dependencies and build)
@@ -77,6 +79,7 @@ Before deploying, validate the build is stable:
 ```
 
 This validates:
+
 - TypeScript compilation
 - ESLint checks
 - Security (no client-side secret leakage)
@@ -107,6 +110,7 @@ BASE_URL=http://localhost:3000 ./scripts/smoke-test.sh
 ```
 
 Smoke tests verify:
+
 - Health endpoints respond correctly
 - Status endpoints don't expose secrets
 - List endpoints work
@@ -117,11 +121,13 @@ Smoke tests verify:
 ### Fresh Install (Idempotent)
 
 **Usage:**
+
 ```bash
 bash scripts/install.sh --app-dir /opt/secure-ai-chat --app-user appuser
 ```
 
 **What it does:**
+
 1. Creates app user (if needed)
 2. Creates app directory with correct ownership
 3. Installs Node.js v24.13.0 via nvm
@@ -138,11 +144,13 @@ bash scripts/install.sh --app-dir /opt/secure-ai-chat --app-user appuser
 ### In-Place Upgrade (Idempotent with Auto-Rollback)
 
 **Usage:**
+
 ```bash
 bash scripts/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **What it does:**
+
 1. Creates backup (`.secure-storage`, `.storage`, `.env.local`, `.next`)
 2. Pulls latest code from git
 3. Stops service
@@ -195,6 +203,7 @@ STORAGE_DIR=/var/lib/secure-ai-chat/storage
 ```
 
 **Important:** Storage directory should be:
+
 - Outside the repository (not in `.git`)
 - Writable by the app user
 - Persisted across upgrades (not deleted during upgrades)
@@ -211,9 +220,10 @@ curl http://localhost:3000/api/health
 ```
 
 **Validation checks:**
+
 - Required variables for production
 - Storage directory path safety
-- NEXT_PUBLIC_ variables don't leak secrets
+- NEXT*PUBLIC* variables don't leak secrets
 - Port number is valid
 
 Validation errors are logged but don't crash the application.
@@ -225,17 +235,20 @@ Validation errors are logged but don't crash the application.
 Upgrade an existing installation in-place (safe, idempotent, rollback-friendly).
 
 **Usage:**
+
 ```bash
 sudo ./scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Options:**
+
 - `--app-dir`: Application directory (required)
 - `--ref`: Git reference to deploy (default: `main`)
 - `--backup-dir`: Custom backup directory (default: `{app-dir}/.backups`)
 - `--no-rollback`: Disable automatic rollback on failure
 
 **Steps:**
+
 1. Validates git repository is clean (or stashes changes)
 2. Fetches latest code and checks out target ref
 3. Creates timestamped backup of current build + config
@@ -248,11 +261,13 @@ sudo ./scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 
 **Rollback:**
 If upgrade fails, the script automatically:
+
 - Restores previous git commit
 - Restores previous build (.next directory)
 - Restarts service with previous version
 
 Manual rollback:
+
 ```bash
 cd /opt/secure-ai-chat
 git checkout <previous-commit>
@@ -265,17 +280,20 @@ sudo systemctl restart secure-ai-chat
 Full setup from scratch on a brand-new server.
 
 **Usage:**
+
 ```bash
 sudo ./scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Options:**
+
 - `--app-dir`: Application directory (required, default: `/opt/secure-ai-chat`)
 - `--ref`: Git reference to deploy (default: `main`)
 - `--app-user`: Application user (default: `secureai`)
 - `--skip-os-deps`: Skip OS dependency check
 
 **Steps:**
+
 1. Checks/installs OS prerequisites (curl, git, build-essential)
 2. Installs Node.js v24.13.0 via nvm
 3. Creates app user (`secureai`) and app directory
@@ -288,6 +306,7 @@ sudo ./scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-chat --ref main
 10. Starts service and runs smoke tests
 
 **Post-Installation:**
+
 1. Configure API keys via Settings UI or edit `/etc/secure-ai-chat.env`
 2. Check service status: `sudo systemctl status secure-ai-chat`
 3. View logs: `sudo journalctl -u secure-ai-chat -f`
@@ -323,7 +342,8 @@ sudo journalctl -u secure-ai-chat -f
 
 The service uses `/etc/secure-ai-chat.env` for environment variables.
 
-**Important**: 
+**Important**:
+
 - Never commit this file with actual secrets
 - API keys can be configured via Settings UI (stored in `.secure-storage/`)
 - Environment variables are optional (Settings UI takes precedence)
@@ -333,6 +353,7 @@ The service uses `/etc/secure-ai-chat.env` for environment variables.
 The service file template is located at `scripts/deploy/secure-ai-chat.service`.
 
 It includes:
+
 - User/group: `secureai`
 - Working directory: `/opt/secure-ai-chat` (or specified `--app-dir`)
 - Environment file: `/etc/secure-ai-chat.env`
@@ -344,11 +365,13 @@ It includes:
 Smoke tests validate the application is running correctly after deployment.
 
 **Run manually:**
+
 ```bash
 BASE_URL=http://localhost:3000 ./scripts/smoke-test.sh
 ```
 
 **What it tests:**
+
 - `/api/health` - Health check endpoint
 - `/api/version` - Version endpoint
 - `/api/keys/retrieve` - Keys status (no values)
@@ -359,6 +382,7 @@ BASE_URL=http://localhost:3000 ./scripts/smoke-test.sh
 - Secret leakage in responses and logs
 
 **Exit Codes:**
+
 - `0`: All tests passed ✅
 - `1`: One or more tests failed ❌
 

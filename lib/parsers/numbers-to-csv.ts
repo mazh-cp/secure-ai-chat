@@ -79,7 +79,8 @@ export async function convertNumbersToCsv(
     return {
       success: false,
       sheets: [],
-      error: 'Numbers conversion requires LibreOffice (soffice). Install with: sudo apt-get install -y libreoffice (Linux) or brew install libreoffice (macOS).',
+      error:
+        'Numbers conversion requires LibreOffice (soffice). Install with: sudo apt-get install -y libreoffice (Linux) or brew install libreoffice (macOS).',
     }
   }
 
@@ -91,21 +92,27 @@ export async function convertNumbersToCsv(
     await fs.mkdir(outDir, { recursive: true, mode: 0o755 })
     await fs.writeFile(numbersPath, numbersBuffer, { mode: 0o644 })
 
-    await execFileAsync(soffice, [
-      '--headless',
-      '--norestore',
-      '--invisible',
-      '--nodefault',
-      '--nolockcheck',
-      '--convert-to', 'csv',
-      '--outdir', outDir,
-      numbersPath,
-    ], { timeout: 120000, maxBuffer: 50 * 1024 * 1024 })
+    await execFileAsync(
+      soffice,
+      [
+        '--headless',
+        '--norestore',
+        '--invisible',
+        '--nodefault',
+        '--nolockcheck',
+        '--convert-to',
+        'csv',
+        '--outdir',
+        outDir,
+        numbersPath,
+      ],
+      { timeout: 120000, maxBuffer: 50 * 1024 * 1024 }
+    )
 
     const entries = await fs.readdir(outDir, { withFileTypes: true })
     const csvFiles = entries
-      .filter((e) => e.isFile() && e.name.toLowerCase().endsWith('.csv'))
-      .map((e) => path.join(outDir, e.name))
+      .filter(e => e.isFile() && e.name.toLowerCase().endsWith('.csv'))
+      .map(e => path.join(outDir, e.name))
       .sort()
 
     const sheets: Array<{ sheetName: string; csvContent: string }> = []

@@ -29,6 +29,7 @@ sudo lsof -i :3000
 ```
 
 **Expected output:**
+
 ```
 LISTEN 0 511 0.0.0.0:3000
 ```
@@ -46,6 +47,7 @@ sudo journalctl -u secure-ai-chat -f
 ```
 
 Look for:
+
 - Startup errors
 - Port binding issues
 - Node.js errors
@@ -83,6 +85,7 @@ sudo systemctl show secure-ai-chat --property=ExecStart
 ```
 
 **Common issues:**
+
 - Wrong Node.js path
 - Wrong working directory
 - Missing environment variables
@@ -212,6 +215,7 @@ curl http://localhost:3000/api/health
 ### Issue: Service shows "failed" status
 
 **Fix:**
+
 ```bash
 # Check logs for errors
 sudo journalctl -u secure-ai-chat -n 100
@@ -226,6 +230,7 @@ sudo journalctl -u secure-ai-chat -n 100
 ### Issue: Service shows "active" but port not listening
 
 **Fix:**
+
 ```bash
 # Check if app is binding to correct interface
 sudo ss -tlnp | grep :3000
@@ -239,6 +244,7 @@ sudo ss -tlnp | grep :3000
 ### Issue: Permission denied errors
 
 **Fix:**
+
 ```bash
 # Fix ownership
 sudo chown -R $USER:$USER ~/secure-ai-chat
@@ -252,6 +258,7 @@ chmod -R u+w ~/secure-ai-chat
 ### Issue: Port 3000 already in use
 
 **Fix:**
+
 ```bash
 # Find process using port 3000
 sudo lsof -i :3000

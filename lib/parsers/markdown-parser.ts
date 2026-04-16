@@ -19,14 +19,23 @@ export interface MarkdownSectionChunk {
  * Detect markdown table (line of | ... |) and convert to readable rows.
  */
 function formatTableBlock(tableText: string): string {
-  const lines = tableText.trim().split('\n').filter((l) => l.trim())
+  const lines = tableText
+    .trim()
+    .split('\n')
+    .filter(l => l.trim())
   if (lines.length < 2) return tableText
-  const sep = lines.findIndex((l) => /^\s*\|?[-:\s|]+\|?\s*$/.test(l))
+  const sep = lines.findIndex(l => /^\s*\|?[-:\s|]+\|?\s*$/.test(l))
   if (sep < 0) return tableText
-  const headerCells = lines[0].split('|').map((c) => c.trim()).filter(Boolean)
+  const headerCells = lines[0]
+    .split('|')
+    .map(c => c.trim())
+    .filter(Boolean)
   const rows: string[] = []
   for (let i = sep + 1; i < lines.length; i++) {
-    const cells = lines[i].split('|').map((c) => c.trim()).filter(Boolean)
+    const cells = lines[i]
+      .split('|')
+      .map(c => c.trim())
+      .filter(Boolean)
     if (cells.length === 0) continue
     const rowStr = headerCells.map((h, j) => `${h}: ${cells[j] ?? ''}`).join(' | ')
     rows.push(rowStr)
@@ -46,10 +55,7 @@ function formatCodeBlock(_full: string, lang?: string, code?: string): string {
 /**
  * Parse markdown into sections by headings (# ## ###). Preserve heading path.
  */
-export function parseMarkdownToChunks(
-  fileContent: string,
-  fileId: string
-): MarkdownSectionChunk[] {
+export function parseMarkdownToChunks(fileContent: string, fileId: string): MarkdownSectionChunk[] {
   const normalized = fileContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   const sections: { headingPath: string[]; content: string }[] = []
   const headingStack: { level: number; title: string }[] = []
@@ -83,7 +89,7 @@ export function parseMarkdownToChunks(
         headingStack.pop()
       }
       headingStack.push({ level, title })
-      currentPath = headingStack.map((h) => h.title)
+      currentPath = headingStack.map(h => h.title)
       currentContent.push(`Section: ${'#'.repeat(level)} ${title}`)
       continue
     }

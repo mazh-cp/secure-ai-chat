@@ -5,61 +5,75 @@ All notable changes to this project will be documented in this file.
 ## [1.1.8] - 2026-04-03
 
 ### Fixed
+
 - **Nested standalone output** — Some Next.js 16 / tracing layouts emit **`.next/standalone/<app>/server.js`** (with extra folders like **`.nvm/`** at the standalone root). **`verify-build`** and **`start-standalone.js`** now resolve **`server.js`** under **`.next/standalone`** (bounded depth) and run with **`cwd`** set to that app directory.
 
 ### Changed
+
 - **Upgrade defaults** — **`GIT_REF=v1.1.8`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
 
 ## [1.1.7] - 2026-04-03
 
 ### Fixed
+
 - **`npm run build`** — Use **`scripts/next-build-production.mjs`** to invoke **`node_modules/next/dist/bin/next build --webpack`**, so VMs that have a **global `next`** on PATH still produce **`.next/standalone/server.js`**. **`verify-build`** now prints **`.next`** / **`.next/standalone`** listings when **`server.js`** is missing.
 
 ### Changed
+
 - **Upgrade defaults** — **`GIT_REF=v1.1.7`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
 
 ## [1.1.6] - 2026-04-03
 
 ### Fixed
+
 - **Production `npm run build`** — Run **`next build --webpack`** so **`output: 'standalone'`** reliably emits **`.next/standalone/server.js`** (Next.js 16’s default Turbopack build could finish without standalone, causing **`verify-build`** / upgrade scripts to fail).
 
 ### Changed
+
 - **Upgrade defaults** — **`GIT_REF=v1.1.6`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
 
 ## [1.1.5] - 2026-04-03
 
 ### Added
+
 - **`SHARED_ORG_OWNER_ID`** — Optional env (e.g. `org`) so **all browsers** share one **file + RAG** corpus on the server; **`GET /api/owner`** returns **`shared_org_corpus`**. Documented in **`.env.example`**.
 - **`scripts/production-enable-shared-org-corpus.sh`** — On-VM helper to append **`SHARED_ORG_OWNER_ID`** to **`.env.local`** and restart the service (optional; you can edit **`.env.local`** manually).
 
 ### Changed
+
 - **Upgrade defaults** — **`GIT_REF=v1.1.5`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
 
 ## [1.1.4] - 2026-04-02
 
 ### Fixed
+
 - **`/release-notes` and `GET /api/release-notes`** — Parse **`### Changed`** from `CHANGELOG.md` and render it on the release notes page (previously only **Added**, **Fixed**, **Improved**, and **Security** were shown).
 
 ### Changed
+
 - **Upgrade defaults** — **`GIT_REF=v1.1.4`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, and docs (**`UPGRADE_COMMANDS.md`**).
 
 ## [1.1.3] - 2026-04-01
 
 ### Fixed
-- **ESLint / `build:fresh` on production VMs** — Ignore **`.backups/**`** and nested **`**/.next/**`** so lint does not scan copied `.next` chunks inside upgrade backup trees (fixes `react/no-find-dom-node` / `react/display-name` on minified files).
+
+- **ESLint / `build:fresh` on production VMs** — Ignore **`.backups/**`** and nested **`**/.next/**`** so lint does not scan copied `.next`chunks inside upgrade backup trees (fixes`react/no-find-dom-node`/`react/display-name` on minified files).
 - **`upgrade-curl-production.sh`** — On build failure retry: after `git checkout main`, run **`git pull origin main`** so a stale local `main` is not missing `build:fresh` and other scripts. If the first failure happened while already on **`main`**, second attempt also **pulls** and reinstalls deps.
 
 ### Changed
+
 - **`.gitignore`** — **`/.backups/`** so backup snapshots are not committed.
 - **`upgrade-remote-production-v3.sh`** — Default **`GIT_REF=v1.1.3`**.
 
 ## [1.1.2] - 2026-04-01
 
 ### Added
+
 - **`scripts/upgrade-remote-production-v3.sh`** — Remote / VM upgrade entry for the **1.1.x** line: default **`GIT_REF=v1.1.2`**, **`USE_BUILD_FRESH=1`**, **`RUN_TYPECHECK=1`**, same underlying **`upgrade-curl-production.sh`** (backup, checkout, npm install, build, systemd, health).
 - **`scripts/check-git-no-api-keys.mjs`** — Scans **git-tracked** files for high-confidence **`sk-…`** / **`sk-ant-api…`** patterns; folded into **`npm run check:secrets`**.
 
 ### Changed
+
 - **`scripts/run-remote-production-upgrade.sh`** — **`USE_V3=1`** runs **`upgrade-remote-production-v3.sh`** (overrides **`USE_V2`** when set).
 - **`scripts/build-remote-production-vm.sh`** — Defaults **`USE_V3=1`**, **`GIT_REF=v1.1.2`**, **`USE_BUILD_FRESH=1`** for laptop-driven production builds.
 - **`SECURITY.md`** — Documents that **cloning/upgrading from GitHub does not distribute OpenAI, Anthropic, or Lakera keys**; keys stay in **`.secure-storage/`** / **`.env.local`**.
@@ -67,61 +81,73 @@ All notable changes to this project will be documented in this file.
 ## [1.0.22] - 2026-03-30
 
 ### Added
+
 - **`npm run build:fresh`** — Clears `.next`, runs **`check:secrets`** (client leak gate), **`typecheck`**, **`lint`**, then **`npm run build`**.
 - **`scripts/verify-build.mjs`** — After **`next build`**, fails if **`.next/standalone/server.js`** or **`.next/static`** is missing (matches **`output: 'standalone'`** and **`npm start`**).
 
 ### Changed
+
 - **Toolchain** — **ESLint 9** with flat **`eslint.config.mjs`**; **`eslint-config-next@16`** with **Next.js 16**; **`eslint-config-prettier@10`**. Removed legacy **`.eslintrc.json`** / **`@typescript-eslint/*` v6**.
 - **Dependencies / audit** — Replaced **`xlsx`** with **`exceljs`** for RAG spreadsheet text extraction (addresses unpatched **`xlsx`** advisories); **`npm audit`** clean on supported tree. **`next.config.js`** **`serverExternalPackages`**: **`exceljs`** instead of **`xlsx`**.
 - **Excel RAG** — **`.xlsx` / `.xlsm`** (OOXML) only for extraction; legacy **`.xls`** is not indexed for RAG (convert to **`.xlsx`** if needed).
 
 ### Fixed
+
 - **Lint** — Satisfies **`eslint-plugin-react-hooks` v7** rules (effects, **`next/link`** on internal error UI, derived state where applicable).
 
 ## [1.0.21] - 2026-03-29
 
 ### Added
+
 - **`GET /api/te/diagnostic`** — Operator hints for Check Point TE (suggested outbound IP, upload base candidates); no secrets in response.
 - **`lib/lakera-guard-audit.ts`** — Server system logs aligned with Lakera Guard platform correlation (`request_uuid`, `project_id`, breakdown summary). Chat input/output, file scan, and RAG paths emit `service: lakera_guard` audit rows.
 - **Lakera Guard metadata** — Chat screening sends `session_id` (per-request correlation) alongside existing `user_id` / `ip_address` / `internal_request_id`.
 
 ### Changed
+
 - **Check Point TE (TPAPI 1.0 alignment)** — Query body uses `te.images[]` and optional `te.reports`; default upload reports **`xml`** only (override `CHECKPOINT_TECLOUD_TE_REPORTS`). Optional **`te_cookie`** stickiness from responses; **`CHECKPOINT_TE_AUTH_FORMAT`** (`raw` vs `te_api_key` / default prefixed). **`GET /api/te/config`** returns `teAuthFormat`.
 - **Lakera telemetry** — Platform visibility is primarily via **Guard API** calls (dashboard logs). Optional HTTP companion POST only when **`LAKERA_TELEMETRY_HTTP=true`**; extended payload includes `lakera_correlation`. **`LAKERA_GUARD_AUDIT_LOG=false`** disables local audit rows.
 - **Files page** — Visibility refetch calls **`/api/owner`** before list (owner cookie sync); clearer banners when the server returns an empty list vs a failed refresh.
 
 ### Fixed
+
 - Misleading “telemetry to Lakera” behavior: default no longer POSTs to undocumented `/v2/telemetry` (avoid silent 404s); use Guard + audit logs, or opt-in HTTP ingest.
 
 ## [1.0.20] - 2026-03-28
 
 ### Added
-- **`lib/upload-body-buffer.ts`** — `POST /api/files/store` decodes client **base64** payloads for binary uploads (PDF, DOCX, etc.). Previously `Buffer.from(content, 'utf-8')` stored the base64 *string* as file bytes, breaking RAG and any binary use.
+
+- **`lib/upload-body-buffer.ts`** — `POST /api/files/store` decodes client **base64** payloads for binary uploads (PDF, DOCX, etc.). Previously `Buffer.from(content, 'utf-8')` stored the base64 _string_ as file bytes, breaking RAG and any binary use.
 - **`lib/extract-text-for-rag.ts`** — **mammoth** (DOCX/DOC) and **pdf-parse** (PDF) extract plain text for RAG; used from **`lib/rag-context.ts`** and **`app/api/chat`** fallback when primary retrieval returns no chunks.
 - **Production VM upgrades** — `scripts/upgrade-remote-production-v2.sh` (type-check + health retries), `scripts/run-remote-production-upgrade.sh` (SSH from laptop). **`upgrade-curl-production.sh`**: optional `RUN_TYPECHECK` / `HEALTH_RETRIES`, restore **`.storage`** from backup, **`checkout_git_ref`** helper, **missing `v*` tag → `GIT_REF_FALLBACK`** (default `main`).
 
 ### Changed
+
 - **Upgrade wrappers** — `upgrade-remote-production.sh` / `v2` default **`GIT_REF=main`** so curl upgrades work when release tags are not pushed.
 - **`UPGRADE_COMMANDS.md`** — Option A1 one-liner without the v2 raw URL; troubleshooting for 404 and missing tags.
 - **`next.config.js`** — `serverExternalPackages`: `pdf-parse`, `pdfjs-dist`, `mammoth`.
 
 ### Fixed
+
 - **Chat + uploaded PDF/Word** — Answers could ignore file content (especially with Lakera upload scan off); fixed by correct bytes on disk and text extraction for RAG.
 
 ## [1.0.19] - 2026-03-27
 
 ### Added
+
 - **Lakera Guard (canonical client)** — `lib/lakera/guard-client.ts` centralizes POST/parse/merge for chat screening, `/api/scan`, and server file store.
 - **Server scan on store** — `POST /api/files/store` runs Lakera when a key is configured; sets `scan_status` / `scan_details` from the server (not client-only).
 - **Chat vs upload scans** — `chatUseUploadedFilesContext` (localStorage) and API `lakeraRetrievalScan`: file content in chat can stay on when Lakera/Check Point upload toggles are off; per-chunk retrieval scan follows Files-page Lakera preferences.
 - **RAG retrieval** — Relevance scoring over chunks, higher default chunk budget in chat (56), sliding windows up to 100 slices per prose file with top-40 pre-rank; global rank-and-cap; broader `isDataQuery` / `isFileOrDataQuestion` for companies, people, orgs, quoted strings; `readOwnerFileBuffer` reads canonical `raw.bin`.
 
 ### Changed
+
 - **`lib/security/lakera.ts`** — Uses `postLakeraGuard` / merge pipeline; merges `getApiKeys()` for endpoint and project id when only the key is overridden.
 - **RAG ingest/embed/reindex/chat** — Thread Lakera credentials from `getApiKeys()` into `scanIngestion` / retrieval metadata.
 - **Files page** — Turning off Lakera Scan no longer forces RAG auto-scan off in a way that disables chat file context; clarified “Lakera after upload” copy.
 
 ### Fixed
+
 - **OpenAI adapter** — On 400, retry Chat Completions with `max_completion_tokens` when the model rejects `max_tokens` (and Azure parity).
 - **Next.js dev navigation** — `Strict-Transport-Security` is sent only in **production** so local HTTP dev is not upgraded to broken HTTPS (`Failed to fetch` on client navigations).
 - **RAG file inclusion** — Do not skip registry `scan_status: error` for retrieval (Lakera API misconfig ≠ unsafe file).
@@ -129,15 +155,18 @@ All notable changes to this project will be documented in this file.
 ## [1.0.18] - 2026-03-26
 
 ### Added
+
 - Azure OpenAI connector (`provider=azure`):
   - Settings UI fields for `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`
   - `/api/models?provider=azure` to list available Azure OpenAI deployments
   - `/api/chat` routes to Azure OpenAI using the selected deployment name
 
 ### Changed
+
 - Model/provider selector now includes Azure OpenAI alongside OpenAI and Anthropic
 
 ### Security (Lakera Guard)
+
 - Output/generation scans send the screened line as `role: assistant` (input scans remain `user`) so Guard evaluates the last interaction correctly per Lakera docs
 - Production logs no longer print Lakera `breakdown` / `payload` details (dev-only debug)
 - Guard requests include stable `metadata.user_id` (from app owner id) for Lakera Platform analytics alongside existing telemetry
@@ -147,29 +176,32 @@ All notable changes to this project will be documented in this file.
 Production release: chat security, Lakera toggles, port 3000 only, no Sources list.
 
 ### Fixed
-- **Chat: general vs file questions (security)**  
-  - General knowledge questions (e.g. "what is depression") use **model-only** answers: no RAG, no file context, no "Sources" section.  
+
+- **Chat: general vs file questions (security)**
+  - General knowledge questions (e.g. "what is depression") use **model-only** answers: no RAG, no file context, no "Sources" section.
   - File/data questions (e.g. "who is dealing with depression") use RAG; answers are based on file content only.
-- **Chat: no file names or row numbers**  
+- **Chat: no file names or row numbers**
   - RAG citations no longer expose file names, row numbers, or PII. API returns `rag: { chunks: [] }`; UI shows only the answer text (natural English).
-- **Chat: model instructions**  
+- **Chat: model instructions**
   - When RAG is used, the model is instructed not to mention file names, row numbers, or document identifiers.
-- **Chat: fallback file context**  
+- **Chat: fallback file context**
   - System message no longer lists actual file names; refers only to "N uploaded file(s)".
-- **UI**  
+- **UI**
   - Sources list removed from chat responses; only the answer text is shown.
 
 ### Changed
-- **Lakera toggles**  
+
+- **Lakera toggles**
   - Input and output scan respect UI toggles: when toggles are off, Lakera is not run (no "Blocked by filter"); when on, scanning runs as before.
-- **Install & upgrade**  
+- **Install & upgrade**
   - App runs on **port 3000 only**: nginx is not installed or started by the install script; UFW allows 22 and app port (3000). Upgrade script no longer reloads nginx.
-- **Check Point TE key**  
+- **Check Point TE key**
   - Can be updated via CLI: `scripts/set-api-keys.sh --checkpoint-te-key "..."` or `curl -X POST .../api/te/config -d '{"apiKey":"..."}'`.
 
 ## [1.0.16] - 2026-02-05
 
 ### Added
+
 - **Local persistent storage architecture**: Canonical layout under `DATA_DIR`:
   - `uploads/<tenant>/<fileId>/raw.bin` and `meta.json` (atomic writes: tmp → rename)
   - `derived/<tenant>/<fileId>/status.json` for pipeline status
@@ -182,6 +214,7 @@ Production release: chat security, Lakera toggles, port 3000 only, no Sources li
 - **Next.js 16 proxy**: Migrated `middleware.ts` → `proxy.ts` for Next.js 16 compatibility.
 
 ### Fixed
+
 - **Crypto.randomUUID in production**: Removed `crypto.randomUUID` usage from `lib/owner-client.ts` (Node 14 compatibility). Uses timestamp + Math.random fallback for client IDs.
 - **Standalone start**: `scripts/start-standalone.js` selects `.next/standalone/server.js` when standalone build exists; systemd PATH fix for Node in nvm.
 - **Install scripts**: `dpkg-query` for package checks; prerequisites phase; chown temp dir before clone; flatten single subdir (e.g. `secure-ai-chat/`) into install dir; verify Node/npm as `secureai` user.
@@ -189,6 +222,7 @@ Production release: chat security, Lakera toggles, port 3000 only, no Sources li
 - **Chat general-knowledge fallback**: Chat no longer restricts answers to uploaded files only. General questions (e.g. "what is Python?", "hello") are answered from model knowledge; RAG/file context is used only when the question is about file content or data. Uses `groundedOnly: false` and updated system prompts.
 
 ### Changed
+
 - **Store route**: Writes to canonical layout (raw.bin + meta.json + status.json); registry gets `pipeline_status = uploaded`.
 - **Read path**: `readOwnerFile` tries canonical `raw.bin` first, then legacy single file for backward compatibility.
 - **Release notes**: Retain prior correction (last 5 lines under v1.0.12 "Added functionality" removed in CHANGELOG).
@@ -198,15 +232,18 @@ Production release: chat security, Lakera toggles, port 3000 only, no Sources li
 Stable release: file upload, release notes, and production install fixes.
 
 ### Fixed
+
 - **Production npm install**: Overrides use exact versions for npm alias compatibility (`npm:@eslint/config-array@0.18.0`, `npm:@eslint/object-schema@2.1.0`) so `npm ci` / `npm install` succeed on production VMs (fixes "Invalid comparator" error).
 - **Chat file read path**: Chat RAG file content now uses only `readOwnerFile(owner, fileId)` from persistent-storage (single source of truth). Removed fallback to file-storage key layout so uploaded files are always read from `data/uploads/<ownerId>/<fileId>`.
 
 ### Changed
+
 - **Stable release baseline**: This version is the recommended production release after v1.0.11. Includes all v1.0.14 fixes (safeFetchJson, ErrorBoundary, JSON error contract, release notes cleanup) plus production install and chat read path fixes.
 
 ## [1.0.14] - 2026-02-05
 
 ### Fixed
+
 - **File upload blank screen (v1.0.13 regression)**: Upload and files list/store/clear now use a safe JSON fetch helper so non-JSON API responses (e.g. HTML error pages) never cause the UI to crash with a white screen.
   - New `lib/safe-fetch.ts`: `safeFetchJson()` returns `{ ok, status, data?, error? }` and never throws on parse/network errors.
   - Files page: all calls to `/api/files/list`, `/api/files/store`, and `/api/files/clear` use `safeFetchJson`; errors surface as a visible banner instead of crashing.
@@ -214,14 +251,17 @@ Stable release: file upload, release notes, and production install fixes.
 - **API error contract**: File store and list routes return consistent JSON on failure: `{ ok: false, error: { code, message, details: null } }` with appropriate HTTP status (4xx/5xx).
 
 ### Added
+
 - **Regression test**: `scripts/smoke-upload.sh` — verifies store returns JSON (not HTML), file persists, and list returns the file (run with server at `BASE_URL`, e.g. `BASE_URL=http://localhost:3000 ./scripts/smoke-upload.sh`).
 
 ### Changed
+
 - **Release notes cleanup**: Removed the last 5 lines under v1.0.12 "Added functionality" (Local server startup bullet) from CHANGELOG.
 
 ## [1.0.12] - 2026-02-05
 
 ### Added
+
 - **Anthropic (Claude) support**: Chat can use OpenAI or Anthropic as provider
   - Server-side storage for Anthropic API key (Settings, encrypted storage, PIN protection)
   - Provider selector in chat UI (OpenAI / Anthropic) with model dropdown per provider
@@ -231,16 +271,19 @@ Stable release: file upload, release notes, and production install fixes.
   - Settings: Anthropic API key field (paste-only, clear with PIN), status in keys retrieve API
 
 ### Improved
+
 - **Build and npm**: Documentation for `npm warn Unknown env config "devdir"`
   - README and docs/DATA_STORAGE_AND_REINSTALL.md explain one-time fix: `npm config delete devdir`
   - Clarified that the warning comes from user config, not the project
 
 ### Fixed
+
 - **ChatInterface**: `apiKeys` possibly null when building scanOptions (optional chaining for `apiKeys?.lakeraAiKey`)
 
 ## [1.0.11] - 2026-01-16
 
 ### Added
+
 - **Check Point WAF Integration**: Enterprise-grade Web Application Firewall integration
   - Middleware for capturing request metadata and security events
   - WAF logs API endpoint (`/api/waf/logs`) for Check Point WAF consumption
@@ -252,6 +295,7 @@ Stable release: file upload, release notes, and production install fixes.
   - Comprehensive filtering options (by level, service, time range, IP, endpoint, etc.)
 
 ### Fixed
+
 - **API Parameter Update**: Fixed `max_completion_tokens` parameter error for GPT-5.x models
   - Changed `max_completion_tokens` to `max_output_tokens` to match updated API specification
   - Updated parameter normalization in AI adapter for Responses API
@@ -268,6 +312,7 @@ Stable release: file upload, release notes, and production install fixes.
   - Better rate limit handling and error messages
 
 ### Improved
+
 - **Rate Limiting**: Enhanced rate limiting system for GPT-5.x models
   - Increased rate limits from 50 to 200 requests/minute for GPT-5.x models
   - Improved model matching for GPT-5.x with suffixes (e.g., `gpt-5.2-pro-2025-12-11`)
@@ -303,6 +348,7 @@ Stable release: file upload, release notes, and production install fixes.
 ## [1.0.10] - 2026-01-13
 
 ### Added
+
 - **Enhanced RAG (Retrieval Augmented Generation) System**: Automatic file indexing and intelligent content search
   - Files are automatically indexed when uploaded (no manual configuration needed)
   - Chat client automatically searches uploaded files before using general LLM knowledge
@@ -316,6 +362,7 @@ Stable release: file upload, release notes, and production install fixes.
   - Support for CSV, JSON, and TXT files with automatic data file detection
 
 ### Improved
+
 - **File Access Control**: More inclusive file filtering for RAG
   - Files with `pending` or `not_scanned` status are now included (only explicitly flagged/malicious files excluded)
   - Better security balance between safety and usability
@@ -332,6 +379,7 @@ Stable release: file upload, release notes, and production install fixes.
   - Clear instructions for data queries and file analysis
 
 ### Fixed
+
 - **File Search Issue**: Fixed chat client not finding uploaded files
   - Previously, chat would say "please upload files" even when files were uploaded
   - Now automatically searches all safe uploaded files
@@ -340,6 +388,7 @@ Stable release: file upload, release notes, and production install fixes.
 ## [1.0.9] - 2026-01-13
 
 ### Added
+
 - **API Errors & Key Failures Section in Logs**: Dedicated section in Logs viewer showing all API errors and key failures with full error details
   - Highlights key failures (401/403) with troubleshooting tips
   - Shows full error messages, response bodies, and stack traces
@@ -359,6 +408,7 @@ Stable release: file upload, release notes, and production install fixes.
   - Console logging for debugging payload and breakdown data
 
 ### Improved
+
 - **Logs Viewer**: Enhanced with dedicated API errors section showing full error details and key failure troubleshooting
   - Better visibility into API failures and authentication issues
   - Comprehensive error information for debugging
@@ -371,6 +421,7 @@ Stable release: file upload, release notes, and production install fixes.
 ## [1.0.8] - 2026-01-13
 
 ### Added
+
 - **Ubuntu VM Installation Script** (`scripts/install_ubuntu_public.sh`): Single-step installation script for fresh Ubuntu VM deployments
   - Installs system dependencies, Node.js LTS 20.x, clones repository
   - Auto-detects free port starting from 3000 (avoids EADDRINUSE errors)
@@ -412,11 +463,13 @@ Stable release: file upload, release notes, and production install fixes.
   - Improved threat reporting with exact text positions and detector information
 
 ### Fixed
+
 - **Git Repository Issues**: Fixed "fatal: not a git repository" errors on remote installations
 - **Upgrade Process**: Fixed 404 errors when downloading upgrade scripts from wrong branch
 - **Port Conflicts**: Auto-detection of free ports prevents EADDRINUSE errors
 
 ### Improved
+
 - **README.md**: Added "Quick Install (Ubuntu VM)" and "Reset/Cleanup" sections
 - **Port Auto-Detection**: Installation script automatically finds free port starting from 3000
 - **Idempotent Installation**: Installation script can be safely re-run
@@ -427,6 +480,7 @@ Stable release: file upload, release notes, and production install fixes.
 ## [1.0.7] - 2026-01-12
 
 ### Added
+
 - **Release Notes Page**: New dedicated page for viewing version history and changelog
   - Accessible from Settings page and navigation sidebar
   - Displays version history with categorized changes (Added, Fixed, Improved, Security)
@@ -462,6 +516,7 @@ Stable release: file upload, release notes, and production install fixes.
   - API key storage & retrieval verification
 
 ### Fixed
+
 - **File Scanning Error**: Fixed "Failed to execute 'json' on 'Response'" error for large files
   - Response cloning to avoid stream consumption issues
   - Better error handling for files with 500+ individuals
@@ -480,6 +535,7 @@ Stable release: file upload, release notes, and production install fixes.
 - **ESLint Errors**: All critical errors fixed (only expected warnings remain)
 
 ### Improved
+
 - **Key Deletion**: Enhanced with proper server-side cache invalidation
 - **Status Synchronization**: Better sync between Settings and Files pages
 - **System Prompt**: Updated to allow data queries from uploaded files
@@ -495,10 +551,11 @@ Stable release: file upload, release notes, and production install fixes.
   - Header redaction for any header containing "api-key" or "apikey"
 
 ### Security
+
 - **Key Security Verification**: Confirmed all API keys excluded from git
 - **Persistence Verification**: Confirmed keys persist across restarts and upgrades
 - **File Permissions**: Verified correct permissions (700/600) on storage files
-- **Client-Side Key Leakage Prevention**: 
+- **Client-Side Key Leakage Prevention**:
   - ESLint rule blocks `checkpoint-te` and `api-keys-storage` imports in client components
   - Check Point TE API key never reaches client (server-side only)
   - `checkpointTeKey` state cleared immediately after save (never persisted)
@@ -512,33 +569,38 @@ Stable release: file upload, release notes, and production install fixes.
 ## [1.0.6] - 2026-01-12
 
 ### Added
+
 - Checkpoint TE (Threat Emulation) integration
 - Server-side API key storage with encryption
 - PIN verification for sensitive operations
 
 ### Fixed
+
 - Form-data stream handling in Checkpoint TE upload
 - Key deletion with proper cache invalidation
 
 ## [1.0.5] - 2025-01-10
 
 ### Added
+
 - **OpenAI Model Selector**: Users can now select different OpenAI models from a dropdown list on the Chat page
   - Model dropdown displays available GPT models based on configured API key
   - Dynamic model list fetched from OpenAI API
   - Model preference persisted in localStorage
   - Model names formatted for readability (e.g., "GPT-4o Mini", "GPT-4o")
   - Models sorted with newest first
-  - Secure validation (only gpt-* models allowed)
+  - Secure validation (only gpt-\* models allowed)
   - Default model: `gpt-4o-mini`
 - **New API Route**: `/api/models` - Fetches available OpenAI models
 - **New Component**: `ModelSelector` - Dropdown component for model selection
 
 ### Changed
+
 - **Chat API**: Enhanced to accept and use selected model parameter
 - **ChatInterface**: Integrated ModelSelector component above chat messages
 
 ### Fixed
+
 - **Settings Page - Save Keys Button**: Fixed button not visible in light mode
   - Changed from invalid `var(--primary)` to `rgb(var(--accent))` for proper theme support
   - Button now clearly visible in both light and dark modes
@@ -547,10 +609,10 @@ Stable release: file upload, release notes, and production install fixes.
   - Current Project ID displayed when configured
 
 ### Technical
+
 - Updated version to 1.0.5
 - All new features styled with UniFi theme tokens
 - Maintained backward compatibility
-
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -558,6 +620,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.4] - 2026-01-XX
 
 ### Added
+
 - **UniFi-Style Day/Night Theme System**: Complete theme system with instant switching, no flash on load
   - Light and dark themes with neutral-first palette and single accent color
   - CSS variable-based design tokens for maintainability
@@ -576,7 +639,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `docs/SAFETY_AUDIT.md` - Complete audit of runtime entrypoints and production paths
   - `docs/HARDENING_CHANGES.md` - Documentation of all hardening changes
   - Environment variable validation script (`scripts/validate-env.sh`)
-- **Environment Configuration**: 
+- **Environment Configuration**:
   - `.env.example` file for documentation
   - `validate-env` npm script for startup checks
 - **Package Scripts**:
@@ -585,6 +648,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `validate-env` script
 
 ### Changed
+
 - **Dockerfile**: Updated Node.js version from `20-alpine` to `25-alpine` to match package.json engines
 - **Theme System**: Complete refactor to use CSS variables (design tokens) instead of hard-coded colors
 - **Files Page**: Added status dots to Lakera Scan, RAG Auto Scan, and File Sandboxing toggles
@@ -592,6 +656,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Layout**: Enhanced source protection integration
 
 ### Security
+
 - ✅ Source protection component prevents casual code inspection
 - ✅ Error boundaries verified to not expose secrets
 - ✅ Security headers verified and production-ready
@@ -599,12 +664,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Environment variable validation (warns, doesn't fail)
 
 ### Documentation
+
 - `docs/SAFETY_AUDIT.md` - Comprehensive production safety audit
 - `docs/HARDENING_CHANGES.md` - All hardening changes documented
 - `docs/THEME_SYSTEM.md` - Theme system architecture and usage guide
 - `.env.example` - Environment variable documentation
 
 ### Deployment
+
 - ✅ All entrypoints verified (Next.js, Docker, systemd, Kubernetes)
 - ✅ Health check endpoint verified (`/api/health`)
 - ✅ Build process verified (TypeScript, ESLint, Next.js build)
@@ -616,6 +683,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.3] - 2026-01-XX
 
 ### Added
+
 - **Server-Side Encrypted API Key Storage**: All API keys (OpenAI, Lakera, Check Point TE) now stored server-side with AES-256-CBC encryption
 - **Universal Access**: Application works from any browser/device once keys are configured (no per-device setup needed)
 - **Comprehensive Security Checks**: Enhanced security validation to prevent API key leakage in code, logs, or client bundles
@@ -624,6 +692,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Post-Change Validation Report**: Added `POST_CHANGE_VALIDATION_V1.0.3.md` with validation results
 
 ### Changed
+
 - **API Routes**: Updated chat and scan routes to prioritize server-side keys over client keys
 - **Settings UI**: Settings form now saves keys to server-side encrypted storage instead of localStorage
 - **Client Components**: Updated ChatInterface, page.tsx, and files.tsx to load keys from server-side
@@ -633,6 +702,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Version Display**: Updated app version to 1.0.3 in Layout.tsx footer
 
 ### Security
+
 - ✅ **No Hardcoded Keys**: Verified no API keys hardcoded in source code
 - ✅ **Encrypted Storage**: All keys encrypted at rest with AES-256-CBC
 - ✅ **Secure Permissions**: Storage files have 600 permissions (owner read/write only)
@@ -642,11 +712,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ **Comprehensive Security Checks**: Enhanced security script checks for all API key types
 
 ### Migration
+
 - Automatic migration from localStorage to server-side storage
 - Existing keys in localStorage are migrated on first Settings save
 - Backward compatibility maintained during transition period
 
 ### Documentation
+
 - `SERVER_SIDE_KEY_STORAGE.md` - Comprehensive server-side key storage guide
 - `POST_CHANGE_VALIDATION_V1.0.3.md` - Post-change validation report
 - Updated security check documentation
@@ -655,6 +727,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.2] - 2026-01-XX
 
 ### Added
+
 - **Lakera Telemetry Integration**
   - Automatic log export to Platform.lakera.ai for analytics and monitoring
   - Support for S3 log export (Enterprise feature via Platform.lakera.ai Settings)
@@ -680,6 +753,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `V1.0.2_RELEASE_NOTES.md` - Release notes
 
 ### Enhanced
+
 - **Release Gate Automation**
   - Improved security scan to only check for actual API key patterns (not variable names)
   - Better error handling and validation
@@ -690,11 +764,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Privacy-preserving (only metadata, not full content)
 
 ### Fixed
+
 - TypeScript errors in LogViewer and SystemLogViewer (unknown type handling)
 - ESLint disable comments (removed invalid rule references)
 - Build output security scan false positives (variable names vs actual API keys)
 
 ### Documentation
+
 - Updated `README.md` with Lakera telemetry configuration options
 - Added upgrade instructions and verification steps
 - Enhanced release workflow documentation
@@ -704,6 +780,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.1] - 2026-01-XX
 
 ### Added
+
 - **Check Point ThreatCloud / Threat Emulation (TE) Integration**
   - Server-side only API key storage (encrypted at rest in `.secure-storage/checkpoint-te-key.enc`)
   - File sandbox toggle via Check Point ThreatCloud TE
@@ -737,6 +814,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Release documentation (`RELEASE.md`)
 
 ### Enhanced
+
 - **ThreatCloud Proxy Hardening**
   - Request timeouts: 30s upload, 30s query, 60s polling
   - Capped retries with exponential backoff for transient failures
@@ -766,6 +844,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Existing Lakera scanning continues to work
 
 ### Security
+
 - **API Key Protection**
   - Check Point TE API keys stored server-side only (never in client)
   - Encrypted at rest using AES-256-CBC
@@ -779,6 +858,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Timing-safe PIN verification (prevents timing attacks)
 
 ### Fixed
+
 - Hydration error in ThemeToggleButton (server/client render mismatch)
 - Form-data stream handling for Check Point TE uploads
 - API base URL corrected to `https://te-api.checkpoint.com/tecloud/api/v1/file`
@@ -786,6 +866,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript type errors in system logging interfaces
 
 ### Documentation
+
 - Added `RELEASE.md` with release gate documentation
 - Added `RELEASE_GATE_SUMMARY.md` with detailed validation summary
 - Added `POST_CHANGE_VALIDATION_REPORT.md` with comprehensive validation report
@@ -802,6 +883,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2024-12-XX
 
 ### Added
+
 - **UI Theme System**: Complete light/dark mode implementation with semantic color tokens
   - Dark mode: Navy blue backgrounds (#141C2C, #1D2839, #323C4E) with light text (#F0EDF4)
   - Light mode: Light gray/white backgrounds (#F6F7FB, #FFFFFF, #EEF1F7) with dark text (#0F172A)
@@ -818,6 +900,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Production hardening guide with restart verification steps
 
 ### Changed
+
 - **UI Colors**: All hard-coded colors replaced with semantic theme tokens
   - Backgrounds, text, and borders now adapt to light/dark mode
   - Improved contrast and readability in both themes
@@ -825,10 +908,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Build Configuration**: Added standalone output mode for Docker deployments
 
 ### Security
+
 - CSS variable fallbacks prevent missing token crashes
 - Error boundary prevents sensitive error exposure in production
 
 ### Infrastructure
+
 - Health check endpoint for Docker/systemd/Kubernetes monitoring
 - Auto-restart policies for all deployment methods
 - Production-ready Docker and Kubernetes configurations
@@ -836,6 +921,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-01-08
 
 ### Added
+
 - Initial release of Secure AI Chat application
 - Next.js 14 App Router implementation
 - TypeScript support with full type safety
@@ -857,6 +943,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dependabot configuration
 
 ### Security
+
 - Prompt injection detection and blocking
 - Input/output scanning with Lakera AI
 - Security headers (HSTS, X-Frame-Options, etc.)
@@ -864,6 +951,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Threat level assessment (low, medium, high, critical)
 
 ### Documentation
+
 - Installation and setup instructions
 - Production build and deployment guide
 - Troubleshooting section

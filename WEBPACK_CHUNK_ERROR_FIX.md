@@ -1,6 +1,7 @@
 # Webpack Chunk Error Fix
 
 ## Error Description
+
 ```
 Error: Cannot find module './682.js'
 Require stack:
@@ -10,7 +11,9 @@ Require stack:
 This error occurs when Next.js webpack runtime cannot find a required chunk file.
 
 ## Root Cause
+
 This typically happens when:
+
 1. **Stale build cache**: The `.next` directory has outdated chunk references
 2. **Dev server mismatch**: Dev server running with old build while dependencies changed
 3. **Incomplete build**: Build was interrupted or failed partway through
@@ -19,7 +22,9 @@ This typically happens when:
 ## Solution
 
 ### Step 1: Stop All Dev Servers
+
 If you have dev servers running (`npm run dev`), stop them:
+
 ```bash
 # Press Ctrl+C in the terminal running the dev server
 # Or kill all Next.js processes:
@@ -32,6 +37,7 @@ ps aux | grep -E "(next|node.*dev)" | grep -v grep
 ```
 
 ### Step 2: Clear Build Cache
+
 ```bash
 # Remove the .next directory completely
 rm -rf .next
@@ -41,12 +47,14 @@ rm -rf .next
 ```
 
 ### Step 3: Rebuild
+
 ```bash
 # Rebuild the application
 npm run build
 ```
 
 ### Step 4: Restart Dev Server
+
 ```bash
 # Start fresh dev server
 npm run dev
@@ -80,13 +88,14 @@ npm run dev
 
 To avoid this issue in the future:
 
-1. **Always stop dev server before**: 
+1. **Always stop dev server before**:
    - Running `npm install`
    - Running `npm run build`
    - Making dependency changes
    - Clearing `.next` directory
 
 2. **Clear cache after dependency changes**:
+
    ```bash
    # Stop dev server first!
    pkill -f "next dev"
@@ -96,6 +105,7 @@ To avoid this issue in the future:
    ```
 
 3. **Check for multiple dev servers**:
+
    ```bash
    # If you see multiple Next.js processes, kill them all:
    ps aux | grep -E "(next|node.*dev)"
@@ -104,6 +114,7 @@ To avoid this issue in the future:
    ```
 
 4. **Use production build for testing**:
+
    ```bash
    npm run build
    npm start  # Use production server instead of dev
@@ -120,6 +131,7 @@ To avoid this issue in the future:
 ## Verification
 
 After applying the fix, verify:
+
 ```bash
 # Check that build succeeds
 npm run build

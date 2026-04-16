@@ -15,6 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/v1.0
 ```
 
 This command will:
+
 1. ✅ Download the update script from GitHub
 2. ✅ Fix repository permissions
 3. ✅ Fetch latest changes
@@ -164,11 +165,13 @@ npm run build
 After the update completes, verify:
 
 1. **Service Status**:
+
    ```bash
    sudo systemctl status secure-ai-chat
    ```
 
 2. **Health Endpoint**:
+
    ```bash
    curl http://localhost:3000/api/health
    ```
@@ -190,11 +193,13 @@ After the update completes, verify:
 ## 🎯 Quick Reference
 
 **One-Step Update Command:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/v1.0.2/update-production.sh | sudo bash
 ```
 
 **Check Status After Update:**
+
 ```bash
 sudo systemctl status secure-ai-chat
 curl http://localhost:3000/api/health

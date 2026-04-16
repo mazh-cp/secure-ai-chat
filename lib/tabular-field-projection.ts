@@ -13,8 +13,11 @@ function wantsAllDetailsQuery(q: string): boolean {
   ) {
     return true
   }
-  if (/\b(summarize|summary|overview)\s+(of\s+)?(the\s+)?(file|data|spreadsheet|upload)/i.test(s)) return true
-  return /\b(all|full|complete|entire|everything)\s+(details?|profile|record|information|data|fields?)\b/i.test(s)
+  if (/\b(summarize|summary|overview)\s+(of\s+)?(the\s+)?(file|data|spreadsheet|upload)/i.test(s))
+    return true
+  return /\b(all|full|complete|entire|everything)\s+(details?|profile|record|information|data|fields?)\b/i.test(
+    s
+  )
 }
 
 /** Headers that look like a person's name (not "company name", etc.). */
@@ -31,7 +34,7 @@ function isNameLikeHeader(h: string): boolean {
   const t = h.trim()
   if (!t) return false
   if (/\bcompany\b|\bemployer\s+name\b/i.test(t)) return false
-  return NAME_HEADER_RES.some((re) => re.test(t))
+  return NAME_HEADER_RES.some(re => re.test(t))
 }
 
 /**
@@ -65,9 +68,9 @@ export function formatTabularRowAsFields(
   rowNumber: number,
   row: Record<string, string>,
   headers: string[],
-  allowedHeaders?: string[],
+  allowedHeaders?: string[]
 ): string {
-  const use = allowedHeaders?.length ? headers.filter((h) => allowedHeaders.includes(h)) : headers
-  const lines = use.map((h) => `${h}: ${row[h] ?? ''}`)
+  const use = allowedHeaders?.length ? headers.filter(h => allowedHeaders.includes(h)) : headers
+  const lines = use.map(h => `${h}: ${row[h] ?? ''}`)
   return `Row ${rowNumber}\n${lines.join('\n')}`
 }

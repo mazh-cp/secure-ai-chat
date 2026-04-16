@@ -32,7 +32,9 @@ export function initializeCacheCleanup(): void {
     })
   }, CLEANUP_INTERVAL_MS)
 
-  console.log(`Cache cleanup scheduled to run every ${CLEANUP_INTERVAL_MS / (60 * 60 * 1000)} hours`)
+  console.log(
+    `Cache cleanup scheduled to run every ${CLEANUP_INTERVAL_MS / (60 * 60 * 1000)} hours`
+  )
 }
 
 /**
@@ -56,7 +58,9 @@ async function performCleanup(): Promise<{ deletedFiles: number; deletedMetadata
   try {
     // Get stats before cleanup
     const statsBefore = await getStorageStats()
-    console.log(`Before cleanup: ${statsBefore.fileCount} files, ${(statsBefore.totalSize / 1024 / 1024).toFixed(2)} MB`)
+    console.log(
+      `Before cleanup: ${statsBefore.fileCount} files, ${(statsBefore.totalSize / 1024 / 1024).toFixed(2)} MB`
+    )
 
     // Perform cleanup
     const result = await clearAllFiles()
@@ -70,7 +74,9 @@ async function performCleanup(): Promise<{ deletedFiles: number; deletedMetadata
     console.log(`Cache cleanup completed in ${duration}ms:`)
     console.log(`  - Deleted ${result.deletedFiles} files`)
     console.log(`  - Metadata cleared: ${result.deletedMetadata}`)
-    console.log(`  - After cleanup: ${statsAfter.fileCount} files, ${(statsAfter.totalSize / 1024 / 1024).toFixed(2)} MB`)
+    console.log(
+      `  - After cleanup: ${statsAfter.fileCount} files, ${(statsAfter.totalSize / 1024 / 1024).toFixed(2)} MB`
+    )
 
     return result
   } catch (error) {
@@ -82,7 +88,11 @@ async function performCleanup(): Promise<{ deletedFiles: number; deletedMetadata
 /**
  * Manually trigger cleanup (for health check endpoint)
  */
-export async function triggerCleanup(): Promise<{ deletedFiles: number; deletedMetadata: boolean; lastCleanupTime: Date | null }> {
+export async function triggerCleanup(): Promise<{
+  deletedFiles: number
+  deletedMetadata: boolean
+  lastCleanupTime: Date | null
+}> {
   const result = await performCleanup()
   return {
     ...result,

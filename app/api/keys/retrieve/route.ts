@@ -5,7 +5,7 @@ import { LAKERA_GUARD_URL_DEFAULT } from '@/lib/lakera-guard-endpoint'
 /**
  * GET - Retrieve API keys status for client-side checks
  * This endpoint returns whether keys are configured without exposing actual key values
- * 
+ *
  * Security: This endpoint only returns status (configured/not configured), never actual keys
  * In a production environment, consider adding additional authentication
  */
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Force fresh load of keys (bypass cache)
     // Reload keys to ensure we have the latest status
     const keys = await getApiKeys()
-    
+
     // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
       console.log('🔑 /api/keys/retrieve - Keys status:', {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         endpoint: keys.lakeraEndpoint,
       })
     }
-    
+
     // Return keys status (don't expose actual keys for security)
     // For client-side checks, we return a placeholder 'configured' value if key exists
     const response = {
@@ -54,19 +54,19 @@ export async function GET(request: NextRequest) {
         lakeraEndpoint: !!keys.lakeraEndpoint,
       },
     }
-    
+
     // Prevent caching of this response
     return NextResponse.json(response, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        Pragma: 'no-cache',
+        Expires: '0',
       },
     })
   } catch (error) {
     console.error('Error retrieving API keys:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to retrieve API keys',
         configured: {
           openAiKey: false,
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
           lakeraEndpoint: LAKERA_GUARD_URL_DEFAULT,
         },
       },
-      { 
+      {
         status: 500,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',

@@ -1,6 +1,7 @@
 # Handling Existing Installation
 
 When you see the error:
+
 ```
 fatal: destination path 'secure-ai-chat' already exists and is not an empty directory.
 ```
@@ -15,12 +16,14 @@ bash <(curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/
 ```
 
 Or if you already have the repo:
+
 ```bash
 cd ~/secure-ai-chat
 bash scripts/clean-install.sh
 ```
 
 This will:
+
 - Stop the service (if running)
 - Remove existing installation
 - Perform fresh installation
@@ -75,6 +78,7 @@ INSTALL_DIR=/home/adminuser/apps TAG=v1.0.11 curl -fsSL https://raw.githubuserco
 ## Quick Commands
 
 ### Check Current Installation
+
 ```bash
 # Check if directory exists
 ls -la ~/secure-ai-chat
@@ -87,6 +91,7 @@ cd ~/secure-ai-chat && git describe --tags 2>/dev/null || echo "Not a git repo"
 ```
 
 ### Backup Before Clean Install
+
 ```bash
 # Backup API keys (if you want to preserve them)
 sudo cp -r ~/secure-ai-chat/.secure-storage ~/secure-storage-backup
@@ -96,6 +101,7 @@ cp ~/secure-ai-chat/.env.local ~/env-local-backup 2>/dev/null || true
 ```
 
 ### Restore After Clean Install
+
 ```bash
 # Restore API keys
 sudo cp -r ~/secure-storage-backup ~/secure-ai-chat/.secure-storage
@@ -128,12 +134,14 @@ bash scripts/validate-fresh-install.sh
 ## Troubleshooting
 
 ### Permission Denied
+
 ```bash
 # If you get permission errors, use sudo for removal
 sudo rm -rf ~/secure-ai-chat
 ```
 
 ### Service Won't Stop
+
 ```bash
 # Force stop
 sudo systemctl stop secure-ai-chat
@@ -141,6 +149,7 @@ sudo pkill -f "secure-ai-chat" || true
 ```
 
 ### Directory Locked
+
 ```bash
 # Check what's using it
 lsof +D ~/secure-ai-chat

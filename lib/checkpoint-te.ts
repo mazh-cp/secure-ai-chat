@@ -17,7 +17,7 @@
 if (typeof window !== 'undefined') {
   throw new Error(
     'SECURITY VIOLATION: lib/checkpoint-te.ts is server-only and cannot be imported in client components. ' +
-    'The ThreatCloud API key must never reach the client.'
+      'The ThreatCloud API key must never reach the client.'
   )
 }
 
@@ -37,7 +37,7 @@ const getEncryptionKey = (): Buffer => {
     // Use provided key (should be 32 bytes for AES-256)
     return crypto.createHash('sha256').update(envKey).digest()
   }
-  
+
   // Use a default key based on a secret (not secure for production, but better than plaintext)
   // In production, this should be set via environment variable
   const defaultSecret = 'secure-ai-chat-checkpoint-te-storage-key-v1'
@@ -62,12 +62,16 @@ async function ensureStorageDir(): Promise<void> {
       // Directory exists - verify and fix permissions if needed
       const currentMode = stats.mode & 0o777
       if (currentMode !== 0o700) {
-        console.warn(`Storage directory has incorrect permissions (${currentMode.toString(8)}), expected 700. Attempting to fix...`)
+        console.warn(
+          `Storage directory has incorrect permissions (${currentMode.toString(8)}), expected 700. Attempting to fix...`
+        )
         try {
           await fs.chmod(STORAGE_DIR, 0o700)
           console.log(`Fixed storage directory permissions to 700`)
         } catch (chmodError) {
-          console.warn(`Could not fix storage directory permissions: ${chmodError instanceof Error ? chmodError.message : String(chmodError)}`)
+          console.warn(
+            `Could not fix storage directory permissions: ${chmodError instanceof Error ? chmodError.message : String(chmodError)}`
+          )
         }
       }
       return // Directory exists with correct permissions
@@ -77,29 +81,31 @@ async function ensureStorageDir(): Promise<void> {
         throw statError // Re-throw if it's not a "not found" error
       }
     }
-    
+
     // Directory doesn't exist - create it
     await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 })
-    
+
     // Verify directory was created and has correct permissions
     const stats = await fs.stat(STORAGE_DIR)
     if (!stats.isDirectory()) {
       throw new Error(`Storage directory exists but is not a directory: ${STORAGE_DIR}`)
     }
-    
+
     const finalMode = stats.mode & 0o777
     if (finalMode !== 0o700) {
       // Try to fix permissions one more time
       await fs.chmod(STORAGE_DIR, 0o700)
     }
-    
+
     console.log(`Storage directory created/verified: ${STORAGE_DIR} (permissions: 700)`)
   } catch (error) {
     console.error('Failed to create/verify storage directory:', error)
     // Provide more details about the error
     const errorMessage = error instanceof Error ? error.message : String(error)
     const cwd = process.cwd()
-    throw new Error(`Cannot create/verify .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write to: ${cwd}`)
+    throw new Error(
+      `Cannot create/verify .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write to: ${cwd}`
+    )
   }
 }
 
@@ -112,10 +118,10 @@ function encryptKey(key: string): string {
     const encryptionKey = getEncryptionKey()
     const iv = crypto.randomBytes(16)
     const cipher = crypto.createCipheriv(algorithm, encryptionKey, iv)
-    
+
     let encrypted = cipher.update(key, 'utf8', 'hex')
     encrypted += cipher.final('hex')
-    
+
     // Prepend IV to encrypted data
     return iv.toString('hex') + ':' + encrypted
   } catch (error) {
@@ -136,11 +142,11 @@ function decryptKey(encryptedKey: string): string {
       const algorithm = 'aes-256-cbc'
       const encryptionKey = getEncryptionKey()
       const iv = Buffer.from(ivHex, 'hex')
-      
+
       const decipher = crypto.createDecipheriv(algorithm, encryptionKey, iv)
       let decrypted = decipher.update(encrypted, 'hex', 'utf8')
       decrypted += decipher.final('utf8')
-      
+
       return decrypted
     } else {
       // Old base64 format (backward compatibility)
@@ -169,7 +175,7 @@ async function loadTeApiKey(): Promise<string | null> {
 
   try {
     await ensureStorageDir()
-    
+
     // Try to read from file
     try {
       const encryptedData = await fs.readFile(KEY_FILE_PATH, 'utf8')
@@ -205,15 +211,15 @@ async function saveTeApiKey(key: string | null): Promise<void> {
 
     if (key) {
       const encryptedKey = encryptKey(key)
-      
+
       // Write with restrictive permissions (owner read/write only)
       try {
         // Ensure directory exists and has correct permissions before writing
         await ensureStorageDir()
-        
+
         // Write the file
         await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
-        
+
         // Force file system sync to ensure write completes before verification
         // Open file descriptor and sync to ensure data is written to disk
         try {
@@ -225,9 +231,11 @@ async function saveTeApiKey(key: string | null): Promise<void> {
           }
         } catch (syncError) {
           // Sync failure is not critical - file write may have already completed
-          console.warn(`File sync warning (non-critical): ${syncError instanceof Error ? syncError.message : String(syncError)}`)
+          console.warn(
+            `File sync warning (non-critical): ${syncError instanceof Error ? syncError.message : String(syncError)}`
+          )
         }
-        
+
         // Verify file was written and has correct permissions
         const stats = await fs.stat(KEY_FILE_PATH)
         if (!stats.isFile()) {
@@ -236,16 +244,20 @@ async function saveTeApiKey(key: string | null): Promise<void> {
         if (stats.size === 0) {
           throw new Error(`Key file is empty after write: ${KEY_FILE_PATH}`)
         }
-        
+
         // Verify permissions
         const fileMode = stats.mode & 0o777
         if (fileMode !== 0o600) {
-          console.warn(`Key file has incorrect permissions (${fileMode.toString(8)}), expected 600. Fixing...`)
+          console.warn(
+            `Key file has incorrect permissions (${fileMode.toString(8)}), expected 600. Fixing...`
+          )
           await fs.chmod(KEY_FILE_PATH, 0o600)
         }
-        
-        console.log(`Check Point TE API key file saved: ${KEY_FILE_PATH} (${stats.size} bytes, permissions: 600)`)
-        
+
+        console.log(
+          `Check Point TE API key file saved: ${KEY_FILE_PATH} (${stats.size} bytes, permissions: 600)`
+        )
+
         // Update cache after successful write verification
         teApiKey = key
         keyLoaded = true
@@ -253,7 +265,7 @@ async function saveTeApiKey(key: string | null): Promise<void> {
         const errorDetails = writeError instanceof Error ? writeError.message : String(writeError)
         const errorCode = (writeError as { code?: string }).code || 'UNKNOWN'
         console.error(`Failed to write TE API key file to ${KEY_FILE_PATH}:`, errorDetails)
-        
+
         // Check directory status
         let dirInfo = 'unknown'
         try {
@@ -263,11 +275,13 @@ async function saveTeApiKey(key: string | null): Promise<void> {
         } catch {
           dirInfo = 'does not exist or not accessible'
         }
-        
+
         console.error(`Storage directory: ${STORAGE_DIR}, status: ${dirInfo}`)
         console.error(`Error code: ${errorCode}`)
-        
-        throw new Error(`Cannot save Check Point TE API key: ${errorDetails} (code: ${errorCode}). Check directory permissions for: ${STORAGE_DIR}. Directory status: ${dirInfo}`)
+
+        throw new Error(
+          `Cannot save Check Point TE API key: ${errorDetails} (code: ${errorCode}). Check directory permissions for: ${STORAGE_DIR}. Directory status: ${dirInfo}`
+        )
       }
     } else {
       // Remove key file if key is null
@@ -337,7 +351,7 @@ export function getTeApiKeySync(): string | null {
   if (teApiKey) {
     return teApiKey
   }
-  
+
   // Check environment variable (highest priority, always available)
   if (process.env.CHECKPOINT_TE_API_KEY) {
     const envKey = normalizeTeApiKeyInput(process.env.CHECKPOINT_TE_API_KEY)
@@ -347,7 +361,7 @@ export function getTeApiKeySync(): string | null {
       return envKey
     }
   }
-  
+
   // If not loaded yet and we're in Node.js, try synchronous file read as fallback
   // This ensures the key is available even if async initialization hasn't completed
   if (!keyLoaded && typeof window === 'undefined') {
@@ -356,7 +370,7 @@ export function getTeApiKeySync(): string | null {
       const pathSync = require('path')
       const storageDir = pathSync.join(process.cwd(), '.secure-storage')
       const keyFilePath = pathSync.join(storageDir, 'checkpoint-te-key.enc')
-      
+
       if (fsSync.existsSync(keyFilePath)) {
         try {
           const encryptedData = fsSync.readFileSync(keyFilePath, 'utf8')
@@ -378,7 +392,7 @@ export function getTeApiKeySync(): string | null {
       console.error('Synchronous key load failed:', syncError)
     }
   }
-  
+
   // Key not available yet
   return null
 }
@@ -538,17 +552,22 @@ export function buildTeUploadRequest(options: {
   reports?: string[]
   imageId?: string
   revision?: number
-}): { request: Array<{ features: string[], te: { reports?: string[], images?: Array<{ id: string, revision: number }> } }> } {
+}): {
+  request: Array<{
+    features: string[]
+    te: { reports?: string[]; images?: Array<{ id: string; revision: number }> }
+  }>
+} {
   const { reports = getDefaultTeReports(), imageId, revision } = options
-  
+
   const imageIdToUse = imageId || getTeImageId()
   const revisionToUse = revision || getTeImageRevision()
-  
+
   const requestItem: {
     features: string[]
     te: {
       reports?: string[]
-      images?: Array<{ id: string, revision: number }>
+      images?: Array<{ id: string; revision: number }>
     }
   } = {
     features: ['te'],
@@ -556,12 +575,12 @@ export function buildTeUploadRequest(options: {
       reports,
     },
   }
-  
+
   // Only include images if imageId is provided
   if (imageIdToUse) {
     requestItem.te.images = [{ id: imageIdToUse, revision: revisionToUse }]
   }
-  
+
   return { request: [requestItem] }
 }
 

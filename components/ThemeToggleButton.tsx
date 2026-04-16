@@ -1,35 +1,35 @@
-"use client";
-import { useEffect, useState } from "react";
+'use client'
+import { useEffect, useState } from 'react'
 
-const KEY = "theme";
+const KEY = 'theme'
 
 export default function ThemeToggleButton() {
   // Always initialize to "dark" for SSR to prevent hydration mismatch
   // We'll update it after mount in useEffect
-  const [theme, setTheme] = useState<"day" | "dark">("dark");
-  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<'day' | 'dark'>('dark')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     queueMicrotask(() => {
-      setMounted(true);
-      const dataTheme = document.documentElement.getAttribute("data-theme");
-      if (dataTheme === "day" || dataTheme === "dark") {
-        setTheme(dataTheme);
+      setMounted(true)
+      const dataTheme = document.documentElement.getAttribute('data-theme')
+      if (dataTheme === 'day' || dataTheme === 'dark') {
+        setTheme(dataTheme)
       } else {
-        const stored = (localStorage.getItem(KEY) as "day" | "dark" | null) ?? "dark";
-        setTheme(stored);
+        const stored = (localStorage.getItem(KEY) as 'day' | 'dark' | null) ?? 'dark'
+        setTheme(stored)
       }
-    });
-  }, []);
+    })
+  }, [])
 
   const toggle = () => {
     // Bulletproof toggle: always do all 3 operations in order
-    const next = theme === "dark" ? "day" : "dark";
-    localStorage.setItem(KEY, next); // 1. Persist to storage
-    document.documentElement.setAttribute("data-theme", next); // 2. Apply to DOM
-    document.documentElement.style.colorScheme = next === "dark" ? "dark" : "light"; // 3. Force repaint
-    setTheme(next); // 4. Update React state
-  };
+    const next = theme === 'dark' ? 'day' : 'dark'
+    localStorage.setItem(KEY, next) // 1. Persist to storage
+    document.documentElement.setAttribute('data-theme', next) // 2. Apply to DOM
+    document.documentElement.style.colorScheme = next === 'dark' ? 'dark' : 'light' // 3. Force repaint
+    setTheme(next) // 4. Update React state
+  }
 
   // Prevent hydration mismatch by not rendering theme-dependent text until mounted
   if (!mounted) {
@@ -38,18 +38,18 @@ export default function ThemeToggleButton() {
         type="button"
         className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition"
         style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
-          color: "var(--text)",
-          boxShadow: "var(--card-shadow)",
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          color: 'var(--text)',
+          boxShadow: 'var(--card-shadow)',
         }}
         aria-label="Toggle Day/Night mode"
         title="Toggle Day/Night mode"
         disabled
       >
-        <span style={{ color: "var(--text-muted)" }}>...</span>
+        <span style={{ color: 'var(--text-muted)' }}>...</span>
       </button>
-    );
+    )
   }
 
   return (
@@ -58,17 +58,15 @@ export default function ThemeToggleButton() {
       onClick={toggle}
       className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition"
       style={{
-        background: "var(--surface)",
-        borderColor: "var(--border)",
-        color: "var(--text)",
-        boxShadow: "var(--card-shadow)",
+        background: 'var(--surface)',
+        borderColor: 'var(--border)',
+        color: 'var(--text)',
+        boxShadow: 'var(--card-shadow)',
       }}
       aria-label="Toggle Day/Night mode"
       title="Toggle Day/Night mode"
     >
-      <span style={{ color: "var(--text-muted)" }}>
-        {theme === "dark" ? "Night" : "Day"}
-      </span>
+      <span style={{ color: 'var(--text-muted)' }}>{theme === 'dark' ? 'Night' : 'Day'}</span>
     </button>
-  );
+  )
 }

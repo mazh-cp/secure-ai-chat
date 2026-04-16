@@ -101,6 +101,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **Error**: `Tag v1.0.11 not found`
 
 **Solution**:
+
 ```bash
 # List available tags
 git fetch --tags
@@ -118,6 +119,7 @@ BRANCH=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/
 **Error**: `npm ci failed` or `package-lock.json out of sync`
 
 **Solution**:
+
 ```bash
 cd secure-ai-chat
 
@@ -137,6 +139,7 @@ npm run build
 **Error**: `Failed to clone tag` or `shallow clone failed`
 
 **Solution**:
+
 ```bash
 # Use full clone instead
 git clone https://github.com/mazh-cp/secure-ai-chat.git
@@ -149,6 +152,7 @@ git checkout v1.0.11
 **Error**: `Node.js version mismatch. Expected v25.2.1`
 
 **Solution**:
+
 ```bash
 # Install correct Node.js version
 export NVM_DIR="$HOME/.nvm"
@@ -166,6 +170,7 @@ node -v  # Should show v25.2.1
 **Error**: Build errors or TypeScript errors
 
 **Solution**:
+
 ```bash
 cd secure-ai-chat
 
@@ -187,6 +192,7 @@ npm run build
 **Error**: `Permission denied` during installation
 
 **Solution**:
+
 ```bash
 # Don't run as root - script uses sudo when needed
 # Ensure your user has sudo privileges
@@ -308,6 +314,7 @@ TAG=v1.0.11 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/
 ```
 
 This ensures:
+
 - ✅ Correct version (v1.0.11) is installed
 - ✅ All dependencies match the release
 - ✅ Build artifacts are correct

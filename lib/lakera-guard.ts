@@ -18,12 +18,12 @@ export async function guardMany(
   if (chunks.length === 0) return { safeChunks: [], droppedCount: 0 }
   if (meta.layer === 'ingestion') {
     const results = await Promise.all(
-      chunks.map(async (c) => {
+      chunks.map(async c => {
         const r = await scanIngestion(c.text, { ...meta, docId: c.metadata?.docId as string })
         return { chunk: c, allowed: r.allowed }
       })
     )
-    const safeChunks = results.filter((r) => r.allowed).map((r) => r.chunk)
+    const safeChunks = results.filter(r => r.allowed).map(r => r.chunk)
     return { safeChunks, droppedCount: chunks.length - safeChunks.length }
   }
   const result = await scanRetrieval(chunks, meta)
@@ -36,7 +36,12 @@ export async function guardMany(
 export async function guardText(
   text: string,
   context: 'input' | 'output',
-  meta?: { ip_address?: string; user_id?: string; session_id?: string; internal_request_id?: string }
+  meta?: {
+    ip_address?: string
+    user_id?: string
+    session_id?: string
+    internal_request_id?: string
+  }
 ): Promise<LakeraScanResult> {
   return scanTextWithLakera({
     text,

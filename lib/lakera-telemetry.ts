@@ -181,7 +181,9 @@ export type LakeraLogEntryForTelemetry = {
 /**
  * Convert application log entry to companion telemetry payload (HTTP mode only).
  */
-export function convertLogToTelemetry(logEntry: LakeraLogEntryForTelemetry): LakeraTelemetryPayload | null {
+export function convertLogToTelemetry(
+  logEntry: LakeraLogEntryForTelemetry
+): LakeraTelemetryPayload | null {
   if (!logEntry.lakeraDecision?.scanned) {
     return null
   }
@@ -260,7 +262,8 @@ export async function sendLakeraTelemetryFromLog(
     await recordLakeraGuardAudit({
       context,
       projectId: lakeraProjectId ?? logEntry.projectId,
-      requestUuid: logEntry.lakeraDecision?.requestUuid || logEntry.requestDetails?.lakeraRequestUuid,
+      requestUuid:
+        logEntry.lakeraDecision?.requestUuid || logEntry.requestDetails?.lakeraRequestUuid,
       flagged: logEntry.lakeraDecision?.flagged ?? false,
       categories: logEntry.lakeraDecision?.categories,
       breakdown: logEntry.lakeraDecision?.breakdown,
@@ -286,7 +289,7 @@ export async function sendLakeraTelemetryFromLog(
   }
 
   try {
-    sendLakeraTelemetry(payload, lakeraApiKey, lakeraProjectId ?? undefined).catch((error) => {
+    sendLakeraTelemetry(payload, lakeraApiKey, lakeraProjectId ?? undefined).catch(error => {
       console.error('Lakera HTTP telemetry failed (non-blocking):', error)
     })
   } catch (error) {

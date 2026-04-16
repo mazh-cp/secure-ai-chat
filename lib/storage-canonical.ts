@@ -13,7 +13,9 @@ import { promises as fs } from 'fs'
 import path from 'path'
 
 const DATA_DIR = process.env.DATA_DIR
-  ? (path.isAbsolute(process.env.DATA_DIR) ? process.env.DATA_DIR : path.resolve(process.cwd(), process.env.DATA_DIR))
+  ? path.isAbsolute(process.env.DATA_DIR)
+    ? process.env.DATA_DIR
+    : path.resolve(process.cwd(), process.env.DATA_DIR)
   : path.resolve(process.cwd(), 'data')
 
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads')

@@ -22,26 +22,17 @@ export async function DELETE(request: NextRequest) {
     const fileId = searchParams.get('fileId')
 
     if (!fileId) {
-      return NextResponse.json(
-        { error: 'fileId is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'fileId is required' }, { status: 400 })
     }
 
     const file = getById(fileId)
     if (!file || file.owner_id !== ownerId) {
-      return NextResponse.json(
-        { error: 'File not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 
     const ok = markDeleted(fileId)
     if (!ok) {
-      return NextResponse.json(
-        { error: 'File not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 
     const owner = file.owner_id ?? ownerId ?? ''

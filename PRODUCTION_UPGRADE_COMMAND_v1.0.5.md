@@ -123,11 +123,13 @@ ssh adminuser@YOUR_VM_IP "cd /home/adminuser/secure-ai-chat && node -p \"require
 ### If Upgrade Fails
 
 1. **Check Git Status**:
+
    ```bash
    ssh adminuser@YOUR_VM_IP "cd /home/adminuser/secure-ai-chat && git status"
    ```
 
 2. **Check Service Logs**:
+
    ```bash
    ssh adminuser@YOUR_VM_IP "sudo journalctl -u secure-ai-chat -n 50"
    ```

@@ -1,6 +1,6 @@
 /**
  * Dynamic Model Limits Fetcher
- * 
+ *
  * Fetches model token limits from OpenAI API and caches them.
  * Falls back to hardcoded limits if API is unavailable.
  */
@@ -31,7 +31,7 @@ export async function fetchModelLimitsFromAPI(apiKey: string): Promise<Map<strin
     const response = await fetch('https://api.openai.com/v1/fine_tuning/model_limits', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       signal: controller.signal,
@@ -55,9 +55,9 @@ export async function fetchModelLimitsFromAPI(apiKey: string): Promise<Map<strin
     // Format 1: { data: [{ model: string, max_tokens: number, ... }] }
     // Format 2: Direct array [{ model: string, max_tokens: number, ... }]
     // Format 3: Object with model keys { "gpt-4": { max_tokens: number }, ... }
-    
+
     let items: ModelLimit[] = []
-    
+
     if (Array.isArray(data)) {
       // Direct array format
       items = data
@@ -86,13 +86,14 @@ export async function fetchModelLimitsFromAPI(apiKey: string): Promise<Map<strin
     // Process items and create a map of model -> max_tokens
     for (const item of items) {
       if (!item || typeof item !== 'object') continue
-      
+
       // Use max_tokens or max_input_tokens + max_output_tokens
-      const limit = item.max_tokens || 
-                   (item.max_input_tokens && item.max_output_tokens 
-                     ? item.max_input_tokens + item.max_output_tokens 
-                     : item.max_input_tokens || item.max_output_tokens || null)
-      
+      const limit =
+        item.max_tokens ||
+        (item.max_input_tokens && item.max_output_tokens
+          ? item.max_input_tokens + item.max_output_tokens
+          : item.max_input_tokens || item.max_output_tokens || null)
+
       if (limit && limit > 0 && item.model) {
         limitsMap.set(item.model.toLowerCase(), limit)
       }
@@ -134,13 +135,13 @@ export async function getModelLimit(
 
   // Check cache first
   const cached = modelLimitsCache.get(normalizedModel)
-  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+  if (cached && now - cached.timestamp < CACHE_DURATION) {
     return cached.limit
   }
 
   // Fetch from API
   const limitsMap = await fetchModelLimitsFromAPI(apiKey)
-  
+
   // Update cache with fetched limits
   for (const [modelName, limit] of limitsMap.entries()) {
     modelLimitsCache.set(modelName, { limit, timestamp: now })

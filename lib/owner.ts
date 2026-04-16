@@ -27,7 +27,12 @@ function generateOwnerId(): string {
 }
 
 function isValidOwnerId(value: string): boolean {
-  return typeof value === 'string' && value.length > 0 && value.length < 256 && /^[a-zA-Z0-9_-]+$/.test(value)
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length < 256 &&
+    /^[a-zA-Z0-9_-]+$/.test(value)
+  )
 }
 
 let loggedInvalidSharedOrgId = false
@@ -40,7 +45,7 @@ function resolvedSharedOrgOwnerId(): string | null {
     if (!loggedInvalidSharedOrgId) {
       loggedInvalidSharedOrgId = true
       console.error(
-        '[owner] SHARED_ORG_OWNER_ID is invalid (use 1–255 chars, [a-zA-Z0-9_-] only); falling back to per-browser owner',
+        '[owner] SHARED_ORG_OWNER_ID is invalid (use 1–255 chars, [a-zA-Z0-9_-] only); falling back to per-browser owner'
       )
     }
     return null
@@ -52,7 +57,11 @@ export function isSharedOrgCorpusMode(): boolean {
   return resolvedSharedOrgOwnerId() !== null
 }
 
-function setOwnerCookie(cookieStore: Awaited<ReturnType<typeof cookies>>, ownerId: string, request?: NextRequest): void {
+function setOwnerCookie(
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+  ownerId: string,
+  request?: NextRequest
+): void {
   const host = request?.headers.get('host') ?? ''
   const isLocalhost = /^localhost(:\d+)?$/i.test(host.trim())
   const isProd = process.env.NODE_ENV === 'production' && !isLocalhost
@@ -83,7 +92,9 @@ export async function getOwnerId(request?: NextRequest): Promise<OwnerResult> {
     return { ownerId: shared }
   }
 
-  const fromHeader = (request?.headers.get(CLIENT_ID_HEADER_LC) ?? request?.headers.get(CLIENT_ID_HEADER))?.trim()
+  const fromHeader = (
+    request?.headers.get(CLIENT_ID_HEADER_LC) ?? request?.headers.get(CLIENT_ID_HEADER)
+  )?.trim()
 
   // Prefer client-sent X-Client-ID and sync to cookie so list/store never use a different owner
   if (fromHeader && isValidOwnerId(fromHeader)) {

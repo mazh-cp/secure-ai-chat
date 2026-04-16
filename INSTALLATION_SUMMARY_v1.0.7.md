@@ -27,11 +27,13 @@ See **DEPLOYMENT_CHECKLIST_v1.0.7.md** for complete checklist.
 ### For System Administrators (Installing on VM)
 
 **Single Command Installation**:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu.sh | bash
 ```
 
 **Post-Installation**:
+
 1. Configure `.env.local` with API keys
 2. Set up systemd service (see guide)
 3. Verify installation
@@ -43,17 +45,20 @@ See **QUICK_INSTALL_v1.0.7.md** for quick reference or **FRESH_UBUNTU_INSTALLATI
 ## Documentation Index
 
 ### For Installation
+
 - **QUICK_INSTALL_v1.0.7.md** - Quick reference (5-minute read)
 - **FRESH_UBUNTU_INSTALLATION_v1.0.7.md** - Complete installation guide (20-minute read)
 - **INSTALL.md** - General installation guide
 - **docs/deploy.md** - Deployment guide
 
 ### For Deployment
+
 - **DEPLOYMENT_CHECKLIST_v1.0.7.md** - Pre-deployment checklist
 - **RELEASE_GATE_CHECKLIST.md** - Release gate requirements
 - **RELEASE_GATE_FINAL.md** - Release gate summary
 
 ### For Verification
+
 - **scripts/release-gate.sh** - Automated release gate script
 - **scripts/validate-installation.sh** - Installation validation script
 
@@ -68,6 +73,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 ```
 
 **What it does**:
+
 - Installs system dependencies
 - Installs Node.js v25.2.1 via nvm
 - Clones repository from GitHub
@@ -101,6 +107,7 @@ npm run release-gate
 **Expected**: All checks PASS ✅
 
 **Release Gate Checks**:
+
 - ✅ Clean install (`npm ci`)
 - ✅ TypeScript compilation (`npm run type-check`)
 - ✅ ESLint validation (`npm run lint`)
@@ -208,12 +215,14 @@ For issues or questions:
 ## Summary
 
 ✅ **Ready for Installation**:
+
 - Version 1.0.7 is set in package.json
 - Installation scripts are ready
 - Documentation is complete
 - Release gate requirements are documented
 
 ✅ **Installation Complete** when:
+
 - Release gate passes: `npm run release-gate`
 - Service is running: `sudo systemctl status secure-ai-chat`
 - Health endpoint responds: `curl http://localhost:3000/api/health`

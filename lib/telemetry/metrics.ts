@@ -101,6 +101,6 @@ export function getThumbsDownRate(): number {
  * Reset all counters and timings (for tests).
  */
 export function resetMetrics(): void {
-  Object.keys(counters).forEach((k) => delete counters[k])
-  Object.keys(timings).forEach((k) => delete timings[k])
+  Object.keys(counters).forEach(k => delete counters[k])
+  Object.keys(timings).forEach(k => delete timings[k])
 }

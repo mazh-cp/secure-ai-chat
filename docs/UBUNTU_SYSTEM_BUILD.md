@@ -13,11 +13,13 @@ Based on the working local environment, all production scripts have been updated
 **Purpose:** Complete installation on a fresh Ubuntu VM with systemd service configuration.
 
 **Usage:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash
 ```
 
 **Features:**
+
 - ✅ Based on working local `install-ubuntu.sh`
 - ✅ Node.js v24.13.0 (LTS) automatic installation/upgrade
 - ✅ Enhanced OS detection (Ubuntu 20.04+, Debian 11+)
@@ -37,6 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **Purpose:** Professional clean installation on a new production server with full validation.
 
 **Usage:**
+
 ```bash
 # Download scripts first
 cd /opt
@@ -53,6 +56,7 @@ bash secure-ai-chat/scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-cha
 ```
 
 **Features:**
+
 - ✅ Enhanced OS detection with automatic package installation
 - ✅ Robust `build-essential` verification using flexible whitespace pattern
 - ✅ Node.js v24.13.0 verification via `ensure_node_version`
@@ -72,6 +76,7 @@ bash secure-ai-chat/scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-cha
 **Purpose:** Safe in-place upgrade of existing installation with rollback support.
 
 **Usage:**
+
 ```bash
 # Download scripts if not present
 cd /opt/secure-ai-chat
@@ -87,6 +92,7 @@ bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 **Features:**
+
 - ✅ Git repository initialization if not a repo
 - ✅ Automatic git remote configuration
 - ✅ Proper ownership handling (prevents "dubious ownership" errors)
@@ -106,37 +112,44 @@ bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 All production scripts now include:
 
 ### ✅ Node.js v24.13.0 (LTS)
+
 - Automatic installation via nvm
 - Version detection and upgrade if different
 - Default version set via `nvm alias default`
 
 ### ✅ Enhanced Package Management
+
 - Automatic OS detection (Ubuntu/Debian)
 - Package list update
 - Missing package detection and installation
 - Robust verification (handles meta-packages like `build-essential`)
 
 ### ✅ npm Handling
+
 - Auto-update npm to 9+ for newer VMs (compatibility with latest package-lock.json)
 - `npm ci` with fallback to `npm install` (handles package-lock.json sync issues)
 
 ### ✅ Build-Essential Verification Fix
+
 - Uses flexible whitespace pattern: `^ii[[:space:]]\+build-essential[[:space:]]`
 - Handles variations in `dpkg -l` output formatting
 - Error suppression: `2>/dev/null`
 
 ### ✅ Systemd Service Configuration
+
 - Automatic startup on boot
 - Restart on system shutdown/reboot
 - Proper environment variables (NODE_ENV=production)
 - Logging to journal (journalctl -u secure-ai-chat)
 
 ### ✅ Directory Permissions
+
 - Proper ownership (app user, not root)
 - Directory creation (`.secure-storage`, `.storage`)
 - Read/write permissions for application data
 
 ### ✅ Validation & Testing
+
 - Release gate validation (must pass)
 - Startup validation (`validate-startup.sh`)
 - Smoke test integration (endpoint verification)
@@ -146,11 +159,13 @@ All production scripts now include:
 ## Installation Commands (Quick Reference)
 
 ### Fresh Ubuntu VM Installation (Recommended)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-ubuntu-remote.sh | bash
 ```
 
 ### Production Clean Install
+
 ```bash
 cd /opt
 sudo mkdir -p secure-ai-chat/scripts/deploy
@@ -165,6 +180,7 @@ bash secure-ai-chat/scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-cha
 ```
 
 ### Upgrade Existing Installation
+
 ```bash
 cd /opt/secure-ai-chat
 sudo mkdir -p scripts/deploy
@@ -197,21 +213,27 @@ bash scripts/deploy/upgrade.sh --app-dir /opt/secure-ai-chat --ref main
 ## Troubleshooting
 
 ### Error: "Critical packages missing: build-essential"
+
 **Solution:** Download the updated script from GitHub (commit `04cfefa` or later):
+
 ```bash
 sudo curl -o scripts/deploy/clean-install.sh \
   https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/deploy/clean-install.sh
 ```
 
 ### Error: "Please do not run this script as root"
+
 **Solution:** Exit root shell and run as regular user:
+
 ```bash
 exit
 bash scripts/deploy/clean-install.sh --app-dir /opt/secure-ai-chat --ref main
 ```
 
 ### Error: "Not a git repository"
+
 **Solution:** The `upgrade.sh` script will automatically initialize git. If issue persists:
+
 ```bash
 cd /opt/secure-ai-chat
 git init
@@ -219,7 +241,9 @@ git remote add origin https://github.com/mazh-cp/secure-ai-chat.git
 ```
 
 ### Error: "dubious ownership in repository"
+
 **Solution:** The `upgrade.sh` script handles this automatically. If issue persists:
+
 ```bash
 sudo git config --global --add safe.directory /opt/secure-ai-chat
 ```
@@ -229,6 +253,7 @@ sudo git config --global --add safe.directory /opt/secure-ai-chat
 ## Verification
 
 All scripts have been:
+
 - ✅ Syntax validated (`bash -n`)
 - ✅ Committed to GitHub (main branch)
 - ✅ Based on working local environment
@@ -237,6 +262,7 @@ All scripts have been:
 **GitHub Repository:** `https://github.com/mazh-cp/secure-ai-chat`
 
 **Latest Commits:**
+
 - `04cfefa` - Improve build-essential verification: use flexible whitespace pattern
 - `76c49fa` - Fix critical package verification: build-essential is a meta-package
 

@@ -12,7 +12,10 @@ export interface SafeFetchResult<T = unknown> {
 }
 
 /** Supports `{ error: "string" }`, `{ error: { code, message, details } }`, and top-level `message`. */
-function parseApiErrorBody(data: unknown, httpStatus: number): { code: string; message: string; details?: unknown } {
+function parseApiErrorBody(
+  data: unknown,
+  httpStatus: number
+): { code: string; message: string; details?: unknown } {
   const fallback = `Request failed with status ${httpStatus}`
   if (data == null || typeof data !== 'object') {
     return { code: `HTTP_${httpStatus}`, message: fallback }

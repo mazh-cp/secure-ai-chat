@@ -19,12 +19,14 @@ Enhanced the RAG (Retrieval Augmented Generation) system to automatically index 
 **File:** `app/api/chat/route.ts`
 
 **Changes:**
+
 - **Removed restrictive filtering**: Files with `scanStatus: 'pending'` or `'not_scanned'` are now included (only explicitly flagged/malicious files are excluded)
 - **Increased file size limit**: From 5MB to 10MB for RAG processing
 - **Increased file limit**: From 3 to 5 most relevant files
 - **Improved content truncation**: Better handling of large files (15KB limit, showing first and last portions)
 
 **Before:**
+
 ```typescript
 // Skip unscanned files
 if (scanStatus === 'pending' || scanStatus === 'not_scanned') {
@@ -34,6 +36,7 @@ if (scanStatus === 'pending' || scanStatus === 'not_scanned') {
 ```
 
 **After:**
+
 ```typescript
 // Only block explicitly flagged/error/malicious files
 if (scanStatus === 'error' || scanStatus === 'flagged') {
@@ -47,21 +50,27 @@ if (scanStatus === 'error' || scanStatus === 'flagged') {
 ### 2. Improved Content Matching Algorithm ✅
 
 **Enhanced matching logic:**
+
 - **Data file detection**: Automatically includes CSV, JSON, and TXT files
 - **Data query detection**: Recognizes queries about users, data, records, fields, etc.
 - **Enhanced keyword matching**: More lenient matching (words > 2 chars instead of > 3)
 - **Fallback inclusion**: Even non-matching safe files are included if small enough
 
 **Key improvements:**
+
 ```typescript
 // Enhanced matching
-const isDataFile = fileMeta.type.includes('csv') || 
-                 fileMeta.type.includes('json') || 
-                 fileMeta.name.endsWith('.csv') ||
-                 fileMeta.name.endsWith('.json') ||
-                 fileMeta.name.endsWith('.txt')
+const isDataFile =
+  fileMeta.type.includes('csv') ||
+  fileMeta.type.includes('json') ||
+  fileMeta.name.endsWith('.csv') ||
+  fileMeta.name.endsWith('.json') ||
+  fileMeta.name.endsWith('.txt')
 
-const isDataQuery = /user|person|people|name|email|id|record|data|field|column|row|list|count|how many|who|what|where|when|find|search|show|display/i.test(userQuery)
+const isDataQuery =
+  /user|person|people|name|email|id|record|data|field|column|row|list|count|how many|who|what|where|when|find|search|show|display/i.test(
+    userQuery
+  )
 
 const shouldInclude = isDataFile || (isDataQuery && isDataFile) || hasKeywordMatch || isDataQuery
 ```
@@ -71,12 +80,14 @@ const shouldInclude = isDataFile || (isDataQuery && isDataFile) || hasKeywordMat
 ### 3. System Message for File Access ✅
 
 **Added intelligent system prompt:**
+
 - Informs LLM about available uploaded files
 - Provides clear instructions on how to use file data
 - Instructs LLM to search files first, then fall back to general knowledge
 - Requires citation of source files
 
 **System message:**
+
 ```
 You are a helpful AI assistant with access to uploaded files containing user data, PII, and other information.
 
@@ -94,12 +105,14 @@ IMPORTANT INSTRUCTIONS:
 ### 4. Enhanced File Context Formatting ✅
 
 **Improved context presentation:**
+
 - Shows total files available vs. directly relevant files
 - Better file separation with clear markers
 - Includes file names even when content isn't directly relevant
 - Provides helpful hints when files exist but don't match keywords
 
 **Context format:**
+
 ```
 [Context from uploaded files (5 files available, 3 directly relevant):]
 
@@ -119,18 +132,21 @@ IMPORTANT INSTRUCTIONS:
 ## Technical Details
 
 ### File Storage
+
 - Files are automatically stored on server via `/api/files/store` endpoint
 - Storage happens immediately on upload (before security scans)
 - Metadata is updated after security scans complete
 - Files persist in `.storage/files/` directory
 
 ### Security Considerations
+
 - Only safe files are included (excludes flagged, error, malicious files)
 - Check Point TE verdict is checked
 - Threat level is validated (excludes high/critical)
 - File size limits prevent memory issues
 
 ### Performance
+
 - Files up to 10MB are processed
 - Large files are truncated intelligently
 - Maximum 5 files included per query
@@ -144,19 +160,21 @@ IMPORTANT INSTRUCTIONS:
 ✅ **ESLint**: PASSED (only pre-existing warnings)  
 ✅ **Build**: PASSED  
 ✅ **Dev Server**: RUNNING  
-✅ **API Endpoints**: WORKING  
+✅ **API Endpoints**: WORKING
 
 ---
 
 ## User Experience Improvements
 
 ### Before
+
 - Chat would say "please upload files" even when files were uploaded
 - Files with `pending` or `not_scanned` status were ignored
 - Only keyword-matched files were included
 - No system prompt about available files
 
 ### After
+
 - Chat automatically searches uploaded files
 - All safe files are considered (not just keyword-matched)
 - System prompt informs LLM about available files
@@ -213,6 +231,7 @@ IMPORTANT INSTRUCTIONS:
 ## Rollback Instructions
 
 If issues occur, revert to previous RAG logic:
+
 1. Restore original file filtering (block `pending` and `not_scanned`)
 2. Remove system message addition
 3. Restore original file size limit (5MB)

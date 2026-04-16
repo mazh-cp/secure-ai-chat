@@ -1,7 +1,11 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { setTheme as setThemeFunction, getTheme, toggleTheme as toggleThemeFunction } from '@/lib/theme/setTheme'
+import {
+  setTheme as setThemeFunction,
+  getTheme,
+  toggleTheme as toggleThemeFunction,
+} from '@/lib/theme/setTheme'
 
 type Theme = 'light' | 'dark'
 
@@ -72,4 +76,3 @@ export function useTheme() {
   }
   return context
 }
-

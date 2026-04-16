@@ -116,6 +116,7 @@ npm test            # Run tests (currently: no tests configured)
 The ThreatCloud API key **must NEVER** reach the client. Enforcement mechanisms:
 
 1. **Server-Only Module Guard** (`lib/checkpoint-te.ts`):
+
    ```typescript
    if (typeof window !== 'undefined') {
      throw new Error('SECURITY VIOLATION: lib/checkpoint-te.ts is server-only')
@@ -157,6 +158,7 @@ The `scripts/release-gate.sh` script automatically:
 11. Prints PASS/FAIL summary
 
 **Exit Codes:**
+
 - `0`: All checks passed ✅
 - `1`: One or more checks failed ❌
 - `2`: Critical error (script failure)
@@ -250,22 +252,26 @@ SKIP_RELEASE_GATE=1 npm run build
 Before publishing changes to GitHub, ensure:
 
 1. **Git Status**: Repository is clean
+
    ```bash
    git status
    # Should show "working tree clean"
    ```
 
 2. **Pull Latest**: Rebase on latest main
+
    ```bash
    git pull --rebase origin main
    ```
 
 3. **Run Release Gate**: All checks must pass
+
    ```bash
    ./scripts/release-gate.sh
    ```
 
 4. **Bump Version** (if needed): Update version in `package.json`
+
    ```bash
    # Edit package.json: "version": "1.0.12"
    # Or use npm version patch/minor/major
@@ -273,12 +279,14 @@ Before publishing changes to GitHub, ensure:
    ```
 
 5. **Commit Changes**
+
    ```bash
    git add -A
    git commit -m "Release: stable build + deploy scripts + gates"
    ```
 
 6. **Push to Main**
+
    ```bash
    git push origin main
    ```
@@ -290,6 +298,7 @@ Before publishing changes to GitHub, ensure:
    ```
 
 **Note**: The release gate ensures:
+
 - ✅ TypeScript compilation passes
 - ✅ ESLint checks pass
 - ✅ Security checks pass (no client-side secret leakage)
@@ -331,11 +340,13 @@ The `publish-safe.sh` script ensures:
 ### Prerequisites
 
 1. **Feature Branch**: Never run on `main` branch
+
    ```bash
    git checkout -b feature/your-change-name
    ```
 
 2. **GitHub CLI** (optional but recommended):
+
    ```bash
    # Install from: https://cli.github.com/
    # Then authenticate:
@@ -414,6 +425,7 @@ The `release-gate` GitHub Actions workflow runs automatically on:
 - **Pushes** to `main` or `master`
 
 The workflow:
+
 1. Checks out code
 2. Sets up Node.js 24.13.0
 3. Enables corepack
@@ -427,6 +439,7 @@ The workflow:
 #### "Cannot run on 'main' branch"
 
 **Solution**: Create a feature branch first:
+
 ```bash
 git checkout -b feature/your-change-name
 ```
@@ -434,6 +447,7 @@ git checkout -b feature/your-change-name
 #### "Working tree is dirty"
 
 **Solution**: Commit or stash changes:
+
 ```bash
 git add .
 git commit -m "Your commit message"
@@ -444,6 +458,7 @@ git stash
 #### "GitHub CLI not found"
 
 **Solution**: Either install GitHub CLI:
+
 ```bash
 # macOS
 brew install gh
@@ -460,6 +475,7 @@ Or use the manual PR URL provided by the script.
 #### "Release Gate FAILED"
 
 **Solution**: Fix the issues reported by Release Gate:
+
 ```bash
 ./scripts/release-gate.sh  # See detailed errors
 # Fix issues, then re-run publish-safe.sh

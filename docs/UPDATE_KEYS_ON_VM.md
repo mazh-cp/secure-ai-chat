@@ -50,6 +50,7 @@ Interactive mode prompts you for each key (input is hidden for security):
 ```
 
 The script will prompt:
+
 ```
 Interactive mode - Enter keys to update (press Enter to skip)
 
@@ -112,6 +113,7 @@ sudo journalctl -u secure-ai-chat --since "5 minutes ago"
 ### Method 3: Test the Application
 
 Open your browser and navigate to the application. Try:
+
 - Sending a chat message (tests OpenAI key)
 - The application should work if keys are correctly configured
 
@@ -224,6 +226,7 @@ curl -X POST http://localhost:3000/api/keys \
 ```
 
 However, **using the CLI script is recommended** as it:
+
 - Works even when the server is not running
 - Uses the same encryption mechanism as the application
 - Automatically restarts the service

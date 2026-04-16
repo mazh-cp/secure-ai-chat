@@ -27,7 +27,11 @@ function looksLikeBase64Payload(s: string): boolean {
   return true
 }
 
-export function decodeUploadBodyToBuffer(fileContent: unknown, fileName: string, fileType: string): Buffer {
+export function decodeUploadBodyToBuffer(
+  fileContent: unknown,
+  fileName: string,
+  fileType: string
+): Buffer {
   const raw = typeof fileContent === 'string' ? fileContent : String(fileContent ?? '')
   const ext = extensionOf(fileName)
 

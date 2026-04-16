@@ -40,16 +40,19 @@ Thank you for your interest in contributing! This document provides guidelines a
 Before submitting a pull request, ensure:
 
 1. **Type checking passes**:
+
    ```bash
    npm run type-check
    ```
 
 2. **Linting passes**:
+
    ```bash
    npm run lint
    ```
 
 3. **Code is formatted**:
+
    ```bash
    npm run format
    ```
@@ -110,6 +113,7 @@ refactor: Improve error handling in API routes
 ```
 
 Use conventional commit format:
+
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `docs:` - Documentation
@@ -120,6 +124,7 @@ Use conventional commit format:
 ## Questions?
 
 If you have questions or need help, please:
+
 - Open a GitHub issue with the `question` label
 - Check existing issues and discussions
 

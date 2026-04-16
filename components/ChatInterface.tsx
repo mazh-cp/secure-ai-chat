@@ -30,10 +30,10 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m your secure AI assistant. How can I help you today?',
+      content: "Hello! I'm your secure AI assistant. How can I help you today?",
       role: 'assistant',
       timestamp: new Date(),
-    }
+    },
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +49,7 @@ export default function ChatInterface() {
   const handleProviderChange = (p: ChatProvider) => {
     setProvider(p)
     if (p === 'azure') {
-      setSelectedModel((prev) => {
+      setSelectedModel(prev => {
         const looksLikeOpenAiDefault = new Set([
           'gpt-4o-mini',
           'gpt-4o',
@@ -79,13 +79,13 @@ export default function ChatInterface() {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
+            Pragma: 'no-cache',
           },
         }).catch(() => null)
-        
+
         if (response?.ok) {
           const data = await response.json()
-          
+
           // Debug logging in development
           if (process.env.NODE_ENV === 'development') {
             console.log('🔑 Keys status from API:', {
@@ -94,14 +94,18 @@ export default function ChatInterface() {
               hasOpenAi: data.configured?.openAiKey || data.keys?.openAiKey === 'configured',
             })
           }
-          
+
           // Check if keys are configured (server returns configured status and keys object)
           // data.configured.openAiKey is boolean, data.keys.openAiKey is 'configured' or null
           // For endpoints, data.keys contains the actual URL value (safe to expose)
-          const hasOpenAiKey = data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
-          const hasAnthropicKey = data.configured?.anthropicApiKey === true || data.keys?.anthropicApiKey === 'configured'
-          const hasAzureKey = data.configured?.azureOpenAiKey === true || data.keys?.azureOpenAiKey === 'configured'
-          const hasLakeraKey = data.configured?.lakeraAiKey === true || data.keys?.lakeraAiKey === 'configured'
+          const hasOpenAiKey =
+            data.configured?.openAiKey === true || data.keys?.openAiKey === 'configured'
+          const hasAnthropicKey =
+            data.configured?.anthropicApiKey === true || data.keys?.anthropicApiKey === 'configured'
+          const hasAzureKey =
+            data.configured?.azureOpenAiKey === true || data.keys?.azureOpenAiKey === 'configured'
+          const hasLakeraKey =
+            data.configured?.lakeraAiKey === true || data.keys?.lakeraAiKey === 'configured'
 
           // Set apiKeys when any chat or Lakera key is configured so UI can show correct provider/model options
           if (hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasLakeraKey) {
@@ -136,7 +140,7 @@ export default function ChatInterface() {
       } catch (error) {
         console.error('❌ Failed to load API keys from server:', error)
       }
-      
+
       // Fallback to localStorage for backward compatibility (only if no server-side keys found)
       if (typeof window !== 'undefined' && !apiKeys) {
         const stored = localStorage.getItem('apiKeys')
@@ -153,22 +157,22 @@ export default function ChatInterface() {
         }
       }
     }
-    
+
     // Load immediately
     loadApiKeys()
-    
+
     // Periodically check for key updates (every 5 seconds) with retry logic
     const interval = setInterval(() => {
-      loadApiKeys().catch((err) => {
+      loadApiKeys().catch(err => {
         console.error('Periodic key check failed:', err)
       })
     }, 5000)
-    
+
     return () => clearInterval(interval)
     // Intentional: run on mount and every 5s only; adding apiKeys would re-run on every key change and duplicate intervals
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  
+
   // Load toggle states from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -187,20 +191,33 @@ export default function ChatInterface() {
       if (modelStored) setSelectedModel(modelStored)
 
       const providerStored = localStorage.getItem('selectedProvider') as ChatProvider | null
-      if (providerStored === 'openai' || providerStored === 'anthropic' || providerStored === 'azure') setProvider(providerStored)
+      if (
+        providerStored === 'openai' ||
+        providerStored === 'anthropic' ||
+        providerStored === 'azure'
+      )
+        setProvider(providerStored)
     }
   }, [])
 
   // When apiKeys loads: default to the provider that has a key so user can use OpenAI when only OpenAI is configured
   useEffect(() => {
     if (!apiKeys) return
-    const hasOpenAi = apiKeys.openAiKey === 'configured' || (apiKeys.openAiKey && apiKeys.openAiKey !== '')
-    const hasAnthropic = apiKeys.anthropicApiKey === 'configured' || (apiKeys.anthropicApiKey && apiKeys.anthropicApiKey !== '')
-    const hasAzure = apiKeys.azureOpenAiKey === 'configured' || (apiKeys.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
-    setProvider((current) => {
-      if (current === 'anthropic' && !hasAnthropic && (hasOpenAi || hasAzure)) return hasOpenAi ? 'openai' : 'azure'
-      if (current === 'openai' && !hasOpenAi && (hasAnthropic || hasAzure)) return hasAnthropic ? 'anthropic' : 'azure'
-      if (current === 'azure' && !hasAzure && (hasOpenAi || hasAnthropic)) return hasOpenAi ? 'openai' : 'anthropic'
+    const hasOpenAi =
+      apiKeys.openAiKey === 'configured' || (apiKeys.openAiKey && apiKeys.openAiKey !== '')
+    const hasAnthropic =
+      apiKeys.anthropicApiKey === 'configured' ||
+      (apiKeys.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+    const hasAzure =
+      apiKeys.azureOpenAiKey === 'configured' ||
+      (apiKeys.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+    setProvider(current => {
+      if (current === 'anthropic' && !hasAnthropic && (hasOpenAi || hasAzure))
+        return hasOpenAi ? 'openai' : 'azure'
+      if (current === 'openai' && !hasOpenAi && (hasAnthropic || hasAzure))
+        return hasAnthropic ? 'anthropic' : 'azure'
+      if (current === 'azure' && !hasAzure && (hasOpenAi || hasAnthropic))
+        return hasOpenAi ? 'openai' : 'anthropic'
       return current
     })
   }, [apiKeys])
@@ -264,19 +281,24 @@ export default function ChatInterface() {
 
     setError(null)
 
-    const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-    const hasAnthropicKey = apiKeys?.anthropicApiKey === 'configured' || (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
-    const hasAzureKey = apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+    const hasOpenAiKey =
+      apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
+    const hasAnthropicKey =
+      apiKeys?.anthropicApiKey === 'configured' ||
+      (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+    const hasAzureKey =
+      apiKeys?.azureOpenAiKey === 'configured' ||
+      (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
     const hasChatKey =
-      provider === 'anthropic' ? hasAnthropicKey
-      : provider === 'azure' ? hasAzureKey
-      : hasOpenAiKey
+      provider === 'anthropic' ? hasAnthropicKey : provider === 'azure' ? hasAzureKey : hasOpenAiKey
     if (!hasChatKey) {
-      setError(provider === 'anthropic'
-        ? 'Anthropic API key is not configured. Please go to Settings to add your API key.'
-        : provider === 'azure'
-          ? 'Azure OpenAI API key/endpoint is not configured. Please go to Settings to add your Azure credentials.'
-          : 'OpenAI API key is not configured. Please go to Settings to add your API key.')
+      setError(
+        provider === 'anthropic'
+          ? 'Anthropic API key is not configured. Please go to Settings to add your API key.'
+          : provider === 'azure'
+            ? 'Azure OpenAI API key/endpoint is not configured. Please go to Settings to add your Azure credentials.'
+            : 'OpenAI API key is not configured. Please go to Settings to add your API key.'
+      )
       return
     }
 
@@ -287,12 +309,12 @@ export default function ChatInterface() {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
 
     try {
       // Prepare messages for API (convert to format expected by OpenAI)
-      const chatMessages = [...messages, userMessage].map((m) => ({
+      const chatMessages = [...messages, userMessage].map(m => ({
         role: m.role,
         content: m.content,
       }))
@@ -374,7 +396,7 @@ export default function ChatInterface() {
             timestamp: new Date(),
             scanResult: data.scanResult,
           }
-          setMessages((prev) => [...prev, blockedMessage])
+          setMessages(prev => [...prev, blockedMessage])
           return
         }
         throw new Error(data.error || 'Failed to get response')
@@ -405,11 +427,9 @@ export default function ChatInterface() {
 
       // Update user message with scan result if available
       if (data.inputScanResult) {
-        setMessages((prev) => prev.map((m) => 
-          m.id === userMessage.id 
-            ? { ...m, scanResult: data.inputScanResult }
-            : m
-        ))
+        setMessages(prev =>
+          prev.map(m => (m.id === userMessage.id ? { ...m, scanResult: data.inputScanResult } : m))
+        )
       }
 
       const aiMessage: Message = {
@@ -421,11 +441,11 @@ export default function ChatInterface() {
         ragCitations: data.rag?.chunks,
       }
 
-      setMessages((prev) => [...prev, aiMessage])
+      setMessages(prev => [...prev, aiMessage])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       setError(errorMessage)
-      
+
       // Log error
       addLog({
         type: 'error',
@@ -435,7 +455,7 @@ export default function ChatInterface() {
         success: false,
         associatedRisks: ['llm03'], // Supply Chain risk
       })
-      
+
       // Add error message to chat
       const errorAiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -443,27 +463,32 @@ export default function ChatInterface() {
         role: 'assistant',
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, errorAiMessage])
+      setMessages(prev => [...prev, errorAiMessage])
     } finally {
       setIsLoading(false)
     }
   }
 
-  const hasOpenAiKey = apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
-  const hasAnthropicKey = apiKeys?.anthropicApiKey === 'configured' || (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
-  const hasAzureKey = apiKeys?.azureOpenAiKey === 'configured' || (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+  const hasOpenAiKey =
+    apiKeys?.openAiKey === 'configured' || (apiKeys?.openAiKey && apiKeys.openAiKey !== '')
+  const hasAnthropicKey =
+    apiKeys?.anthropicApiKey === 'configured' ||
+    (apiKeys?.anthropicApiKey && apiKeys.anthropicApiKey !== '')
+  const hasAzureKey =
+    apiKeys?.azureOpenAiKey === 'configured' ||
+    (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
   const hasChatKey = hasOpenAiKey || hasAnthropicKey || hasAzureKey
 
   return (
     <div className="flex flex-col h-full">
       {/* API Key Warning */}
       {!hasChatKey && (
-        <div 
+        <div
           className="glass-card rounded-xl p-4 border-yellow-400/30 mb-4"
           style={{
-            background: "var(--surface)",
-            borderColor: "var(--border)",
-            boxShadow: "var(--card-shadow)",
+            background: 'var(--surface)',
+            borderColor: 'var(--border)',
+            boxShadow: 'var(--card-shadow)',
           }}
         >
           <p className="text-base text-theme">
@@ -478,12 +503,12 @@ export default function ChatInterface() {
 
       {/* Error Display */}
       {error && (
-        <div 
+        <div
           className="glass-card rounded-xl p-4 border-red-400/30 mb-4"
           style={{
-            background: "var(--surface)",
-            borderColor: "var(--border)",
-            boxShadow: "var(--card-shadow)",
+            background: 'var(--surface)',
+            borderColor: 'var(--border)',
+            boxShadow: 'var(--card-shadow)',
           }}
         >
           <p className="text-base text-theme">⚠️ {error}</p>
@@ -492,11 +517,15 @@ export default function ChatInterface() {
 
       {/* Uploaded files in chat (separate from Lakera / TE upload scanning) */}
       {hasChatKey && (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'rgb(var(--border))', background: 'rgba(var(--surface-2), 0.4)' }}>
+        <div
+          className="mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
+          style={{ borderColor: 'rgb(var(--border))', background: 'rgba(var(--surface-2), 0.4)' }}
+        >
           <div className="text-theme min-w-0">
             <span className="font-medium text-theme">Use uploaded files in chat</span>
             <p className="text-xs text-theme-muted mt-0.5">
-              Answers can include your stored uploads even when Lakera or Check Point file scanning is off. Turn off to use the model only.
+              Answers can include your stored uploads even when Lakera or Check Point file scanning
+              is off. Turn off to use the model only.
             </p>
           </div>
           <label className="relative inline-flex shrink-0 cursor-pointer items-center">
@@ -504,7 +533,7 @@ export default function ChatInterface() {
               type="checkbox"
               className="peer sr-only"
               checked={useUploadsInChat}
-              onChange={(e) => {
+              onChange={e => {
                 const v = e.target.checked
                 setUseUploadsInChat(v)
                 if (typeof window !== 'undefined') {
@@ -519,26 +548,31 @@ export default function ChatInterface() {
 
       {/* Provider & Model Selector (OpenAI or Anthropic) */}
       <div className="mb-4 flex justify-end items-center gap-4 flex-wrap">
-          <ModelSelector
-            provider={provider}
-            onProviderChange={handleProviderChange}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-          apiKey={provider === 'anthropic' ? (apiKeys?.anthropicApiKey || null) : (apiKeys?.openAiKey || null)}
-          />
-        </div>
+        <ModelSelector
+          provider={provider}
+          onProviderChange={handleProviderChange}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          apiKey={
+            provider === 'anthropic' ? apiKeys?.anthropicApiKey || null : apiKeys?.openAiKey || null
+          }
+        />
+      </div>
 
       {/* Chat Messages - Always show, even if no keys configured */}
-      <div className="flex-1 overflow-hidden rounded-xl border-2 p-4 mb-4" style={{ borderColor: "rgb(var(--border))", background: "rgba(var(--surface-2), 0.5)" }}>
+      <div
+        className="flex-1 overflow-hidden rounded-xl border-2 p-4 mb-4"
+        style={{ borderColor: 'rgb(var(--border))', background: 'rgba(var(--surface-2), 0.5)' }}
+      >
         <MessageList messages={messages} isLoading={isLoading} />
         <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input - Disable only if OpenAI key is not configured */}
       <div className="mt-4">
-        <MessageInput 
-          onSendMessage={handleSendMessage} 
-          isLoading={isLoading} 
+        <MessageInput
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
           disabled={!hasChatKey}
         />
       </div>

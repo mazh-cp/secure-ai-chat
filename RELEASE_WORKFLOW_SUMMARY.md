@@ -12,6 +12,7 @@
 ### A) Repository Script Discovery ✅
 
 **Discovered Scripts** (from `package.json`):
+
 - ✅ `npm run dev` - Development server
 - ✅ `npm run build` - Production build
 - ✅ `npm run start` - Production server
@@ -27,14 +28,14 @@
 
 **Status**: ✅ **PASS**
 
-| Check | Status | Details |
-|-------|--------|---------|
-| **Clean Install** | ✅ PASS | Fresh dependency installation |
-| **Type Check** | ✅ PASS | No TypeScript errors |
-| **Lint** | ✅ PASS | No ESLint errors |
-| **Security: Client Leakage** | ✅ PASS | No API keys in client components |
-| **Security: Build Output** | ✅ PASS | No actual API keys in bundle (variable names safe) |
-| **Build** | ✅ PASS | Production build successful |
+| Check                        | Status  | Details                                            |
+| ---------------------------- | ------- | -------------------------------------------------- |
+| **Clean Install**            | ✅ PASS | Fresh dependency installation                      |
+| **Type Check**               | ✅ PASS | No TypeScript errors                               |
+| **Lint**                     | ✅ PASS | No ESLint errors                                   |
+| **Security: Client Leakage** | ✅ PASS | No API keys in client components                   |
+| **Security: Build Output**   | ✅ PASS | No actual API keys in bundle (variable names safe) |
+| **Build**                    | ✅ PASS | Production build successful                        |
 
 **Exit Code**: `0` (PASS - Ready for deployment)
 
@@ -70,6 +71,7 @@
 ### D) Versioning & Release Documentation ✅
 
 **Changes**:
+
 - ✅ `package.json` version updated to `1.0.1`
 - ✅ `CHANGELOG.md` updated with v1.0.1 entry describing:
   - ThreatCloud TE API key setting (server-side only)
@@ -85,6 +87,7 @@
 ### E) Git Release Branch Creation & Publication ✅
 
 **Actions**:
+
 1. ✅ Updated main branch from origin
 2. ✅ Created branch `release/v1.0.1`
 3. ✅ Committed all validated changes with message: "Release v1.0.1"
@@ -99,6 +102,7 @@
 **Created Script**: `deploy-ubuntu-vm.sh`
 
 **What it does**:
+
 1. ✅ Updates OS packages and reboots (if needed)
 2. ✅ Installs Node.js LTS (Node 25.2.1 via NVM)
 3. ✅ Installs git, curl, ca-certificates, ripgrep
@@ -122,6 +126,7 @@
 **systemd Service**: `/etc/systemd/system/secure-ai-chat.service`
 
 **Features**:
+
 - ✅ `Restart=always` - Automatic restart on failure
 - ✅ `RestartSec=5` - 5-second delay before restart
 - ✅ `After=network.target` - Starts after network is available
@@ -129,6 +134,7 @@
 - ✅ Security hardening (NoNewPrivileges, PrivateTmp, ProtectSystem)
 
 **Restart Safety Verified**:
+
 - ✅ API key persisted to encrypted file (`.secure-storage/checkpoint-te-key.enc`)
 - ✅ Environment variable fallback (`CHECKPOINT_TE_API_KEY`)
 - ✅ Key loaded on server startup
@@ -141,6 +147,7 @@
 **Environment File**: `/opt/secure-ai-chat/.env`
 
 **Configuration**:
+
 - ✅ `NODE_ENV=production`
 - ✅ `PORT=3000`
 - ✅ Optional: `CHECKPOINT_TE_API_KEY` (can be set via Settings UI)
@@ -148,6 +155,7 @@
 - ✅ File permissions: `600` (read/write owner only)
 
 **Security**:
+
 - ✅ API keys can be configured via Settings UI after deployment
 - ✅ Server-side storage only (never in client)
 - ✅ Encrypted at rest
@@ -157,14 +165,17 @@
 ## 📋 Final Verification Output
 
 ### Release Gate Status:
+
 ✅ **PASS** - All checks passed, ready for deployment
 
 ### Git Status:
+
 - **Branch**: `release/v1.0.1`
 - **Last Commit**: `Release v1.0.1`
 - **Remote**: Pushed to `origin/release/v1.0.1`
 
 ### Service Status (After Deployment):
+
 ```bash
 # Check service status
 sudo systemctl status secure-ai-chat
@@ -183,6 +194,7 @@ curl http://localhost:3000/api/health
 ### No Known Blocking Risks:
 
 All critical functionality implemented and validated:
+
 - ✅ All validation gates PASS
 - ✅ No client-side secret exposure
 - ✅ Application builds cleanly
@@ -211,13 +223,13 @@ All critical functionality implemented and validated:
 
 ### ✅ All Criteria Met:
 
-| Criterion | Status | Details |
-|-----------|--------|---------|
-| **All validation gates PASS** | ✅ Complete | Release gate: PASS |
-| **No client-side secret exposure** | ✅ Complete | ESLint rule + audit + build check |
-| **Application builds cleanly** | ✅ Complete | Production build successful |
-| **Application is restart-safe** | ✅ Complete | Encrypted file storage + systemd service |
-| **Branch release/v1.0.1 pushed** | ✅ Complete | Pushed to origin, ready for PR |
+| Criterion                          | Status      | Details                                  |
+| ---------------------------------- | ----------- | ---------------------------------------- |
+| **All validation gates PASS**      | ✅ Complete | Release gate: PASS                       |
+| **No client-side secret exposure** | ✅ Complete | ESLint rule + audit + build check        |
+| **Application builds cleanly**     | ✅ Complete | Production build successful              |
+| **Application is restart-safe**    | ✅ Complete | Encrypted file storage + systemd service |
+| **Branch release/v1.0.1 pushed**   | ✅ Complete | Pushed to origin, ready for PR           |
 
 ---
 
@@ -226,10 +238,11 @@ All critical functionality implemented and validated:
 ### On Ubuntu VM:
 
 1. **Run deployment script**:
+
    ```bash
    # Download and run deployment script
    curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/v1.0.1/deploy-ubuntu-vm.sh | bash
-   
+
    # Or clone and run locally
    git clone -b release/v1.0.1 https://github.com/mazh-cp/secure-ai-chat.git /opt/secure-ai-chat
    cd /opt/secure-ai-chat
@@ -243,28 +256,30 @@ All critical functionality implemented and validated:
    - Set up PIN for API key protection (optional)
 
 3. **Verify deployment**:
+
    ```bash
    # Check service status
    sudo systemctl status secure-ai-chat
-   
+
    # Check logs
    sudo journalctl -u secure-ai-chat -f
-   
+
    # Test health endpoint
    curl http://localhost:3000/api/health
    ```
 
 4. **Test restart safety**:
+
    ```bash
    # Restart service
    sudo systemctl restart secure-ai-chat
-   
+
    # Verify it's running
    sudo systemctl status secure-ai-chat
-   
+
    # Reboot VM (if possible)
    sudo reboot
-   
+
    # After reboot, verify service auto-started
    sudo systemctl status secure-ai-chat
    ```
@@ -274,6 +289,7 @@ All critical functionality implemented and validated:
 ## 📚 Files Created/Modified
 
 ### Created:
+
 1. ✅ `scripts/release-gate.sh` - Pre-deployment validation script
 2. ✅ `scripts/check-security.sh` - Security audit script
 3. ✅ `RELEASE.md` - Release gate documentation
@@ -285,6 +301,7 @@ All critical functionality implemented and validated:
 9. ✅ `RELEASE_WORKFLOW_SUMMARY.md` - This summary document
 
 ### Modified:
+
 1. ✅ `package.json` - Version 1.0.1, added `release-gate` script
 2. ✅ `CHANGELOG.md` - Added v1.0.1 release notes
 3. ✅ `.eslintrc.json` - Added security rule (blocks `checkpoint-te` imports in client)

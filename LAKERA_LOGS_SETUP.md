@@ -88,6 +88,7 @@ LAKERA_TELEMETRY_ENDPOINT=https://api.lakera.ai/v2/telemetry
 #### Settings UI Configuration
 
 No additional configuration needed! Telemetry automatically uses:
+
 - Your **Lakera API Key** (configured in Settings)
 - Your **Lakera Project ID** (configured in Settings, if provided)
 
@@ -151,6 +152,7 @@ LAKERA_TELEMETRY_ENABLED=false
 ### Check if Logs are Being Sent (S3 Method)
 
 1. **Check S3 Bucket**:
+
    ```bash
    # List recent log files
    aws s3 ls s3://your-bucket-name/2024/01/31/16/ --recursive
@@ -164,12 +166,14 @@ LAKERA_TELEMETRY_ENABLED=false
 ### Check if Telemetry is Being Sent (API Method)
 
 1. **Check Server Logs**:
+
    ```bash
    # Check application logs
    sudo journalctl -u secure-ai-chat | grep -i telemetry
    ```
 
 2. **Check Console Logs**:
+
    ```bash
    # In development
    npm run dev
@@ -199,12 +203,14 @@ LAKERA_TELEMETRY_ENABLED=false
 ### For Production:
 
 **Use Method 1 (S3 Log Export)** if you have Enterprise access:
+
 - ✅ Most reliable
 - ✅ No code dependencies
 - ✅ Built-in SIEM integration
 - ✅ Enterprise support
 
 **Use Method 2 (API Telemetry)** if:
+
 - S3 export not available
 - Need real-time analytics
 - Custom integration requirements
@@ -227,6 +233,7 @@ Both methods work, but S3 Export is preferred for production-grade logging.
 ### API Telemetry Not Working
 
 1. **Check Environment Variable**:
+
    ```bash
    echo $LAKERA_TELEMETRY_ENABLED
    # Should be "true" or not set (defaults to true)
@@ -235,6 +242,7 @@ Both methods work, but S3 Export is preferred for production-grade logging.
 2. **Check Lakera API Key**: Ensure API key is configured in Settings
 
 3. **Check Endpoint**: Verify telemetry endpoint is accessible:
+
    ```bash
    curl -X POST https://api.lakera.ai/v2/telemetry \
      -H "Authorization: Bearer YOUR_API_KEY" \

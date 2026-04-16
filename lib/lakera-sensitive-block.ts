@@ -119,13 +119,13 @@ export function mergeLakeraEffectiveFlag(args: {
 
   if (categories) {
     const sensitiveCategoryHit = Object.entries(categories).some(
-      ([key, val]) => val === true && isSensitiveCategoryKey(key),
+      ([key, val]) => val === true && isSensitiveCategoryKey(key)
     )
     if (sensitiveCategoryHit) {
       return { flagged: true, categories: { ...categories } }
     }
     const moderationCategoryHit = Object.entries(categories).some(
-      ([key, val]) => val === true && isContentModerationCategoryOrDetector(key),
+      ([key, val]) => val === true && isContentModerationCategoryOrDetector(key)
     )
     if (moderationCategoryHit) {
       return {
@@ -136,16 +136,16 @@ export function mergeLakeraEffectiveFlag(args: {
   }
 
   const fromBreakdown = breakdown?.some(
-    (d) => d.detected === true && isSensitiveLakeraDetectorType(d.detector_type),
+    d => d.detected === true && isSensitiveLakeraDetectorType(d.detector_type)
   )
-  const fromPayload = payload?.some((p) => isSensitiveLakeraPayloadMatch(p))
+  const fromPayload = payload?.some(p => isSensitiveLakeraPayloadMatch(p))
 
   if (!fromBreakdown && !fromPayload) {
     const fromBreakdownMod = breakdown?.some(
-      (d) => d.detected === true && isContentModerationCategoryOrDetector(d.detector_type ?? ''),
+      d => d.detected === true && isContentModerationCategoryOrDetector(d.detector_type ?? '')
     )
-    const fromPayloadMod = payload?.some((p) =>
-      isContentModerationCategoryOrDetector(p.detector_type ?? ''),
+    const fromPayloadMod = payload?.some(p =>
+      isContentModerationCategoryOrDetector(p.detector_type ?? '')
     )
     if (fromBreakdownMod || fromPayloadMod) {
       return {
@@ -184,7 +184,12 @@ function threatCategoryDisplayScore(key: string): number {
   ) {
     return 1
   }
-  if (k.includes('moderation') || k.includes('profanity') || k.includes('hate') || k.includes('violence')) {
+  if (
+    k.includes('moderation') ||
+    k.includes('profanity') ||
+    k.includes('hate') ||
+    k.includes('violence')
+  ) {
     return 2
   }
   if (k.includes('unknown_link')) return 3
@@ -206,6 +211,6 @@ function threatCategoryDisplayScore(key: string): number {
  */
 export function sortLakeraThreatCategoriesForDisplay(keys: string[]): string[] {
   return [...keys].sort(
-    (a, b) => threatCategoryDisplayScore(a) - threatCategoryDisplayScore(b) || a.localeCompare(b),
+    (a, b) => threatCategoryDisplayScore(a) - threatCategoryDisplayScore(b) || a.localeCompare(b)
   )
 }

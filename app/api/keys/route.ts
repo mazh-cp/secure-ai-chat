@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { 
-  getApiKeys, 
-  setApiKeys, 
-  deleteApiKey, 
+import {
+  getApiKeys,
+  setApiKeys,
+  deleteApiKey,
   deleteAllApiKeys,
   isApiKeyConfigured,
-  type StoredApiKeys 
+  type StoredApiKeys,
 } from '@/lib/api-keys-storage'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
-import {
-  LAKERA_GUARD_URL_DEFAULT,
-  resolveLakeraGuardEndpoint,
-} from '@/lib/lakera-guard-endpoint'
+import { LAKERA_GUARD_URL_DEFAULT, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
 /**
  * GET - Get API keys configuration status
@@ -20,7 +17,7 @@ import {
 export async function GET() {
   try {
     const keys = await getApiKeys()
-    
+
     return NextResponse.json({
       configured: {
         openAiKey: !!keys.openAiKey,
@@ -32,21 +29,38 @@ export async function GET() {
       },
       // Indicate source (environment or storage)
       source: {
-        openAiKey: process.env.OPENAI_API_KEY ? 'environment' : (keys.openAiKey ? 'storage' : 'none'),
-        anthropicApiKey: process.env.ANTHROPIC_API_KEY ? 'environment' : (keys.anthropicApiKey ? 'storage' : 'none'),
-        azureOpenAiKey: process.env.AZURE_OPENAI_API_KEY ? 'environment' : (keys.azureOpenAiKey ? 'storage' : 'none'),
-        lakeraAiKey: process.env.LAKERA_AI_KEY ? 'environment' : (keys.lakeraAiKey ? 'storage' : 'none'),
-        lakeraProjectId: process.env.LAKERA_PROJECT_ID ? 'environment' : (keys.lakeraProjectId ? 'storage' : 'none'),
-        lakeraEndpoint: process.env.LAKERA_ENDPOINT ? 'environment' : (keys.lakeraEndpoint ? 'storage' : 'none'),
+        openAiKey: process.env.OPENAI_API_KEY ? 'environment' : keys.openAiKey ? 'storage' : 'none',
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY
+          ? 'environment'
+          : keys.anthropicApiKey
+            ? 'storage'
+            : 'none',
+        azureOpenAiKey: process.env.AZURE_OPENAI_API_KEY
+          ? 'environment'
+          : keys.azureOpenAiKey
+            ? 'storage'
+            : 'none',
+        lakeraAiKey: process.env.LAKERA_AI_KEY
+          ? 'environment'
+          : keys.lakeraAiKey
+            ? 'storage'
+            : 'none',
+        lakeraProjectId: process.env.LAKERA_PROJECT_ID
+          ? 'environment'
+          : keys.lakeraProjectId
+            ? 'storage'
+            : 'none',
+        lakeraEndpoint: process.env.LAKERA_ENDPOINT
+          ? 'environment'
+          : keys.lakeraEndpoint
+            ? 'storage'
+            : 'none',
       },
       message: 'API keys configuration status retrieved successfully',
     })
   } catch (error) {
     console.error('Error getting API keys status:', error)
-    return NextResponse.json(
-      { error: 'Failed to get API keys status' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to get API keys status' }, { status: 500 })
   }
 }
 
@@ -60,25 +74,26 @@ export async function POST(request: NextRequest) {
     const { keys } = body
 
     if (!keys || typeof keys !== 'object') {
-      return NextResponse.json(
-        { error: 'API keys object is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'API keys object is required' }, { status: 400 })
     }
 
     // Validate and prepare keys to save
     const keysToSave: StoredApiKeys = {}
-    
+
     console.log('Received keys to save:', {
       openAiKey: keys.openAiKey ? `${keys.openAiKey.substring(0, 10)}...` : 'empty',
-      anthropicApiKey: keys.anthropicApiKey ? `${keys.anthropicApiKey.substring(0, 10)}...` : 'empty',
+      anthropicApiKey: keys.anthropicApiKey
+        ? `${keys.anthropicApiKey.substring(0, 10)}...`
+        : 'empty',
       azureOpenAiKey: keys.azureOpenAiKey ? `${keys.azureOpenAiKey.substring(0, 10)}...` : 'empty',
-      azureOpenAiEndpoint: keys.azureOpenAiEndpoint ? `${keys.azureOpenAiEndpoint.substring(0, 30)}...` : 'empty',
+      azureOpenAiEndpoint: keys.azureOpenAiEndpoint
+        ? `${keys.azureOpenAiEndpoint.substring(0, 30)}...`
+        : 'empty',
       azureOpenAiApiVersion: keys.azureOpenAiApiVersion || 'empty',
       lakeraAiKey: keys.lakeraAiKey ? `${keys.lakeraAiKey.substring(0, 10)}...` : 'empty',
       lakeraProjectId: keys.lakeraProjectId || 'empty',
     })
-    
+
     if (keys.openAiKey !== undefined) {
       if (keys.openAiKey && typeof keys.openAiKey === 'string' && keys.openAiKey.trim()) {
         const trimmedKey = keys.openAiKey.trim()
@@ -92,7 +107,10 @@ export async function POST(request: NextRequest) {
             length: trimmedKey.length,
           })
           return NextResponse.json(
-            { error: 'Invalid OpenAI API key format. Key should start with "sk-" and be at least 20 characters' },
+            {
+              error:
+                'Invalid OpenAI API key format. Key should start with "sk-" and be at least 20 characters',
+            },
             { status: 400 }
           )
         }
@@ -102,10 +120,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (keys.azureOpenAiKey !== undefined) {
-      if (keys.azureOpenAiKey && typeof keys.azureOpenAiKey === 'string' && keys.azureOpenAiKey.trim()) {
+      if (
+        keys.azureOpenAiKey &&
+        typeof keys.azureOpenAiKey === 'string' &&
+        keys.azureOpenAiKey.trim()
+      ) {
         const trimmedKey = keys.azureOpenAiKey.trim()
         // Azure OpenAI keys are not guaranteed to use the "sk-" prefix; validate by length and placeholder filtering.
-        if (!trimmedKey.toLowerCase().includes('your') && !trimmedKey.toLowerCase().includes('placeholder') && trimmedKey.length >= 10) {
+        if (
+          !trimmedKey.toLowerCase().includes('your') &&
+          !trimmedKey.toLowerCase().includes('placeholder') &&
+          trimmedKey.length >= 10
+        ) {
           keysToSave.azureOpenAiKey = trimmedKey
           console.log('Azure OpenAI key validated and will be saved')
         } else {
@@ -118,7 +144,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (keys.azureOpenAiEndpoint !== undefined) {
-      if (keys.azureOpenAiEndpoint && typeof keys.azureOpenAiEndpoint === 'string' && keys.azureOpenAiEndpoint.trim()) {
+      if (
+        keys.azureOpenAiEndpoint &&
+        typeof keys.azureOpenAiEndpoint === 'string' &&
+        keys.azureOpenAiEndpoint.trim()
+      ) {
         const trimmedEndpoint = keys.azureOpenAiEndpoint.trim()
         if (trimmedEndpoint.startsWith('http://') || trimmedEndpoint.startsWith('https://')) {
           keysToSave.azureOpenAiEndpoint = trimmedEndpoint.replace(/\/+$/, '')
@@ -135,9 +165,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (keys.azureOpenAiApiVersion !== undefined) {
-      if (keys.azureOpenAiApiVersion && typeof keys.azureOpenAiApiVersion === 'string' && keys.azureOpenAiApiVersion.trim()) {
+      if (
+        keys.azureOpenAiApiVersion &&
+        typeof keys.azureOpenAiApiVersion === 'string' &&
+        keys.azureOpenAiApiVersion.trim()
+      ) {
         const trimmed = keys.azureOpenAiApiVersion.trim()
-        if (!trimmed.toLowerCase().includes('your') && !trimmed.toLowerCase().includes('placeholder')) {
+        if (
+          !trimmed.toLowerCase().includes('your') &&
+          !trimmed.toLowerCase().includes('placeholder')
+        ) {
           keysToSave.azureOpenAiApiVersion = trimmed
         } else {
           return NextResponse.json(
@@ -149,7 +186,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (keys.anthropicApiKey !== undefined) {
-      if (keys.anthropicApiKey && typeof keys.anthropicApiKey === 'string' && keys.anthropicApiKey.trim()) {
+      if (
+        keys.anthropicApiKey &&
+        typeof keys.anthropicApiKey === 'string' &&
+        keys.anthropicApiKey.trim()
+      ) {
         const trimmedKey = keys.anthropicApiKey.trim()
         // Anthropic keys typically start with sk-ant- and are at least 20 chars
         if (trimmedKey.length >= 20) {
@@ -171,31 +212,33 @@ export async function POST(request: NextRequest) {
           keysToSave.lakeraAiKey = trimmedKey
           console.log('Lakera AI key validated and will be saved')
         } else {
-          return NextResponse.json(
-            { error: 'Invalid Lakera AI key format' },
-            { status: 400 }
-          )
+          return NextResponse.json({ error: 'Invalid Lakera AI key format' }, { status: 400 })
         }
       }
     }
-    
+
     if (keys.lakeraProjectId !== undefined) {
-      if (keys.lakeraProjectId && typeof keys.lakeraProjectId === 'string' && keys.lakeraProjectId.trim()) {
+      if (
+        keys.lakeraProjectId &&
+        typeof keys.lakeraProjectId === 'string' &&
+        keys.lakeraProjectId.trim()
+      ) {
         const trimmedId = keys.lakeraProjectId.trim()
         if (trimmedId.length >= 5) {
           keysToSave.lakeraProjectId = trimmedId
           console.log('Lakera Project ID validated and will be saved')
         } else {
-          return NextResponse.json(
-            { error: 'Invalid Lakera Project ID format' },
-            { status: 400 }
-          )
+          return NextResponse.json({ error: 'Invalid Lakera Project ID format' }, { status: 400 })
         }
       }
     }
-    
+
     if (keys.lakeraEndpoint !== undefined) {
-      if (keys.lakeraEndpoint && typeof keys.lakeraEndpoint === 'string' && keys.lakeraEndpoint.trim()) {
+      if (
+        keys.lakeraEndpoint &&
+        typeof keys.lakeraEndpoint === 'string' &&
+        keys.lakeraEndpoint.trim()
+      ) {
         const trimmedEndpoint = keys.lakeraEndpoint.trim()
         if (trimmedEndpoint.startsWith('http://') || trimmedEndpoint.startsWith('https://')) {
           keysToSave.lakeraEndpoint = resolveLakeraGuardEndpoint(trimmedEndpoint)
@@ -210,7 +253,7 @@ export async function POST(request: NextRequest) {
         keysToSave.lakeraEndpoint = LAKERA_GUARD_URL_DEFAULT
       }
     }
-    
+
     // Get existing keys and merge
     const existingKeys = await getApiKeys()
     console.log('Existing keys before save:', {
@@ -219,7 +262,7 @@ export async function POST(request: NextRequest) {
       lakeraAiKey: !!existingKeys.lakeraAiKey,
       lakeraProjectId: !!existingKeys.lakeraProjectId,
     })
-    
+
     // Save keys (will only save non-env-vars)
     // Merge: new keys override existing, but keep existing if new is not provided
     // BUT: Only merge keys that were explicitly provided in the request
@@ -234,11 +277,11 @@ export async function POST(request: NextRequest) {
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
     })
-    
+
     // setApiKeys will merge with existing keys internally
     // We pass only the keys that were validated and should be saved
     await setApiKeys(keysToSave)
-    
+
     // Force a fresh reload to ensure cache is updated
     // This ensures the next GET request returns the correct status
     const savedKeys = await getApiKeys()
@@ -250,16 +293,19 @@ export async function POST(request: NextRequest) {
       lakeraProjectId: !!savedKeys.lakeraProjectId,
       lakeraEndpoint: !!savedKeys.lakeraEndpoint,
     })
-    
+
     // Double-check by reading directly from file to ensure persistence
     try {
       const { promises: fs } = await import('fs')
       const path = await import('path')
       const storageDir = path.join(process.cwd(), '.secure-storage')
       const keysFilePath = path.join(storageDir, 'api-keys.enc')
-      
+
       try {
-        const fileExists = await fs.access(keysFilePath).then(() => true).catch(() => false)
+        const fileExists = await fs
+          .access(keysFilePath)
+          .then(() => true)
+          .catch(() => false)
         if (fileExists) {
           console.log('✅ Keys file exists and is accessible')
         } else {
@@ -279,20 +325,41 @@ export async function POST(request: NextRequest) {
       message: 'API keys configured successfully',
       configured: {
         openAiKey: !!(keysToSave.openAiKey || existingKeys.openAiKey || process.env.OPENAI_API_KEY),
-        anthropicApiKey: !!(keysToSave.anthropicApiKey || existingKeys.anthropicApiKey || process.env.ANTHROPIC_API_KEY),
-        azureOpenAiKey: !!(keysToSave.azureOpenAiKey || existingKeys.azureOpenAiKey || process.env.AZURE_OPENAI_API_KEY),
-        azureOpenAiEndpoint: !!(keysToSave.azureOpenAiEndpoint || existingKeys.azureOpenAiEndpoint || process.env.AZURE_OPENAI_ENDPOINT),
-        lakeraAiKey: !!(keysToSave.lakeraAiKey || existingKeys.lakeraAiKey || process.env.LAKERA_AI_KEY),
-        lakeraProjectId: !!(keysToSave.lakeraProjectId || existingKeys.lakeraProjectId || process.env.LAKERA_PROJECT_ID),
-        lakeraEndpoint: !!(keysToSave.lakeraEndpoint || existingKeys.lakeraEndpoint || process.env.LAKERA_ENDPOINT),
+        anthropicApiKey: !!(
+          keysToSave.anthropicApiKey ||
+          existingKeys.anthropicApiKey ||
+          process.env.ANTHROPIC_API_KEY
+        ),
+        azureOpenAiKey: !!(
+          keysToSave.azureOpenAiKey ||
+          existingKeys.azureOpenAiKey ||
+          process.env.AZURE_OPENAI_API_KEY
+        ),
+        azureOpenAiEndpoint: !!(
+          keysToSave.azureOpenAiEndpoint ||
+          existingKeys.azureOpenAiEndpoint ||
+          process.env.AZURE_OPENAI_ENDPOINT
+        ),
+        lakeraAiKey: !!(
+          keysToSave.lakeraAiKey ||
+          existingKeys.lakeraAiKey ||
+          process.env.LAKERA_AI_KEY
+        ),
+        lakeraProjectId: !!(
+          keysToSave.lakeraProjectId ||
+          existingKeys.lakeraProjectId ||
+          process.env.LAKERA_PROJECT_ID
+        ),
+        lakeraEndpoint: !!(
+          keysToSave.lakeraEndpoint ||
+          existingKeys.lakeraEndpoint ||
+          process.env.LAKERA_ENDPOINT
+        ),
       },
     })
   } catch (error) {
     console.error('Error setting API keys:', error)
-    return NextResponse.json(
-      { error: 'Failed to set API keys' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to set API keys' }, { status: 500 })
   }
 }
 
@@ -309,7 +376,7 @@ export async function DELETE(request: NextRequest) {
 
     // Check if PIN is configured
     const pinConfigured = await isPinConfigured()
-    
+
     if (pinConfigured) {
       // Get PIN from request body
       const body = await request.json().catch(() => ({}))
@@ -325,10 +392,7 @@ export async function DELETE(request: NextRequest) {
       // Verify PIN
       const isValid = await verifyPinCode(pin)
       if (!isValid) {
-        return NextResponse.json(
-          { error: 'Invalid PIN', requiresPin: true },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: 'Invalid PIN', requiresPin: true }, { status: 401 })
       }
     }
 
@@ -352,9 +416,6 @@ export async function DELETE(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error deleting API keys:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete API keys' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete API keys' }, { status: 500 })
   }
 }

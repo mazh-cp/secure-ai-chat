@@ -19,7 +19,7 @@ Users can now select different OpenAI models from a dropdown list on the Chat pa
 - **Model Preference Persistence**: Selected model is saved to localStorage and persists across sessions
 - **User-Friendly Display**: Model names are formatted for readability (e.g., "GPT-4o Mini", "GPT-4o")
 - **Sorted List**: Models are sorted with newest models first for better UX
-- **Secure Validation**: Only GPT models (gpt-*) are allowed for security
+- **Secure Validation**: Only GPT models (gpt-\*) are allowed for security
 - **Default Model**: Falls back to `gpt-4o-mini` if no selection is made
 
 ### Technical Implementation
@@ -50,11 +50,13 @@ Users can now select different OpenAI models from a dropdown list on the Chat pa
 ## 📋 Changes Summary
 
 ### Files Added
+
 - `app/api/models/route.ts` - API route for fetching OpenAI models
 - `components/ModelSelector.tsx` - Model selector dropdown component
 - `RELEASE_NOTES_v1.0.5.md` - This file
 
 ### Files Modified
+
 - `app/api/chat/route.ts` - Added model parameter support
 - `components/ChatInterface.tsx` - Integrated ModelSelector component
 - `components/SettingsForm.tsx` - Fixed Save Keys button and Lakera Project ID visibility

@@ -8,7 +8,9 @@ import { promises as fs } from 'fs'
 import path from 'path'
 
 const DATA_DIR = process.env.DATA_DIR
-  ? (path.isAbsolute(process.env.DATA_DIR) ? process.env.DATA_DIR : path.resolve(process.cwd(), process.env.DATA_DIR))
+  ? path.isAbsolute(process.env.DATA_DIR)
+    ? process.env.DATA_DIR
+    : path.resolve(process.cwd(), process.env.DATA_DIR)
   : path.resolve(process.cwd(), 'data')
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads')
 
@@ -52,7 +54,11 @@ export async function ensureOwnerDir(ownerId: string): Promise<void> {
  * Write file bytes under ./data/uploads/<ownerId>/<fileId> (atomic: write temp then rename).
  * Also writes canonical layout (raw.bin + meta.json) for v1.0.16+ pipeline.
  */
-export async function writeOwnerFile(ownerId: string, fileId: string, data: Buffer | string): Promise<void> {
+export async function writeOwnerFile(
+  ownerId: string,
+  fileId: string,
+  data: Buffer | string
+): Promise<void> {
   await ensureOwnerDir(ownerId)
   const p = filePath(ownerId, fileId)
   const buf = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data
@@ -146,7 +152,9 @@ export async function clearOwnerFiles(ownerId: string): Promise<number> {
 /**
  * List files on disk for an owner (filenames + sizes). For diagnostics.
  */
-export async function listOwnerFilesOnDisk(ownerId: string): Promise<Array<{ name: string; size: number }>> {
+export async function listOwnerFilesOnDisk(
+  ownerId: string
+): Promise<Array<{ name: string; size: number }>> {
   const dir = ownerDir(ownerId)
   const out: Array<{ name: string; size: number }> = []
   try {

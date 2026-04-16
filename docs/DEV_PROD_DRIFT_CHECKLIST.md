@@ -5,16 +5,19 @@ This document identifies and validates differences between local development and
 ## Runtime + Toolchain Parity
 
 ### Node.js Version
+
 - **Local Dev**: Check with `node -v`
 - **Production**: Should match `.nvmrc` (currently: `24.13.0`)
 - **Validation**: Run `./scripts/check-drift.sh --check-node`
 
 ### Package Manager
+
 - **Local Dev**: Check with `which npm` and `npm -v`
 - **Production**: Should match detected lockfile (`package-lock.json` → npm, `yarn.lock` → yarn, `pnpm-lock.yaml` → pnpm)
 - **Validation**: Run `./scripts/check-drift.sh --check-pm`
 
 ### Lockfile Usage
+
 - **Local Dev**: Uses `package-lock.json`
 - **Production**: Must use `npm ci` (not `npm install`) for reproducible builds
 - **Validation**: Ensure deploy scripts use `npm ci` or equivalent frozen install
@@ -22,19 +25,23 @@ This document identifies and validates differences between local development and
 ## Build Mode Differences
 
 ### Development Mode
+
 ```bash
 npm run dev  # next dev -H 0.0.0.0
 ```
+
 - Hot reload enabled
 - Source maps enabled
 - Development optimizations
 - No build cache validation
 
 ### Production Mode
+
 ```bash
 npm run build  # next build
 npm start      # next start
 ```
+
 - Optimized bundles
 - No source maps (unless configured)
 - Static optimization
@@ -45,11 +52,13 @@ npm start      # next start
 ## Environment Variables
 
 ### Local Development
+
 - File: `.env.local` (gitignored)
 - Loaded by Next.js automatically
 - Optional: API keys can be configured via UI
 
 ### Production
+
 - File: `/etc/secure-ai-chat.env` (systemd EnvironmentFile)
 - Or: Environment variables set in systemd service
 - Required vars (without values - can be configured via UI):
@@ -68,11 +77,13 @@ npm start      # next start
 ### Storage Paths
 
 #### Local Development
+
 - `.secure-storage/` - Encrypted API keys (mode 700)
 - `.storage/` - Uploaded files, metadata (mode 755)
 - `.next/` - Build output (mode 755)
 
 #### Production
+
 - `{{APP_DIR}}/.secure-storage/` - Encrypted API keys (mode 700, owned by app user)
 - `{{APP_DIR}}/.storage/` - Uploaded files, metadata (mode 755, owned by app user)
 - `{{APP_DIR}}/.next/` - Build output (mode 755, owned by app user)
@@ -82,10 +93,12 @@ npm start      # next start
 ### Permissions
 
 #### Local Development
+
 - Created by current user
 - Permissions set automatically by Node.js `fs.mkdir`
 
 #### Production
+
 - Created by deploy script (as app user or root, then chown to app user)
 - Must ensure writable by app user
 - Must ensure `.secure-storage` is mode 700
@@ -119,26 +132,31 @@ npm start      # next start
 ## Known Drift Issues
 
 ### 1. Node.js Version Mismatch
+
 - **Issue**: Local may use different Node.js version than production
 - **Fix**: Enforce Node.js version in deploy scripts and release-gate
 - **Status**: ✅ Fixed in `scripts/deploy/common.sh::ensure_node_version()`
 
 ### 2. Missing Directory Creation
+
 - **Issue**: Production may not create required directories before first use
 - **Fix**: Deploy scripts must `mkdir -p` and `chown` required directories
 - **Status**: 🔧 Needs fix in deploy scripts
 
 ### 3. Environment Variable Validation
+
 - **Issue**: No startup validation for required env vars
 - **Fix**: Create startup validation script that checks env vars and directories
 - **Status**: 🔧 Needs implementation
 
 ### 4. Production Build Not Tested Locally
+
 - **Issue**: Dev uses `npm run dev`, but prod uses `npm run build` + `npm start`
 - **Fix**: Create script to reproduce production build locally
 - **Status**: 🔧 Needs implementation
 
 ### 5. Missing Smoke Tests in Production Mode
+
 - **Issue**: Smoke tests may not validate production-specific behavior
 - **Fix**: Enhance `scripts/smoke-test.sh` with production-specific checks
 - **Status**: 🔧 Needs enhancement

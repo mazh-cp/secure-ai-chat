@@ -3,6 +3,7 @@
 ## Freeze baseline (one-time)
 
 1. **Tag the last commit before 2026-01-19 as immutable:**
+
    ```bash
    # From repo root; use the commit that is the last before Jan 19, 2026
    COMMIT=$(git rev-list -n1 --before="2026-01-19" HEAD)

@@ -9,6 +9,7 @@
 ## 🔍 Problem Summary
 
 When clicking "Validate Azure OpenAI Credentials" button in Settings:
+
 - Validation fails with connection error
 - Error message not helpful for troubleshooting
 - Network errors not properly handled
@@ -20,6 +21,7 @@ When clicking "Validate Azure OpenAI Credentials" button in Settings:
 ### 1. Enhanced Error Handling
 
 Improved error messages for:
+
 - **Network errors**: Clear message about endpoint accessibility
 - **Timeout errors**: Specific timeout handling
 - **Connection failures**: Detailed troubleshooting steps
@@ -27,6 +29,7 @@ Improved error messages for:
 ### 2. Better Error Messages
 
 Validation now provides specific guidance:
+
 - Endpoint URL format verification
 - Network connectivity checks
 - Firewall/accessibility issues
@@ -35,6 +38,7 @@ Validation now provides specific guidance:
 ### 3. Improved Fetch Error Handling
 
 Added proper catch blocks for:
+
 - Network fetch failures
 - DNS resolution errors
 - Connection timeouts
@@ -70,11 +74,13 @@ Added proper catch blocks for:
 ### Issue 1: "Cannot connect to Azure OpenAI endpoint"
 
 **Possible causes:**
+
 - Endpoint URL is incorrect
 - Network firewall blocking connection
 - Endpoint not accessible from server
 
 **Solutions:**
+
 ```bash
 # 1. Verify endpoint URL format
 # Should be like: https://your-resource.openai.azure.com
@@ -95,11 +101,13 @@ sudo ufw status
 ### Issue 2: "Request timeout"
 
 **Possible causes:**
+
 - Slow network connection
 - Azure service temporarily unavailable
 - DNS resolution issues
 
 **Solutions:**
+
 ```bash
 # 1. Test DNS resolution
 nslookup your-resource.openai.azure.com
@@ -116,11 +124,13 @@ curl -o /dev/null -s -w "%{time_total}\n" https://your-resource.openai.azure.com
 ### Issue 3: "Authentication failed"
 
 **Possible causes:**
+
 - API key is incorrect
 - API key has expired
 - API key doesn't have required permissions
 
 **Solutions:**
+
 1. Verify API key in Azure Portal
 2. Regenerate API key if needed
 3. Ensure key has "Cognitive Services User" role
@@ -129,11 +139,13 @@ curl -o /dev/null -s -w "%{time_total}\n" https://your-resource.openai.azure.com
 ### Issue 4: "Deployment not found"
 
 **Possible causes:**
+
 - Deployment name doesn't match exactly (case-sensitive)
 - Deployment not in "Succeeded" state
 - Deployment in different resource
 
 **Solutions:**
+
 1. Check deployment name in Azure Portal (exact match, case-sensitive)
 2. Verify deployment status is "Succeeded"
 3. Ensure deployment is in the same resource as endpoint
@@ -144,9 +156,11 @@ curl -o /dev/null -s -w "%{time_total}\n" https://your-resource.openai.azure.com
 ## 📋 Validation Endpoint Details
 
 ### Endpoint
+
 `POST /api/health/azure-openai`
 
 ### Request Body
+
 ```json
 {
   "apiKey": "your-api-key",
@@ -156,6 +170,7 @@ curl -o /dev/null -s -w "%{time_total}\n" https://your-resource.openai.azure.com
 ```
 
 ### Success Response
+
 ```json
 {
   "ok": true,
@@ -165,6 +180,7 @@ curl -o /dev/null -s -w "%{time_total}\n" https://your-resource.openai.azure.com
 ```
 
 ### Error Response
+
 ```json
 {
   "ok": false,
@@ -192,13 +208,15 @@ curl -X POST http://localhost:3000/api/health/azure-openai \
 ### Expected Results
 
 **Success:**
+
 ```json
-{"ok":true,"message":"Azure OpenAI credentials validated successfully"}
+{ "ok": true, "message": "Azure OpenAI credentials validated successfully" }
 ```
 
 **Error:**
+
 ```json
-{"ok":false,"error":"Detailed error message"}
+{ "ok": false, "error": "Detailed error message" }
 ```
 
 ---
@@ -246,17 +264,20 @@ curl -H "api-key: YOUR_KEY" \
 ## 📝 Best Practices
 
 ### Endpoint URL Format
+
 ✅ **Correct**: `https://your-resource.openai.azure.com`  
 ❌ **Wrong**: `https://your-resource.openai.azure.com/openai/deployments`  
 ❌ **Wrong**: `https://your-resource.openai.azure.com/` (trailing slash is OK, but not required)
 
 ### API Key Security
+
 - Never share API keys
 - Regenerate keys if compromised
 - Use environment variables for production
 - Don't commit keys to version control
 
 ### Deployment Names
+
 - Must match exactly (case-sensitive)
 - Common names: `gpt-4o-mini`, `gpt-4o`, `gpt-4`, `gpt-4-turbo`
 - Check in Azure Portal for exact name
@@ -266,6 +287,7 @@ curl -H "api-key: YOUR_KEY" \
 ## 🎯 Validation Checklist
 
 Before validating, ensure:
+
 - [ ] Endpoint URL is correct (from Azure Portal)
 - [ ] API key is valid and not expired
 - [ ] Network allows outbound HTTPS connections

@@ -1,14 +1,17 @@
 # Patches for Version 1.0.11 - File RAG Enhancements
 
 ## Summary
+
 This document contains the exact patches to enhance file RAG system:
+
 - Increase RAG file limit from 5 to 10 files
-- Add structured field extraction for CSV/JSON files  
+- Add structured field extraction for CSV/JSON files
 - Add prompt security validation (ADDITIONAL layer - does NOT replace Lakera/Check Point TE)
 - Fix file deletion/clearing mechanism
 - Add Clear All functionality
 
 ## IMPORTANT NOTES
+
 - ✅ NO changes to Lakera AI functionality
 - ✅ NO changes to Check Point TE functionality
 - ✅ Security checks at lines 562-586 remain UNTOUCHED
@@ -29,7 +32,7 @@ This document contains the exact patches to enhance file RAG system:
  import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
  import { validateTokenLimit, truncateToTokenLimit } from '@/lib/token-counter'
 +import { formatFileContentForRAG, validateFilePromptSecurity } from '@/lib/file-content-processor'
- 
+
  interface ChatMessage {
 ```
 
@@ -44,7 +47,7 @@ This document contains the exact patches to enhance file RAG system:
 @@ -618,6 +618,19 @@
                // OR if there's any keyword match
                const shouldInclude = isDataFile || (isDataQuery && isDataFile) || hasKeywordMatch || isDataQuery
-               
+
 +              // SECURITY: Validate prompt security for file-based queries (ADDITIONAL security layer)
 +              // This works alongside Lakera AI and Check Point TE - does NOT replace them
 +              // Files must still pass Lakera/Check Point TE checks (lines 562-586) before reaching here
@@ -52,13 +55,13 @@ This document contains the exact patches to enhance file RAG system:
 +                latestUserMessage.content,
 +                fileContent
 +              )
-+              
++
 +              // Block high-risk prompts (only if both prompt AND file show suspicious patterns)
 +              if (!promptSecurityCheck.safe) {
 +                console.warn(`RAG: Blocked potentially unsafe prompt with file ${fileMeta.name} (risk: ${promptSecurityCheck.riskLevel})`)
 +                continue
 +              }
-+              
++
                if (shouldInclude) {
                  // For large files, include a summary or excerpt
                  let contentToInclude = fileContent
@@ -67,7 +70,7 @@ This document contains the exact patches to enhance file RAG system:
                    contentToInclude = fileContent.substring(0, 7500) + '\n\n...[content truncated - showing first and last portions]...\n\n' + fileContent.substring(fileContent.length - 7500)
                  }
 -                relevantFiles.push(`\n\n[File: ${fileMeta.name}]\n${contentToInclude}`)
-+                
++
 +                // ENHANCEMENT: Format file content with field information for structured data
 +                // This enables field-level access for CSV/JSON files
 +                const formattedContent = formatFileContentForRAG(
@@ -77,7 +80,7 @@ This document contains the exact patches to enhance file RAG system:
 +                  false // includeAllFields - can be made configurable in future
 +                )
 +                relevantFiles.push(`\n\n${formattedContent}`)
-                 
+
 -                // ENHANCEMENT: Limit to 5 most relevant files (increased from 3)
 -                if (relevantFiles.length >= 5) break
 +                // ENHANCEMENT: Limit to 10 most relevant files (increased from 5)
@@ -99,7 +102,7 @@ This document contains the exact patches to enhance file RAG system:
                }
 @@ -646,7 +667,7 @@
            // ENHANCEMENT: Include both relevant files and all safe files
-           const allFilesContext = relevantFiles.length > 0 
+           const allFilesContext = relevantFiles.length > 0
              ? relevantFiles.join('\n\n---\n\n')
 -            : allSafeFiles.slice(0, 3).join('\n\n---\n\n') // If no matches, include first 3 safe files
 +            : allSafeFiles.slice(0, 10).join('\n\n---\n\n') // If no matches, include first 10 safe files
@@ -117,7 +120,7 @@ This document contains the exact patches to enhance file RAG system:
 +++ b/secure-ai-chat/app/files/page.tsx
 @@ -298,17 +298,23 @@
    }
- 
+
    const handleFileRemove = async (fileId: string) => {
 -    // Remove from local state
 -    setFiles(prev => prev.filter(f => f.id !== fileId))
@@ -127,7 +130,7 @@ This document contains the exact patches to enhance file RAG system:
        const response = await fetch(`/api/files/delete?fileId=${encodeURIComponent(fileId)}`, {
          method: 'DELETE',
        })
- 
+
 -      if (!response.ok) {
 +      if (response.ok) {
 +        // Successfully deleted - refresh files from server to ensure consistency
@@ -154,16 +157,16 @@ This document contains the exact patches to enhance file RAG system:
 +    if (files.length === 0) {
 +      return
 +    }
-+    
++
 +    if (!confirm(`Are you sure you want to delete all ${files.length} file(s)? This action cannot be undone.`)) {
 +      return
 +    }
-+    
++
 +    try {
 +      const response = await fetch('/api/files/clear', {
 +        method: 'DELETE',
 +      })
-+      
++
 +      if (response.ok) {
 +        // Successfully cleared - refresh files from server
 +        await loadFilesFromServer()
@@ -199,7 +202,7 @@ import { clearAllFiles } from '@/lib/persistent-storage'
 export async function DELETE() {
   try {
     const result = await clearAllFiles()
-    
+
     return NextResponse.json({
       success: true,
       message: 'All files cleared successfully',
@@ -244,7 +247,7 @@ export async function DELETE() {
        </div>
      )
    }
- 
+
    return (
      <div className="space-y-3">
 +      {/* Clear All Button */}
@@ -261,7 +264,7 @@ export async function DELETE() {
 +          </button>
 +        </div>
 +      )}
-+      
++
        {files.map((file) => (
 ```
 
@@ -276,8 +279,8 @@ export async function DELETE() {
 --- a/secure-ai-chat/app/files/page.tsx
 +++ b/secure-ai-chat/app/files/page.tsx
 @@ -1213,6 +1213,7 @@
-         <FileList 
-           files={files} 
+         <FileList
+           files={files}
            onRemove={handleFileRemove}
 +          onClearAll={handleClearAll}
            onScan={handleFileScan}

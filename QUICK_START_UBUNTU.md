@@ -67,6 +67,7 @@ npm start
 ```
 
 **Expected output:**
+
 ```
 > secure-ai-chat@0.1.0 start
 > next start
@@ -314,6 +315,7 @@ ps aux | grep "next start"
 ## Summary
 
 **Quick Start (3 commands):**
+
 ```bash
 git clone https://github.com/mazh-cp/secure-ai-chat.git && cd secure-ai-chat
 npm install && cp .env.example .env.local && nano .env.local
@@ -321,11 +323,13 @@ npm run build && npm start
 ```
 
 **Verify Running:**
+
 ```bash
 curl http://localhost:3000/api/health
 ```
 
 **Verify Restart (Docker):**
+
 ```bash
 docker-compose up -d
 docker exec secure-ai-chat kill -9 1
@@ -333,6 +337,7 @@ sleep 5 && docker-compose ps  # Should show restarted
 ```
 
 **Verify Restart (systemd):**
+
 ```bash
 sudo systemctl start secure-ai-chat
 sudo kill -9 $(pgrep -f "npm start")

@@ -63,6 +63,7 @@ sudo journalctl -u secure-ai-chat | grep -i "azure"
 ## Expected Error Responses
 
 ### Invalid API Key
+
 ```json
 {
   "ok": false,
@@ -71,6 +72,7 @@ sudo journalctl -u secure-ai-chat | grep -i "azure"
 ```
 
 ### Invalid Endpoint
+
 ```json
 {
   "ok": false,
@@ -79,6 +81,7 @@ sudo journalctl -u secure-ai-chat | grep -i "azure"
 ```
 
 ### Deployment Not Found
+
 ```json
 {
   "ok": false,
@@ -87,6 +90,7 @@ sudo journalctl -u secure-ai-chat | grep -i "azure"
 ```
 
 ### Network Error
+
 ```json
 {
   "ok": false,

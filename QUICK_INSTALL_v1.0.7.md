@@ -35,6 +35,7 @@ nano .env.local
 ```
 
 **Add required API keys**:
+
 ```bash
 OPENAI_API_KEY=your-openai-api-key-here
 ```
@@ -153,6 +154,7 @@ sudo ufw allow 3000/tcp
 ## Full Documentation
 
 For detailed instructions, see:
+
 - **FRESH_UBUNTU_INSTALLATION_v1.0.7.md** - Complete installation guide
 - **DEPLOYMENT_CHECKLIST_v1.0.7.md** - Deployment checklist
 - **INSTALL.md** - General installation guide

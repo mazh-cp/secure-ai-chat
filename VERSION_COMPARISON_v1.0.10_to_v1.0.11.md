@@ -54,17 +54,17 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 
 ## 📋 Detailed Feature Comparison
 
-| Feature | v1.0.10 | v1.0.11 (Initial) | v1.0.11 (Current) |
-|---------|---------|-------------------|-------------------|
-| **OpenAI Support** | ✅ | ✅ | ✅ |
-| **Azure OpenAI Support** | ❌ | ✅ Added | ❌ Removed |
-| **Provider Switching** | ❌ | ✅ Added | ❌ Removed |
-| **Check Point WAF** | ❌ | ✅ Added | ✅ |
-| **Rate Limiting** | ✅ Basic | ✅ Enhanced | ✅ Enhanced (GPT-5.x fixed) |
-| **RAG File Limit** | 5 files | 10 files | 10 files |
-| **Model Support** | GPT-4, GPT-5 | GPT-4, GPT-5, Azure | GPT-4, GPT-5 |
-| **API Version** | 2024-10-21 | 2025-04-01-preview | 2025-04-01-preview |
-| **Settings Layout** | Single column | Two columns | Single column (simplified) |
+| Feature                  | v1.0.10       | v1.0.11 (Initial)   | v1.0.11 (Current)           |
+| ------------------------ | ------------- | ------------------- | --------------------------- |
+| **OpenAI Support**       | ✅            | ✅                  | ✅                          |
+| **Azure OpenAI Support** | ❌            | ✅ Added            | ❌ Removed                  |
+| **Provider Switching**   | ❌            | ✅ Added            | ❌ Removed                  |
+| **Check Point WAF**      | ❌            | ✅ Added            | ✅                          |
+| **Rate Limiting**        | ✅ Basic      | ✅ Enhanced         | ✅ Enhanced (GPT-5.x fixed) |
+| **RAG File Limit**       | 5 files       | 10 files            | 10 files                    |
+| **Model Support**        | GPT-4, GPT-5  | GPT-4, GPT-5, Azure | GPT-4, GPT-5                |
+| **API Version**          | 2024-10-21    | 2025-04-01-preview  | 2025-04-01-preview          |
+| **Settings Layout**      | Single column | Two columns         | Single column (simplified)  |
 
 ---
 
@@ -73,12 +73,14 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ### Code Structure
 
 #### Files Added in v1.0.11
+
 - `app/api/waf/health/route.ts` - WAF health check endpoint
 - `app/api/waf/logs/route.ts` - WAF logs retrieval endpoint
 - `middleware.ts` - WAF middleware for request capture
 - `lib/waf-logger.ts` - WAF logging utility
 
 #### Files Removed in v1.0.11 (Current)
+
 - `app/api/health/azure-openai/route.ts` - Azure OpenAI validation endpoint
 - `scripts/test-azure-management-api.sh` - Azure Management API test script
 - All Azure OpenAI UI components and logic
@@ -86,6 +88,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 #### Files Modified
 
 **Core Application:**
+
 - `lib/rate-limiter.ts`
   - **v1.0.10:** Basic rate limiting (GPT-5.x: 50 req/min)
   - **v1.0.11 (Current):** Enhanced rate limiting (GPT-5.x: 200 req/min)
@@ -159,16 +162,19 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 📈 Performance & Quality Improvements
 
 ### Rate Limiting
+
 - **v1.0.10:** Basic rate limiting, GPT-5.x: 50 req/min
 - **v1.0.11 (Current):** Enhanced rate limiting, GPT-5.x: 200 req/min
 - **Benefit:** 4x increase in allowed requests for GPT-5.x models
 
 ### Code Quality
+
 - **v1.0.10:** ~28 files changed, 3,760 insertions, 172 deletions
 - **v1.0.11 (Current):** Simplified codebase after Azure removal
 - **Benefit:** Cleaner code, easier maintenance, reduced complexity
 
 ### Error Handling
+
 - **v1.0.10:** Basic error messages
 - **v1.0.11 (Current):** Enhanced error handling with specific messages
 - **Benefit:** Better user experience, easier troubleshooting
@@ -178,6 +184,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 🔒 Security Enhancements
 
 ### v1.0.11 Additions
+
 1. **Check Point WAF Integration**
    - Request metadata capture
    - Security event logging
@@ -225,11 +232,13 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 🎨 UI/UX Changes
 
 ### Settings Page
+
 - **v1.0.10:** Single column layout, OpenAI and Lakera keys only
 - **v1.0.11 (Initial):** Two-column layout, added Azure OpenAI fields
 - **v1.0.11 (Current):** Single column layout, OpenAI and Lakera keys only (simplified)
 
 ### Chat Interface
+
 - **v1.0.10:** OpenAI models only, simple model selector
 - **v1.0.11 (Initial):** Added provider selector, Azure model support
 - **v1.0.11 (Current):** OpenAI models only, simplified interface
@@ -239,6 +248,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 📦 Dependencies
 
 ### No Major Dependency Changes
+
 - Same core dependencies as v1.0.10
 - No new major packages added
 - No breaking dependency updates
@@ -269,12 +279,14 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## ✅ Validation Status
 
 ### Build & Quality
+
 - ✅ TypeScript: No errors
 - ✅ ESLint: Passed
 - ✅ Production Build: Successful
 - ✅ All Tests: Passing
 
 ### Feature Validation
+
 - ✅ OpenAI Integration: Fully functional
 - ✅ Lakera AI: Fully functional
 - ✅ Check Point WAF: Integrated
@@ -283,6 +295,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 - ✅ GPT-5.x Models: Fixed rate limits
 
 ### Security
+
 - ✅ Key Storage: Secure
 - ✅ No Sensitive Data: In code
 - ✅ WAF Logging: Operational
@@ -293,12 +306,14 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 📊 Statistics
 
 ### Code Changes
+
 - **Files Modified:** ~15 files
 - **Files Added:** 4 files (WAF integration)
 - **Files Removed:** 1 file (Azure OpenAI endpoint)
 - **Lines Changed:** ~500+ lines modified
 
 ### Feature Changes
+
 - **Features Added:** 2 (WAF, Rate limit fixes)
 - **Features Removed:** 1 (Azure OpenAI)
 - **Features Enhanced:** 3 (RAG, Error handling, Model matching)
@@ -308,6 +323,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 🎯 Key Takeaways
 
 ### What Stayed the Same
+
 - ✅ Core OpenAI functionality
 - ✅ Lakera AI integration
 - ✅ RAG system (enhanced but compatible)
@@ -315,6 +331,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 - ✅ File management
 
 ### What Changed
+
 - ✅ Added: Check Point WAF integration
 - ✅ Added: Improved GPT-5.x rate limits
 - ✅ Removed: Azure OpenAI support
@@ -322,6 +339,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 - ✅ Fixed: GPT-5.x model matching
 
 ### What Improved
+
 - ✅ Better rate limit handling
 - ✅ Cleaner codebase (after Azure removal)
 - ✅ Enhanced security (WAF integration)
@@ -333,6 +351,7 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 ## 🚀 Deployment Recommendations
 
 ### For v1.0.10 Users
+
 1. **Backup:** Backup existing configuration and keys
 2. **Update:** Pull latest v1.0.11 code
 3. **Install:** Run `npm ci` to install dependencies
@@ -341,7 +360,9 @@ Version 1.0.11 introduces significant changes from v1.0.10, including **Check Po
 6. **Deploy:** Deploy to production
 
 ### Environment Variables
+
 No new required environment variables. Optional:
+
 - `WAF_AUTH_ENABLED` - Enable WAF authentication
 - `WAF_API_KEY` - WAF authentication key
 
@@ -352,6 +373,7 @@ No new required environment variables. Optional:
 Version 1.0.11 (Current) represents a **simplified and enhanced** version compared to v1.0.10:
 
 **Key Improvements:**
+
 - ✅ Check Point WAF integration for enterprise security
 - ✅ Fixed GPT-5.x rate limit issues (200 req/min)
 - ✅ Enhanced RAG system (10 files)
@@ -359,6 +381,7 @@ Version 1.0.11 (Current) represents a **simplified and enhanced** version compar
 - ✅ Cleaner codebase (Azure OpenAI removed)
 
 **Simplifications:**
+
 - ❌ Removed Azure OpenAI (focus on OpenAI + Lakera)
 - ❌ Removed provider switching complexity
 - ✅ Simplified UI and code structure

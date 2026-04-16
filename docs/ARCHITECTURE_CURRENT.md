@@ -34,22 +34,22 @@ This document captures the application architecture before the Secure RAG upgrad
 
 ### Upload and store
 
-- **`POST /api/files/store`** — `app/api/files/store/route.ts`  
-  - Body: `fileId`, `fileName`, `fileContent`, `fileType`, `fileSize`, optional `scanStatus`, `scanResult`, `scanDetails`, `checkpointTeDetails`.  
+- **`POST /api/files/store`** — `app/api/files/store/route.ts`
+  - Body: `fileId`, `fileName`, `fileContent`, `fileType`, `fileSize`, optional `scanStatus`, `scanResult`, `scanDetails`, `checkpointTeDetails`.
   - **Does not run Lakera**; trusts client-provided scan status. Persists via `lib/persistent-storage.storeFile()`.
 
 ### File scan (Lakera)
 
-- **`POST /api/scan`** — `app/api/scan/route.ts`  
-  - Body: `fileContent`, `fileName`, optional `apiKeys`.  
+- **`POST /api/scan`** — `app/api/scan/route.ts`
+  - Body: `fileContent`, `fileName`, optional `apiKeys`.
   - Uses Lakera Guard v2 (inline logic + pre-scan patterns). Returns `flagged`, `message`, `details` (categories, threatLevel, payload, breakdown). Used for file content only.
 
 ### Chat (RAG + LLM)
 
-- **`POST /api/chat`** — `app/api/chat/route.ts`  
-  - Body: `messages`, optional `enableRAG`, `scanOptions`, `model`, `apiKeys`.  
-  - **RAG**: `listFiles()` → for each safe file `getFileContent()` → keyword/data-query relevance → format/truncate → single context string appended to last user message.  
-  - **Lakera**: Applied to **user message** and **model output** only (no ingestion/retrieval scan).  
+- **`POST /api/chat`** — `app/api/chat/route.ts`
+  - Body: `messages`, optional `enableRAG`, `scanOptions`, `model`, `apiKeys`.
+  - **RAG**: `listFiles()` → for each safe file `getFileContent()` → keyword/data-query relevance → format/truncate → single context string appended to last user message.
+  - **Lakera**: Applied to **user message** and **model output** only (no ingestion/retrieval scan).
   - **No embeddings or vector store**; no chunking or retrieval step.
 
 ### Files (list / delete / clear)
@@ -74,13 +74,13 @@ This document captures the application architecture before the Secure RAG upgrad
 
 ## Storage
 
-| Component        | Path / mechanism | Purpose |
-|-----------------|------------------|---------|
-| File storage    | `lib/persistent-storage.ts` | `.storage/` (or `STORAGE_DIR`): `files/` (content), `files-metadata.json` (id, name, size, type, scanStatus, scanDetails, checkpointTeDetails). `storeFile`, `getFileContent`, `listFiles`, `deleteFile`. |
-| API keys        | `lib/api-keys-storage.ts`    | `.secure-storage/api-keys.enc` (encrypted). |
-| Check Point TE  | `lib/checkpoint-te.ts`      | `.secure-storage/checkpoint-te-key.enc`. |
-| System logs     | `lib/system-logging.ts`     | `.secure-storage/system-logs.json`. |
-| Client cache    | Browser `localStorage`     | `uploadedFiles`, `appSettings`, `lakeraFileScanEnabled`, `lakeraRagScanEnabled`, `checkpointTeSandboxEnabled`; optional `apiKeys` fallback. |
+| Component      | Path / mechanism            | Purpose                                                                                                                                                                                                   |
+| -------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File storage   | `lib/persistent-storage.ts` | `.storage/` (or `STORAGE_DIR`): `files/` (content), `files-metadata.json` (id, name, size, type, scanStatus, scanDetails, checkpointTeDetails). `storeFile`, `getFileContent`, `listFiles`, `deleteFile`. |
+| API keys       | `lib/api-keys-storage.ts`   | `.secure-storage/api-keys.enc` (encrypted).                                                                                                                                                               |
+| Check Point TE | `lib/checkpoint-te.ts`      | `.secure-storage/checkpoint-te-key.enc`.                                                                                                                                                                  |
+| System logs    | `lib/system-logging.ts`     | `.secure-storage/system-logs.json`.                                                                                                                                                                       |
+| Client cache   | Browser `localStorage`      | `uploadedFiles`, `appSettings`, `lakeraFileScanEnabled`, `lakeraRagScanEnabled`, `checkpointTeSandboxEnabled`; optional `apiKeys` fallback.                                                               |
 
 No relational DB or S3; all persistence is filesystem under `.storage` and `.secure-storage`.
 

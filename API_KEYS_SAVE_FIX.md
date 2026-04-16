@@ -1,6 +1,7 @@
 # API Keys Save Fix
 
 ## Issue
+
 System wasn't saving keys and not enabling providers/LLMs for chat after saving API keys in the Settings page.
 
 ## Root Causes
@@ -12,6 +13,7 @@ System wasn't saving keys and not enabling providers/LLMs for chat after saving 
 ## Fixes Applied
 
 ### 1. Force Cache Reload After Save
+
 **File**: `lib/api-keys-storage.ts`
 
 ```typescript
@@ -26,14 +28,17 @@ export async function setApiKeys(keys: StoredApiKeys): Promise<void> {
 ```
 
 ### 2. Improved Azure OpenAI Key/Endpoint Handling
+
 **File**: `lib/api-keys-storage.ts`
 
 Fixed the logic to properly handle:
+
 - New keys being saved
 - Empty strings (should keep existing if exists, otherwise remove)
 - Undefined values (should keep existing)
 
 ### 3. Enhanced Verification After Save
+
 **File**: `app/api/keys/route.ts`
 
 Added verification to ensure keys file exists and is accessible after save, with better logging.
@@ -49,10 +54,11 @@ After applying these fixes:
    - Check browser console for success message
 
 2. **Verify Keys Are Saved**:
+
    ```bash
    # Check if keys file exists
    ls -la .secure-storage/api-keys.enc
-   
+
    # Check server logs
    sudo journalctl -u secure-ai-chat -n 50 | grep -i "keys saved"
    ```
@@ -81,24 +87,28 @@ After applying these fixes:
 If keys still don't save:
 
 1. **Check File Permissions**:
+
    ```bash
    ls -la .secure-storage/
    # Should show: -rw------- (600 permissions)
    ```
 
 2. **Check Server Logs**:
+
    ```bash
    sudo journalctl -u secure-ai-chat -f
    # Look for "Keys saved successfully" message
    ```
 
 3. **Verify Storage Directory**:
+
    ```bash
    ls -la .secure-storage/
    # Should contain: api-keys.enc
    ```
 
 4. **Test API Endpoint**:
+
    ```bash
    curl -X POST http://localhost:3000/api/keys \
      -H "Content-Type: application/json" \

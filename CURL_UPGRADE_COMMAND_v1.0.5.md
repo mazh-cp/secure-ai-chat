@@ -175,11 +175,13 @@ cd /home/adminuser/secure-ai-chat && git remote -v
 ## 📝 Quick Reference
 
 **One-Liner (Recommended):**
+
 ```bash
 cd /home/adminuser/secure-ai-chat && curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/release/v1.0.5-new/scripts/upgrade-production.sh | bash && sudo reboot
 ```
 
 **Manual Git Pull:**
+
 ```bash
 cd /home/adminuser/secure-ai-chat && git fetch origin && git checkout release/v1.0.5-new && git pull origin release/v1.0.5-new && npm ci && npm run build && sudo systemctl restart secure-ai-chat && sleep 10 && curl -sf http://localhost:3000/api/health && sudo reboot
 ```

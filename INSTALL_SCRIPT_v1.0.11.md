@@ -9,6 +9,7 @@
 ## 🎯 Overview
 
 This installation script combines:
+
 - **Stable v1.0.10** foundation (proven, reliable)
 - **All v1.0.11 updates** (Azure OpenAI, WAF, fixes)
 - **All bug fixes** discovered during v1.0.11 development
@@ -19,6 +20,7 @@ This installation script combines:
 ## ✨ What's Included
 
 ### From v1.0.10 (Stable Base)
+
 - Enhanced RAG system (automatic file indexing)
 - Improved file access control
 - Better content matching algorithms
@@ -26,6 +28,7 @@ This installation script combines:
 - File count limit: 5 files (updated to 10 in v1.0.11)
 
 ### From v1.0.11 (New Features)
+
 - ✅ **Azure OpenAI Integration**
   - Full provider support
   - APIM gateway endpoint support
@@ -86,26 +89,31 @@ bash scripts/install-ubuntu-v1.0.11.sh
 ## 📋 What the Script Does
 
 ### Step 1: System Dependencies
+
 - Updates package list
 - Installs: curl, git, build-essential, ca-certificates, gnupg, lsb-release, iproute2
 
 ### Step 2: Node.js Installation
+
 - Installs nvm (Node Version Manager)
 - Installs Node.js v25.2.1
 - Sets as default version
 - Verifies installation
 
 ### Step 3: Repository Setup
+
 - Clones repository (or updates if exists)
 - Checks out specified tag (default: v1.0.11)
 - Handles both standard and APIM gateway endpoints
 
 ### Step 4: Dependencies
+
 - Fixes permissions
 - Installs npm dependencies (npm ci or npm install)
 - Handles package-lock.json sync issues
 
 ### Step 5: Environment Configuration
+
 - Creates `.env.local` from `.env.example`
 - Includes all v1.0.11 environment variables:
   - OpenAI API key
@@ -116,11 +124,13 @@ bash scripts/install-ubuntu-v1.0.11.sh
 - Sets HOSTNAME=0.0.0.0 for public access
 
 ### Step 6: Build Application
+
 - Runs type check
 - Builds production bundle
 - Verifies build artifacts
 
 ### Step 7: Systemd Service Setup
+
 - Creates service file with **fixed directory handling**
 - Proper ExecStart command: `cd` before `npm start`
 - Enables service for boot startup
@@ -128,12 +138,14 @@ bash scripts/install-ubuntu-v1.0.11.sh
 - Verifies service is running
 
 ### Step 8: Firewall Configuration
+
 - Installs UFW if needed
 - Allows SSH (port 22)
 - Allows application port (default: 3000)
 - Enables UFW
 
 ### Step 9: Verification
+
 - Checks Node.js version
 - Verifies build artifacts
 - Checks service status
@@ -143,6 +155,7 @@ bash scripts/install-ubuntu-v1.0.11.sh
 ## 🔧 Key Fixes Included
 
 ### 1. Service Directory Fix
+
 **Problem**: Service was running from wrong directory  
 **Fix**: ExecStart now includes `cd "$FULL_PATH"` before `npm start`
 
@@ -151,14 +164,17 @@ ExecStart=/usr/bin/env bash -lc 'source "/home/$USER/.nvm/nvm.sh" && nvm use 25.
 ```
 
 ### 2. Azure OpenAI Connection
+
 **Problem**: "fetch failed" errors  
 **Fix**: Enhanced error handling with 30-second timeout and better diagnostics
 
 ### 3. APIM Gateway Support
+
 **Problem**: Only standard Azure OpenAI endpoints supported  
 **Fix**: Auto-detection of APIM gateway endpoints (azure-api.net)
 
 ### 4. Automatic Startup
+
 **Problem**: Manual start required  
 **Fix**: Systemd service automatically created, enabled, and started
 
@@ -167,6 +183,7 @@ ExecStart=/usr/bin/env bash -lc 'source "/home/$USER/.nvm/nvm.sh" && nvm use 25.
 ## 📦 Package Versions
 
 ### Dependencies (from package.json)
+
 ```json
 {
   "next": "^14.0.0",
@@ -180,6 +197,7 @@ ExecStart=/usr/bin/env bash -lc 'source "/home/$USER/.nvm/nvm.sh" && nvm use 25.
 ```
 
 ### Node.js
+
 - **Version**: 25.2.1 (pinned via .nvmrc)
 - **Installed via**: nvm (Node Version Manager)
 
@@ -188,11 +206,13 @@ ExecStart=/usr/bin/env bash -lc 'source "/home/$USER/.nvm/nvm.sh" && nvm use 25.
 ## 🎯 Installation Locations
 
 ### Default Installation
+
 - **Directory**: `/opt/secure-ai-chat`
 - **User**: Current user (who runs script)
 - **Port**: 3000 (configurable via PORT environment variable)
 
 ### Custom Installation
+
 ```bash
 # Custom directory
 INSTALL_DIR=/home/myuser curl -fsSL ... | bash
@@ -216,6 +236,7 @@ nano .env.local
 ```
 
 **Add your keys:**
+
 ```bash
 # OpenAI (required for OpenAI provider)
 OPENAI_API_KEY=sk-your-key-here
@@ -308,22 +329,23 @@ npm run build
 
 ## 📊 Comparison: v1.0.10 vs v1.0.11 Script
 
-| Feature | v1.0.10 | v1.0.11 Script |
-|---------|---------|----------------|
-| Base Version | v1.0.10 | v1.0.10 (stable) |
-| Updates | - | All v1.0.11 features |
-| Azure OpenAI | ❌ | ✅ Full support |
-| WAF Integration | ❌ | ✅ Complete |
-| Service Fix | ❌ | ✅ Fixed directory |
-| Auto Startup | ❌ | ✅ Automatic |
-| APIM Support | ❌ | ✅ Auto-detect |
-| Error Handling | Basic | ✅ Enhanced |
+| Feature         | v1.0.10 | v1.0.11 Script       |
+| --------------- | ------- | -------------------- |
+| Base Version    | v1.0.10 | v1.0.10 (stable)     |
+| Updates         | -       | All v1.0.11 features |
+| Azure OpenAI    | ❌      | ✅ Full support      |
+| WAF Integration | ❌      | ✅ Complete          |
+| Service Fix     | ❌      | ✅ Fixed directory   |
+| Auto Startup    | ❌      | ✅ Automatic         |
+| APIM Support    | ❌      | ✅ Auto-detect       |
+| Error Handling  | Basic   | ✅ Enhanced          |
 
 ---
 
 ## 🎉 Summary
 
 This installation script provides:
+
 - ✅ **Stable foundation** from v1.0.10
 - ✅ **All v1.0.11 features** and improvements
 - ✅ **All bug fixes** discovered during development

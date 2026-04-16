@@ -1,8 +1,5 @@
 import { config } from '@/lib/config'
-import {
-  extractAggregatedFromLakeraResponse,
-  postLakeraGuard,
-} from '@/lib/lakera/guard-client'
+import { extractAggregatedFromLakeraResponse, postLakeraGuard } from '@/lib/lakera/guard-client'
 import { resolveLakeraGuardEndpoint, lakeraProjectIdForGuard } from '@/lib/lakera-guard-endpoint'
 import { mergeLakeraEffectiveFlag } from '@/lib/lakera-sensitive-block'
 
@@ -75,18 +72,14 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
   const stored = await getApiKeys()
 
   const apiKey =
-    input.lakeraApiKeyOverride?.trim() ||
-    stored.lakeraAiKey?.trim() ||
-    getLakeraApiKey() ||
-    ''
+    input.lakeraApiKeyOverride?.trim() || stored.lakeraAiKey?.trim() || getLakeraApiKey() || ''
 
-  const endpointRaw =
-    input.lakeraEndpointOverride ?? stored.lakeraEndpoint ?? undefined
+  const endpointRaw = input.lakeraEndpointOverride ?? stored.lakeraEndpoint ?? undefined
 
   const projectIdRaw =
     input.lakeraProjectIdOverride !== undefined
       ? input.lakeraProjectIdOverride
-      : stored.lakeraProjectId ?? getLakeraProjectId()
+      : (stored.lakeraProjectId ?? getLakeraProjectId())
 
   if (!apiKey) {
     return {
@@ -98,14 +91,15 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
   }
 
   const guardUrl = resolveLakeraGuardEndpoint(
-    endpointRaw || process.env.LAKERA_ENDPOINT || process.env.LAKERA_ENDPOINT_URL || undefined,
+    endpointRaw || process.env.LAKERA_ENDPOINT || process.env.LAKERA_ENDPOINT_URL || undefined
   )
   const projectId = lakeraProjectIdForGuard(
-    projectIdRaw !== undefined && projectIdRaw !== null ? String(projectIdRaw) : getLakeraProjectId(),
+    projectIdRaw !== undefined && projectIdRaw !== null
+      ? String(projectIdRaw)
+      : getLakeraProjectId()
   )
 
-  const role =
-    input.context === 'output' || input.context === 'generation' ? 'assistant' : 'user'
+  const role = input.context === 'output' || input.context === 'generation' ? 'assistant' : 'user'
 
   try {
     const posted = await postLakeraGuard({
@@ -156,7 +150,7 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
     let severity: LakeraSeverity = 'low'
     if (flagged) {
       const highRisk = ['prompt_injection', 'jailbreak', 'system_override', 'data_poisoning', 'pii']
-      severity = categoriesList.some((c) => highRisk.includes(c.toLowerCase())) ? 'high' : 'medium'
+      severity = categoriesList.some(c => highRisk.includes(c.toLowerCase())) ? 'high' : 'medium'
     }
 
     return {

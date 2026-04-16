@@ -44,4 +44,3 @@ export function sanitizeInput(input: string): string {
   div.textContent = input
   return div.innerHTML
 }
-

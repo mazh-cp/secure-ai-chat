@@ -13,7 +13,7 @@ import { applyPolicy, type ScanLayer, type PolicyDecision } from '@/lib/policies
 import { recordLakeraGuardAudit } from '@/lib/lakera-guard-audit'
 
 function categoriesListToRecord(categories: string[]): Record<string, boolean> {
-  return Object.fromEntries(categories.map((c) => [c, true]))
+  return Object.fromEntries(categories.map(c => [c, true]))
 }
 
 export type ScanMeta = {
@@ -34,7 +34,14 @@ export interface IngestionScanResult {
   allowed: boolean
   decision: PolicyDecision
   lakeraResult?: LakeraScanResult
-  auditRecord: { docId?: string; layer: ScanLayer; outcome: string; categories: string[]; severity: string; timestamp: string }
+  auditRecord: {
+    docId?: string
+    layer: ScanLayer
+    outcome: string
+    categories: string[]
+    severity: string
+    timestamp: string
+  }
 }
 
 export interface RetrievalScanResult {
@@ -53,7 +60,13 @@ export interface GenerationScanResult {
   lakeraResult?: LakeraScanResult
   /** Safe message to show user when blocked. */
   safeMessage?: string
-  auditRecord: { layer: ScanLayer; outcome: string; categories: string[]; severity: string; timestamp: string }
+  auditRecord: {
+    layer: ScanLayer
+    outcome: string
+    categories: string[]
+    severity: string
+    timestamp: string
+  }
 }
 
 /**
@@ -103,7 +116,9 @@ export async function scanIngestion(text: string, meta: ScanMeta): Promise<Inges
       requestUuid: lakeraResult.requestUuid,
       flagged: lakeraResult.flagged,
       categories:
-        lakeraResult.categories.length > 0 ? categoriesListToRecord(lakeraResult.categories) : undefined,
+        lakeraResult.categories.length > 0
+          ? categoriesListToRecord(lakeraResult.categories)
+          : undefined,
       breakdown: lakeraResult.breakdown,
       internalRequestId: meta.sessionId,
       userId: meta.userId,

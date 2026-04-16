@@ -26,7 +26,7 @@ export function isAzureApiManagementHost(endpointNormalized: string): boolean {
 /** Auth headers for Azure OpenAI (GET or POST). APIM gateways often need Ocp-Apim-Subscription-Key. */
 export function azureOpenAiAuthHeaders(
   apiKey: string,
-  endpointNormalized: string,
+  endpointNormalized: string
 ): Record<string, string> {
   const headers: Record<string, string> = {
     'api-key': apiKey,
@@ -38,7 +38,10 @@ export function azureOpenAiAuthHeaders(
 }
 
 /** JSON POST headers (chat completions). */
-export function azureOpenAiJsonHeaders(apiKey: string, endpointNormalized: string): Record<string, string> {
+export function azureOpenAiJsonHeaders(
+  apiKey: string,
+  endpointNormalized: string
+): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     ...azureOpenAiAuthHeaders(apiKey, endpointNormalized),

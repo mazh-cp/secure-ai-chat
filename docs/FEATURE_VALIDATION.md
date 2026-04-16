@@ -112,14 +112,14 @@ Local production validation checklist and acceptance criteria. Run the app in pr
 
 ## Quick reference
 
-| Area            | Route / action              | Acceptance summary                          |
-|----------------|-----------------------------|--------------------------------------------|
-| Settings & keys| `/settings`, save & reload  | No console errors; persistence works      |
-| Chat           | `/`, send message          | Response renders; no hydration/promise errors |
-| File upload    | `/files`, upload + list    | Success; list updates; no 500s             |
-| RAG            | Upload → chat with question| Citation/snippet; no RAG/stream errors      |
-| Security scan  | Suspicious payload          | Block/flag + friendly message; clean logs  |
-| Error handling | Missing env / key           | Clear message + logs; no blank screen     |
+| Area            | Route / action              | Acceptance summary                            |
+| --------------- | --------------------------- | --------------------------------------------- |
+| Settings & keys | `/settings`, save & reload  | No console errors; persistence works          |
+| Chat            | `/`, send message           | Response renders; no hydration/promise errors |
+| File upload     | `/files`, upload + list     | Success; list updates; no 500s                |
+| RAG             | Upload → chat with question | Citation/snippet; no RAG/stream errors        |
+| Security scan   | Suspicious payload          | Block/flag + friendly message; clean logs     |
+| Error handling  | Missing env / key           | Clear message + logs; no blank screen         |
 
 After running `bash scripts/run-local-prod.sh`, run route-level checks with:
 

@@ -27,7 +27,9 @@ function resolveRegistryPath(): string {
       : path.resolve(process.cwd(), process.env.REGISTRY_DB_PATH)
   }
   const dataDir = process.env.DATA_DIR
-    ? (path.isAbsolute(process.env.DATA_DIR) ? process.env.DATA_DIR : path.resolve(process.cwd(), process.env.DATA_DIR))
+    ? path.isAbsolute(process.env.DATA_DIR)
+      ? process.env.DATA_DIR
+      : path.resolve(process.cwd(), process.env.DATA_DIR)
     : path.resolve(process.cwd(), 'data')
   const defaultPath = path.join(dataDir, 'app.db')
   const pathFile = path.join(dataDir, PATH_FILE)
@@ -106,7 +108,11 @@ function getDb(): Database.Database {
   }
   const resolvedPath = resolveRegistryPath()
   globalForRegistry.__registryPath = resolvedPath
-  if (process.env.NODE_ENV === 'production' && !process.env.REGISTRY_DB_PATH && !globalForRegistry.__registryWarned) {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !process.env.REGISTRY_DB_PATH &&
+    !globalForRegistry.__registryWarned
+  ) {
     globalForRegistry.__registryWarned = true
     console.warn(
       '[secure-ai-chat] Production: REGISTRY_DB_PATH is not set. File list and chat RAG may be empty or inconsistent if multiple processes are used. Start with: npm run start (uses data paths) or set REGISTRY_DB_PATH and UPLOADS_DIR to absolute paths.'
@@ -144,7 +150,7 @@ function getDb(): Database.Database {
   `)
   try {
     const info = db.prepare('PRAGMA table_info(files)').all() as { name: string }[]
-    if (!info.some((c) => c.name === 'pipeline_status')) {
+    if (!info.some(c => c.name === 'pipeline_status')) {
       db.exec(`ALTER TABLE files ADD COLUMN pipeline_status TEXT DEFAULT 'uploaded'`)
     }
   } catch {
@@ -196,7 +202,9 @@ export function insertFile(row: {
 
 export function getById(id: string): RegistryFile | null {
   const database = getDb()
-  const row = database.prepare('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL').get(id) as RegistryFileRow | undefined
+  const row = database
+    .prepare('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL')
+    .get(id) as RegistryFileRow | undefined
   if (!row) return null
   return rowToFile(row)
 }
@@ -223,9 +231,9 @@ export function listFiles(options?: ListFilesOptions): RegistryFile[] {
     params.push(options.session_id)
   }
   sql += ' ORDER BY uploaded_at DESC'
-  const rows = (params.length > 0
-    ? database.prepare(sql).all(...params)
-    : database.prepare(sql).all()) as RegistryFileRow[]
+  const rows = (
+    params.length > 0 ? database.prepare(sql).all(...params) : database.prepare(sql).all()
+  ) as RegistryFileRow[]
   return rows.map(rowToFile)
 }
 
@@ -238,8 +246,12 @@ function rowToFile(row: RegistryFileRow): RegistryFile {
     uploadedAt: row.uploaded_at,
     scanStatus: row.scan_status as RegistryFile['scanStatus'],
     scanResult: row.scan_result ?? undefined,
-    scanDetails: row.scan_details_json ? (JSON.parse(row.scan_details_json) as Record<string, unknown>) : undefined,
-    checkpointTeDetails: row.checkpoint_te_details_json ? (JSON.parse(row.checkpoint_te_details_json) as Record<string, unknown>) : undefined,
+    scanDetails: row.scan_details_json
+      ? (JSON.parse(row.scan_details_json) as Record<string, unknown>)
+      : undefined,
+    checkpointTeDetails: row.checkpoint_te_details_json
+      ? (JSON.parse(row.checkpoint_te_details_json) as Record<string, unknown>)
+      : undefined,
     storage_key: row.storage_key,
     owner_id: row.owner_id,
     session_id: row.session_id,
@@ -251,7 +263,9 @@ function rowToFile(row: RegistryFileRow): RegistryFile {
 export function markDeleted(id: string): boolean {
   const database = getDb()
   const now = new Date().toISOString()
-  const result = database.prepare('UPDATE files SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, id)
+  const result = database
+    .prepare('UPDATE files SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL')
+    .run(now, id)
   return result.changes > 0
 }
 
@@ -283,7 +297,9 @@ export function updateFileMetadata(
   }
   if (updates.checkpoint_te_details !== undefined) {
     sets.push('checkpoint_te_details_json = ?')
-    values.push(updates.checkpoint_te_details ? JSON.stringify(updates.checkpoint_te_details) : null)
+    values.push(
+      updates.checkpoint_te_details ? JSON.stringify(updates.checkpoint_te_details) : null
+    )
   }
   if (updates.rag_indexed_at !== undefined) {
     sets.push('rag_indexed_at = ?')
@@ -295,13 +311,17 @@ export function updateFileMetadata(
   }
   if (sets.length === 0) return false
   values.push(id)
-  const result = database.prepare(`UPDATE files SET ${sets.join(', ')} WHERE id = ? AND deleted_at IS NULL`).run(...values)
+  const result = database
+    .prepare(`UPDATE files SET ${sets.join(', ')} WHERE id = ? AND deleted_at IS NULL`)
+    .run(...values)
   return result.changes > 0
 }
 
 export function getStorageKeyById(id: string): string | null {
   const database = getDb()
-  const row = database.prepare('SELECT storage_key FROM files WHERE id = ? AND deleted_at IS NULL').get(id) as { storage_key: string } | undefined
+  const row = database
+    .prepare('SELECT storage_key FROM files WHERE id = ? AND deleted_at IS NULL')
+    .get(id) as { storage_key: string } | undefined
   return row ? row.storage_key : null
 }
 

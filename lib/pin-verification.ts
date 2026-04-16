@@ -34,7 +34,7 @@ async function ensureStorageDir(): Promise<void> {
 function hashPin(pin: string): { hash: string; salt: string } {
   const salt = crypto.randomBytes(SALT_LENGTH)
   const hash = crypto.pbkdf2Sync(pin, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha512')
-  
+
   return {
     hash: hash.toString('hex'),
     salt: salt.toString('hex'),
@@ -49,7 +49,7 @@ function verifyPin(pin: string, storedHash: string, storedSalt: string): boolean
     const saltBuffer = Buffer.from(storedSalt, 'hex')
     const hashBuffer = Buffer.from(storedHash, 'hex')
     const computedHash = crypto.pbkdf2Sync(pin, saltBuffer, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha512')
-    
+
     // Use timing-safe comparison to prevent timing attacks
     return crypto.timingSafeEqual(hashBuffer, computedHash)
   } catch (error) {
@@ -100,26 +100,26 @@ export async function setPin(pin: string): Promise<void> {
   if (!pin || typeof pin !== 'string') {
     throw new Error('PIN is required')
   }
-  
+
   const trimmedPin = pin.trim()
-  
+
   // PIN must be 4-8 digits
   if (!/^\d{4,8}$/.test(trimmedPin)) {
     throw new Error('PIN must be 4-8 digits')
   }
-  
+
   try {
     await ensureStorageDir()
-    
+
     // Hash the PIN
     const { hash, salt } = hashPin(trimmedPin)
-    
+
     // Store hash and salt (separated by colon)
     const data = `${hash}:${salt}`
-    
+
     // Write with restrictive permissions (owner read/write only)
     await fs.writeFile(PIN_FILE_PATH, data, { mode: 0o600, flag: 'w' })
-    
+
     console.log('Verification PIN configured successfully')
   } catch (error) {
     console.error('Error setting PIN:', error)
@@ -139,17 +139,17 @@ export async function verifyPinCode(pin: string): Promise<boolean> {
     // In production, you might want to require PIN setup first
     return true
   }
-  
+
   try {
     // Read stored hash and salt
     const data = await fs.readFile(PIN_FILE_PATH, 'utf8')
     const [storedHash, storedSalt] = data.trim().split(':')
-    
+
     if (!storedHash || !storedSalt) {
       console.error('Invalid PIN file format')
       return false
     }
-    
+
     // Verify the PIN
     return verifyPin(pin.trim(), storedHash, storedSalt)
   } catch (error) {

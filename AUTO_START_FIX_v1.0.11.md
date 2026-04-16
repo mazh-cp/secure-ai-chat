@@ -9,6 +9,7 @@
 ## 🔍 Problem Summary
 
 After installation, the application required:
+
 1. Manual API key configuration
 2. Manual `npm start` command to start the server
 
@@ -21,6 +22,7 @@ Users expected automatic startup after installation.
 ### Automatic systemd Service Setup
 
 The installation script now automatically:
+
 1. **Creates systemd service file** at `/etc/systemd/system/secure-ai-chat.service`
 2. **Enables service** to start on boot
 3. **Starts service immediately** after installation
@@ -29,6 +31,7 @@ The installation script now automatically:
 ### Service Configuration
 
 The systemd service includes:
+
 - **Automatic restart** on failure (RestartSec=5)
 - **Proper environment variables** (HOSTNAME=0.0.0.0, PORT=3000)
 - **Security settings** (NoNewPrivileges, PrivateTmp)
@@ -41,6 +44,7 @@ The systemd service includes:
 ### During Installation
 
 The installation script now:
+
 1. Finds npm path (from nvm or system)
 2. Creates systemd service file with correct paths
 3. Reloads systemd daemon
@@ -73,9 +77,11 @@ sudo systemctl disable secure-ai-chat
 ## 📋 Service Details
 
 ### Service File Location
+
 `/etc/systemd/system/secure-ai-chat.service`
 
 ### Key Settings
+
 - **User**: Current user (who ran installation)
 - **Working Directory**: Installation directory (default: `~/secure-ai-chat`)
 - **Port**: 3000 (or value from PORT environment variable)
@@ -83,7 +89,9 @@ sudo systemctl disable secure-ai-chat
 - **Restart**: Always (automatic restart on failure)
 
 ### Logs
+
 Service logs are available via:
+
 ```bash
 # Real-time logs
 sudo journalctl -u secure-ai-chat -f
@@ -130,11 +138,13 @@ curl http://localhost:3000/api/version
 ### Issue: Service Not Starting
 
 **Check logs:**
+
 ```bash
 sudo journalctl -u secure-ai-chat -n 50
 ```
 
 **Common causes:**
+
 1. **Node.js path incorrect**: Service file has wrong npm path
    - Fix: Update `ExecStart` in service file with correct path
    - Find path: `which npm` (after `nvm use 25.2.1`)
@@ -153,11 +163,13 @@ sudo journalctl -u secure-ai-chat -n 50
 ### Issue: Service Starts But App Not Accessible
 
 **Check:**
+
 1. Firewall blocking port: `sudo ufw status`
 2. App binding correctly: Check logs for "0.0.0.0:3000"
 3. Network interface: `ip addr show`
 
 **Fix firewall:**
+
 ```bash
 sudo ufw allow 3000/tcp
 sudo ufw reload
@@ -166,6 +178,7 @@ sudo ufw reload
 ### Issue: Service Not Enabled on Boot
 
 **Enable manually:**
+
 ```bash
 sudo systemctl enable secure-ai-chat
 sudo systemctl start secure-ai-chat
@@ -224,7 +237,7 @@ sudo systemctl start secure-ai-chat
 ✅ **Auto-restart** - Restarts on failure  
 ✅ **Easy management** - Standard systemd commands  
 ✅ **Logging** - Centralized logs via journalctl  
-✅ **No manual steps** - Works immediately after installation  
+✅ **No manual steps** - Works immediately after installation
 
 ---
 

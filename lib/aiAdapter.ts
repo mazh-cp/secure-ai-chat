@@ -1,12 +1,12 @@
 /**
  * Model-Agnostic OpenAI Adapter
- * 
+ *
  * Provides a unified interface for calling OpenAI models with automatic:
  * - API selection (Responses API for GPT-5.x, Chat Completions for GPT-4)
  * - Message normalization (converts messages[] to single input for GPT-5.x)
  * - Parameter normalization (max_output_tokens for GPT-5.x, max_tokens for GPT-4)
  * - Automatic fallback (GPT-5.2 → GPT-5.1 → GPT-4o)
- * 
+ *
  * This adapter hides model-specific differences from the rest of the application.
  */
 
@@ -72,17 +72,14 @@ function errorSuggestsMaxCompletionTokens(message: string): boolean {
  * Normalize messages array to single input string for GPT-5.x Responses API
  * Preserves system, user, and assistant context
  */
-function normalizeMessagesToInput(
-  messages: ChatMessage[],
-  systemPrompt?: string
-): string {
+function normalizeMessagesToInput(messages: ChatMessage[], systemPrompt?: string): string {
   const parts: string[] = []
-  
+
   // Add system prompt if provided
   if (systemPrompt) {
     parts.push(`[System Instructions: ${systemPrompt}]\n\n`)
   }
-  
+
   // Convert messages to conversation format
   for (const msg of messages) {
     if (msg.role === 'system') {
@@ -93,7 +90,7 @@ function normalizeMessagesToInput(
       parts.push(`Assistant: ${msg.content}\n\n`)
     }
   }
-  
+
   return parts.join('').trim()
 }
 
@@ -111,21 +108,21 @@ async function callGPT5ResponsesAPI(
     input,
     temperature: options.temperature ?? 0.7,
   }
-  
+
   // GPT-5.x uses max_output_tokens instead of max_tokens
   if (options.maxTokens !== undefined) {
     requestBody.max_output_tokens = options.maxTokens
   }
-  
+
   // Determine endpoint and headers based on provider
   let endpoint = 'https://api.openai.com/v1/responses'
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
-  
+
   // Standard OpenAI: use Bearer token
   headers['Authorization'] = `Bearer ${openAiKey}`
-  
+
   let response: Response
   try {
     response = await fetch(endpoint, {
@@ -136,18 +133,20 @@ async function callGPT5ResponsesAPI(
   } catch (fetchError) {
     // Handle network errors, CORS, etc.
     const errorMessage = fetchError instanceof Error ? fetchError.message : 'Network error'
-    throw new Error(`Failed to connect to OpenAI API: ${errorMessage}. Please check your network connection and API endpoint.`)
+    throw new Error(
+      `Failed to connect to OpenAI API: ${errorMessage}. Please check your network connection and API endpoint.`
+    )
   }
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     let errorMessage = error.error?.message || `OpenAI API error: ${response.status}`
-    
+
     // Handle rate limit errors specifically
     if (response.status === 429) {
       const retryAfter = response.headers.get('Retry-After') || response.headers.get('retry-after')
       const rateLimitType = error.error?.type || 'rate_limit_exceeded'
-      
+
       if (retryAfter) {
         errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
       } else if (rateLimitType.includes('quota')) {
@@ -155,9 +154,9 @@ async function callGPT5ResponsesAPI(
       } else {
         errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.'
       }
-      
+
       // Create a custom error with rate limit information
-      const rateLimitError = new Error(errorMessage) as Error & { 
+      const rateLimitError = new Error(errorMessage) as Error & {
         rateLimit?: boolean
         retryAfter?: number
         statusCode?: number
@@ -167,10 +166,13 @@ async function callGPT5ResponsesAPI(
       rateLimitError.statusCode = 429
       throw rateLimitError
     }
-    
+
     // Handle token limit errors
-    if (response.status === 400 && (errorMessage.includes('token') || errorMessage.includes('context_length'))) {
-      const tokenError = new Error(`Token limit exceeded: ${errorMessage}`) as Error & { 
+    if (
+      response.status === 400 &&
+      (errorMessage.includes('token') || errorMessage.includes('context_length'))
+    ) {
+      const tokenError = new Error(`Token limit exceeded: ${errorMessage}`) as Error & {
         tokenLimit?: boolean
         statusCode?: number
       }
@@ -178,12 +180,12 @@ async function callGPT5ResponsesAPI(
       tokenError.statusCode = 400
       throw tokenError
     }
-    
+
     throw new Error(errorMessage)
   }
-  
+
   const data = await response.json()
-  
+
   // GPT-5 Responses API response structure
   // Try multiple possible response fields
   if (data.response) {
@@ -222,9 +224,7 @@ async function callGPT4ChatCompletionsAPI(
     const requestBody: Record<string, unknown> = {
       model,
       messages: [
-        ...(options.systemPrompt
-          ? [{ role: 'system', content: options.systemPrompt }]
-          : []),
+        ...(options.systemPrompt ? [{ role: 'system', content: options.systemPrompt }] : []),
         ...messages,
       ],
       temperature: options.temperature ?? 0.7,
@@ -271,7 +271,10 @@ async function callGPT4ChatCompletionsAPI(
         } else if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
           errorMessage = 'DNS resolution failed. Cannot resolve OpenAI endpoint hostname.'
           troubleshooting = 'Please verify: 1) DNS is working, 2) Network connectivity.'
-        } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('connection refused')) {
+        } else if (
+          errorMessage.includes('ECONNREFUSED') ||
+          errorMessage.includes('connection refused')
+        ) {
           errorMessage = 'Connection refused by OpenAI endpoint.'
           troubleshooting = 'Please verify: 1) Network connectivity, 2) Service is available.'
         } else if (errorMessage.includes('CERT') || errorMessage.includes('certificate')) {
@@ -300,7 +303,9 @@ async function callGPT4ChatCompletionsAPI(
         errorText = await response.text()
         error = errorText ? (JSON.parse(errorText) as Record<string, unknown>) : {}
       } catch {
-        error = { error: { message: errorText || `HTTP ${response.status}: ${response.statusText}` } }
+        error = {
+          error: { message: errorText || `HTTP ${response.status}: ${response.statusText}` },
+        }
       }
 
       const errObj = error.error as { message?: string } | undefined
@@ -320,8 +325,10 @@ async function callGPT4ChatCompletionsAPI(
       }
 
       if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After') || response.headers.get('retry-after')
-        const rateLimitType = (error.error as { type?: string } | undefined)?.type || 'rate_limit_exceeded'
+        const retryAfter =
+          response.headers.get('Retry-After') || response.headers.get('retry-after')
+        const rateLimitType =
+          (error.error as { type?: string } | undefined)?.type || 'rate_limit_exceeded'
 
         if (retryAfter) {
           errorMessage = `Rate limit exceeded. Please wait ${retryAfter} seconds before trying again.`
@@ -373,24 +380,19 @@ async function callGPT4ChatCompletionsAPI(
 function isUnsupportedModelError(error: Error): boolean {
   const message = error.message.toLowerCase()
   return (
-    message.includes('model') && (
-      message.includes('not found') ||
-      message.includes('not available') ||
-      message.includes('unsupported') ||
-      message.includes('invalid model')
-    )
-  ) || (
-    message.includes('api') && (
-      message.includes('not found') ||
-      message.includes('not available') ||
-      message.includes('unsupported')
-    )
-  ) || (
-    message.includes('parameter') && (
-      message.includes('not supported') ||
-      message.includes('invalid') ||
-      message.includes('unknown')
-    )
+    (message.includes('model') &&
+      (message.includes('not found') ||
+        message.includes('not available') ||
+        message.includes('unsupported') ||
+        message.includes('invalid model'))) ||
+    (message.includes('api') &&
+      (message.includes('not found') ||
+        message.includes('not available') ||
+        message.includes('unsupported'))) ||
+    (message.includes('parameter') &&
+      (message.includes('not supported') ||
+        message.includes('invalid') ||
+        message.includes('unknown')))
   )
 }
 
@@ -407,7 +409,7 @@ export async function callOpenAI(
   if (!openAiKey || !openAiKey.startsWith('sk-')) {
     throw new Error('Invalid OpenAI API key. Keys must start with "sk-"')
   }
-  
+
   // Default system prompt with security guidelines
   const defaultSystemPrompt = `You are a helpful, secure AI assistant. Be concise and helpful in your responses.
 
@@ -425,21 +427,21 @@ File Content Access:
 - Be helpful with data analysis while respecting privacy and security
 
 Be helpful, but maintain security boundaries.`
-  
+
   const systemPrompt = options.systemPrompt || defaultSystemPrompt
   const modelsToTry = [model, ...(FALLBACK_CHAIN[model] || [])]
-  
+
   let lastError: Error | null = null
   let usedFallback = false
   let fallbackReason: string | undefined
-  
+
   for (let i = 0; i < modelsToTry.length; i++) {
     const currentModel = modelsToTry[i]
     const isGPT5 = isGPT5Model(currentModel)
-    
+
     try {
       let content: string
-      
+
       if (isGPT5) {
         // Use Responses API for GPT-5.x
         const input = normalizeMessagesToInput(messages, systemPrompt)
@@ -451,7 +453,7 @@ Be helpful, but maintain security boundaries.`
           systemPrompt,
         })
       }
-      
+
       return {
         content,
         model: currentModel,
@@ -460,7 +462,7 @@ Be helpful, but maintain security boundaries.`
       }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      
+
       // Only try fallback if it's a model/API unsupported error
       if (isUnsupportedModelError(lastError)) {
         if (i < modelsToTry.length - 1) {
@@ -471,14 +473,14 @@ Be helpful, but maintain security boundaries.`
           continue
         }
       }
-      
+
       // If it's the last model or not an unsupported model error, throw
       if (i === modelsToTry.length - 1) {
         throw lastError
       }
     }
   }
-  
+
   // Should never reach here, but TypeScript needs it
   throw lastError || new Error('Failed to call OpenAI API')
 }
@@ -488,17 +490,17 @@ Be helpful, but maintain security boundaries.`
  */
 export function validateModel(model: string): string {
   const normalized = model.toLowerCase().trim()
-  
+
   // Allow GPT-5.x models
   if (GPT5_MODELS.some(m => normalized.startsWith(m.toLowerCase()))) {
     return normalized
   }
-  
+
   // Allow GPT-4 models
   if (GPT4_MODELS.some(m => normalized.startsWith(m.toLowerCase()))) {
     return normalized
   }
-  
+
   // For Azure OpenAI deployments, allow any deployment name (they're validated separately)
   // This function is only called for OpenAI, not Azure, so we keep the default behavior
   // Default to gpt-4o-mini for unknown models
@@ -588,8 +590,7 @@ Be helpful, but maintain security boundaries.`
       content?: Array<{ type: string; text?: string }>
       model?: string
     }
-    const text =
-      data.content?.find((b) => b.type === 'text')?.text ?? data.content?.[0]?.text ?? ''
+    const text = data.content?.find(b => b.type === 'text')?.text ?? data.content?.[0]?.text ?? ''
     return {
       content: text,
       model: data.model || model,
@@ -616,7 +617,7 @@ async function callAzureChatCompletionsAPI(
   azureApiKey: string,
   options: AdapterOptions,
   azureEndpoint: string,
-  apiVersion: string,
+  apiVersion: string
 ): Promise<string> {
   const base = normalizeAzureEndpoint(azureEndpoint)
   const url = `${base}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`
@@ -683,7 +684,11 @@ async function callAzureChatCompletionsAPI(
       }
 
       const data = (await response.json().catch(() => ({}))) as {
-        choices?: Array<{ message?: { content?: string }; text?: string; delta?: { content?: string } }>
+        choices?: Array<{
+          message?: { content?: string }
+          text?: string
+          delta?: { content?: string }
+        }>
       }
       const content =
         data?.choices?.[0]?.message?.content ||

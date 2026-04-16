@@ -109,7 +109,7 @@ export async function ingestDocument(
 
   // 3) Embed + upsert (Phase D)
   if (embeddingsAdapter && vectorStoreAdapter) {
-    const texts = chunks.map((c) => c.text)
+    const texts = chunks.map(c => c.text)
     const vectors = await embeddingsAdapter.embed(texts)
     await vectorStoreAdapter.upsert(vectors, chunks)
   }

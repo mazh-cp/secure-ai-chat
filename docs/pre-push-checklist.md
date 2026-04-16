@@ -13,6 +13,7 @@ node -v
 **Expected**: `v25.2.1`
 
 **If incorrect**:
+
 ```bash
 # Install nvm if not installed
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
@@ -63,7 +64,8 @@ npm run build
 5. Refresh page - theme should persist
 6. Check browser console for errors
 
-**Expected**: 
+**Expected**:
+
 - Theme toggle works
 - Theme persists after refresh
 - No console errors
@@ -178,6 +180,7 @@ echo "   - No console errors"
 ```
 
 Save as `scripts/pre-push-check.sh` and run:
+
 ```bash
 chmod +x scripts/pre-push-check.sh
 ./scripts/pre-push-check.sh

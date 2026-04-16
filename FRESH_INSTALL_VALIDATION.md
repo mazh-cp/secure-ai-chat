@@ -27,6 +27,7 @@ INSTALL_DIR=/opt TAG=v1.0.11 curl -fsSL https://raw.githubusercontent.com/mazh-c
 ### Option 2: Manual Installation
 
 1. **Clone the repository:**
+
    ```bash
    cd ~
    git clone https://github.com/mazh-cp/secure-ai-chat.git
@@ -78,66 +79,79 @@ PORT=3001 APP_DIR=~/secure-ai-chat bash scripts/validate-fresh-install.sh
 The validation script performs the following checks:
 
 ### 1. Installation Directory
+
 - ✅ Directory exists
 - ✅ Directory is writable
 - ✅ Correct permissions
 
 ### 2. Node.js and npm
+
 - ✅ Node.js installed (v25.x)
 - ✅ npm installed
 - ✅ Correct versions
 
 ### 3. Application Files
+
 - ✅ `package.json` exists
 - ✅ Version is 1.0.11
 - ✅ `package-lock.json` exists
 - ✅ `node_modules` directory exists and populated
 
 ### 4. Build Artifacts
+
 - ✅ `.next` directory exists
 - ✅ Build artifacts present
 
 ### 5. Secure Storage
+
 - ✅ `.secure-storage` directory exists
 - ✅ Permissions are 700 (restricted)
 
 ### 6. Environment Configuration
+
 - ✅ `.env.local` file exists
 - ✅ `HOSTNAME` set to 0.0.0.0
 - ✅ `PORT` configured
 
 ### 7. Systemd Service
+
 - ✅ Service file exists
 - ✅ Service is enabled
 - ✅ Service is running
 
 ### 8. Application Health
+
 - ✅ Port is listening
 - ✅ Health endpoint responding
 - ✅ Version endpoint responding
 
 ### 9. Firewall Configuration
+
 - ✅ UFW is active
 - ✅ Port is allowed
 
 ### 10. Git Repository
+
 - ✅ Git repository exists
 - ✅ On correct tag/branch
 
 ## Expected Validation Results
 
 ### Successful Installation
+
 ```
 ✅ All checks passed! Installation is complete and ready.
 ```
 
 ### Installation with Warnings
+
 ```
 ⚠️  Installation is functional but has some warnings.
 Review the warnings above and address them if needed.
 ```
 
 ### Failed Installation
+
 ```
 ❌ Some checks failed. Please review the errors above.
 ```
@@ -145,21 +159,27 @@ Review the warnings above and address them if needed.
 ## Common Issues and Fixes
 
 ### Issue: Build artifacts missing
+
 **Fix:**
+
 ```bash
 cd ~/secure-ai-chat
 npm run build
 ```
 
 ### Issue: Service not running
+
 **Fix:**
+
 ```bash
 sudo systemctl start secure-ai-chat
 sudo systemctl status secure-ai-chat
 ```
 
 ### Issue: Port not listening
+
 **Fix:**
+
 ```bash
 # Check if service is running
 sudo systemctl status secure-ai-chat
@@ -172,14 +192,18 @@ sudo systemctl restart secure-ai-chat
 ```
 
 ### Issue: Secure storage permissions
+
 **Fix:**
+
 ```bash
 cd ~/secure-ai-chat
 chmod 700 .secure-storage
 ```
 
 ### Issue: Firewall blocking port
+
 **Fix:**
+
 ```bash
 sudo ufw allow 3000/tcp
 sudo ufw reload
@@ -190,18 +214,21 @@ sudo ufw reload
 ### 1. Configure API Keys
 
 **Via Settings Page (Recommended):**
+
 1. Access: `http://your-server:3000/settings`
 2. Enter API keys in the form
 3. Click "Save Settings"
 4. Keys are stored securely in `.secure-storage/api-keys.enc`
 
 **Via Environment Variables:**
+
 ```bash
 cd ~/secure-ai-chat
 nano .env.local
 ```
 
 Add your keys:
+
 ```env
 OPENAI_API_KEY=sk-...
 AZURE_OPENAI_API_KEY=...
@@ -229,6 +256,7 @@ curl http://localhost:3000/api/keys
 ## Troubleshooting
 
 ### View Logs
+
 ```bash
 # Systemd logs
 sudo journalctl -u secure-ai-chat -f
@@ -239,11 +267,13 @@ npm start  # View console output
 ```
 
 ### Restart Service
+
 ```bash
 sudo systemctl restart secure-ai-chat
 ```
 
 ### Rebuild Application
+
 ```bash
 cd ~/secure-ai-chat
 npm run build
@@ -251,11 +281,13 @@ sudo systemctl restart secure-ai-chat
 ```
 
 ### Check Service Status
+
 ```bash
 sudo systemctl status secure-ai-chat
 ```
 
 ### Verify Port
+
 ```bash
 sudo ss -tlnp | grep :3000
 ```
@@ -303,6 +335,7 @@ Warnings: 2
 ## Support
 
 If validation fails:
+
 1. Review the error messages
 2. Check the troubleshooting section
 3. Review server logs: `sudo journalctl -u secure-ai-chat -n 100`

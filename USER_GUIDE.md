@@ -60,11 +60,13 @@ The chat interface is your main workspace for AI conversations. Here's what you 
 ### Security Features
 
 **Lakera Guard Protection:**
+
 - **Input Scan**: Scans your messages before sending to the AI
 - **Output Scan**: Scans AI responses before displaying them
 - Both can be toggled on/off using the switches on the Chat page
 
 **What Gets Blocked:**
+
 - Prompt injection attempts
 - Jailbreak attempts
 - System override commands
@@ -76,6 +78,7 @@ If a message is blocked, you'll see a clear message explaining why and can rephr
 ### Provider and Model Selection
 
 **OpenAI Provider:**
+
 - Choose from available OpenAI models based on your API key
 - **gpt-4o-mini** (default) - Fast and cost-effective
 - **gpt-4o** - More capable, better for complex tasks
@@ -83,6 +86,7 @@ If a message is blocked, you'll see a clear message explaining why and can rephr
 - **gpt-5.x** models - Latest generation (OpenAI only, not available for Azure)
 
 **Azure OpenAI Provider:**
+
 - Uses your Azure OpenAI deployment names (must match exactly, case-sensitive)
 - **gpt-4o-mini** (recommended, auto-selected) - Fast and cost-effective
 - **gpt-4o** - More capable
@@ -91,6 +95,7 @@ If a message is blocked, you'll see a clear message explaining why and can rephr
 - **Note**: GPT-5 models are not supported by Azure OpenAI
 
 **Switching Providers:**
+
 - Use the Provider dropdown to switch between OpenAI and Azure OpenAI
 - The model selector automatically updates based on your provider choice
 - If one provider has invalid keys, you can still use the other provider
@@ -105,12 +110,14 @@ If a message is blocked, you'll see a clear message explaining why and can rephr
 The Files page allows you to upload documents for use with RAG (Retrieval-Augmented Generation). Here's how it works:
 
 **Multiple File Upload:**
+
 - You can upload **up to 10 files simultaneously** (increased from 5)
 - Supported formats: PDF, TXT, MD, JSON, CSV, DOCX
 - Maximum file size: **50 MB per file**
 - Files are stored persistently on the server
 
 **How to Upload:**
+
 1. Go to the **Files** page (📁 icon in the sidebar)
 2. **Drag and drop** files onto the upload area, or **click to browse**
 3. Watch the progress bar as files are processed
@@ -119,6 +126,7 @@ The Files page allows you to upload documents for use with RAG (Retrieval-Augmen
 ### File Processing
 
 **Automatic Processing:**
+
 - Files are automatically saved to server storage
 - Metadata (name, size, upload date) is tracked
 - Files persist across server restarts
@@ -139,6 +147,7 @@ The Files page allows you to upload documents for use with RAG (Retrieval-Augmen
    - Requires Lakera Scan to be enabled
 
 **File Status Indicators (processing pipeline):**
+
 - 🟡 **Pending / uploaded**: File stored; pipeline not started
 - 🔵 **Scanning**: Check Point TE or Lakera scan in progress
 - 🟢 **Safe / ready**: File passed checks; RAG indexing complete (if applicable)
@@ -164,16 +173,19 @@ The Files page allows you to upload documents for use with RAG (Retrieval-Augmen
 Lakera Guard provides comprehensive security for your AI interactions:
 
 **Input Scanning:**
+
 - Scans user messages before they reach the AI
 - Blocks prompt injection, jailbreak attempts, and malicious instructions
 - Provides detailed threat categorization
 
 **Output Scanning:**
+
 - Scans AI responses before displaying them
 - Prevents harmful or inappropriate content
 - Ensures safe AI interactions
 
 **Context Scanning:**
+
 - Scans uploaded file content for threats
 - Removes malicious chunks before RAG processing
 - Protects against document-based attacks
@@ -181,12 +193,14 @@ Lakera Guard provides comprehensive security for your AI interactions:
 ### Check Point Threat Emulation
 
 **File Sandboxing:**
+
 - Uploads files to Check Point's cloud sandbox
 - Analyzes files for malware, exploits, and threats
 - Provides detailed threat reports with severity levels
 - Blocks malicious files automatically
 
 **How It Works:**
+
 1. Enable Check Point TE in Settings
 2. Toggle "File Sandboxing" on the Files page
 3. Upload files - they're automatically sent for analysis
@@ -199,12 +213,14 @@ Lakera Guard provides comprehensive security for your AI interactions:
 ### API Key Management
 
 **OpenAI API Key:**
+
 - Required for chat functionality
 - Stored securely on the server
 - Validated automatically when saved
 - Status indicator shows if key is valid
 
 **Lakera AI Configuration:**
+
 - **API Key**: Required for security scanning
 - **Project ID**: Links to your Lakera Guard policy
 - **Endpoint**: Defaults to `https://api.lakera.ai/v2/guard`
@@ -212,6 +228,7 @@ Lakera Guard provides comprehensive security for your AI interactions:
 - Project ID remains visible for policy verification
 
 **Azure OpenAI Configuration:**
+
 - **API Key**: Required for Azure OpenAI provider
 - **Endpoint**: Your Azure OpenAI resource endpoint (e.g., `https://your-resource.openai.azure.com`)
 - Both stored securely on the server
@@ -221,6 +238,7 @@ Lakera Guard provides comprehensive security for your AI interactions:
 - Supports environment variables: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`
 
 **Check Point TE API Key:**
+
 - Optional, for file sandboxing
 - Stored securely on the server
 - Validated when saved
@@ -229,6 +247,7 @@ Lakera Guard provides comprehensive security for your AI interactions:
 ### Key Validation
 
 The Settings page provides real-time validation:
+
 - 🟡 **Yellow dot**: Validating...
 - 🟢 **Green dot**: Key is valid
 - 🔴 **Red dot**: Key is invalid or not configured
@@ -236,6 +255,7 @@ The Settings page provides real-time validation:
 ### Security Options
 
 **PIN Protection** (if enabled):
+
 - Protects sensitive operations
 - Required for clearing certain settings
 - Adds an extra layer of security
@@ -269,6 +289,7 @@ The Dashboard page provides insights into your application usage:
 The Risk Map visualizes security risks based on the OWASP Top 10 for LLMs 2025:
 
 **Risk Categories:**
+
 - **LLM01**: Prompt Injection
 - **LLM02**: Insecure Output Handling
 - **LLM03**: Training Data Poisoning
@@ -281,6 +302,7 @@ The Risk Map visualizes security risks based on the OWASP Top 10 for LLMs 2025:
 - **LLM10**: Model Theft
 
 **How to Use:**
+
 - Click on any risk to see details
 - View associated security events
 - Understand mitigation strategies
@@ -295,6 +317,7 @@ The Risk Map visualizes security risks based on the OWASP Top 10 for LLMs 2025:
 The application automatically clears uploaded files every **24 hours** to manage storage:
 
 **How It Works:**
+
 - Cleanup runs automatically in the background
 - Removes all uploaded files and metadata
 - Preserves API keys and system logs
@@ -305,11 +328,13 @@ The application automatically clears uploaded files every **24 hours** to manage
 You can check cache status or manually trigger cleanup:
 
 **Check Status:**
+
 ```bash
 curl http://localhost:3000/api/health/cache
 ```
 
 **Manually Trigger Cleanup:**
+
 ```bash
 curl -X POST http://localhost:3000/api/health/cache \
   -H "Content-Type: application/json" \
@@ -317,6 +342,7 @@ curl -X POST http://localhost:3000/api/health/cache \
 ```
 
 **Response Includes:**
+
 - Cleanup service status
 - Last cleanup time
 - Next scheduled cleanup
@@ -325,20 +351,24 @@ curl -X POST http://localhost:3000/api/health/cache \
 ### Health Check Endpoints
 
 **General Health:**
+
 - `GET /api/health` - Basic service health check
 - Returns service status and timestamp
 
 **Cache Health:**
+
 - `GET /api/health/cache` - Cache cleanup status and storage stats
 - `POST /api/health/cache` - Manually trigger cleanup
 
 **Azure OpenAI Health:**
+
 - `POST /api/health/azure-openai` - Validate Azure OpenAI credentials
   - Body: `{ "apiKey": "your-key", "endpoint": "your-endpoint", "deploymentName": "gpt-4o-mini" }`
   - Returns validation status and deployment information
   - Used by Settings page for real-time validation
 
 **Check Point WAF Integration:**
+
 - `GET /api/waf/health` - WAF integration health check
   - Returns WAF middleware status and endpoint information
   - Verifies proxy (WAF layer) is running and capturing requests
@@ -385,6 +415,7 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
    - Compatible with Check Point WAF log aggregation systems
 
 **Configuration:**
+
 - Set `WAF_AUTH_ENABLED=true` in environment variables to enable authentication
 - Set `WAF_API_KEY=your-secret-key` for authentication token
 - Check Point WAF should be configured to read from `/api/waf/logs` endpoint
@@ -457,30 +488,36 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
 ### Common Issues
 
 **Chat Not Responding:**
+
 - Check OpenAI API key in Settings
 - Verify key validation status (green dot)
 - Check network connectivity
 
 **Upload fails:**
+
 - Verify file size (max 50 MB) and format (PDF, TXT, MD, JSON, CSV, DOCX)
 - Ensure stable internet connection
 - If you see a blank screen after upload, the app now shows an error banner instead (v1.0.14+); check the Files page for the message and ensure the server returns JSON (check server logs for 500 errors)
 
 **Permission errors:**
+
 - Ensure `DATA_DIR` (default `./data`) exists and is writable by the app user
 - On production, run `scripts/preflight.sh` then `scripts/storage-perms.sh` with correct `DATA_DIR` and `APP_USER` (e.g. `DATA_DIR=/var/lib/secure-ai-chat APP_USER=secureai sudo bash scripts/storage-perms.sh`)
 - Never use 777; use 755 for directories and 644 for files
 
 **Disk space errors:**
+
 - Run `scripts/preflight.sh` to check disk space (recommended ≥ 100 MB free under `DATA_DIR`)
 - Free space or set `DATA_DIR` to a volume with sufficient space
 
 **Security Scans Not Working:**
+
 - Verify Lakera API key is configured
 - Check Project ID is correct
 - Ensure toggles are enabled on Chat/Files pages
 
 **Files Disappearing:**
+
 - Cache cleanup runs every 24 hours
 - Files are automatically cleared after 24 hours
 - Check `/api/health/cache` for cleanup schedule
@@ -499,6 +536,7 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
 **Current Version:** 1.0.16
 
 **Recent Enhancements (v1.0.16):**
+
 - ✅ Local persistent storage architecture (DATA_DIR with uploads/ and derived/)
 - ✅ Atomic file handling (tmp → rename); pipeline status lifecycle
 - ✅ Async processing pipeline; Lakera chunk-level scanning before RAG
@@ -507,6 +545,7 @@ The application integrates with Check Point Web Application Firewall (WAF) for e
 - ✅ Upgrade safety (scripts/upgrade.sh never deletes DATA_DIR; preflight, storage-perms)
 
 **Version Display:**
+
 - Check the bottom left of the sidebar for the current version
 - Version is also shown in the footer
 
