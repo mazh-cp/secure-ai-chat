@@ -142,11 +142,21 @@ export async function POST(request: NextRequest) {
     const { getApiKeys } = await import('@/lib/api-keys-storage')
     const serverKeys = await getApiKeys()
 
-    // Debug: Log key status (without exposing actual keys)
+    // Debug: booleans only — env vars override file storage (see lib/api-keys-storage merge).
+    const effLakera = effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey)
     console.log('API Keys Status:', {
       serverKeys: {
         openAiKey: !!serverKeys.openAiKey,
+        lakeraAiKey: !!serverKeys.lakeraAiKey,
+        lakeraProjectId: !!serverKeys.lakeraProjectId,
+        lakeraEndpoint: !!serverKeys.lakeraEndpoint,
       },
+      lakeraEnvSet: {
+        LAKERA_AI_KEY: !!process.env.LAKERA_AI_KEY?.trim(),
+        LAKERA_PROJECT_ID: !!process.env.LAKERA_PROJECT_ID?.trim(),
+        LAKERA_ENDPOINT: !!process.env.LAKERA_ENDPOINT?.trim(),
+      },
+      lakeraEffectiveKeyConfigured: !!effLakera,
       clientApiKeys: {
         openAiKey: clientApiKeys?.openAiKey
           ? clientApiKeys.openAiKey === 'configured'
@@ -670,6 +680,40 @@ IMPORTANT INSTRUCTIONS:
       }
     }
 
+    // Lakera input audit as soon as Guard returns — so system logs (service=lakera_guard) and
+    // request_uuid exist even when this request fails later (token throttle, rate limit, LLM error).
+    // Output audit still runs only after generation (below).
+    if (apiKeys.lakeraAiKey && inputScanResult.scanned) {
+      sendLakeraTelemetryFromLog(
+        {
+          userIP,
+          type: 'chat',
+          source: 'chat',
+          action: inputScanResult.flagged ? 'blocked' : 'allowed',
+          lakeraDecision: inputScanResult,
+          projectId: apiKeys.lakeraProjectId,
+          userId: guardUserId,
+          sessionId: requestId,
+          internalRequestId: requestId,
+          requestDetails: {
+            message: latestUserMessage?.content,
+            threatLevel: inputScanResult.threatLevel,
+            detectedPatterns: inputScanResult.categories
+              ? Object.keys(inputScanResult.categories).filter(
+                  k => inputScanResult.categories![k]
+                )
+              : undefined,
+            lakeraRequestUuid: inputScanResult.requestUuid,
+          },
+        },
+        apiKeys.lakeraAiKey,
+        apiKeys.lakeraProjectId,
+        { contextOverride: 'chat_input' }
+      ).catch(error => {
+        console.error('Failed Lakera input audit after scan (non-blocking):', error)
+      })
+    }
+
     // Validate and normalize the model per provider
     const validatedModel =
       provider === 'anthropic'
@@ -989,24 +1033,7 @@ IMPORTANT INSTRUCTIONS:
       timestamp: new Date().toISOString(),
     }
 
-    // Platform-aligned audit (+ optional LAKERA_TELEMETRY_HTTP companion)
-    if (apiKeys.lakeraAiKey && inputScanResult.scanned) {
-      const inputLogData = {
-        ...logData,
-        action: inputScanResult.flagged ? 'blocked' : 'allowed',
-        lakeraDecision: inputScanResult,
-        projectId: apiKeys.lakeraProjectId,
-        userId: guardUserId,
-        sessionId: requestId,
-        internalRequestId: requestId,
-      }
-      sendLakeraTelemetryFromLog(inputLogData, apiKeys.lakeraAiKey, apiKeys.lakeraProjectId, {
-        contextOverride: 'chat_input',
-      }).catch(error => {
-        console.error('Failed Lakera audit/telemetry for input scan (non-blocking):', error)
-      })
-    }
-
+    // Platform-aligned audit for output only (input audit already emitted after input scan).
     if (apiKeys.lakeraAiKey && outputScanResult.scanned) {
       const outputLogData = {
         ...logData,

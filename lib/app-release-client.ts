@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.8'
-export const RELEASE_DATE = '2026-04-03'
+export const APP_VERSION = '1.1.9'
+export const RELEASE_DATE = '2026-04-17'
 
 export interface ReleaseNoteItem {
   title: string
@@ -13,13 +13,18 @@ export interface ReleaseNoteItem {
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Fixed',
+    title: 'Added',
     items: [
-      'Standalone `server.js` can live under `.next/standalone/<app>/` — start + verify-build find it.',
+      'Lakera verify API and Settings **Verify Lakera** probe.',
+      'Remote upgrade helper script and docs pointer.',
     ],
   },
   {
     title: 'Changed',
-    items: ['Default production upgrade tag is `v1.1.8`.'],
+    items: [
+      'Production defaults to **Lakera fail-closed** unless disabled explicitly.',
+      'Better Lakera diagnostics in chat logs; input Guard audit even when the LLM step never runs.',
+      'Default production upgrade tag **`v1.1.9`**.',
+    ],
   },
 ]

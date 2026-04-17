@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9] - 2026-04-17
+
+### Added
+
+- **`POST /api/lakera/verify`** — Runs a minimal Lakera Guard request with stored or draft key / `project_id` / endpoint; returns JSON (`ok`, `requestUuid`, etc.) for production checks (`curl` friendly).
+- **Settings → Verify Lakera (Guard probe)** — Triggers the verify API from the UI.
+- **`scripts/remote-production-upgrade.sh`** — Canonical wrapper for SSH upgrades and curl one-liner hints; documented in **`scripts/REMOTE-UPGRADE.md`**.
+
+### Changed
+
+- **Lakera fail-closed in production** — `lib/config.ts`: when `NODE_ENV=production`, **`LAKERA_FAIL_CLOSED` defaults to true** unless set to `false` (development unchanged unless `LAKERA_FAIL_CLOSED=true`).
+- **Chat Lakera observability** — Input Guard audit (`sendLakeraTelemetryFromLog` / `lakera_guard` system log) runs **immediately after** the input scan so failures after scan (e.g. token throttle) still record Lakera outcome.
+- **Chat debug log** — `API Keys Status` now logs Lakera presence, **`lakeraEnvSet`**, and **`lakeraEffectiveKeyConfigured`** (env overrides encrypted storage; helps debug 401 after CLI key updates).
+- **Upgrade pin** — Default **`GIT_REF=v1.1.9`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+- **`proxy.ts`** — `X-Application-Version` fallback aligned to **1.1.9** when `NEXT_PUBLIC_APP_VERSION` is unset.
+
 ## [1.1.8] - 2026-04-03
 
 ### Fixed

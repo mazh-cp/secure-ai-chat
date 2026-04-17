@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.8'
+export const APP_VERSION = '1.1.9'
 
-export const RELEASE_DATE = '2026-04-03'
+export const RELEASE_DATE = '2026-04-17'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,16 +18,23 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.8]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.9]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Fixed',
+    title: 'Added',
     items: [
-      'Nested `.next/standalone/<app>/server.js` supported (verify-build + start-standalone resolve server.js; skip traced `.nvm/`).',
+      '`POST /api/lakera/verify` — minimal Guard probe for connectivity and project_id (JSON response).',
+      'Settings: **Verify Lakera (Guard probe)** button.',
+      '`scripts/remote-production-upgrade.sh` — canonical entry; `REMOTE-UPGRADE.md` cross-link.',
     ],
   },
   {
     title: 'Changed',
-    items: ['Default v3 upgrade tag `GIT_REF=v1.1.8` in scripts and upgrade docs.'],
+    items: [
+      '**Lakera fail-closed in production** by default (`LAKERA_FAIL_CLOSED` unset); set `LAKERA_FAIL_CLOSED=false` to opt out.',
+      'Chat: **Lakera input audit** (`lakera_guard` system log) emitted immediately after input Guard so token/rate-limit failures still leave an audit trail.',
+      'Chat: **API Keys Status** log includes Lakera flags and `lakeraEnvSet` (env overrides file storage).',
+      'Default pinned upgrade tag **`GIT_REF=v1.1.9`** in v3 / remote VM scripts and `UPGRADE_COMMANDS.md`.',
+    ],
   },
 ]
