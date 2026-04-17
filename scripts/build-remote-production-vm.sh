@@ -2,7 +2,7 @@
 # Secure AI Chat — build and roll out on a remote production VM over SSH.
 #
 # Defaults target the 1.1.x upgrade line (upgrade-remote-production-v3.sh):
-#   USE_V3=1, GIT_REF=v1.1.9, USE_BUILD_FRESH=1
+#   USE_V3=1, GIT_REF=v1.1.10, USE_BUILD_FRESH=1
 #
 # Prerequisites on the VM:
 #   - Git clone of this repo (see install_ubuntu_clean.sh or your layout)
@@ -14,7 +14,7 @@
 #   export SSH_TARGET=adminuser@YOUR_VM_PUBLIC_IP
 #   bash scripts/build-remote-production-vm.sh
 #
-# Track main on the VM instead of v1.1.9:
+# Track main on the VM instead of v1.1.10:
 #   GIT_REF=main SSH_TARGET=user@host bash scripts/build-remote-production-vm.sh
 #
 # Use legacy v2 wrapper (1.0.x-style defaults):
@@ -49,7 +49,7 @@ fi
 export USE_V3="${USE_V3:-1}"
 
 if [ "${USE_V3}" = "1" ] || [ "${USE_V3}" = "true" ]; then
-  export GIT_REF="${GIT_REF:-v1.1.9}"
+  export GIT_REF="${GIT_REF:-v1.1.10}"
   export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
   export USE_V2="${USE_V2:-0}"
 else

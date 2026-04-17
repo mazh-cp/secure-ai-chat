@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.10] - 2026-04-18
+
+### Added
+
+- **Lakera strict enforcement** — `LAKERA_ENFORCE_STRICT` (master) and granular **`LAKERA_REQUIRE_PROJECT_ID`**, **`LAKERA_ENFORCE_INPUT_OUTPUT_SCAN`**, **`LAKERA_FAIL_CLOSED_ON_AUTH_ERROR`**; chat returns **503** when a Lakera key is set but project id is missing and requirement is enabled; Guard paths block **`lakera_project_required`**; **`POST /api/lakera/verify`** returns **400** without project id when required; **`lakeraEnforcement`** object on **`GET /api/settings/status`** and in chat **`API Keys Status`** logs.
+- **`.gitignore`** — Ignore **`.nvm/`**, **`.npm/`**, **`.cache/`**, **`.config/`** when the deploy user’s HOME is the repo (cleaner `git status` on production VMs).
+
+### Changed
+
+- **RAG / `scanTextWithLakera`** — HTTP **401** from Guard aligns with chat/file: under fail-closed, block on 401 only when **`LAKERA_FAIL_CLOSED_ON_AUTH_ERROR`** or **`LAKERA_ENFORCE_STRICT`** is set; otherwise remain fail-open on bad key.
+- **Upgrade pin** — Default **`GIT_REF=v1.1.10`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+- **`proxy.ts`** — `X-Application-Version` header fallback **1.1.10** when **`NEXT_PUBLIC_APP_VERSION`** is unset.
+
 ## [1.1.9] - 2026-04-17
 
 ### Added
