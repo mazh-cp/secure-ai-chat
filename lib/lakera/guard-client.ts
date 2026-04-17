@@ -191,6 +191,22 @@ function patternsToCategoryRecord(patterns: string[]): Record<string, boolean> {
   )
 }
 
+/** Lakera rejected the API key — Guard did not run; blocking adds no policy enforcement. */
+function lakeraGuardUnauthorized(status: number): boolean {
+  return status === 401
+}
+
+function lakeraFailClosedBlockOnHttpError(status: number): boolean {
+  if (!config.lakeraFailClosed) return false
+  if (lakeraGuardUnauthorized(status)) {
+    const strict =
+      process.env.LAKERA_FAIL_CLOSED_ON_AUTH_ERROR === 'true' ||
+      process.env.LAKERA_FAIL_CLOSED_ON_AUTH_ERROR === '1'
+    return strict
+  }
+  return true
+}
+
 export interface GuardChatScanResult {
   scanned: boolean
   flagged: boolean
@@ -289,7 +305,7 @@ export async function screenChatWithLakera(
 
     if (!posted.ok) {
       console.error('Lakera API error:', posted.status)
-      if (config.lakeraFailClosed) {
+      if (lakeraFailClosedBlockOnHttpError(posted.status)) {
         return {
           scanned: true,
           flagged: true,
@@ -297,6 +313,11 @@ export async function screenChatWithLakera(
           message: `Security scan unavailable (${posted.status}). Request blocked (fail-closed).`,
           threatLevel: 'high',
         }
+      }
+      if (config.lakeraFailClosed && lakeraGuardUnauthorized(posted.status)) {
+        console.warn(
+          '[Lakera Guard] HTTP 401 — invalid or rejected API key; chat proceeds without Guard. Fix LAKERA_AI_KEY / Settings. To block in this case, set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1.'
+        )
       }
       if (preScan.detected && preScan.severity === 'medium') {
         return {
@@ -313,7 +334,9 @@ export async function screenChatWithLakera(
       return {
         scanned: false,
         flagged: false,
-        message: `Lakera API error: ${posted.status}`,
+        message: lakeraGuardUnauthorized(posted.status)
+          ? `Lakera API error: ${posted.status} (unauthorized — key misconfiguration; chat allowed, Guard skipped)`
+          : `Lakera API error: ${posted.status}`,
       }
     }
 
@@ -570,7 +593,7 @@ export async function screenTextAsFileUpload(args: {
     })
 
     if (!posted.ok) {
-      if (config.lakeraFailClosed) {
+      if (lakeraFailClosedBlockOnHttpError(posted.status)) {
         return {
           scanned: true,
           flagged: true,
@@ -579,6 +602,11 @@ export async function screenTextAsFileUpload(args: {
           lakeraHttpStatus: posted.status,
           lakeraErrorDetails: posted.errorDetails ?? null,
         }
+      }
+      if (config.lakeraFailClosed && lakeraGuardUnauthorized(posted.status)) {
+        console.warn(
+          '[Lakera file scan] HTTP 401 — proceeding without Guard. Set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 to block uploads in this case.'
+        )
       }
       if (preScan.detected && (preScan.severity === 'high' || preScan.severity === 'medium')) {
         return {

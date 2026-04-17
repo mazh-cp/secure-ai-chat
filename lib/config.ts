@@ -34,6 +34,8 @@ export const config = {
    * On Lakera API errors / timeouts: block traffic when true (enterprise).
    * Production defaults to fail-closed unless LAKERA_FAIL_CLOSED=false.
    * Non-production defaults to fail-open unless LAKERA_FAIL_CLOSED=true.
+   * HTTP 401 from Guard is treated as fail-open when fail-closed (misconfigured key — no scan ran);
+   * set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 to block in that case too.
    */
   lakeraFailClosed: isProduction
     ? process.env.LAKERA_FAIL_CLOSED !== 'false'

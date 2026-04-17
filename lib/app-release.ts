@@ -31,7 +31,7 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Changed',
     items: [
-      '**Lakera fail-closed in production** by default (`LAKERA_FAIL_CLOSED` unset); set `LAKERA_FAIL_CLOSED=false` to opt out.',
+      '**Lakera fail-closed in production** by default (`LAKERA_FAIL_CLOSED` unset); set `LAKERA_FAIL_CLOSED=false` to opt out. **HTTP 401** from Guard is fail-open (bad key) unless `LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1`.',
       'Chat: **Lakera input audit** (`lakera_guard` system log) emitted immediately after input Guard so token/rate-limit failures still leave an audit trail.',
       'Chat: **API Keys Status** log includes Lakera flags and `lakeraEnvSet` (env overrides file storage).',
       'Default pinned upgrade tag **`GIT_REF=v1.1.9`** in v3 / remote VM scripts and `UPGRADE_COMMANDS.md`.',
