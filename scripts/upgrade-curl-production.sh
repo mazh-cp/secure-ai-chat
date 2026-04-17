@@ -36,7 +36,7 @@
 set -euo pipefail
 
 # Bumped when upgrade behavior changes (appears in logs so support can see which script ran).
-UPGRADE_CURL_SCRIPT_REV="${UPGRADE_CURL_SCRIPT_REV:-20260417b}"
+UPGRADE_CURL_SCRIPT_REV="${UPGRADE_CURL_SCRIPT_REV:-20260417c}"
 
 # Configuration: APP_DIR from env, or first argument (for "bash -s -- /path"), or auto-detect
 if [ -n "${1:-}" ] && [ -d "${1}" ]; then
@@ -287,30 +287,59 @@ if [ -d "$BACKUP_DIR/.storage" ]; then
   sudo cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" || true
 fi
 
-# npm install (with nvm if present). App user (secureai) has nvm in APP_DIR/.nvm, so set HOME=APP_DIR.
-say "Installing dependencies (npm install)"
+# install_ubuntu_clean installs nvm under APP_DIR/.nvm using HOME=INSTALL_DIR for the app user.
+# sudo -u secureai leaves HOME=/home/secureai — then system Node/npm run → EBADENGINE + npm 9.2 "Invalid comparator" on overrides.
 APP_HOME="$APP_DIR"
-export HOME="${HOME:-$APP_DIR}"
-if [ -d "$HOME/.nvm" ]; then
-  export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Run shell as APP_USER with HOME=APP_HOME, load nvm, nvm use (from .nvmrc) or nvm install, then eval CMD.
+run_app_nvm_cmd() {
+  local cmd="$1"
+  if [ "$(whoami)" = "$APP_USER" ]; then
+    env APP_HOME="$APP_HOME" APP_DIR="$APP_DIR" CMD="$cmd" bash <<'NVMRUN'
+set -euo pipefail
+export HOME="$APP_HOME"
+cd "$APP_DIR" || exit 1
+if [ ! -s "$HOME/.nvm/nvm.sh" ]; then
+  echo "Expected nvm at $HOME/.nvm/nvm.sh (install_ubuntu_clean uses HOME=app dir for this user). See scripts/install_ubuntu_clean.sh Phase 3." >&2
+  exit 2
 fi
-if [ "$(whoami)" = "$APP_USER" ]; then
-  (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || fail "npm install failed"
-else
-  sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || fail "npm install failed"
+# shellcheck disable=SC1090
+. "$HOME/.nvm/nvm.sh"
+if ! nvm use >/dev/null 2>&1; then
+  nvm install
+  nvm use
 fi
+eval "$CMD"
+NVMRUN
+  else
+    sudo -u "$APP_USER" env APP_HOME="$APP_HOME" APP_DIR="$APP_DIR" CMD="$cmd" bash <<'NVMRUN'
+set -euo pipefail
+export HOME="$APP_HOME"
+cd "$APP_DIR" || exit 1
+if [ ! -s "$HOME/.nvm/nvm.sh" ]; then
+  echo "Expected nvm at $HOME/.nvm/nvm.sh (HOME must be app dir for this install layout)." >&2
+  exit 2
+fi
+# shellcheck disable=SC1090
+. "$HOME/.nvm/nvm.sh"
+if ! nvm use >/dev/null 2>&1; then
+  nvm install
+  nvm use
+fi
+eval "$CMD"
+NVMRUN
+  fi
+}
+
+say "Installing dependencies (npm install)"
+run_app_nvm_cmd 'npm install || npm ci' || fail "npm install failed"
 ok "Dependencies installed"
 
 # Optional TypeScript check before build (RUN_TYPECHECK=1); skipped when USE_BUILD_FRESH=1
 if [ "${USE_BUILD_FRESH}" != "1" ] && [ "${USE_BUILD_FRESH}" != "true" ]; then
   if [ "${RUN_TYPECHECK}" = "1" ] || [ "${RUN_TYPECHECK}" = "true" ]; then
     say "Running type-check (RUN_TYPECHECK=1)"
-    if [ "$(whoami)" = "$APP_USER" ]; then
-      (cd "$APP_DIR" && npm run type-check) || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
-    else
-      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run type-check" || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
-    fi
+    run_app_nvm_cmd 'npm run type-check' || fail "type-check failed; fix errors or set RUN_TYPECHECK=0"
     ok "type-check passed"
   fi
 else
@@ -325,7 +354,10 @@ run_npm_build_fresh_or_fallback() {
 set -euo pipefail
 export HOME="$APP_HOME"
 cd "$APP_DIR" || exit 1
-[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+if [ ! -s "$HOME/.nvm/nvm.sh" ]; then echo "[upgrade-curl-production] ERROR: missing $HOME/.nvm/nvm.sh" >&2; exit 2; fi
+# shellcheck disable=SC1090
+. "$HOME/.nvm/nvm.sh"
+if ! nvm use >/dev/null 2>&1; then nvm install; nvm use; fi
 if node -e "const p=require(\"./package.json\");const s=p.scripts||{};process.exit(s[\"build:fresh\"]?0:1)" 2>/dev/null; then
   exec npm run build:fresh
 fi
@@ -358,13 +390,13 @@ for attempt in 1 2; do
     if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
       if run_npm_build_fresh_or_fallback; then build_ok=true; break; fi
     else
-      if (cd "$APP_DIR" && npm run build); then build_ok=true; break; fi
+      if run_app_nvm_cmd 'npm run build'; then build_ok=true; break; fi
     fi
   else
     if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
       if run_npm_build_fresh_or_fallback; then build_ok=true; break; fi
     else
-      if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
+      if run_app_nvm_cmd 'npm run build'; then build_ok=true; break; fi
     fi
   fi
   if [ "$attempt" -eq 1 ] && [ "$GIT_REF" != "main" ]; then
@@ -380,11 +412,7 @@ for attempt in 1 2; do
     [ -d "$BACKUP_DIR/.secure-storage" ] && sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || true
     [ -d "$BACKUP_DIR/.storage" ] && sudo cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" 2>/dev/null || true
     say "Reinstalling dependencies after checkout main"
-    if [ "$(whoami)" = "$APP_USER" ]; then
-      (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
-    else
-      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
-    fi
+    run_app_nvm_cmd 'npm install || npm ci' || true
   elif [ "$attempt" -eq 1 ] && [ "$GIT_REF" = "main" ]; then
     warn "Build failed on main — syncing working tree to origin/main..."
     run_in_app_dir git fetch origin 2>/dev/null || true
@@ -394,16 +422,12 @@ for attempt in 1 2; do
       run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
     }
     say "Reinstalling dependencies after git sync"
-    if [ "$(whoami)" = "$APP_USER" ]; then
-      (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
-    else
-      sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
-    fi
+    run_app_nvm_cmd 'npm install || npm ci' || true
   else
     break
   fi
 done
-[ "$build_ok" = true ] || fail "Build failed. On VM: cd $APP_DIR && sudo -u $APP_USER git fetch origin && sudo -u $APP_USER git reset --hard origin/main && npm run build. Or pull latest helper: curl .../upgrade-curl-production.sh | ... bash (this script id: $UPGRADE_CURL_SCRIPT_REV)"
+[ "$build_ok" = true ] || fail "Build failed. On VM use app nvm (HOME=app dir): sudo -u $APP_USER env HOME=$APP_DIR bash -lc 'cd $APP_DIR && . \"\$HOME/.nvm/nvm.sh\" && nvm use && npm run build'. Or: curl .../upgrade-curl-production.sh | ... bash (id: $UPGRADE_CURL_SCRIPT_REV)"
 ok "Build complete"
 
 if [ -n "${UNIT_USER:-}" ] && [ -n "${APP_USER:-}" ] && [ "$UNIT_USER" != "$APP_USER" ]; then

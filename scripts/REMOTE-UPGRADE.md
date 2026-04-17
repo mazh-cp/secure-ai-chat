@@ -57,3 +57,15 @@ If you ran `GIT_REF=… USE_BUILD_FRESH=1 curl … | bash`, those variables were
 2. Rebuild and restart: `npm ci && npm run build` (or `USE_BUILD_FRESH=1` upgrade path), then `sudo systemctl restart secure-ai-chat`.
 3. Check API: `curl -sS "http://127.0.0.1:${PORT:-3000}/api/version"` — `version` must match `package.json` / release.
 4. Hard refresh the browser (`Ctrl+Shift+R`) or clear site data for that host so old JS chunks are not reused.
+
+## `npm ERR! Invalid comparator: npm:@eslint/...` or Node `EBADENGINE` (v18 on the VM)
+
+The app targets **Node 24.13.0** (see `package.json` / `.nvmrc`). **install_ubuntu_clean** puts **nvm** under **`$INSTALL_DIR/.nvm`** by running the nvm installer with **`HOME=$INSTALL_DIR`** (e.g. `/opt/secure-ai-chat`).
+
+If you run **`sudo -u secureai ...`** without setting **`HOME`** to that app directory, the shell uses **`/home/secureai`** → **system Node 18** and **old npm**, which breaks **`npm install`** (including `overrides` with `npm:` aliases).
+
+Use the **upgrade curl script** (revision **20260417c+**) or run npm like this:
+
+```bash
+sudo -u secureai env HOME=/opt/secure-ai-chat bash -lc 'cd /opt/secure-ai-chat && . "$HOME/.nvm/nvm.sh" && nvm use && npm install && npm run build:fresh'
+```
