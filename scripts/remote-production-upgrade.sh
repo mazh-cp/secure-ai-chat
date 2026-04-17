@@ -21,9 +21,8 @@
 # 2b) Upgrade ON THE PRODUCTION VM (curl latest upgrade script from GitHub):
 #      curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #
-#      With overrides:
-#      APP_DIR=/opt/secure-ai-chat GIT_REF=main \
-#        curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+#      With overrides (env vars after the pipe so bash sees them, not only curl):
+#      curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=main bash
 #
 # Standard installs under /opt/secure-ai-chat may use instead:
 #      INSTALL_DIR=/opt/secure-ai-chat \
@@ -52,6 +51,6 @@ echo ""
 echo "  On the VM (after git push):"
 echo "    curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash"
 echo ""
-echo "  Optional: APP_DIR=/opt/secure-ai-chat GIT_REF=main before the curl | bash"
+echo "  Optional: curl ... | APP_DIR=/opt/secure-ai-chat GIT_REF=main bash"
 echo "=============================================================================="
 exit 0

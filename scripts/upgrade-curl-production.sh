@@ -17,20 +17,26 @@
 # Usage (production VM via SSH):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #
-# With overrides (APP_DIR must be set for the bash process when using a pipe; use one of these):
-#   curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat bash
+# IMPORTANT — variables on the LEFT of `|` apply only to curl, NOT to bash. Wrong:
+#   GIT_REF=v1.1.9 APP_DIR=/opt/secure-ai-chat curl ... | bash   # bash will NOT see GIT_REF / APP_DIR / USE_BUILD_FRESH
+# Right — put overrides on the RIGHT (bash side) or export first, then pipe:
+#   curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=main USE_BUILD_FRESH=1 bash
 #   curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat
-#   GIT_REF=v1.0.15 curl -fsSL .../upgrade-curl-production.sh | bash
+# Or:  export APP_DIR=/opt/secure-ai-chat GIT_REF=main USE_BUILD_FRESH=1
+#       curl -fsSL .../upgrade-curl-production.sh | bash
 #
 # If the app lives under another user's home (e.g. /home/adminuser/secure-ai-chat) but systemd
 # User= is secureai, auto-detection uses the directory owner for git/npm. Override explicitly:
-#   APP_USER=adminuser curl -fsSL .../upgrade-curl-production.sh | bash
+#   curl -fsSL .../upgrade-curl-production.sh | APP_USER=adminuser bash
 #
 # If GIT_REF is a version tag (v1.2.3) that does not exist on origin yet, the script
 # falls back to GIT_REF_FALLBACK (default: main). Push tags for reproducible deploys:
 #   git tag v1.0.20 && git push origin v1.0.20
 
 set -euo pipefail
+
+# Bumped when upgrade behavior changes (appears in logs so support can see which script ran).
+UPGRADE_CURL_SCRIPT_REV="${UPGRADE_CURL_SCRIPT_REV:-20260417b}"
 
 # Configuration: APP_DIR from env, or first argument (for "bash -s -- /path"), or auto-detect
 if [ -n "${1:-}" ] && [ -d "${1}" ]; then
@@ -74,12 +80,7 @@ echo -e "${BLUE}╔════════════════════�
 echo -e "${BLUE}║   Secure AI Chat - Production Upgrade (curl one-liner)      ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-say "App directory: $APP_DIR"
-say "Git reference: $GIT_REF"
-if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
-  say "Build mode: build:fresh (secrets gate + typecheck + lint + production build)"
-fi
-echo ""
+say "upgrade-curl-production.sh id: $UPGRADE_CURL_SCRIPT_REV (if missing, push main to GitHub or run: cd APP_DIR && sudo bash scripts/upgrade-curl-production.sh)"
 
 # Directory must exist (use sudo for check; APP_DIR may be owned by app user e.g. secureai)
 # If default path missing, try common locations so upgrade works without setting APP_DIR
@@ -146,6 +147,13 @@ if [ "$APP_ROOT" != "$APP_DIR" ]; then
   APP_DIR="$APP_ROOT"
 fi
 
+say "App directory: $APP_DIR"
+say "Git reference: $GIT_REF"
+if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
+  say "Build mode: build:fresh (secrets gate + typecheck + lint + production build)"
+fi
+echo ""
+
 # Detect app user: must be able to cd to APP_DIR (e.g. secureai cannot enter /home/adminuser/...).
 try_cd_as_user() {
   local u="$1"
@@ -179,7 +187,7 @@ if [ -z "${APP_USER:-}" ]; then
   elif try_cd_as_user "$(whoami)"; then
     APP_USER="$(whoami)"
   else
-    fail "No user can cd to $APP_DIR. Try: APP_USER=adminuser curl -fsSL ... | bash (or chmod +x parent home dirs)"
+    fail "No user can cd to $APP_DIR. Try: curl -fsSL ... | APP_USER=adminuser bash (or chmod +x parent home dirs)"
   fi
 fi
 say "App user: $APP_USER"
@@ -226,7 +234,13 @@ checkout_git_ref() {
       run_in_app_dir git branch -a 2>&1 || true
       return 1
     }
-    run_in_app_dir git pull origin "$ref" 2>/dev/null || true
+    # Match remote exactly (pull with `|| true` could leave a stale package.json if pull failed silently).
+    if run_in_app_dir git reset --hard "origin/$ref" 2>/dev/null; then
+      :
+    else
+      warn "git reset --hard origin/$ref failed (permissions or local changes?); trying pull"
+      run_in_app_dir git pull origin "$ref" || warn "git pull origin $ref also failed"
+    fi
     ok "Checked out $ref (latest from origin)"
     return 0
   fi
@@ -258,6 +272,9 @@ else
   run_in_app_dir git branch -a 2>&1 || true
   fail "Ref $GIT_REF not found. Run: cd $APP_DIR && sudo -u $APP_USER git fetch origin && git branch -a"
 fi
+
+PKG_VER_LINE="$(sudo grep -m1 '"version"' "$APP_DIR/package.json" 2>/dev/null || true)"
+say "After checkout: $PKG_VER_LINE (HEAD $(run_in_app_dir git rev-parse --short HEAD 2>/dev/null || echo '?'))"
 
 # Restore backup over any changed config (use sudo to write into APP_DIR if needed)
 if [ -f "$BACKUP_DIR/.env.local" ]; then
@@ -300,10 +317,38 @@ else
   say "Skipping separate type-check (included in npm run build:fresh)"
 fi
 
+# When USE_BUILD_FRESH=1: prefer npm run build:fresh; if package.json has no such script (fork / old
+# tree while HEAD matches upstream), run the same steps: clear, optional gates, build.
+run_npm_build_fresh_or_fallback() {
+  local _inner
+  _inner=$(cat <<'BUILD_FRESH_INNER'
+set -euo pipefail
+export HOME="$APP_HOME"
+cd "$APP_DIR" || exit 1
+[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+if node -e "const p=require(\"./package.json\");const s=p.scripts||{};process.exit(s[\"build:fresh\"]?0:1)" 2>/dev/null; then
+  exec npm run build:fresh
+fi
+echo "[upgrade-curl-production] WARN: scripts.build:fresh missing in package.json (different origin or old tree). Running: clear, optional check:secrets/typecheck/lint, build." >&2
+if npm run clear 2>/dev/null; then :; else rm -rf .next; fi
+if node -e "const p=require(\"./package.json\");process.exit((p.scripts||{})[\"check:secrets\"]?0:1)" 2>/dev/null; then npm run check:secrets; fi
+if node -e "const p=require(\"./package.json\");process.exit((p.scripts||{})[\"typecheck\"]?0:1)" 2>/dev/null; then npm run typecheck
+elif node -e "const p=require(\"./package.json\");process.exit((p.scripts||{})[\"type-check\"]?0:1)" 2>/dev/null; then npm run type-check; fi
+if node -e "const p=require(\"./package.json\");process.exit((p.scripts||{})[\"lint\"]?0:1)" 2>/dev/null; then npm run lint; fi
+exec npm run build
+BUILD_FRESH_INNER
+)
+  if [ "$(whoami)" = "$APP_USER" ]; then
+    env APP_DIR="$APP_DIR" APP_HOME="$APP_HOME" bash -c "$_inner"
+  else
+    sudo -u "$APP_USER" env APP_DIR="$APP_DIR" APP_HOME="$APP_HOME" bash -c "$_inner"
+  fi
+}
+
 # Build (retry with main if build fails, e.g. old tag had TypeScript error)
 build_ok=false
 if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
-  BUILD_LABEL="npm run build:fresh"
+  BUILD_LABEL="npm run build:fresh (or equivalent if script missing)"
 else
   BUILD_LABEL="npm run build"
 fi
@@ -311,13 +356,13 @@ for attempt in 1 2; do
   if [ "$attempt" -eq 2 ]; then say "Building application (retry with main): $BUILD_LABEL"; else say "Building application: $BUILD_LABEL"; fi
   if [ "$(whoami)" = "$APP_USER" ]; then
     if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
-      if (cd "$APP_DIR" && npm run build:fresh); then build_ok=true; break; fi
+      if run_npm_build_fresh_or_fallback; then build_ok=true; break; fi
     else
       if (cd "$APP_DIR" && npm run build); then build_ok=true; break; fi
     fi
   else
     if [ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ]; then
-      if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build:fresh"; then build_ok=true; break; fi
+      if run_npm_build_fresh_or_fallback; then build_ok=true; break; fi
     else
       if sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm run build"; then build_ok=true; break; fi
     fi
@@ -325,9 +370,11 @@ for attempt in 1 2; do
   if [ "$attempt" -eq 1 ] && [ "$GIT_REF" != "main" ]; then
     warn "Build failed. Retrying with main (latest fixes)..."
     run_in_app_dir git fetch origin 2>/dev/null || true
-    run_in_app_dir git checkout main 2>/dev/null || true
-    # VM clones often have local main behind origin/main — pull or build uses old package.json (e.g. missing build:fresh).
-    run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
+    run_in_app_dir git checkout -B main origin/main 2>/dev/null || run_in_app_dir git checkout main 2>/dev/null || true
+    run_in_app_dir git reset --hard origin/main 2>/dev/null || {
+      warn "git reset --hard origin/main failed; trying pull"
+      run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
+    }
     GIT_REF=main
     [ -f "$BACKUP_DIR/.env.local" ] && sudo cp -a "$BACKUP_DIR/.env.local" "$APP_DIR/" 2>/dev/null || true
     [ -d "$BACKUP_DIR/.secure-storage" ] && sudo cp -a "$BACKUP_DIR/.secure-storage" "$APP_DIR/" 2>/dev/null || true
@@ -339,10 +386,14 @@ for attempt in 1 2; do
       sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && export HOME='$APP_HOME' && [ -s \"\$HOME/.nvm/nvm.sh\" ] && . \"\$HOME/.nvm/nvm.sh\"; npm install || npm ci" || true
     fi
   elif [ "$attempt" -eq 1 ] && [ "$GIT_REF" = "main" ]; then
-    warn "Build failed on main — fetching latest origin/main (local clone may be behind)..."
+    warn "Build failed on main — syncing working tree to origin/main..."
     run_in_app_dir git fetch origin 2>/dev/null || true
-    run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
-    say "Reinstalling dependencies after git pull"
+    run_in_app_dir git checkout -B main origin/main 2>/dev/null || run_in_app_dir git checkout main 2>/dev/null || true
+    run_in_app_dir git reset --hard origin/main 2>/dev/null || {
+      warn "git reset --hard origin/main failed; trying pull"
+      run_in_app_dir git pull --ff-only origin main 2>/dev/null || run_in_app_dir git pull origin main 2>/dev/null || true
+    }
+    say "Reinstalling dependencies after git sync"
     if [ "$(whoami)" = "$APP_USER" ]; then
       (cd "$APP_DIR" && npm install) || (cd "$APP_DIR" && npm ci) || true
     else
@@ -352,7 +403,7 @@ for attempt in 1 2; do
     break
   fi
 done
-[ "$build_ok" = true ] || fail "Build failed. Try: GIT_REF=main curl -fsSL ... | bash"
+[ "$build_ok" = true ] || fail "Build failed. On VM: cd $APP_DIR && sudo -u $APP_USER git fetch origin && sudo -u $APP_USER git reset --hard origin/main && npm run build. Or pull latest helper: curl .../upgrade-curl-production.sh | ... bash (this script id: $UPGRADE_CURL_SCRIPT_REV)"
 ok "Build complete"
 
 if [ -n "${UNIT_USER:-}" ] && [ -n "${APP_USER:-}" ] && [ "$UNIT_USER" != "$APP_USER" ]; then

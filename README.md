@@ -133,7 +133,9 @@ Best for installs at `/opt/secure-ai-chat` (e.g. from `install_ubuntu_public.sh`
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 ```
 
-Override path or ref: `APP_DIR=/path/to/app GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash` (use `GIT_REF=v1.0.15` to pin a release).
+Override path or ref (vars must be on the **bash** side of the pipe, not on `curl`):  
+`curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | APP_DIR=/path/to/app GIT_REF=main bash`  
+(use `GIT_REF=v1.0.15` to pin a release; add `USE_BUILD_FRESH=1` for the full production build path).
 
 To upgrade using the in-place deploy script (on the server, no curl):
 

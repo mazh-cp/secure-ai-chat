@@ -16,11 +16,12 @@ Default ref: `main`. If the build fails, the script **retries with `main`** auto
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 ```
 
-With overrides:
+With overrides — **put env vars on the right of the pipe** (`bash` sees them). Wrong: `GIT_REF=main curl ... | bash` (only `curl` gets the vars).
 
 ```bash
-APP_DIR=/home/adminuser/secure-ai-chat GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
-GIT_REF=v1.0.15 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | APP_DIR=/home/adminuser/secure-ai-chat GIT_REF=main bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=main USE_BUILD_FRESH=1 bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.0.15 bash
 ```
 
 ## Standard install (`/opt/secure-ai-chat`)
@@ -49,6 +50,8 @@ See [README](../README.md#upgrade-remote-installation) and [docs/UPGRADE_REMOTE.
 ## Version still shows an old number (e.g. 1.0.17) after upgrade
 
 The sidebar **App version** comes from the **compiled** `lib/app-release-client.ts` in the **`.next`** build. If it is wrong, the VM is still running an **old build** or the browser is using **cached `_next/static` chunks**.
+
+If you ran `GIT_REF=… USE_BUILD_FRESH=1 curl … | bash`, those variables were **not** passed to `bash` (they only applied to `curl`). Re-run with vars after the pipe: `curl … | APP_DIR=/opt/secure-ai-chat GIT_REF=main USE_BUILD_FRESH=1 bash`.
 
 1. On the VM: `cd "$APP_DIR" && git rev-parse HEAD && git log -1 --oneline` — confirm you are on the expected commit / tag.
 2. Rebuild and restart: `npm ci && npm run build` (or `USE_BUILD_FRESH=1` upgrade path), then `sudo systemctl restart secure-ai-chat`.
