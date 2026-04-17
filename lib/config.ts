@@ -42,6 +42,14 @@ export const config = {
     : process.env.LAKERA_FAIL_CLOSED === 'true',
   /** Timeout in ms for Lakera requests. */
   lakeraTimeoutMs: parseInt(process.env.LAKERA_TIMEOUT_MS ?? '10000', 10) || 10000,
+  /**
+   * When false (default): if Lakera Guard returns 200 with flagged=false, regex pre-scan does not
+   * override (portal policy wins). Set LAKERA_PRESCAN_MERGE_AFTER_GUARD=1 to restore legacy merge.
+   */
+  lakeraPrescanMergeAfterGuard:
+    process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === '1' ||
+    process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === 'true' ||
+    process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === 'yes',
 }
 
 /** Vars that must be set in production (empty = no hard requirement for app to start). */

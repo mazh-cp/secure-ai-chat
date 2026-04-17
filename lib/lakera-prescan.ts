@@ -61,10 +61,11 @@ export function detectCommonInjectionPatterns(content: string): {
       severity: 'high',
     },
     // Narrow: avoid matching everyday words like "then", "first", "next" in documents.
+    // Severity low: RAG/docs often use "Step 1:" — must not override Lakera when Guard returns unflagged.
     {
       pattern: /\bstep\s+[1-9]\d?\s*[:.)]|\b(?:phase|stage)\s+[1-9]\d?\b/i,
       name: 'Multi-Stage Attack',
-      severity: 'medium',
+      severity: 'low',
     },
     {
       pattern: /<script|javascript:|eval\(|exec\(|system\(/i,

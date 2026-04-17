@@ -13,9 +13,39 @@
 
 import { isContentModerationCategoryOrDetector } from '@/lib/lakera-guard-classify'
 
+/** Lakera / custom policy spellings that imply PII or DLP without the substring "pii". */
+function lakeraTokenImpliesSensitiveEntity(t: string): boolean {
+  return (
+    t.includes('email_address') ||
+    t.includes('phone_number') ||
+    t.includes('street_address') ||
+    t.includes('mailing_address') ||
+    t.includes('physical_address') ||
+    t.includes('postal_code') ||
+    t.includes('national_id') ||
+    t.includes('tax_id') ||
+    t.includes('tax_identifier') ||
+    t.includes('bank_account') ||
+    t.includes('payment_method') ||
+    t.includes('payment_instrument') ||
+    t.includes('contact_info') ||
+    t.includes('contact_information') ||
+    t.includes('customer_identifier') ||
+    t.includes('personal_identifier') ||
+    t.includes('sensitive_data') ||
+    t.includes('data_leak') ||
+    t.includes('data_exfil') ||
+    t.includes('gdpr') ||
+    t.includes('identifier_leak') ||
+    t.includes('named_entity') ||
+    t.includes('entity_recognition')
+  )
+}
+
 export function isSensitiveLakeraDetectorType(detectorType: string | undefined): boolean {
   if (!detectorType) return false
   const t = detectorType.toLowerCase().replace(/-/g, '_')
+  if (lakeraTokenImpliesSensitiveEntity(t)) return true
   return (
     t.includes('pii') ||
     t.includes('personal_data') ||
@@ -85,6 +115,7 @@ export function isSensitiveLakeraPayloadMatch(entry: {
  */
 function isSensitiveCategoryKey(key: string): boolean {
   const k = key.toLowerCase().replace(/-/g, '_')
+  if (lakeraTokenImpliesSensitiveEntity(k)) return true
   return (
     k.includes('pii') ||
     k.includes('phi') ||

@@ -15,6 +15,22 @@ function norm(s: string): string {
 export function isPiiOrDlpCategoryOrDetector(s: string): boolean {
   const t = norm(s)
   return (
+    t.includes('email_address') ||
+    t.includes('phone_number') ||
+    t.includes('street_address') ||
+    t.includes('mailing_address') ||
+    t.includes('physical_address') ||
+    t.includes('national_id') ||
+    t.includes('tax_id') ||
+    t.includes('bank_account') ||
+    t.includes('payment_method') ||
+    t.includes('contact_info') ||
+    t.includes('contact_information') ||
+    t.includes('customer_identifier') ||
+    t.includes('personal_identifier') ||
+    t.includes('sensitive_data') ||
+    t.includes('data_leak') ||
+    t.includes('gdpr') ||
     t.includes('pii') ||
     t.includes('personal_data') ||
     t.includes('phi') ||

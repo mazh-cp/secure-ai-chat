@@ -375,14 +375,17 @@ export async function screenChatWithLakera(
       }
     }
 
-    if (preScan.detected && !flagged) {
-      if (preScan.severity === 'high' || preScan.severity === 'medium') {
-        flagged = true
-        categories = {
-          ...categories,
-          prompt_injection: true,
-          ...patternsToCategoryRecord(preScan.patterns),
-        }
+    if (
+      config.lakeraPrescanMergeAfterGuard &&
+      preScan.detected &&
+      !flagged &&
+      (preScan.severity === 'high' || preScan.severity === 'medium')
+    ) {
+      flagged = true
+      categories = {
+        ...categories,
+        prompt_injection: true,
+        ...patternsToCategoryRecord(preScan.patterns),
       }
     }
 
@@ -649,14 +652,17 @@ export async function screenTextAsFileUpload(args: {
       }
     }
 
-    if (preScan.detected && !flagged) {
-      if (preScan.severity === 'high' || preScan.severity === 'medium') {
-        flagged = true
-        categories = {
-          ...categories,
-          prompt_injection: true,
-          ...patternsToCategoryRecord(preScan.patterns),
-        }
+    if (
+      config.lakeraPrescanMergeAfterGuard &&
+      preScan.detected &&
+      !flagged &&
+      (preScan.severity === 'high' || preScan.severity === 'medium')
+    ) {
+      flagged = true
+      categories = {
+        ...categories,
+        prompt_injection: true,
+        ...patternsToCategoryRecord(preScan.patterns),
       }
     }
 
