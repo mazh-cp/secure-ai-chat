@@ -89,13 +89,29 @@ export async function POST(request: NextRequest) {
       .map(b => b.detector_type)
       .filter(Boolean)
 
+    const draftKey = typeof body.lakeraAiKey === 'string' ? body.lakeraAiKey.trim() : ''
+    const probeUsedFormKey = !!(draftKey && draftKey !== 'configured')
+    const envLakeraKey = !!process.env.LAKERA_AI_KEY?.trim()
+    let mergeHint = ''
+    if (envLakeraKey && probeUsedFormKey) {
+      mergeHint =
+        ' Chat requests use LAKERA_AI_KEY from the server environment first (overrides saved keys). If chat returns 401 but this probe succeeded, update or remove LAKERA_AI_KEY in .env.local and restart the service.'
+    } else if (envLakeraKey) {
+      mergeHint =
+        ' Chat uses LAKERA_AI_KEY from the server environment when set (overrides Settings / secure storage).'
+    }
+
     return NextResponse.json({
       ok: true,
       requestUuid: extracted.requestUuid ?? null,
       flagged: extracted.flagged,
       projectIdConfigured: Boolean(projectId),
       guardUrl,
-      note: 'Lakera applies your project policy on each Guard request; use this probe after changing policy in platform.lakera.ai to confirm connectivity and project_id.',
+      probeUsedFormKey,
+      chatPrefersEnvLakeraKey: envLakeraKey,
+      note:
+        'Lakera applies your project policy on each Guard request; use this probe after changing policy in platform.lakera.ai to confirm connectivity and project_id.' +
+        mergeHint,
       breakdownDetectorTypesSample: detectedTypes.slice(0, 12),
     })
   } catch (e) {

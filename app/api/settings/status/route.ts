@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getApiKeys } from '@/lib/api-keys-storage'
 import { isTeApiKeyConfiguredSync } from '@/lib/checkpoint-te'
 import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
@@ -9,27 +10,52 @@ import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
  */
 export async function GET() {
   try {
+    const keys = await getApiKeys(true)
     // Check Check Point TE API key (can be in env var or secure storage)
     const checkpointTeConfigured =
       !!process.env.CHECKPOINT_TE_API_KEY?.trim() || isTeApiKeyConfiguredSync()
 
     const status = {
       openAiKey: {
-        configured: !!process.env.OPENAI_API_KEY?.trim(),
-        source: process.env.OPENAI_API_KEY ? 'environment' : 'localStorage',
+        configured: !!keys.openAiKey,
+        source: process.env.OPENAI_API_KEY ? 'environment' : keys.openAiKey ? 'secure-storage' : 'none',
+      },
+      anthropicApiKey: {
+        configured: !!keys.anthropicApiKey,
+        source: process.env.ANTHROPIC_API_KEY
+          ? 'environment'
+          : keys.anthropicApiKey
+            ? 'secure-storage'
+            : 'none',
+      },
+      azureOpenAiKey: {
+        configured: !!keys.azureOpenAiKey,
+        source: process.env.AZURE_OPENAI_API_KEY
+          ? 'environment'
+          : keys.azureOpenAiKey
+            ? 'secure-storage'
+            : 'none',
       },
       lakeraAiKey: {
-        configured: !!process.env.LAKERA_AI_KEY?.trim(),
-        source: process.env.LAKERA_AI_KEY ? 'environment' : 'localStorage',
+        configured: !!keys.lakeraAiKey,
+        source: process.env.LAKERA_AI_KEY ? 'environment' : keys.lakeraAiKey ? 'secure-storage' : 'none',
       },
       lakeraProjectId: {
-        configured: !!process.env.LAKERA_PROJECT_ID?.trim(),
-        source: process.env.LAKERA_PROJECT_ID ? 'environment' : 'localStorage',
+        configured: !!keys.lakeraProjectId,
+        source: process.env.LAKERA_PROJECT_ID
+          ? 'environment'
+          : keys.lakeraProjectId
+            ? 'secure-storage'
+            : 'none',
       },
       lakeraEndpoint: {
-        configured: !!process.env.LAKERA_ENDPOINT?.trim(),
-        source: process.env.LAKERA_ENDPOINT ? 'environment' : 'localStorage',
-        value: resolveLakeraGuardEndpoint(process.env.LAKERA_ENDPOINT),
+        configured: !!keys.lakeraEndpoint,
+        source: process.env.LAKERA_ENDPOINT
+          ? 'environment'
+          : keys.lakeraEndpoint
+            ? 'secure-storage'
+            : 'none',
+        value: resolveLakeraGuardEndpoint(keys.lakeraEndpoint ?? process.env.LAKERA_ENDPOINT),
       },
       checkpointTeApiKey: {
         configured: checkpointTeConfigured,
@@ -44,9 +70,11 @@ export async function GET() {
     return NextResponse.json({
       status,
       // Helper flags to check if key is configured from any source
-      hasOpenAiKey: status.openAiKey.configured,
-      hasLakeraAiKey: status.lakeraAiKey.configured,
-      hasLakeraProjectId: status.lakeraProjectId.configured,
+      hasOpenAiKey: !!keys.openAiKey,
+      hasAnthropicApiKey: !!keys.anthropicApiKey,
+      hasAzureOpenAiKey: !!keys.azureOpenAiKey,
+      hasLakeraAiKey: !!keys.lakeraAiKey,
+      hasLakeraProjectId: !!keys.lakeraProjectId,
       hasCheckpointTeApiKey: status.checkpointTeApiKey.configured,
       // Don't expose actual keys, just configuration status
     })
