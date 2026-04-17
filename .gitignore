@@ -76,5 +76,12 @@ Thumbs.db
 # App data directory (uploads, registry DB) - do not commit
 data/
 
+# When the deploy user’s HOME is the repo (e.g. /opt/secure-ai-chat), nvm/npm
+# create these next to the project — never commit them.
+/.nvm/
+/.npm/
+/.cache/
+/.config/
+
 # Local upgrade snapshots (often include .next bundles — never lint or commit)
 .backups/
