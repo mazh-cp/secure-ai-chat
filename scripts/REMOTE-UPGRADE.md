@@ -24,6 +24,20 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.0.15 bash
 ```
 
+## One-liner wrapper (`/opt/secure-ai-chat`, `main`, `build:fresh`)
+
+Same as **`upgrade-curl-production.sh`**, but defaults are applied on the **correct** side of the pipe (avoids `VAR=curl … | bash` mistakes):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | bash
+```
+
+Overrides (on the **right** of the first pipe):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=main USE_BUILD_FRESH=1 bash
+```
+
 ## Standard install (`/opt/secure-ai-chat`)
 
 For installs created with `install_ubuntu_public.sh`. If the build fails, the script **retries with `main`** automatically.

@@ -1,7 +1,25 @@
 # One-Step Production Upgrade Commands
 
 **Latest**: v1.1.9 (main)  
-**Last Updated**: 2026-04-03
+**Last Updated**: 2026-04-17
+
+## 🚀 Production upgrade — **recommended wrapper** (`production-upgrade.sh`)
+
+Defaults: **`APP_DIR=/opt/secure-ai-chat`**, **`GIT_REF=main`**, **`USE_BUILD_FRESH=1`**. Vars are passed correctly to the underlying **`upgrade-curl-production.sh`**.
+
+**On the VM:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | bash
+```
+
+**Overrides** (after the pipe):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=v1.1.9 USE_BUILD_FRESH=1 bash
+```
+
+---
 
 ## 🚀 Upgrade remote VM — **1.1.x line (recommended): v3**
 

@@ -10,7 +10,7 @@
 #   RUN_TYPECHECK=1       — kept for parity; skipped inside build:fresh when USE_BUILD_FRESH=1
 #   HEALTH_RETRIES=0      — upgrade-curl sets 12 when USE_BUILD_FRESH=1 and retries were 0
 #
-# On the production VM:
+# On the production VM (put overrides on the RIGHT of the pipe — not on curl):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-remote-production-v3.sh | bash
 #
 # Track main instead of the tag:
@@ -21,6 +21,8 @@
 #
 # Custom app directory:
 #   curl -fsSL .../upgrade-remote-production-v3.sh | APP_DIR=/opt/secure-ai-chat bash
+#
+# Simplest defaults (/opt, main, build:fresh): use scripts/production-upgrade.sh instead.
 #
 # From laptop (repo checkout):
 #   USE_V3=1 SSH_TARGET=user@host bash scripts/run-remote-production-upgrade.sh
