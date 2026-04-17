@@ -86,14 +86,38 @@ export function requireSecureChatSession(request: NextRequest): NextResponse | n
   )
 }
 
+/** True when the browser→origin connection is HTTPS (direct TLS or reverse proxy). */
+function isBrowserHttps(request?: NextRequest): boolean {
+  if (!request) return false
+  const xf = request.headers.get('x-forwarded-proto')
+  if (xf) {
+    const first = xf.split(',')[0]?.trim().toLowerCase()
+    if (first === 'https') return true
+  }
+  return request.nextUrl.protocol === 'https:'
+}
+
+/**
+ * `Secure` session cookies over plain HTTP are dropped by browsers → login never sticks (broken UI).
+ * Use Secure only when we know the client used HTTPS, unless overridden.
+ * SESSION_COOKIE_SECURE: `1`/`true` force Secure; `0`/`false` never Secure (internal HTTP prod).
+ */
+export function sessionCookieSecure(request?: NextRequest): boolean {
+  const o = process.env.SESSION_COOKIE_SECURE?.trim().toLowerCase()
+  if (o === '1' || o === 'true') return true
+  if (o === '0' || o === 'false') return false
+  if (process.env.NODE_ENV !== 'production') return false
+  const host = request?.headers.get('host') ?? ''
+  if (/^localhost(:\d+)?$/i.test(host.trim())) return false
+  return isBrowserHttps(request)
+}
+
 export function setSessionCookieOnResponse(
   res: NextResponse,
   token: string,
   request?: NextRequest
 ): void {
-  const host = request?.headers.get('host') ?? ''
-  const isLocalhost = /^localhost(:\d+)?$/i.test(host.trim())
-  const secure = process.env.NODE_ENV === 'production' && !isLocalhost
+  const secure = sessionCookieSecure(request)
   res.cookies.set(SECURE_CHAT_SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
@@ -103,10 +127,12 @@ export function setSessionCookieOnResponse(
   })
 }
 
-export function clearSessionCookie(res: NextResponse): void {
+export function clearSessionCookie(res: NextResponse, request?: NextRequest): void {
+  const secure = sessionCookieSecure(request)
   res.cookies.set(SECURE_CHAT_SESSION_COOKIE, '', {
     httpOnly: true,
     sameSite: 'lax',
+    secure,
     path: '/',
     maxAge: 0,
   })
