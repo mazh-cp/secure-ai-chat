@@ -45,3 +45,12 @@ Both scripts:
 - If **build fails** and the current ref/branch is not `main`, they automatically **check out `main`**, reinstall dependencies, and build again so upgrades stay seamless.
 
 See [README](../README.md#upgrade-remote-installation) and [docs/UPGRADE_REMOTE.md](../docs/UPGRADE_REMOTE.md) for more.
+
+## Version still shows an old number (e.g. 1.0.17) after upgrade
+
+The sidebar **App version** comes from the **compiled** `lib/app-release-client.ts` in the **`.next`** build. If it is wrong, the VM is still running an **old build** or the browser is using **cached `_next/static` chunks**.
+
+1. On the VM: `cd "$APP_DIR" && git rev-parse HEAD && git log -1 --oneline` — confirm you are on the expected commit / tag.
+2. Rebuild and restart: `npm ci && npm run build` (or `USE_BUILD_FRESH=1` upgrade path), then `sudo systemctl restart secure-ai-chat`.
+3. Check API: `curl -sS "http://127.0.0.1:${PORT:-3000}/api/version"` — `version` must match `package.json` / release.
+4. Hard refresh the browser (`Ctrl+Shift+R`) or clear site data for that host so old JS chunks are not reused.

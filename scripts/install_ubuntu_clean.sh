@@ -266,6 +266,8 @@ log_success "Phase 7 done: Application built"
 
 # --- Port and .env.local ---
 APP_PORT=$(find_free_port 3000)
+# Align public version string with package.json (headers / env); UI "App version" still comes from the build.
+PKG_VERSION="$(grep -m1 '"version"' "$INSTALL_DIR/package.json" 2>/dev/null | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo '0.1.0')"
 if [ ! -f "$INSTALL_DIR/.env.local" ]; then
   sudo -u "$APP_USER" tee "$INSTALL_DIR/.env.local" >/dev/null << EOF
 # Secure AI Chat - add your API keys
@@ -274,7 +276,7 @@ LAKERA_AI_KEY=
 LAKERA_ENDPOINT=https://api.lakera.ai/v2/guard
 LAKERA_PROJECT_ID=
 NEXT_PUBLIC_APP_NAME=Secure AI Chat
-NEXT_PUBLIC_APP_VERSION=1.0.0
+NEXT_PUBLIC_APP_VERSION=${PKG_VERSION}
 PORT=$APP_PORT
 HOSTNAME=0.0.0.0
 NODE_ENV=production
