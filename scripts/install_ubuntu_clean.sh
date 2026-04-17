@@ -7,6 +7,9 @@
 # --- ONE-LINER (run on the VM, not as root) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh | bash
 #
+# --- New Ubuntu 22.04+ / 24.04 VM (OS check + same defaults as remote production) ---
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | bash
+#
 # --- Production defaults (pinned tag + build:fresh) — prefer this for new VMs ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | bash
 #

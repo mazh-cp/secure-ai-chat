@@ -8,6 +8,9 @@
 # --- One-liner (run ON THE VM as a normal user with sudo; not as root) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | bash
 #
+# --- Same install with Ubuntu 22.04+ version check (alias) ---
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | bash
+#
 # --- Pin a different tag or branch ---
 #   GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | bash
 #   GIT_REF=v1.1.3 curl -fsSL ... | bash
