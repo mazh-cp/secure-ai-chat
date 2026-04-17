@@ -105,7 +105,8 @@ export function isSecurityCategoryOrDetector(s: string): boolean {
     t.includes('system_override') ||
     t.includes('unknown_link') ||
     t.includes('lakera_api_error') ||
-    t.includes('lakera_client')
+    t.includes('lakera_client') ||
+    t.includes('lakera_project_required')
   )
 }
 

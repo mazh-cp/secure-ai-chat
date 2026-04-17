@@ -28,6 +28,7 @@ import {
   effectiveLakeraEndpoint,
   effectiveLakeraProjectId,
 } from '@/lib/effective-lakera-client-merge'
+import { config } from '@/lib/config'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -151,6 +152,12 @@ export async function POST(request: NextRequest) {
         lakeraProjectId: !!serverKeys.lakeraProjectId,
         lakeraEndpoint: !!serverKeys.lakeraEndpoint,
       },
+      lakeraEnforcement: {
+        enforceStrict: config.lakeraEnforceStrict,
+        requireProjectId: config.lakeraRequireProjectId,
+        enforceInputOutputScan: config.lakeraEnforceInputOutputScan,
+        failClosedOnAuthError: config.lakeraFailClosedOnAuthError,
+      },
       lakeraEnvSet: {
         LAKERA_AI_KEY: !!process.env.LAKERA_AI_KEY?.trim(),
         LAKERA_PROJECT_ID: !!process.env.LAKERA_PROJECT_ID?.trim(),
@@ -200,6 +207,20 @@ export async function POST(request: NextRequest) {
         serverKeys.lakeraEndpoint,
         clientApiKeys?.lakeraEndpoint
       ),
+    }
+
+    if (
+      config.lakeraRequireProjectId &&
+      apiKeys.lakeraAiKey?.trim() &&
+      !apiKeys.lakeraProjectId?.trim()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Lakera is configured but no project ID is set. Set LAKERA_PROJECT_ID or Settings → Lakera Project ID, or disable LAKERA_REQUIRE_PROJECT_ID / LAKERA_ENFORCE_STRICT.',
+        },
+        { status: 503 }
+      )
     }
 
     const activeApiKey =
@@ -597,7 +618,9 @@ IMPORTANT INSTRUCTIONS:
     }
 
     // Lakera input scan AFTER RAG/file injection: screen what the model actually receives (user text + file/RAG context) for PII/DLP and prompt attacks.
-    const runInputScan = Boolean(apiKeys.lakeraAiKey) && scanOptions?.scanInput !== false
+    const runInputScan =
+      Boolean(apiKeys.lakeraAiKey) &&
+      (config.lakeraEnforceInputOutputScan || scanOptions?.scanInput !== false)
     if (latestUserMessage && runInputScan && apiKeys.lakeraAiKey) {
       const lakeraKey = apiKeys.lakeraAiKey
       let inputTextForGuard = latestUserMessage.content
@@ -941,8 +964,10 @@ IMPORTANT INSTRUCTIONS:
 
     let outputScanResult: ScanResult = { scanned: false, flagged: false }
 
-    // Lakera output scan: only when key is configured and client has output scan enabled (toggles off = no scan)
-    const runOutputScan = Boolean(apiKeys.lakeraAiKey) && scanOptions?.scanOutput !== false
+    // Lakera output scan when key is configured; server can force scans regardless of client toggles.
+    const runOutputScan =
+      Boolean(apiKeys.lakeraAiKey) &&
+      (config.lakeraEnforceInputOutputScan || scanOptions?.scanOutput !== false)
     if (runOutputScan && apiKeys.lakeraAiKey) {
       const lakeraKey = apiKeys.lakeraAiKey
       outputScanResult = await screenChatWithLakera(

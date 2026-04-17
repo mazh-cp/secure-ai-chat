@@ -199,10 +199,7 @@ function lakeraGuardUnauthorized(status: number): boolean {
 function lakeraFailClosedBlockOnHttpError(status: number): boolean {
   if (!config.lakeraFailClosed) return false
   if (lakeraGuardUnauthorized(status)) {
-    const strict =
-      process.env.LAKERA_FAIL_CLOSED_ON_AUTH_ERROR === 'true' ||
-      process.env.LAKERA_FAIL_CLOSED_ON_AUTH_ERROR === '1'
-    return strict
+    return config.lakeraFailClosedOnAuthError
   }
   return true
 }
@@ -244,6 +241,19 @@ export async function screenChatWithLakera(
 
   const guardUrl = resolveLakeraGuardEndpoint(lakeraEndpoint)
   const projectId = lakeraProjectIdForGuard(lakeraProjectId)
+
+  if (config.lakeraRequireProjectId && !projectId) {
+    return {
+      scanned: true,
+      flagged: true,
+      categories: { lakera_project_required: true },
+      message:
+        'Lakera is enabled but no project ID is configured. Set Project ID in Settings or LAKERA_PROJECT_ID, or disable LAKERA_REQUIRE_PROJECT_ID / LAKERA_ENFORCE_STRICT.',
+      threatLevel: 'high',
+      blockPolicy: 'security',
+    }
+  }
+
   const preScan = detectCommonInjectionPatterns(message)
 
   if (preScan.detected && preScan.severity === 'high') {
@@ -316,7 +326,7 @@ export async function screenChatWithLakera(
       }
       if (config.lakeraFailClosed && lakeraGuardUnauthorized(posted.status)) {
         console.warn(
-          '[Lakera Guard] HTTP 401 — invalid or rejected API key; chat proceeds without Guard. Fix LAKERA_AI_KEY / Settings. To block in this case, set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1.'
+          '[Lakera Guard] HTTP 401 — invalid or rejected API key; chat proceeds without Guard. Fix LAKERA_AI_KEY / Settings. To block in this case, set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 or LAKERA_ENFORCE_STRICT=1.'
         )
       }
       if (preScan.detected && preScan.severity === 'medium') {
@@ -586,6 +596,15 @@ export async function screenTextAsFileUpload(args: {
   const guardUrl = resolveLakeraGuardEndpoint(args.lakeraEndpoint)
   const projectId = lakeraProjectIdForGuard(args.lakeraProjectId ?? undefined)
 
+  if (config.lakeraRequireProjectId && !projectId) {
+    return {
+      scanned: true,
+      flagged: true,
+      categories: { lakera_project_required: true },
+      threatLevel: 'high',
+    }
+  }
+
   try {
     const posted = await postLakeraGuard({
       guardUrl,
@@ -608,7 +627,7 @@ export async function screenTextAsFileUpload(args: {
       }
       if (config.lakeraFailClosed && lakeraGuardUnauthorized(posted.status)) {
         console.warn(
-          '[Lakera file scan] HTTP 401 — proceeding without Guard. Set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 to block uploads in this case.'
+          '[Lakera file scan] HTTP 401 — proceeding without Guard. Set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 or LAKERA_ENFORCE_STRICT=1 to block uploads in this case.'
         )
       }
       if (preScan.detected && (preScan.severity === 'high' || preScan.severity === 'medium')) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getApiKeys } from '@/lib/api-keys-storage'
 import { isTeApiKeyConfiguredSync } from '@/lib/checkpoint-te'
+import { config } from '@/lib/config'
 import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
 /**
@@ -69,6 +70,12 @@ export async function GET() {
 
     return NextResponse.json({
       status,
+      lakeraEnforcement: {
+        enforceStrict: config.lakeraEnforceStrict,
+        requireProjectId: config.lakeraRequireProjectId,
+        enforceInputOutputScan: config.lakeraEnforceInputOutputScan,
+        failClosedOnAuthError: config.lakeraFailClosedOnAuthError,
+      },
       // Helper flags to check if key is configured from any source
       hasOpenAiKey: !!keys.openAiKey,
       hasAnthropicApiKey: !!keys.anthropicApiKey,

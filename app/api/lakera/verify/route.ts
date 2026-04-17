@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { getApiKeys } from '@/lib/api-keys-storage'
+import { config } from '@/lib/config'
 import { extractAggregatedFromLakeraResponse, postLakeraGuard } from '@/lib/lakera/guard-client'
 import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
@@ -45,6 +46,19 @@ export async function POST(request: NextRequest) {
 
     const projectRaw = pickProbeString(body.lakeraProjectId, stored.lakeraProjectId)
     const projectId = lakeraProjectIdForGuard(projectRaw)
+
+    if (config.lakeraRequireProjectId && !projectId) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'LAKERA_REQUIRE_PROJECT_ID or LAKERA_ENFORCE_STRICT is enabled: set Lakera Project ID (Settings or LAKERA_PROJECT_ID) before running this probe.',
+          projectIdConfigured: false,
+          guardUrl,
+        },
+        { status: 400 }
+      )
+    }
 
     const posted = await postLakeraGuard({
       guardUrl,

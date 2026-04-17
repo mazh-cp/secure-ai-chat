@@ -8,6 +8,14 @@
 
 const isProduction = process.env.NODE_ENV === 'production'
 
+function envTruthy(name: string): boolean {
+  const v = process.env[name]
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
+/** One switch for hardened Lakera posture (production operators). */
+const lakeraEnforceStrict = envTruthy('LAKERA_ENFORCE_STRICT')
+
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: parseInt(process.env.PORT ?? '3000', 10) || 3000,
@@ -40,6 +48,25 @@ export const config = {
   lakeraFailClosed: isProduction
     ? process.env.LAKERA_FAIL_CLOSED !== 'false'
     : process.env.LAKERA_FAIL_CLOSED === 'true',
+  /**
+   * When fail-closed, block on HTTP 401 from Guard (bad key) instead of allowing traffic with no scan.
+   * Also enabled when LAKERA_ENFORCE_STRICT=1.
+   */
+  lakeraFailClosedOnAuthError:
+    lakeraEnforceStrict ||
+    envTruthy('LAKERA_FAIL_CLOSED_ON_AUTH_ERROR'),
+  /**
+   * If a Lakera API key is in use, refuse to call Guard without project_id (forces your portal policy).
+   * Also enabled when LAKERA_ENFORCE_STRICT=1.
+   */
+  lakeraRequireProjectId: lakeraEnforceStrict || envTruthy('LAKERA_REQUIRE_PROJECT_ID'),
+  /**
+   * When a Lakera key is configured, always run input/output Guard on chat regardless of client toggles.
+   * Also enabled when LAKERA_ENFORCE_STRICT=1.
+   */
+  lakeraEnforceInputOutputScan: lakeraEnforceStrict || envTruthy('LAKERA_ENFORCE_INPUT_OUTPUT_SCAN'),
+  /** Master: require project id + enforce chat scans + fail-closed on 401 (when fail-closed is on). */
+  lakeraEnforceStrict,
   /** Timeout in ms for Lakera requests. */
   lakeraTimeoutMs: parseInt(process.env.LAKERA_TIMEOUT_MS ?? '10000', 10) || 10000,
   /**

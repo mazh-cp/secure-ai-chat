@@ -99,6 +99,15 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
       : getLakeraProjectId()
   )
 
+  if (config.lakeraRequireProjectId && !projectId) {
+    return {
+      allowed: false,
+      flagged: true,
+      categories: ['lakera_project_required'],
+      severity: 'high',
+    }
+  }
+
   const role = input.context === 'output' || input.context === 'generation' ? 'assistant' : 'user'
 
   try {
@@ -118,7 +127,10 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
     })
 
     if (!posted.ok) {
-      if (config.lakeraFailClosed) {
+      const authFail = posted.status === 401
+      const blockOnHttpError =
+        config.lakeraFailClosed && (!authFail || config.lakeraFailClosedOnAuthError)
+      if (blockOnHttpError) {
         return {
           allowed: false,
           flagged: true,
