@@ -8,6 +8,7 @@ import { LAKERA_GUARD_URL_DEFAULT } from '@/lib/lakera-guard-endpoint'
 interface ApiKeys {
   openAiKey: string
   anthropicApiKey: string
+  geminiApiKey: string
   azureOpenAiKey: string
   azureOpenAiEndpoint: string
   azureOpenAiApiVersion: string
@@ -26,6 +27,7 @@ export default function SettingsForm() {
   const [keys, setKeys] = useState<ApiKeys>({
     openAiKey: '',
     anthropicApiKey: '',
+    geminiApiKey: '',
     azureOpenAiKey: '',
     azureOpenAiEndpoint: '',
     azureOpenAiApiVersion: '2025-04-01-preview',
@@ -49,6 +51,7 @@ export default function SettingsForm() {
   const [serverStatus, setServerStatus] = useState<{
     openAiKey?: boolean
     anthropicApiKey?: boolean
+    geminiApiKey?: boolean
     azureOpenAiKey?: boolean
     lakeraAiKey?: boolean
     lakeraProjectId?: boolean
@@ -80,6 +83,7 @@ export default function SettingsForm() {
     | 'clear-all'
     | 'clear-openai'
     | 'clear-anthropic'
+    | 'clear-gemini'
     | 'clear-lakera-ai'
     | 'clear-lakera-project-id'
     | 'clear-lakera-endpoint'
@@ -94,6 +98,7 @@ export default function SettingsForm() {
       configured?: {
         openAiKey?: boolean
         anthropicApiKey?: boolean
+        geminiApiKey?: boolean
         azureOpenAiKey?: boolean
         lakeraAiKey?: boolean
         lakeraProjectId?: boolean
@@ -114,6 +119,7 @@ export default function SettingsForm() {
         setServerStatus({
           openAiKey: statusData?.configured?.openAiKey || false,
           anthropicApiKey: statusData?.configured?.anthropicApiKey || false,
+          geminiApiKey: statusData?.configured?.geminiApiKey || false,
           azureOpenAiKey: statusData?.configured?.azureOpenAiKey || false,
           lakeraAiKey: statusData?.configured?.lakeraAiKey || false,
           lakeraProjectId: statusData?.configured?.lakeraProjectId || false,
@@ -249,6 +255,7 @@ export default function SettingsForm() {
           ...prev,
           openAiKey: statusData.hasOpenAiKey || false,
           anthropicApiKey: statusData.hasAnthropicApiKey ?? prev.anthropicApiKey ?? false,
+          geminiApiKey: statusData.hasGeminiApiKey ?? prev.geminiApiKey ?? false,
           lakeraAiKey: statusData.hasLakeraAiKey || false,
           lakeraProjectId: statusData.hasLakeraProjectId || false,
           lakeraEndpoint: statusData.status?.lakeraEndpoint?.value || LAKERA_GUARD_URL_DEFAULT,
@@ -262,6 +269,7 @@ export default function SettingsForm() {
           ...prev,
           openAiKey: keysData.configured?.openAiKey || prev.openAiKey,
           anthropicApiKey: keysData.configured?.anthropicApiKey ?? prev.anthropicApiKey ?? false,
+          geminiApiKey: keysData.configured?.geminiApiKey ?? prev.geminiApiKey ?? false,
           azureOpenAiKey: keysData.configured?.azureOpenAiKey ?? prev.azureOpenAiKey ?? false,
           lakeraAiKey: keysData.configured?.lakeraAiKey || prev.lakeraAiKey,
           lakeraProjectId: keysData.configured?.lakeraProjectId || prev.lakeraProjectId,
@@ -514,6 +522,7 @@ export default function SettingsForm() {
     } else if (
       pinDialogAction === 'clear-openai' ||
       pinDialogAction === 'clear-anthropic' ||
+      pinDialogAction === 'clear-gemini' ||
       pinDialogAction === 'clear-lakera-ai' ||
       pinDialogAction === 'clear-lakera-project-id' ||
       pinDialogAction === 'clear-lakera-endpoint'
@@ -637,6 +646,8 @@ export default function SettingsForm() {
         setPinDialogAction('clear-openai')
       } else if (fieldName === 'anthropicApiKey') {
         setPinDialogAction('clear-anthropic')
+      } else if (fieldName === 'geminiApiKey') {
+        setPinDialogAction('clear-gemini')
       } else if (fieldName === 'lakeraAiKey') {
         setPinDialogAction('clear-lakera-ai')
       } else if (fieldName === 'lakeraProjectId') {
@@ -661,6 +672,7 @@ export default function SettingsForm() {
       const serverKeyMap: Record<keyof ApiKeys, string> = {
         openAiKey: 'openAiKey',
         anthropicApiKey: 'anthropicApiKey',
+        geminiApiKey: 'geminiApiKey',
         azureOpenAiKey: 'azureOpenAiKey',
         azureOpenAiEndpoint: 'azureOpenAiEndpoint',
         azureOpenAiApiVersion: 'azureOpenAiApiVersion',
@@ -763,6 +775,7 @@ export default function SettingsForm() {
         setKeys({
           openAiKey: '',
           anthropicApiKey: '',
+          geminiApiKey: '',
           azureOpenAiKey: '',
           azureOpenAiEndpoint: '',
           azureOpenAiApiVersion: '2025-04-01-preview',
@@ -1021,7 +1034,8 @@ export default function SettingsForm() {
               API Keys
             </h2>
             <p className="text-sm text-theme-muted mb-2">
-              OpenAI (GPT), Anthropic (Claude), and Lakera (security scanning).
+              OpenAI (GPT), Anthropic (Claude), Google Gemini, Azure OpenAI, and Lakera (security
+              scanning).
             </p>
 
             {/* OpenAI Key */}
@@ -1233,6 +1247,68 @@ export default function SettingsForm() {
                 <p className="text-sm text-yellow-400 mt-1">
                   ⚠ Optional - Set for Claude models or configure ANTHROPIC_API_KEY environment
                   variable
+                </p>
+              )}
+            </div>
+
+            {/* Google Gemini API Key */}
+            <div>
+              <label htmlFor="geminiApiKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>Google Gemini API Key</span>
+                {serverStatus.geminiApiKey || keys.geminiApiKey ? (
+                  <div
+                    className="h-2 w-2 rounded-full bg-green-500 transition-all"
+                    title="Configured and working"
+                    style={{ boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)' }}
+                  />
+                ) : (
+                  <div
+                    className="h-2 w-2 rounded-full bg-red-500 transition-all"
+                    title="Not configured or not working"
+                    style={{ boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)' }}
+                  />
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  id="geminiApiKey"
+                  name="geminiApiKey"
+                  value={keys.geminiApiKey}
+                  placeholder="Paste Google AI Studio API key (Ctrl/Cmd + V)"
+                  {...secureInputProps}
+                />
+                {keys.geminiApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => handleClear('geminiApiKey')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-subtle hover:text-red-400 text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-theme-subtle mt-1">
+                🔒 Paste only — create a key in{' '}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-theme"
+                >
+                  Google AI Studio
+                </a>
+                . Optional env: <code className="text-xs">GEMINI_API_KEY</code> or{' '}
+                <code className="text-xs">GOOGLE_API_KEY</code>.
+              </p>
+              {serverStatus.geminiApiKey && !keys.geminiApiKey && (
+                <p className="text-sm text-green-400 mt-1">
+                  ✓ Configured via environment variable (server-side)
+                </p>
+              )}
+              {!serverStatus.geminiApiKey && !keys.geminiApiKey && (
+                <p className="text-sm text-yellow-400 mt-1">
+                  ⚠ Optional — for Gemini models in chat (Provider: Google Gemini)
                 </p>
               )}
             </div>
@@ -1831,13 +1907,15 @@ export default function SettingsForm() {
                       ? 'Please enter your PIN to clear the OpenAI API key.'
                       : pinDialogAction === 'clear-anthropic'
                         ? 'Please enter your PIN to clear the Anthropic API key.'
-                        : pinDialogAction === 'clear-lakera-ai'
-                          ? 'Please enter your PIN to clear the Lakera AI key.'
-                          : pinDialogAction === 'clear-lakera-project-id'
-                            ? 'Please enter your PIN to clear the Lakera Project ID.'
-                            : pinDialogAction === 'clear-lakera-endpoint'
-                              ? 'Please enter your PIN to reset the Lakera Endpoint.'
-                              : 'Please enter your PIN to perform this action.'}
+                        : pinDialogAction === 'clear-gemini'
+                          ? 'Please enter your PIN to clear the Google Gemini API key.'
+                          : pinDialogAction === 'clear-lakera-ai'
+                            ? 'Please enter your PIN to clear the Lakera AI key.'
+                            : pinDialogAction === 'clear-lakera-project-id'
+                              ? 'Please enter your PIN to clear the Lakera Project ID.'
+                              : pinDialogAction === 'clear-lakera-endpoint'
+                                ? 'Please enter your PIN to reset the Lakera Endpoint.'
+                                : 'Please enter your PIN to perform this action.'}
               </p>
               <div className="space-y-4">
                 <div>

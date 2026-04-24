@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       console.log('🔑 /api/keys/retrieve - Keys status:', {
         hasOpenAiKey: !!keys.openAiKey,
         hasAnthropicKey: !!keys.anthropicApiKey,
+        hasGeminiKey: !!keys.geminiApiKey,
         hasAzureOpenAiKey: !!keys.azureOpenAiKey,
         hasLakeraKey: !!keys.lakeraAiKey,
         hasProjectId: !!keys.lakeraProjectId,
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
         // Return placeholder 'configured' instead of null to indicate key is set
         openAiKey: keys.openAiKey ? 'configured' : null,
         anthropicApiKey: keys.anthropicApiKey ? 'configured' : null,
+        geminiApiKey: keys.geminiApiKey ? 'configured' : null,
         azureOpenAiKey: keys.azureOpenAiKey ? 'configured' : null,
         azureOpenAiEndpoint: keys.azureOpenAiEndpoint || null,
         azureOpenAiApiVersion: keys.azureOpenAiApiVersion || '2025-04-01-preview',
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest) {
       configured: {
         openAiKey: !!keys.openAiKey,
         anthropicApiKey: !!keys.anthropicApiKey,
+        geminiApiKey: !!keys.geminiApiKey,
         azureOpenAiKey: !!keys.azureOpenAiKey,
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
@@ -71,6 +74,7 @@ export async function GET(request: NextRequest) {
         configured: {
           openAiKey: false,
           anthropicApiKey: false,
+          geminiApiKey: false,
           azureOpenAiKey: false,
           lakeraAiKey: false,
           lakeraProjectId: false,
@@ -79,6 +83,7 @@ export async function GET(request: NextRequest) {
         keys: {
           openAiKey: null,
           anthropicApiKey: null,
+          geminiApiKey: null,
           azureOpenAiKey: null,
           azureOpenAiEndpoint: null,
           azureOpenAiApiVersion: '2025-04-01-preview',

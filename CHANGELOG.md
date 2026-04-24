@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.11] - 2026-04-24
+
+### Added
+
+- **Google Gemini (text chat)** — Provider **Google Gemini** in the chat UI; **`POST /api/chat`** with `provider: 'google'`; **`lib/geminiAdapter.ts`** (`generateContent` on **Generative Language API**); **`geminiApiKey`** in **`StoredApiKeys`** / Settings (paste-only); server env **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`**; **`GET /api/models?provider=google`**; same Lakera and RAG pipeline as other providers.
+
+### Fixed
+
+- **Local `npm run dev` returning 404 for every route** — Watchpack **`EMFILE: too many open files`** could leave Next compiling only **`/_not-found`**. **`next.config.js`** now sets dev **`webpack.watchOptions`** (**`poll`**, **`ignored`**). **`package.json`** **`dev`** uses **`WATCHPACK_POLLING=true`** and **`--webpack`**; **`dev:turbo`** added for Turbopack when desired.
+
+### Changed
+
+- **Upgrade pin** — Default **`GIT_REF=v1.1.11`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, **`install-new-ubuntu-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+- **`proxy.ts`** — `X-Application-Version` header fallback **1.1.11** when **`NEXT_PUBLIC_APP_VERSION`** is unset.
+
 ## [1.1.10] - 2026-04-18
 
 ### Added

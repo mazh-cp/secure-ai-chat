@@ -9,6 +9,7 @@ import { Message } from '@/types/chat'
 import { addLog } from '@/lib/logging'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
 import { DEFAULT_AZURE_DEPLOYMENT_ID } from '@/lib/azure-openai'
+import { DEFAULT_GEMINI_MODEL } from '@/lib/geminiAdapter'
 import {
   LS_CHAT_USE_UPLOADS,
   readChatUseUploadsInChat,
@@ -18,6 +19,7 @@ import {
 interface ApiKeys {
   openAiKey: string
   anthropicApiKey?: string
+  geminiApiKey?: string
   azureOpenAiKey?: string
   azureOpenAiEndpoint?: string
   azureOpenAiApiVersion?: string
@@ -65,6 +67,13 @@ export default function ChatInterface() {
         return prev
       })
     }
+    if (p === 'google') {
+      setSelectedModel(prev => {
+        const t = (prev || '').trim().toLowerCase()
+        if (!t || !t.startsWith('gemini')) return DEFAULT_GEMINI_MODEL
+        return prev
+      })
+    }
   }
 
   // Load API keys from server-side storage (fallback to localStorage for backward compatibility)
@@ -104,14 +113,17 @@ export default function ChatInterface() {
             data.configured?.anthropicApiKey === true || data.keys?.anthropicApiKey === 'configured'
           const hasAzureKey =
             data.configured?.azureOpenAiKey === true || data.keys?.azureOpenAiKey === 'configured'
+          const hasGeminiKey =
+            data.configured?.geminiApiKey === true || data.keys?.geminiApiKey === 'configured'
           const hasLakeraKey =
             data.configured?.lakeraAiKey === true || data.keys?.lakeraAiKey === 'configured'
 
           // Set apiKeys when any chat or Lakera key is configured so UI can show correct provider/model options
-          if (hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasLakeraKey) {
+          if (hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey || hasLakeraKey) {
             setApiKeys({
               openAiKey: data.configured?.openAiKey ? 'configured' : '',
               anthropicApiKey: data.configured?.anthropicApiKey ? 'configured' : '',
+              geminiApiKey: data.configured?.geminiApiKey ? 'configured' : '',
               azureOpenAiKey: data.configured?.azureOpenAiKey ? 'configured' : '',
               azureOpenAiEndpoint: data.keys?.azureOpenAiEndpoint || '',
               azureOpenAiApiVersion: data.keys?.azureOpenAiApiVersion || '2025-04-01-preview',
@@ -129,7 +141,9 @@ export default function ChatInterface() {
             })
 
             // Clear any stale state if API says no keys
-            if (apiKeys?.openAiKey === 'configured') {
+            const anyChatKeyServer =
+              hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey
+            if (!anyChatKeyServer && apiKeys) {
               setApiKeys(null)
             }
           }
@@ -194,7 +208,8 @@ export default function ChatInterface() {
       if (
         providerStored === 'openai' ||
         providerStored === 'anthropic' ||
-        providerStored === 'azure'
+        providerStored === 'azure' ||
+        providerStored === 'google'
       )
         setProvider(providerStored)
     }
@@ -211,13 +226,21 @@ export default function ChatInterface() {
     const hasAzure =
       apiKeys.azureOpenAiKey === 'configured' ||
       (apiKeys.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+    const hasGemini =
+      apiKeys.geminiApiKey === 'configured' ||
+      (apiKeys.geminiApiKey && apiKeys.geminiApiKey !== '')
     setProvider(current => {
-      if (current === 'anthropic' && !hasAnthropic && (hasOpenAi || hasAzure))
-        return hasOpenAi ? 'openai' : 'azure'
-      if (current === 'openai' && !hasOpenAi && (hasAnthropic || hasAzure))
-        return hasAnthropic ? 'anthropic' : 'azure'
-      if (current === 'azure' && !hasAzure && (hasOpenAi || hasAnthropic))
-        return hasOpenAi ? 'openai' : 'anthropic'
+      const has = {
+        openai: hasOpenAi,
+        anthropic: hasAnthropic,
+        azure: hasAzure,
+        google: hasGemini,
+      } as const
+      if (has[current]) return current
+      const order: ChatProvider[] = ['openai', 'anthropic', 'azure', 'google']
+      for (const p of order) {
+        if (has[p]) return p
+      }
       return current
     })
   }, [apiKeys])
@@ -289,15 +312,26 @@ export default function ChatInterface() {
     const hasAzureKey =
       apiKeys?.azureOpenAiKey === 'configured' ||
       (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
+    const hasGeminiKey =
+      apiKeys?.geminiApiKey === 'configured' ||
+      (apiKeys?.geminiApiKey && apiKeys.geminiApiKey !== '')
     const hasChatKey =
-      provider === 'anthropic' ? hasAnthropicKey : provider === 'azure' ? hasAzureKey : hasOpenAiKey
+      provider === 'anthropic'
+        ? hasAnthropicKey
+        : provider === 'azure'
+          ? hasAzureKey
+          : provider === 'google'
+            ? hasGeminiKey
+            : hasOpenAiKey
     if (!hasChatKey) {
       setError(
         provider === 'anthropic'
           ? 'Anthropic API key is not configured. Please go to Settings to add your API key.'
           : provider === 'azure'
             ? 'Azure OpenAI API key/endpoint is not configured. Please go to Settings to add your Azure credentials.'
-            : 'OpenAI API key is not configured. Please go to Settings to add your API key.'
+            : provider === 'google'
+              ? 'Gemini API key is not configured. Please go to Settings (Google AI Studio key) or set GEMINI_API_KEY.'
+              : 'OpenAI API key is not configured. Please go to Settings to add your API key.'
       )
       return
     }
@@ -477,7 +511,10 @@ export default function ChatInterface() {
   const hasAzureKey =
     apiKeys?.azureOpenAiKey === 'configured' ||
     (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
-  const hasChatKey = hasOpenAiKey || hasAnthropicKey || hasAzureKey
+  const hasGeminiKey =
+    apiKeys?.geminiApiKey === 'configured' ||
+    (apiKeys?.geminiApiKey && apiKeys.geminiApiKey !== '')
+  const hasChatKey = hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey
 
   return (
     <div className="flex flex-col h-full">
@@ -492,7 +529,7 @@ export default function ChatInterface() {
           }}
         >
           <p className="text-base text-theme">
-            ⚠️ No chat API key configured. Add an OpenAI or Anthropic key in{' '}
+            ⚠️ No chat API key configured. Add an OpenAI, Anthropic, Azure OpenAI, or Gemini key in{' '}
             <Link href="/settings" className="underline hover:text-brand-berry transition-colors">
               Settings
             </Link>
@@ -554,7 +591,11 @@ export default function ChatInterface() {
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
           apiKey={
-            provider === 'anthropic' ? apiKeys?.anthropicApiKey || null : apiKeys?.openAiKey || null
+            provider === 'anthropic'
+              ? apiKeys?.anthropicApiKey || null
+              : provider === 'google'
+                ? apiKeys?.geminiApiKey || null
+                : apiKeys?.openAiKey || null
           }
         />
       </div>

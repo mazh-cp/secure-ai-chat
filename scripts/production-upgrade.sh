@@ -13,7 +13,7 @@
 #     curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | bash
 #
 # Pin a release tag:
-#   curl -fsSL .../production-upgrade.sh | GIT_REF=v1.1.10 bash
+#   curl -fsSL .../production-upgrade.sh | GIT_REF=v1.1.11 bash
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 # -----------------------------------------------------------------------------

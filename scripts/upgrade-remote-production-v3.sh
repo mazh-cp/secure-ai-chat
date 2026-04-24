@@ -5,7 +5,7 @@
 # verify-build, check:secrets (client + git-tracked leak scan), npm audit hygiene.
 #
 # Defaults (override with env vars on the bash that consumes this pipe):
-#   GIT_REF=v1.1.10       — pin this tag on the VM; falls back to main if tag missing (see upgrade-curl-production.sh)
+#   GIT_REF=v1.1.11       — pin this tag on the VM; falls back to main if tag missing (see upgrade-curl-production.sh)
 #   USE_BUILD_FRESH=1     — npm run build:fresh on server (secrets + typecheck + lint + verify standalone)
 #   RUN_TYPECHECK=1       — kept for parity; skipped inside build:fresh when USE_BUILD_FRESH=1
 #   HEALTH_RETRIES=0      — upgrade-curl sets 12 when USE_BUILD_FRESH=1 and retries were 0
@@ -33,7 +33,7 @@
 #
 set -euo pipefail
 
-export GIT_REF="${GIT_REF:-v1.1.10}"
+export GIT_REF="${GIT_REF:-v1.1.11}"
 export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
 export RUN_TYPECHECK="${RUN_TYPECHECK:-1}"
 export HEALTH_RETRIES="${HEALTH_RETRIES:-0}"

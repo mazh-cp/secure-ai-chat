@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { azureOpenAiAuthHeaders, normalizeAzureEndpoint } from '@/lib/azure-openai'
+import { GEMINI_MODEL_OPTIONS } from '@/lib/geminiAdapter'
 
 // Mark route as dynamic since it uses query parameters
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,7 @@ function parseAzureDeploymentsPayload(raw: unknown): AzureDeployment[] {
 /**
  * GET /api/models
  * Fetches available models for the user's API key.
- * Query: provider=openai (default) | provider=anthropic
+ * Query: provider=openai (default) | provider=anthropic | provider=google | provider=azure
  * Returns list of available chat models.
  */
 export async function GET(request: NextRequest) {
@@ -62,6 +63,21 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Anthropic API key is required' }, { status: 400 })
       }
       return NextResponse.json({ models: ANTHROPIC_MODELS })
+    }
+
+    if (provider === 'google') {
+      const apiKey =
+        serverKeys.geminiApiKey?.trim() ||
+        process.env.GEMINI_API_KEY?.trim() ||
+        process.env.GOOGLE_API_KEY?.trim()
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: 'Gemini API key is required (Settings or GEMINI_API_KEY / GOOGLE_API_KEY)' },
+          { status: 400 }
+        )
+      }
+      const models = GEMINI_MODEL_OPTIONS.map(m => ({ id: m.id, name: m.name }))
+      return NextResponse.json({ models })
     }
 
     if (provider === 'azure') {

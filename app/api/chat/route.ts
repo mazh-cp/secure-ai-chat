@@ -11,6 +11,7 @@ import {
   validateModel,
   type ChatMessage as AdapterChatMessage,
 } from '@/lib/aiAdapter'
+import { callGemini, validateGeminiModelId } from '@/lib/geminiAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
 import {
   validateTokenLimit,
@@ -132,8 +133,10 @@ export async function POST(request: NextRequest) {
         ? 'anthropic'
         : requestProvider === 'azure'
           ? 'azure'
-          : 'openai'
-    ) as 'openai' | 'anthropic' | 'azure'
+          : requestProvider === 'google'
+            ? 'google'
+            : 'openai'
+    ) as 'openai' | 'anthropic' | 'azure' | 'google'
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array is required' }, { status: 400 })
@@ -198,6 +201,11 @@ export async function POST(request: NextRequest) {
         (clientApiKeys?.anthropicApiKey && clientApiKeys.anthropicApiKey !== 'configured'
           ? clientApiKeys.anthropicApiKey
           : null),
+      geminiApiKey:
+        serverKeys.geminiApiKey ||
+        (clientApiKeys?.geminiApiKey && clientApiKeys.geminiApiKey !== 'configured'
+          ? clientApiKeys.geminiApiKey
+          : null),
       lakeraAiKey: effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey),
       lakeraProjectId: effectiveLakeraProjectId(
         serverKeys.lakeraProjectId,
@@ -228,7 +236,9 @@ export async function POST(request: NextRequest) {
         ? apiKeys.anthropicApiKey
         : provider === 'azure'
           ? apiKeys.azureOpenAiKey
-          : apiKeys.openAiKey
+          : provider === 'google'
+            ? apiKeys.geminiApiKey
+            : apiKeys.openAiKey
 
     console.log('Active API Key Status:', {
       provider,
@@ -287,6 +297,28 @@ export async function POST(request: NextRequest) {
       if (!apiKeys.azureOpenAiApiVersion || typeof apiKeys.azureOpenAiApiVersion !== 'string') {
         return NextResponse.json(
           { error: 'Azure OpenAI API version is missing. Please add it in Settings.' },
+          { status: 400 }
+        )
+      }
+    } else if (provider === 'google') {
+      if (
+        !activeApiKey ||
+        activeApiKey === 'configured' ||
+        typeof activeApiKey !== 'string' ||
+        activeApiKey.length < 20
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Gemini API key is not configured or is invalid. Add a key from Google AI Studio in Settings, or set GEMINI_API_KEY / GOOGLE_API_KEY.',
+          },
+          { status: 400 }
+        )
+      }
+      const k = activeApiKey.toLowerCase()
+      if (k.includes('your') || k.includes('placeholder') || k.includes('example')) {
+        return NextResponse.json(
+          { error: 'Gemini API key appears invalid. Replace placeholder values in Settings.' },
           { status: 400 }
         )
       }
@@ -747,7 +779,9 @@ IMPORTANT INSTRUCTIONS:
           ? typeof model === 'string' && model.trim()
             ? model.trim()
             : 'gpt-4o'
-          : validateModel(model || 'gpt-4o-mini')
+          : provider === 'google'
+            ? validateGeminiModelId(typeof model === 'string' ? model : '')
+            : validateModel(model || 'gpt-4o-mini')
 
     // Convert messages to adapter format
     const adapterMessages: AdapterChatMessage[] = enhancedMessages.map(msg => ({
@@ -757,7 +791,13 @@ IMPORTANT INSTRUCTIONS:
 
     // Prepare adapter options
     const maxOutputTokens =
-      provider === 'anthropic' ? 1024 : validatedModel.startsWith('gpt-5') ? 2000 : 1000
+      provider === 'anthropic'
+        ? 1024
+        : provider === 'google'
+          ? 2048
+          : validatedModel.startsWith('gpt-5')
+            ? 2000
+            : 1000
     const adapterOptions = {
       maxTokens: maxOutputTokens,
       temperature: 0.7,
@@ -949,7 +989,9 @@ IMPORTANT INSTRUCTIONS:
               apiKeys.azureOpenAiEndpoint!,
               apiKeys.azureOpenAiApiVersion || '2025-04-01-preview'
             )
-          : await callOpenAIAdapter(adapterMessages, activeApiKey, validatedModel, adapterOptions)
+          : provider === 'google'
+            ? await callGemini(adapterMessages, activeApiKey!, validatedModel, adapterOptions)
+            : await callOpenAIAdapter(adapterMessages, activeApiKey, validatedModel, adapterOptions)
 
     // Log fallback if used
     if (adapterResult.usedFallback) {

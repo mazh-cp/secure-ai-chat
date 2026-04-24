@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 
 import { DEFAULT_AZURE_DEPLOYMENT_ID } from '@/lib/azure-openai'
 
-export type ChatProvider = 'openai' | 'anthropic' | 'azure'
+export type ChatProvider = 'openai' | 'anthropic' | 'azure' | 'google'
 
 interface Model {
   id: string
@@ -55,7 +55,9 @@ export default function ModelSelector({
                 ? 'Anthropic API key not configured. Please configure it in Settings.'
                 : provider === 'azure'
                   ? 'Azure OpenAI API key/endpoint not configured. Please configure it in Settings.'
-                  : 'OpenAI API key not configured. Please configure it in Settings.'
+                  : provider === 'google'
+                    ? 'Gemini API key not configured. Please configure it in Settings.'
+                    : 'OpenAI API key not configured. Please configure it in Settings.'
             )
           } else {
             throw new Error(errorMsg)
@@ -141,6 +143,9 @@ export default function ModelSelector({
           </option>
           <option value="anthropic" style={selectStyle}>
             Anthropic
+          </option>
+          <option value="google" style={selectStyle}>
+            Google Gemini
           </option>
         </select>
         <label

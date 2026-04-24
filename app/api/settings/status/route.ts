@@ -37,6 +37,15 @@ export async function GET() {
             ? 'secure-storage'
             : 'none',
       },
+      geminiApiKey: {
+        configured: !!keys.geminiApiKey,
+        source:
+          process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+            ? 'environment'
+            : keys.geminiApiKey
+              ? 'secure-storage'
+              : 'none',
+      },
       lakeraAiKey: {
         configured: !!keys.lakeraAiKey,
         source: process.env.LAKERA_AI_KEY ? 'environment' : keys.lakeraAiKey ? 'secure-storage' : 'none',
@@ -79,6 +88,7 @@ export async function GET() {
       // Helper flags to check if key is configured from any source
       hasOpenAiKey: !!keys.openAiKey,
       hasAnthropicApiKey: !!keys.anthropicApiKey,
+      hasGeminiApiKey: !!keys.geminiApiKey,
       hasAzureOpenAiKey: !!keys.azureOpenAiKey,
       hasLakeraAiKey: !!keys.lakeraAiKey,
       hasLakeraProjectId: !!keys.lakeraProjectId,

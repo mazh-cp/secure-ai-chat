@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.10'
+export const APP_VERSION = '1.1.11'
 
-export const RELEASE_DATE = '2026-04-18'
+export const RELEASE_DATE = '2026-04-24'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,20 +18,25 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.10]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.11]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      '**Lakera enforcement** — `LAKERA_ENFORCE_STRICT` plus `LAKERA_REQUIRE_PROJECT_ID`, `LAKERA_ENFORCE_INPUT_OUTPUT_SCAN`; `lakeraEnforcement` on **`GET /api/settings/status`** and chat logs.',
-      '**`.gitignore`** — `.nvm/`, `.npm/`, `.cache/`, `.config/` when HOME is the app directory.',
+      '**Google Gemini (text)** — Chat provider, **`geminiApiKey`** / Settings, **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`**, **`GET /api/models?provider=google`**, **`POST /api/chat`** with **`provider: google`**.',
+    ],
+  },
+  {
+    title: 'Fixed',
+    items: [
+      '**Dev 404 / EMFILE** — Webpack dev + **`watchOptions.poll`** in **`next.config.js`**; **`npm run dev`** uses **`WATCHPACK_POLLING`** and **`--webpack`**.',
     ],
   },
   {
     title: 'Changed',
     items: [
-      '**RAG `scanTextWithLakera`** — HTTP 401 handling aligned with chat/file under fail-closed + `LAKERA_FAIL_CLOSED_ON_AUTH_ERROR` / `LAKERA_ENFORCE_STRICT`.',
-      'Default pinned upgrade tag **`GIT_REF=v1.1.10`** in v3 / VM scripts and **`UPGRADE_COMMANDS.md`**.',
+      'Default pinned upgrade tag **`GIT_REF=v1.1.11`** in v3 / VM scripts and **`UPGRADE_COMMANDS.md`**.',
+      '**`proxy.ts`** — `X-Application-Version` fallback **1.1.11** when **`NEXT_PUBLIC_APP_VERSION`** is unset.',
     ],
   },
 ]

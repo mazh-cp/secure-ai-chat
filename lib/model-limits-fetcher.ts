@@ -131,6 +131,10 @@ export async function getModelLimit(
     return fallbackLimit ?? 200_000
   }
 
+  if (normalizedModel.startsWith('gemini')) {
+    return fallbackLimit ?? 1_000_000
+  }
+
   const now = Date.now()
 
   // Check cache first

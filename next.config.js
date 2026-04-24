@@ -5,6 +5,20 @@ const nextConfig = {
   // pdf-parse / pdfjs-dist pull in worker assets; keep them external for server bundles
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'mammoth', 'exceljs'],
 
+  // Avoid EMFILE (too many open files) on macOS / IDEs: native watchers exhaust fd limits and
+  // Next falls back to compiling only `/_not-found` → 404 for every route. Polling uses fewer fds.
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
+      }
+    }
+    return config
+  },
+
   // Security headers (HSTS only in production — sending HSTS over http://localhost breaks client
   // navigation in dev: browsers upgrade to HTTPS and RSC fetches fail with "Failed to fetch".)
   async headers() {

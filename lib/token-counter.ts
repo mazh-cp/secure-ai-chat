@@ -37,6 +37,9 @@ export const MODEL_TOKEN_LIMITS: Record<string, number> = {
 
   // Anthropic: OpenAI model_limits API does not apply; ~200k context for Claude 3/3.5/4 API models
   claude: 200000,
+
+  // Google Gemini (approximate context; dynamic fetch skipped for gemini-* in model-limits-fetcher)
+  gemini: 1_000_000,
 }
 
 /**

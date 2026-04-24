@@ -1,6 +1,6 @@
 {
   "name": "secure-ai-chat",
-  "version": "1.1.10",
+  "version": "1.1.11",
   "private": true,
   "description": "A secure AI chat application with end-to-end encryption and privacy features",
   "engines": {
@@ -10,7 +10,8 @@
   "scripts": {
     "clear": "rm -rf .next",
     "verify-security": "bash scripts/verify-key-security.sh",
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "WATCHPACK_POLLING=true next dev -H 0.0.0.0 --webpack",
+    "dev:turbo": "WATCHPACK_POLLING=true next dev -H 0.0.0.0",
     "build": "node scripts/next-build-production.mjs",
     "build:fresh": "npm run clear && npm run check:secrets && npm run typecheck && npm run lint && npm run build",
     "start": "node scripts/start-standalone.js",

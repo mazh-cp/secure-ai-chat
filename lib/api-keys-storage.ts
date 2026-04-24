@@ -17,6 +17,8 @@ const KEYS_FILE_PATH = path.join(STORAGE_DIR, 'api-keys.enc')
 export interface StoredApiKeys {
   openAiKey?: string
   anthropicApiKey?: string
+  /** Google AI Studio / Gemini API key (not Vertex service account). */
+  geminiApiKey?: string
   azureOpenAiKey?: string
   azureOpenAiEndpoint?: string
   azureOpenAiApiVersion?: string
@@ -190,6 +192,22 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
     }
   }
 
+  const geminiEnvRaw = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+  if (geminiEnvRaw) {
+    if (
+      geminiEnvRaw &&
+      !geminiEnvRaw.toLowerCase().includes('your') &&
+      !geminiEnvRaw.toLowerCase().includes('placeholder') &&
+      geminiEnvRaw.length >= 20
+    ) {
+      envKeys.geminiApiKey = geminiEnvRaw
+    } else {
+      console.warn(
+        'GEMINI_API_KEY / GOOGLE_API_KEY environment variable contains placeholder or invalid value, ignoring'
+      )
+    }
+  }
+
   // Azure OpenAI
   if (process.env.AZURE_OPENAI_API_KEY) {
     const envKey = process.env.AZURE_OPENAI_API_KEY.trim()
@@ -247,6 +265,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
           console.log('Loaded keys from file storage:', {
             openAiKey: !!fileKeys.openAiKey,
             anthropicApiKey: !!fileKeys.anthropicApiKey,
+            geminiApiKey: !!fileKeys.geminiApiKey,
             lakeraAiKey: !!fileKeys.lakeraAiKey,
             lakeraProjectId: !!fileKeys.lakeraProjectId,
             lakeraEndpoint: !!fileKeys.lakeraEndpoint,
@@ -257,6 +276,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
           console.log('Final merged keys after file load:', {
             openAiKey: !!cachedKeys.openAiKey,
             anthropicApiKey: !!cachedKeys.anthropicApiKey,
+            geminiApiKey: !!cachedKeys.geminiApiKey,
             lakeraAiKey: !!cachedKeys.lakeraAiKey,
             lakeraProjectId: !!cachedKeys.lakeraProjectId,
             lakeraEndpoint: !!cachedKeys.lakeraEndpoint,
@@ -413,6 +433,17 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       keysToSave.anthropicApiKey = existingKeys.anthropicApiKey
     }
 
+    const geminiEnvSet = !!(process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim())
+    if (keys.geminiApiKey !== undefined) {
+      if (keys.geminiApiKey && keys.geminiApiKey.trim() && !geminiEnvSet) {
+        keysToSave.geminiApiKey = keys.geminiApiKey.trim()
+      } else if (!keys.geminiApiKey && existingKeys.geminiApiKey && !geminiEnvSet) {
+        keysToSave.geminiApiKey = existingKeys.geminiApiKey
+      }
+    } else if (existingKeys.geminiApiKey && !geminiEnvSet) {
+      keysToSave.geminiApiKey = existingKeys.geminiApiKey
+    }
+
     // Handle Lakera Endpoint
     if (keys.lakeraEndpoint !== undefined) {
       if (keys.lakeraEndpoint && keys.lakeraEndpoint.trim() && !process.env.LAKERA_ENDPOINT) {
@@ -496,6 +527,16 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
           envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(envKey)
         }
       }
+      const geminiEnv =
+        process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+      if (
+        geminiEnv &&
+        geminiEnv.length >= 20 &&
+        !geminiEnv.toLowerCase().includes('your') &&
+        !geminiEnv.toLowerCase().includes('placeholder')
+      ) {
+        envKeys.geminiApiKey = geminiEnv
+      }
       cachedKeys = { ...existingKeys, ...envKeys }
       keysLoaded = true
       return
@@ -512,6 +553,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     console.log('Keys saved successfully. Keys saved:', {
       openAiKey: !!keysToSave.openAiKey,
       anthropicApiKey: !!keysToSave.anthropicApiKey,
+      geminiApiKey: !!keysToSave.geminiApiKey,
       lakeraAiKey: !!keysToSave.lakeraAiKey,
       lakeraProjectId: !!keysToSave.lakeraProjectId,
       lakeraEndpoint: !!keysToSave.lakeraEndpoint,
@@ -521,6 +563,11 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     if (process.env.OPENAI_API_KEY) envKeys.openAiKey = process.env.OPENAI_API_KEY.trim()
     if (process.env.ANTHROPIC_API_KEY)
       envKeys.anthropicApiKey = process.env.ANTHROPIC_API_KEY.trim()
+    if (process.env.GEMINI_API_KEY?.trim()) {
+      envKeys.geminiApiKey = process.env.GEMINI_API_KEY.trim()
+    } else if (process.env.GOOGLE_API_KEY?.trim()) {
+      envKeys.geminiApiKey = process.env.GOOGLE_API_KEY.trim()
+    }
     if (process.env.AZURE_OPENAI_API_KEY)
       envKeys.azureOpenAiKey = process.env.AZURE_OPENAI_API_KEY.trim()
     if (process.env.AZURE_OPENAI_ENDPOINT)
@@ -576,6 +623,12 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
     if (keyName === 'anthropicApiKey' && process.env.ANTHROPIC_API_KEY) {
       return
     }
+    if (
+      keyName === 'geminiApiKey' &&
+      (process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim())
+    ) {
+      return
+    }
     // Delete the key from existing keys
     delete existingKeys[keyName]
     await saveApiKeys(existingKeys)
@@ -629,6 +682,9 @@ export async function deleteAllApiKeys(): Promise<void> {
     }
     if (!process.env.ANTHROPIC_API_KEY) {
       keysToDelete.anthropicApiKey = ''
+    }
+    if (!process.env.GEMINI_API_KEY?.trim() && !process.env.GOOGLE_API_KEY?.trim()) {
+      keysToDelete.geminiApiKey = ''
     }
     await saveApiKeys(keysToDelete)
 
@@ -764,6 +820,11 @@ export function getApiKeysSync(): StoredApiKeys {
     }
   }
 
+  const geminiSync = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+  if (geminiSync && geminiSync.length >= 20 && !geminiSync.toLowerCase().includes('your')) {
+    envKeys.geminiApiKey = geminiSync
+  }
+
   return envKeys
 }
 
@@ -788,6 +849,7 @@ export async function areApiKeysConfigured(): Promise<boolean> {
   return !!(
     keys.openAiKey ||
     keys.anthropicApiKey ||
+    keys.geminiApiKey ||
     keys.azureOpenAiKey ||
     keys.lakeraAiKey ||
     keys.lakeraProjectId

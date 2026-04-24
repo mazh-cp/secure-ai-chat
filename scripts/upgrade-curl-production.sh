@@ -18,7 +18,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | bash
 #
 # IMPORTANT — variables on the LEFT of `|` apply only to curl, NOT to bash. Wrong:
-#   GIT_REF=v1.1.10 APP_DIR=/opt/secure-ai-chat curl ... | bash   # bash will NOT see GIT_REF / APP_DIR / USE_BUILD_FRESH
+#   GIT_REF=v1.1.11 APP_DIR=/opt/secure-ai-chat curl ... | bash   # bash will NOT see GIT_REF / APP_DIR / USE_BUILD_FRESH
 # Right — put overrides on the RIGHT (bash side) or export first, then pipe:
 #   curl -fsSL .../upgrade-curl-production.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=main USE_BUILD_FRESH=1 bash
 #   curl -fsSL .../upgrade-curl-production.sh | bash -s -- /opt/secure-ai-chat

@@ -22,6 +22,7 @@ export async function GET() {
       configured: {
         openAiKey: !!keys.openAiKey,
         anthropicApiKey: !!keys.anthropicApiKey,
+        geminiApiKey: !!keys.geminiApiKey,
         azureOpenAiKey: !!keys.azureOpenAiKey,
         lakeraAiKey: !!keys.lakeraAiKey,
         lakeraProjectId: !!keys.lakeraProjectId,
@@ -35,6 +36,12 @@ export async function GET() {
           : keys.anthropicApiKey
             ? 'storage'
             : 'none',
+        geminiApiKey:
+          process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+            ? 'environment'
+            : keys.geminiApiKey
+              ? 'storage'
+              : 'none',
         azureOpenAiKey: process.env.AZURE_OPENAI_API_KEY
           ? 'environment'
           : keys.azureOpenAiKey
@@ -85,6 +92,7 @@ export async function POST(request: NextRequest) {
       anthropicApiKey: keys.anthropicApiKey
         ? `${keys.anthropicApiKey.substring(0, 10)}...`
         : 'empty',
+      geminiApiKey: keys.geminiApiKey ? `${keys.geminiApiKey.substring(0, 6)}...` : 'empty',
       azureOpenAiKey: keys.azureOpenAiKey ? `${keys.azureOpenAiKey.substring(0, 10)}...` : 'empty',
       azureOpenAiEndpoint: keys.azureOpenAiEndpoint
         ? `${keys.azureOpenAiEndpoint.substring(0, 30)}...`
@@ -205,6 +213,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (keys.geminiApiKey !== undefined) {
+      if (keys.geminiApiKey && typeof keys.geminiApiKey === 'string' && keys.geminiApiKey.trim()) {
+        const trimmedKey = keys.geminiApiKey.trim()
+        if (
+          trimmedKey.length >= 20 &&
+          !trimmedKey.toLowerCase().includes('your') &&
+          !trimmedKey.toLowerCase().includes('placeholder')
+        ) {
+          keysToSave.geminiApiKey = trimmedKey
+          console.log('Gemini API key validated and will be saved')
+        } else {
+          return NextResponse.json(
+            { error: 'Invalid Gemini API key format. Use a key from Google AI Studio (at least 20 characters).' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     if (keys.lakeraAiKey !== undefined) {
       if (keys.lakeraAiKey && typeof keys.lakeraAiKey === 'string' && keys.lakeraAiKey.trim()) {
         const trimmedKey = keys.lakeraAiKey.trim()
@@ -259,6 +286,7 @@ export async function POST(request: NextRequest) {
     console.log('Existing keys before save:', {
       openAiKey: !!existingKeys.openAiKey,
       anthropicApiKey: !!existingKeys.anthropicApiKey,
+      geminiApiKey: !!existingKeys.geminiApiKey,
       lakeraAiKey: !!existingKeys.lakeraAiKey,
       lakeraProjectId: !!existingKeys.lakeraProjectId,
     })
@@ -270,6 +298,7 @@ export async function POST(request: NextRequest) {
     console.log('Keys to save (validated):', {
       openAiKey: !!keysToSave.openAiKey,
       anthropicApiKey: !!keysToSave.anthropicApiKey,
+      geminiApiKey: !!keysToSave.geminiApiKey,
       azureOpenAiKey: !!keysToSave.azureOpenAiKey,
       azureOpenAiEndpoint: !!keysToSave.azureOpenAiEndpoint,
       azureOpenAiApiVersion: !!keysToSave.azureOpenAiApiVersion,
@@ -288,6 +317,7 @@ export async function POST(request: NextRequest) {
     console.log('Keys saved. Verification:', {
       openAiKey: !!savedKeys.openAiKey,
       anthropicApiKey: !!savedKeys.anthropicApiKey,
+      geminiApiKey: !!savedKeys.geminiApiKey,
       azureOpenAiKey: !!savedKeys.azureOpenAiKey,
       lakeraAiKey: !!savedKeys.lakeraAiKey,
       lakeraProjectId: !!savedKeys.lakeraProjectId,
@@ -329,6 +359,12 @@ export async function POST(request: NextRequest) {
           keysToSave.anthropicApiKey ||
           existingKeys.anthropicApiKey ||
           process.env.ANTHROPIC_API_KEY
+        ),
+        geminiApiKey: !!(
+          keysToSave.geminiApiKey ||
+          existingKeys.geminiApiKey ||
+          process.env.GEMINI_API_KEY?.trim() ||
+          process.env.GOOGLE_API_KEY?.trim()
         ),
         azureOpenAiKey: !!(
           keysToSave.azureOpenAiKey ||
