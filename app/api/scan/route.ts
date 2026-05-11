@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
-import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
+import {
+  lakeraGuardHttpUserHint,
+  lakeraProjectIdForGuard,
+  resolveLakeraGuardEndpoint,
+} from '@/lib/lakera-guard-endpoint'
 import { prepareContentForFileScan, screenTextAsFileUpload } from '@/lib/lakera/guard-client'
 import {
   effectiveLakeraAiKey,
@@ -54,9 +58,12 @@ function lakeraHttpErrorNextResponse(
     )
   }
   if (status === 404) {
+    const hint = lakeraGuardHttpUserHint(404)
     return NextResponse.json(
       {
-        error: 'Lakera endpoint not found. Please check your endpoint URL in Settings.',
+        error: hint
+          ? `Lakera endpoint not found (404). ${hint}`
+          : 'Lakera endpoint not found. Please check your endpoint URL in Settings.',
         details: errorDetails,
       },
       { status: 404 }

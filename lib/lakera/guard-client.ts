@@ -147,6 +147,8 @@ export async function postLakeraGuard(params: {
     }
   }
 
+  const bearerKey = params.lakeraKey.trim().replace(/^Bearer\s+/i, '')
+
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), Math.max(1000, config.lakeraTimeoutMs))
   try {
@@ -154,7 +156,7 @@ export async function postLakeraGuard(params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${params.lakeraKey.trim()}`,
+        Authorization: `Bearer ${bearerKey}`,
       },
       body: JSON.stringify(body),
       signal: controller.signal,

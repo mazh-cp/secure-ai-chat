@@ -228,7 +228,9 @@ export async function POST(request: NextRequest) {
     } else if (!skipServerLakeraScan && keys.lakeraAiKey?.trim() && lakeraScanRequested) {
       const { prepareContentForFileScan, screenTextAsFileUpload } =
         await import('@/lib/lakera/guard-client')
-      const { resolveLakeraGuardEndpoint } = await import('@/lib/lakera-guard-endpoint')
+      const { resolveLakeraGuardEndpoint, lakeraGuardHttpUserHint } = await import(
+        '@/lib/lakera-guard-endpoint'
+      )
       const guardUrl = resolveLakeraGuardEndpoint(keys.lakeraEndpoint)
       if (!guardUrl.startsWith('http://') && !guardUrl.startsWith('https://')) {
         scanStatusStr = 'error'
@@ -263,11 +265,15 @@ export async function POST(request: NextRequest) {
         }
         if (fr.lakeraSkipped && fr.lakeraHttpStatus) {
           scanStatusStr = 'error'
-          scanResultVal = `Lakera API error (${fr.lakeraHttpStatus})`
+          const hint = lakeraGuardHttpUserHint(fr.lakeraHttpStatus)
+          scanResultVal = hint
+            ? `Lakera API error (${fr.lakeraHttpStatus}) — ${hint}`
+            : `Lakera API error (${fr.lakeraHttpStatus})`
           scanDetailsVal = {
             ...baseDetails,
             lakeraHttpStatus: fr.lakeraHttpStatus,
             lakeraErrorDetails: fr.lakeraErrorDetails ?? null,
+            resolvedGuardUrl: guardUrl,
           }
         } else if (fr.scanned && fr.flagged) {
           scanStatusStr = 'flagged'
