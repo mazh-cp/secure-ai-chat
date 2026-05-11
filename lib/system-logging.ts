@@ -6,6 +6,12 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 
+import { getSecureStorageDir } from '@/lib/app-paths'
+
+function systemLogsPath(): string {
+  return path.join(getSecureStorageDir(), 'system-logs.json')
+}
+
 export type SystemLogLevel = 'info' | 'warning' | 'error' | 'debug'
 
 export interface SystemLogDetails {
@@ -78,7 +84,6 @@ function redactBody(body: unknown): unknown {
   }
 }
 
-const SYSTEM_LOGS_FILE = path.join(process.cwd(), '.secure-storage', 'system-logs.json')
 const MAX_SYSTEM_LOGS = 500
 
 export interface SystemLogEntry {
@@ -92,7 +97,7 @@ export interface SystemLogEntry {
 }
 
 async function ensureLogsFile(): Promise<void> {
-  const logDir = path.dirname(SYSTEM_LOGS_FILE)
+  const logDir = path.dirname(systemLogsPath())
   try {
     await fs.mkdir(logDir, { recursive: true, mode: 0o700 })
   } catch (error) {
@@ -103,7 +108,7 @@ async function ensureLogsFile(): Promise<void> {
 export async function readSystemLogs(): Promise<SystemLogEntry[]> {
   try {
     await ensureLogsFile()
-    const content = await fs.readFile(SYSTEM_LOGS_FILE, 'utf8')
+    const content = await fs.readFile(systemLogsPath(), 'utf8')
     return JSON.parse(content)
   } catch (error: unknown) {
     if ((error as { code?: string }).code === 'ENOENT') {
@@ -117,7 +122,7 @@ export async function readSystemLogs(): Promise<SystemLogEntry[]> {
 export async function writeSystemLogs(logs: SystemLogEntry[]): Promise<void> {
   try {
     await ensureLogsFile()
-    await fs.writeFile(SYSTEM_LOGS_FILE, JSON.stringify(logs, null, 2), { mode: 0o600 })
+    await fs.writeFile(systemLogsPath(), JSON.stringify(logs, null, 2), { mode: 0o600 })
   } catch (error) {
     console.error('Failed to write system logs:', error)
   }

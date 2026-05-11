@@ -1,3 +1,4 @@
+import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getApiKeys,
@@ -7,6 +8,7 @@ import {
   isApiKeyConfigured,
   type StoredApiKeys,
 } from '@/lib/api-keys-storage'
+import { getSecureStorageDir } from '@/lib/app-paths'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
 import { LAKERA_GUARD_URL_DEFAULT, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
@@ -328,7 +330,7 @@ export async function POST(request: NextRequest) {
     try {
       const { promises: fs } = await import('fs')
       const path = await import('path')
-      const storageDir = path.join(process.cwd(), '.secure-storage')
+      const storageDir = getSecureStorageDir()
       const keysFilePath = path.join(storageDir, 'api-keys.enc')
 
       try {

@@ -7,9 +7,11 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
-// Storage file path (in project root, but outside of .git)
-const STORAGE_DIR = path.join(process.cwd(), '.secure-storage')
-const PIN_FILE_PATH = path.join(STORAGE_DIR, 'verification-pin.hash')
+import { getSecureStorageDir } from '@/lib/app-paths'
+
+function pinFilePath(): string {
+  return path.join(getSecureStorageDir(), 'verification-pin.hash')
+}
 
 // Number of iterations for PBKDF2 (password-based key derivation)
 const PBKDF2_ITERATIONS = 100000
@@ -21,7 +23,7 @@ const KEY_LENGTH = 64
  */
 async function ensureStorageDir(): Promise<void> {
   try {
-    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 }) // Only owner can read/write/execute
+    await fs.mkdir(getSecureStorageDir(), { recursive: true, mode: 0o700 }) // Only owner can read/write/execute
   } catch (error) {
     console.error('Failed to create storage directory:', error)
   }
@@ -65,7 +67,7 @@ export async function isPinConfigured(): Promise<boolean> {
   try {
     await ensureStorageDir()
     try {
-      await fs.access(PIN_FILE_PATH)
+      await fs.access(pinFilePath())
       return true
     } catch {
       return false
@@ -82,7 +84,7 @@ export async function isPinConfigured(): Promise<boolean> {
 export function isPinConfiguredSync(): boolean {
   try {
     const fsSync = require('fs')
-    if (fsSync.existsSync(PIN_FILE_PATH)) {
+    if (fsSync.existsSync(pinFilePath())) {
       return true
     }
   } catch (error) {
@@ -118,7 +120,7 @@ export async function setPin(pin: string): Promise<void> {
     const data = `${hash}:${salt}`
 
     // Write with restrictive permissions (owner read/write only)
-    await fs.writeFile(PIN_FILE_PATH, data, { mode: 0o600, flag: 'w' })
+    await fs.writeFile(pinFilePath(), data, { mode: 0o600, flag: 'w' })
 
     console.log('Verification PIN configured successfully')
   } catch (error) {
@@ -142,7 +144,7 @@ export async function verifyPinCode(pin: string): Promise<boolean> {
 
   try {
     // Read stored hash and salt
-    const data = await fs.readFile(PIN_FILE_PATH, 'utf8')
+    const data = await fs.readFile(pinFilePath(), 'utf8')
     const [storedHash, storedSalt] = data.trim().split(':')
 
     if (!storedHash || !storedSalt) {
@@ -165,7 +167,7 @@ export async function removePin(): Promise<void> {
   try {
     await ensureStorageDir()
     try {
-      await fs.unlink(PIN_FILE_PATH)
+      await fs.unlink(pinFilePath())
       console.log('Verification PIN removed')
     } catch (unlinkError: unknown) {
       // File doesn't exist, that's fine

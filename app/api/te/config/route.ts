@@ -1,3 +1,4 @@
+import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   setTeApiKey,
@@ -8,6 +9,7 @@ import {
   getTeSubmitStrategy,
   getTeAuthFormatMode,
 } from '@/lib/checkpoint-te'
+import { getSecureStorageDir } from '@/lib/app-paths'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
 
 /**
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
       // Verify the key was actually saved by checking if file exists
       const { promises: fs } = await import('fs')
       const path = await import('path')
-      const keyFilePath = path.join(process.cwd(), '.secure-storage', 'checkpoint-te-key.enc')
+      const keyFilePath = path.join(getSecureStorageDir(), 'checkpoint-te-key.enc')
 
       try {
         const stats = await fs.stat(keyFilePath)

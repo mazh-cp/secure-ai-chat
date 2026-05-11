@@ -45,7 +45,11 @@ function runStandalone(appDir) {
   const child = spawn(process.execPath, ['server.js'], {
     stdio: 'inherit',
     cwd: appDir,
-    env: process.env,
+    env: {
+      ...process.env,
+      /** Persist keys under install dir, not standalone cwd (.next/standalone/…) */
+      SECURE_AI_CHAT_APP_ROOT: projectRoot,
+    },
   })
   child.on('exit', code => process.exit(code ?? 0))
 }

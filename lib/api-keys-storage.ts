@@ -8,11 +8,12 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
+import { getSecureStorageDir } from '@/lib/app-paths'
 import { LAKERA_GUARD_URL_DEFAULT, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
-// Storage file path
-const STORAGE_DIR = path.join(process.cwd(), '.secure-storage')
-const KEYS_FILE_PATH = path.join(STORAGE_DIR, 'api-keys.enc')
+function keysEncPath(): string {
+  return path.join(getSecureStorageDir(), 'api-keys.enc')
+}
 
 export interface StoredApiKeys {
   openAiKey?: string
@@ -50,7 +51,7 @@ let keysLoaded = false
  */
 async function ensureStorageDir(): Promise<void> {
   try {
-    await fs.mkdir(STORAGE_DIR, { recursive: true, mode: 0o700 }) // Only owner can read/write/execute
+    await fs.mkdir(getSecureStorageDir(), { recursive: true, mode: 0o700 }) // Only owner can read/write/execute
   } catch (error) {
     console.error('Failed to create storage directory:', error)
   }
@@ -255,7 +256,7 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
 
     // Try to read from file
     try {
-      const encryptedData = await fs.readFile(KEYS_FILE_PATH, 'utf8')
+      const encryptedData = await fs.readFile(keysEncPath(), 'utf8')
       if (encryptedData.trim()) {
         try {
           const fileKeys = decryptKeys(encryptedData.trim())
@@ -548,7 +549,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
     await ensureStorageDir()
 
     // Write with restrictive permissions (owner read/write only)
-    await fs.writeFile(KEYS_FILE_PATH, encryptedKeys, { mode: 0o600, flag: 'w' })
+    await fs.writeFile(keysEncPath(), encryptedKeys, { mode: 0o600, flag: 'w' })
 
     console.log('Keys saved successfully. Keys saved:', {
       openAiKey: !!keysToSave.openAiKey,

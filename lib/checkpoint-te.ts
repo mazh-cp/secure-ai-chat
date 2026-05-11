@@ -25,9 +25,11 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
-// Storage file path (in project root, but outside of .git)
-const STORAGE_DIR = path.join(process.cwd(), '.secure-storage')
-const KEY_FILE_PATH = path.join(STORAGE_DIR, 'checkpoint-te-key.enc')
+import { getAppRootDir, getSecureStorageDir } from '@/lib/app-paths'
+
+function teKeyFilePath(): string {
+  return path.join(getSecureStorageDir(), 'checkpoint-te-key.enc')
+}
 
 // Encryption key (in production, use a secure key management service)
 // For now, we'll use a simple approach with environment variable or generate one
@@ -52,6 +54,7 @@ let keyLoaded = false
  * Initialize storage directory if it doesn't exist
  */
 async function ensureStorageDir(): Promise<void> {
+  const STORAGE_DIR = getSecureStorageDir()
   try {
     // Check if directory exists first
     try {
@@ -102,9 +105,9 @@ async function ensureStorageDir(): Promise<void> {
     console.error('Failed to create/verify storage directory:', error)
     // Provide more details about the error
     const errorMessage = error instanceof Error ? error.message : String(error)
-    const cwd = process.cwd()
+    const root = getAppRootDir()
     throw new Error(
-      `Cannot create/verify .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write to: ${cwd}`
+      `Cannot create/verify .secure-storage directory: ${errorMessage}. Check permissions and ensure app user can write under: ${root}`
     )
   }
 }
@@ -178,7 +181,7 @@ async function loadTeApiKey(): Promise<string | null> {
 
     // Try to read from file
     try {
-      const encryptedData = await fs.readFile(KEY_FILE_PATH, 'utf8')
+      const encryptedData = await fs.readFile(teKeyFilePath(), 'utf8')
       if (encryptedData.trim()) {
         const decryptedKey = decryptKey(encryptedData.trim())
         if (decryptedKey) {
@@ -208,6 +211,8 @@ async function loadTeApiKey(): Promise<string | null> {
 async function saveTeApiKey(key: string | null): Promise<void> {
   try {
     await ensureStorageDir()
+    const keyPath = teKeyFilePath()
+    const STORAGE_DIR = getSecureStorageDir()
 
     if (key) {
       const encryptedKey = encryptKey(key)
@@ -218,12 +223,12 @@ async function saveTeApiKey(key: string | null): Promise<void> {
         await ensureStorageDir()
 
         // Write the file
-        await fs.writeFile(KEY_FILE_PATH, encryptedKey, { mode: 0o600, flag: 'w' })
+        await fs.writeFile(keyPath, encryptedKey, { mode: 0o600, flag: 'w' })
 
         // Force file system sync to ensure write completes before verification
         // Open file descriptor and sync to ensure data is written to disk
         try {
-          const fd = await fs.open(KEY_FILE_PATH, 'r+')
+          const fd = await fs.open(keyPath, 'r+')
           try {
             await fd.sync()
           } finally {
@@ -237,12 +242,12 @@ async function saveTeApiKey(key: string | null): Promise<void> {
         }
 
         // Verify file was written and has correct permissions
-        const stats = await fs.stat(KEY_FILE_PATH)
+        const stats = await fs.stat(keyPath)
         if (!stats.isFile()) {
-          throw new Error(`Key file was not created as a file: ${KEY_FILE_PATH}`)
+          throw new Error(`Key file was not created as a file: ${keyPath}`)
         }
         if (stats.size === 0) {
-          throw new Error(`Key file is empty after write: ${KEY_FILE_PATH}`)
+          throw new Error(`Key file is empty after write: ${keyPath}`)
         }
 
         // Verify permissions
@@ -251,11 +256,11 @@ async function saveTeApiKey(key: string | null): Promise<void> {
           console.warn(
             `Key file has incorrect permissions (${fileMode.toString(8)}), expected 600. Fixing...`
           )
-          await fs.chmod(KEY_FILE_PATH, 0o600)
+          await fs.chmod(keyPath, 0o600)
         }
 
         console.log(
-          `Check Point TE API key file saved: ${KEY_FILE_PATH} (${stats.size} bytes, permissions: 600)`
+          `Check Point TE API key file saved: ${keyPath} (${stats.size} bytes, permissions: 600)`
         )
 
         // Update cache after successful write verification
@@ -264,7 +269,7 @@ async function saveTeApiKey(key: string | null): Promise<void> {
       } catch (writeError) {
         const errorDetails = writeError instanceof Error ? writeError.message : String(writeError)
         const errorCode = (writeError as { code?: string }).code || 'UNKNOWN'
-        console.error(`Failed to write TE API key file to ${KEY_FILE_PATH}:`, errorDetails)
+        console.error(`Failed to write TE API key file to ${keyPath}:`, errorDetails)
 
         // Check directory status
         let dirInfo = 'unknown'
@@ -286,7 +291,7 @@ async function saveTeApiKey(key: string | null): Promise<void> {
     } else {
       // Remove key file if key is null
       try {
-        await fs.unlink(KEY_FILE_PATH)
+        await fs.unlink(teKeyFilePath())
       } catch (unlinkError: unknown) {
         // File doesn't exist, that's fine
         if ((unlinkError as { code?: string }).code !== 'ENOENT') {
@@ -367,9 +372,7 @@ export function getTeApiKeySync(): string | null {
   if (!keyLoaded && typeof window === 'undefined') {
     try {
       const fsSync = require('fs')
-      const pathSync = require('path')
-      const storageDir = pathSync.join(process.cwd(), '.secure-storage')
-      const keyFilePath = pathSync.join(storageDir, 'checkpoint-te-key.enc')
+      const keyFilePath = path.join(getSecureStorageDir(), 'checkpoint-te-key.enc')
 
       if (fsSync.existsSync(keyFilePath)) {
         try {
