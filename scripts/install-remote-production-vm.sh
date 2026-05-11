@@ -26,7 +26,8 @@
 # --- After install ---
 #   • Configure API keys: sudo nano /opt/secure-ai-chat/.env.local (or your INSTALL_DIR)
 #   • Restart: sudo systemctl restart secure-ai-chat
-#   • Future upgrades: fresh-production-build-from-remote-repo.sh or upgrade-remote-production-v3.sh (default GIT_REF=v1.1.12)
+#   • Future upgrades (same VM, existing clone): upgrade-remote-production-v3.sh or upgrade-curl-production.sh (USE_BUILD_FRESH=1)
+#   • Another fresh install URL (same as this script): fresh-production-build-from-remote-repo.sh
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 

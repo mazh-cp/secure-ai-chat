@@ -1,48 +1,75 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Secure AI Chat — fresh production build from the remote GitHub repo
+# Secure AI Chat — fresh install from the remote GitHub repo
 #
-# On the VM this runs the same path as a v3 upgrade: fetch upgrade-curl-production.sh,
-# then git checkout GIT_REF, npm install, npm run build:fresh (secrets + typecheck +
-# lint + production build), systemd restart, optional /api/health retries.
+# This script does NOT run an in-place upgrade. It runs install_ubuntu_clean.sh:
+# apt deps, dedicated user, Node via nvm, clone at GIT_REF, npm ci, production
+# build (build:fresh by default), systemd, UFW — for a new or wiped Ubuntu VM.
 #
-# Default GIT_REF matches the current release pin (keep in sync with lib/app-release.ts).
+# To upgrade an existing install on the same machine, use instead:
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-remote-production-v3.sh | bash
+#   or: upgrade-curl-production.sh with APP_DIR / GIT_REF / USE_BUILD_FRESH=1
 #
-# On the production VM (recommended — vars after the pipe apply to bash, not curl):
+# Filename is kept for stable bookmarked curl URLs; behavior is fresh install only.
+#
+# One-liner (on the VM as a normal user with sudo; not as root):
 #
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/fresh-production-build-from-remote-repo.sh | bash
 #
-# Track main instead of the tag:
+# Track main instead of the pinned tag (keep default tag in sync with lib/app-release.ts):
 #
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/fresh-production-build-from-remote-repo.sh | GIT_REF=main bash
 #
-# Custom install path (first arg is forwarded to upgrade-curl-production.sh):
+# Custom install directory (env, or first argument):
 #
+#   curl -fsSL .../fresh-production-build-from-remote-repo.sh | INSTALL_DIR=/home/adminuser/secure-ai-chat APP_USER=adminuser bash
 #   curl -fsSL .../fresh-production-build-from-remote-repo.sh | bash -s -- /opt/secure-ai-chat
 #
-# Or env style (use this if auto-detect fails — e.g. app not under /opt or adminuser home):
+# Faster build (skip secrets/typecheck/lint — not recommended for production):
 #
-#   curl -fsSL .../fresh-production-build-from-remote-repo.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=v1.1.12 bash
+#   curl -fsSL .../fresh-production-build-from-remote-repo.sh | USE_BUILD_FRESH=0 bash
 #
-# Fork / alternate origin (upgrade script only):
+# Fork / alternate installer URL:
 #
-#   UPGRADE_SCRIPT_URL=https://raw.githubusercontent.com/you/secure-ai-chat/main/scripts/upgrade-curl-production.sh \
+#   INSTALL_SCRIPT_URL=https://raw.githubusercontent.com/you/secure-ai-chat/main/scripts/install_ubuntu_clean.sh \
 #     curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/fresh-production-build-from-remote-repo.sh | bash
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
-# See also: scripts/upgrade-remote-production-v3.sh, scripts/production-upgrade.sh, UPGRADE_COMMANDS.md
+# Same defaults as: scripts/install-remote-production-vm.sh, scripts/install-remote-vm-v1.1.sh
 # -----------------------------------------------------------------------------
 
 set -euo pipefail
 
-UPGRADE_SCRIPT_URL="${UPGRADE_SCRIPT_URL:-https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh}"
+INSTALL_SCRIPT_URL="${INSTALL_SCRIPT_URL:-https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh}"
 
-export GIT_REF="${GIT_REF:-v1.1.12}"
+if [ -n "${1:-}" ]; then
+  export INSTALL_DIR="$1"
+fi
+
+export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.1.12}}"
+export APP_USER="${APP_USER:-secureai}"
+export APP_GROUP="${APP_GROUP:-secureai}"
+export NODE_VERSION="${NODE_VERSION:-24.13.0}"
+export SERVICE_NAME="${SERVICE_NAME:-secure-ai-chat}"
 export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
+export REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
 
-echo "==> Fresh production build from remote repo"
-echo "==> GIT_REF=${GIT_REF} USE_BUILD_FRESH=${USE_BUILD_FRESH}"
-echo "==> Underlying: ${UPGRADE_SCRIPT_URL}"
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║  Secure AI Chat — fresh install from remote repo (curl → VM)     ║${NC}"
+echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "${GREEN}Mode:${NC}                Fresh install (install_ubuntu_clean.sh), not upgrade"
+echo -e "${GREEN}Git ref (clone):${NC}     $BRANCH"
+echo -e "${GREEN}Install directory:${NC}  $INSTALL_DIR"
+echo -e "${GREEN}Service user:${NC}        $APP_USER"
+echo -e "${GREEN}Node:${NC}                $NODE_VERSION"
+echo -e "${GREEN}Build:${NC}               $([ "${USE_BUILD_FRESH}" = "1" ] || [ "${USE_BUILD_FRESH}" = "true" ] && echo 'npm run build:fresh' || echo 'npm run build')"
+echo -e "${GREEN}Installer script:${NC}    $INSTALL_SCRIPT_URL"
 echo ""
 
-curl -fsSL "${UPGRADE_SCRIPT_URL}" | bash -s -- "$@"
+curl -fsSL "$INSTALL_SCRIPT_URL" | bash

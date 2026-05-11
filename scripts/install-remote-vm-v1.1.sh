@@ -34,9 +34,8 @@
 # After install
 #   • Keys: sudo nano /opt/secure-ai-chat/.env.local (or your INSTALL_DIR)
 #   • Restart: sudo systemctl restart secure-ai-chat
-#   • Future upgrades on same VM (fresh production build from repo):
-#       curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/fresh-production-build-from-remote-repo.sh | bash
-#     Or: scripts/upgrade-remote-production-v3.sh (same underlying upgrade-curl-production.sh)
+#   • Future upgrades on same VM (existing install): upgrade-remote-production-v3.sh or upgrade-curl-production.sh
+#   • Same fresh-install one-liner as this file: fresh-production-build-from-remote-repo.sh → install_ubuntu_clean.sh
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 # Underlying: scripts/install_ubuntu_clean.sh (apt, user, nvm Node, clone, npm ci, build, systemd, UFW)
