@@ -31,6 +31,7 @@ import {
 } from '@/lib/effective-lakera-client-merge'
 import { config } from '@/lib/config'
 import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
+import { lakeraGuardApiKeyEnvVarUsed } from '@/lib/api-keys-storage'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -166,10 +167,11 @@ export async function POST(request: NextRequest) {
       },
       /** If any is "environment", Settings changes for that field are ignored until env is updated or unset. */
       lakeraEffectiveSources: {
-        lakeraAiKey: process.env.LAKERA_AI_KEY?.trim() ? 'environment' : 'encrypted_storage_or_none',
+        lakeraAiKey: lakeraGuardApiKeyEnvVarUsed() ? 'environment' : 'encrypted_storage_or_none',
         lakeraProjectId: process.env.LAKERA_PROJECT_ID?.trim() ? 'environment' : 'encrypted_storage_or_none',
         lakeraEndpoint: process.env.LAKERA_ENDPOINT?.trim() ? 'environment' : 'encrypted_storage_or_none',
       },
+      lakeraEnvLakeraKeyVar: lakeraGuardApiKeyEnvVarUsed(),
       lakeraResolvedGuardHostname,
       lakeraEnforcement: {
         enforceStrict: config.lakeraEnforceStrict,
@@ -179,6 +181,7 @@ export async function POST(request: NextRequest) {
       },
       lakeraEnvSet: {
         LAKERA_AI_KEY: !!process.env.LAKERA_AI_KEY?.trim(),
+        LAKERA_API_KEY: !!process.env.LAKERA_API_KEY?.trim(),
         LAKERA_PROJECT_ID: !!process.env.LAKERA_PROJECT_ID?.trim(),
         LAKERA_ENDPOINT: !!process.env.LAKERA_ENDPOINT?.trim(),
       },

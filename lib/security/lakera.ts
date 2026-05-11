@@ -49,7 +49,7 @@ export interface LakeraScanResult {
 }
 
 export function getLakeraApiKey(): string | null {
-  const key = process.env.LAKERA_API_KEY || process.env.LAKERA_AI_KEY
+  const key = process.env.LAKERA_AI_KEY || process.env.LAKERA_API_KEY
   if (!key || key.trim().length === 0) return null
   return key.trim()
 }

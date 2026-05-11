@@ -6,6 +6,8 @@ import {
   deleteApiKey,
   deleteAllApiKeys,
   isApiKeyConfigured,
+  lakeraGuardApiKeyFromProcessEnv,
+  lakeraGuardApiKeyEnvVarUsed,
   type StoredApiKeys,
 } from '@/lib/api-keys-storage'
 import { getSecureStorageDir } from '@/lib/app-paths'
@@ -49,7 +51,7 @@ export async function GET() {
           : keys.azureOpenAiKey
             ? 'storage'
             : 'none',
-        lakeraAiKey: process.env.LAKERA_AI_KEY
+        lakeraAiKey: lakeraGuardApiKeyEnvVarUsed()
           ? 'environment'
           : keys.lakeraAiKey
             ? 'storage'
@@ -381,7 +383,7 @@ export async function POST(request: NextRequest) {
         lakeraAiKey: !!(
           keysToSave.lakeraAiKey ||
           existingKeys.lakeraAiKey ||
-          process.env.LAKERA_AI_KEY
+          lakeraGuardApiKeyFromProcessEnv()
         ),
         lakeraProjectId: !!(
           keysToSave.lakeraProjectId ||

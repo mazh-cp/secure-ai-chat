@@ -34,8 +34,8 @@ export const config = {
   baseUrl: process.env.BASE_URL ?? (typeof window === 'undefined' ? undefined : ''),
 
   /** Lakera: enabled when API key is set. */
-  lakeraEnabled: !!(process.env.LAKERA_API_KEY || process.env.LAKERA_AI_KEY),
-  lakeraApiKey: process.env.LAKERA_API_KEY || process.env.LAKERA_AI_KEY || undefined,
+  lakeraEnabled: !!(process.env.LAKERA_AI_KEY || process.env.LAKERA_API_KEY),
+  lakeraApiKey: process.env.LAKERA_AI_KEY || process.env.LAKERA_API_KEY || undefined,
   lakeraProjectId: process.env.LAKERA_PROJECT_ID ?? undefined,
   lakeraEndpoint: process.env.LAKERA_ENDPOINT ?? undefined,
   /**

@@ -178,6 +178,15 @@ export async function postLakeraGuard(params: {
       } catch {
         errorDetails = null
       }
+      if (response.status === 401) {
+        let host = ''
+        try {
+          host = new URL(params.guardUrl).hostname
+        } catch {
+          host = '(invalid-guard-url)'
+        }
+        console.warn('[Lakera Guard] HTTP 401 — Bearer rejected', { guardHost: host })
+      }
       return { ok: false, status: response.status, errorDetails }
     }
     const data = (await response.json()) as LakeraApiResponse
@@ -332,7 +341,7 @@ export async function screenChatWithLakera(
       }
       if (config.lakeraFailClosed && lakeraGuardUnauthorized(posted.status)) {
         console.warn(
-          '[Lakera Guard] HTTP 401 — invalid or rejected API key; chat proceeds without Guard. Fix LAKERA_AI_KEY / Settings. To block in this case, set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 or LAKERA_ENFORCE_STRICT=1.'
+          '[Lakera Guard] HTTP 401 — invalid or rejected API key; chat proceeds without Guard. Fix LAKERA_AI_KEY or LAKERA_API_KEY (env overrides Settings) / Settings. To block in this case, set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 or LAKERA_ENFORCE_STRICT=1.'
         )
       }
       if (preScan.detected && preScan.severity === 'medium') {
@@ -633,7 +642,7 @@ export async function screenTextAsFileUpload(args: {
       }
       if (config.lakeraFailClosed && lakeraGuardUnauthorized(posted.status)) {
         console.warn(
-          '[Lakera file scan] HTTP 401 — proceeding without Guard. Set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 or LAKERA_ENFORCE_STRICT=1 to block uploads in this case.'
+          '[Lakera file scan] HTTP 401 — proceeding without Guard. Fix LAKERA_AI_KEY / LAKERA_API_KEY (env overrides Settings) or Settings. Set LAKERA_FAIL_CLOSED_ON_AUTH_ERROR=1 or LAKERA_ENFORCE_STRICT=1 to block uploads in this case.'
         )
       }
       if (preScan.detected && (preScan.severity === 'high' || preScan.severity === 'medium')) {

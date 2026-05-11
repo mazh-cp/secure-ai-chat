@@ -15,6 +15,33 @@ function keysEncPath(): string {
   return path.join(getSecureStorageDir(), 'api-keys.enc')
 }
 
+/** Valid single Lakera Guard API token from one env var (no merge). */
+function validatedLakeraGuardEnvKey(raw?: string): string | undefined {
+  if (!raw?.trim()) return undefined
+  const t = raw.trim()
+  if (t.toLowerCase().includes('your') || t.toLowerCase().includes('placeholder')) return undefined
+  if (t.length < 20) return undefined
+  return t
+}
+
+/**
+ * Lakera Guard API key from process env: **LAKERA_AI_KEY** preferred, then **LAKERA_API_KEY**
+ * (older docs / installs). Merged into `lakeraAiKey` with the same precedence as file load.
+ */
+export function lakeraGuardApiKeyFromProcessEnv(): string | undefined {
+  return (
+    validatedLakeraGuardEnvKey(process.env.LAKERA_AI_KEY) ??
+    validatedLakeraGuardEnvKey(process.env.LAKERA_API_KEY)
+  )
+}
+
+/** Which env var supplies the active Guard key, or null if neither is valid. */
+export function lakeraGuardApiKeyEnvVarUsed(): 'LAKERA_AI_KEY' | 'LAKERA_API_KEY' | null {
+  if (validatedLakeraGuardEnvKey(process.env.LAKERA_AI_KEY)) return 'LAKERA_AI_KEY'
+  if (validatedLakeraGuardEnvKey(process.env.LAKERA_API_KEY)) return 'LAKERA_API_KEY'
+  return null
+}
+
 export interface StoredApiKeys {
   openAiKey?: string
   anthropicApiKey?: string
@@ -133,21 +160,13 @@ async function loadApiKeys(): Promise<StoredApiKeys> {
     }
   }
 
-  if (process.env.LAKERA_AI_KEY) {
-    const envKey = process.env.LAKERA_AI_KEY.trim()
-    // Validate it's not a placeholder
-    if (
-      envKey &&
-      !envKey.includes('your') &&
-      !envKey.includes('placeholder') &&
-      envKey.length >= 20
-    ) {
-      envKeys.lakeraAiKey = envKey
-    } else {
-      console.warn(
-        'LAKERA_AI_KEY environment variable contains placeholder or invalid value, ignoring'
-      )
-    }
+  const lakeraFromEnv = lakeraGuardApiKeyFromProcessEnv()
+  if (lakeraFromEnv) {
+    envKeys.lakeraAiKey = lakeraFromEnv
+  } else if (process.env.LAKERA_AI_KEY?.trim() || process.env.LAKERA_API_KEY?.trim()) {
+    console.warn(
+      'LAKERA_AI_KEY / LAKERA_API_KEY environment variable contains placeholder or invalid value, ignoring'
+    )
   }
 
   if (process.env.LAKERA_PROJECT_ID) {
@@ -395,12 +414,12 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
 
     // Handle Lakera AI key
     if (keys.lakeraAiKey !== undefined) {
-      if (keys.lakeraAiKey && keys.lakeraAiKey.trim() && !process.env.LAKERA_AI_KEY) {
+      if (keys.lakeraAiKey && keys.lakeraAiKey.trim() && !lakeraGuardApiKeyFromProcessEnv()) {
         keysToSave.lakeraAiKey = keys.lakeraAiKey.trim()
-      } else if (!keys.lakeraAiKey && existingKeys.lakeraAiKey && !process.env.LAKERA_AI_KEY) {
+      } else if (!keys.lakeraAiKey && existingKeys.lakeraAiKey && !lakeraGuardApiKeyFromProcessEnv()) {
         keysToSave.lakeraAiKey = existingKeys.lakeraAiKey
       }
-    } else if (existingKeys.lakeraAiKey && !process.env.LAKERA_AI_KEY) {
+    } else if (existingKeys.lakeraAiKey && !lakeraGuardApiKeyFromProcessEnv()) {
       keysToSave.lakeraAiKey = existingKeys.lakeraAiKey
     }
 
@@ -510,11 +529,9 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
         envKeys.azureOpenAiApiVersion = '2025-04-01-preview'
       }
 
-      if (process.env.LAKERA_AI_KEY) {
-        const envKey = process.env.LAKERA_AI_KEY.trim()
-        if (envKey && !envKey.includes('your') && envKey.length >= 20) {
-          envKeys.lakeraAiKey = envKey
-        }
+      const lakeraEarly = lakeraGuardApiKeyFromProcessEnv()
+      if (lakeraEarly) {
+        envKeys.lakeraAiKey = lakeraEarly
       }
       if (process.env.LAKERA_PROJECT_ID) {
         const envKey = process.env.LAKERA_PROJECT_ID.trim()
@@ -575,7 +592,8 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       envKeys.azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT.trim().replace(/\/+$/, '')
     if (process.env.AZURE_OPENAI_API_VERSION)
       envKeys.azureOpenAiApiVersion = process.env.AZURE_OPENAI_API_VERSION.trim()
-    if (process.env.LAKERA_AI_KEY) envKeys.lakeraAiKey = process.env.LAKERA_AI_KEY.trim()
+    const lakeraPostSave = lakeraGuardApiKeyFromProcessEnv()
+    if (lakeraPostSave) envKeys.lakeraAiKey = lakeraPostSave
     if (process.env.LAKERA_PROJECT_ID)
       envKeys.lakeraProjectId = process.env.LAKERA_PROJECT_ID.trim()
     if (process.env.LAKERA_ENDPOINT) {
@@ -603,7 +621,7 @@ export async function deleteApiKey(keyName: keyof StoredApiKeys): Promise<void> 
     if (keyName === 'openAiKey' && process.env.OPENAI_API_KEY) {
       return
     }
-    if (keyName === 'lakeraAiKey' && process.env.LAKERA_AI_KEY) {
+    if (keyName === 'lakeraAiKey' && lakeraGuardApiKeyFromProcessEnv()) {
       return
     }
     if (keyName === 'lakeraProjectId' && process.env.LAKERA_PROJECT_ID) {
@@ -672,7 +690,7 @@ export async function deleteAllApiKeys(): Promise<void> {
     if (!process.env.AZURE_OPENAI_API_VERSION) {
       keysToDelete.azureOpenAiApiVersion = ''
     }
-    if (!process.env.LAKERA_AI_KEY) {
+    if (!lakeraGuardApiKeyFromProcessEnv()) {
       keysToDelete.lakeraAiKey = ''
     }
     if (!process.env.LAKERA_PROJECT_ID) {
@@ -780,17 +798,9 @@ export function getApiKeysSync(): StoredApiKeys {
     envKeys.azureOpenAiApiVersion = '2025-04-01-preview'
   }
 
-  if (process.env.LAKERA_AI_KEY) {
-    const envKey = process.env.LAKERA_AI_KEY.trim()
-    // Validate it's not a placeholder
-    if (
-      envKey &&
-      !envKey.includes('your') &&
-      !envKey.includes('placeholder') &&
-      envKey.length >= 20
-    ) {
-      envKeys.lakeraAiKey = envKey
-    }
+  const lakeraSync = lakeraGuardApiKeyFromProcessEnv()
+  if (lakeraSync) {
+    envKeys.lakeraAiKey = lakeraSync
   }
 
   if (process.env.LAKERA_PROJECT_ID) {

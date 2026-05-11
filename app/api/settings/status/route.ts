@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getApiKeys } from '@/lib/api-keys-storage'
+import { getApiKeys, lakeraGuardApiKeyEnvVarUsed } from '@/lib/api-keys-storage'
 import { isTeApiKeyConfiguredSync } from '@/lib/checkpoint-te'
 import { config } from '@/lib/config'
 import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
@@ -48,7 +48,11 @@ export async function GET() {
       },
       lakeraAiKey: {
         configured: !!keys.lakeraAiKey,
-        source: process.env.LAKERA_AI_KEY ? 'environment' : keys.lakeraAiKey ? 'secure-storage' : 'none',
+        source: lakeraGuardApiKeyEnvVarUsed()
+          ? 'environment'
+          : keys.lakeraAiKey
+            ? 'secure-storage'
+            : 'none',
       },
       lakeraProjectId: {
         configured: !!keys.lakeraProjectId,

@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
     const lakeraKey = pickProbeString(body.lakeraAiKey, stored.lakeraAiKey)
     if (!lakeraKey) {
       return NextResponse.json(
-        { ok: false, error: 'Lakera API key is required (save in Settings or set LAKERA_AI_KEY).' },
+        {
+          ok: false,
+          error: 'Lakera API key is required (save in Settings or set LAKERA_AI_KEY / LAKERA_API_KEY).',
+        },
         { status: 400 }
       )
     }
@@ -105,14 +108,15 @@ export async function POST(request: NextRequest) {
 
     const draftKey = typeof body.lakeraAiKey === 'string' ? body.lakeraAiKey.trim() : ''
     const probeUsedFormKey = !!(draftKey && draftKey !== 'configured')
-    const envLakeraKey = !!process.env.LAKERA_AI_KEY?.trim()
+    const { lakeraGuardApiKeyFromProcessEnv } = await import('@/lib/api-keys-storage')
+    const envLakeraKey = !!lakeraGuardApiKeyFromProcessEnv()
     let mergeHint = ''
     if (envLakeraKey && probeUsedFormKey) {
       mergeHint =
-        ' Chat requests use LAKERA_AI_KEY from the server environment first (overrides saved keys). If chat returns 401 but this probe succeeded, update or remove LAKERA_AI_KEY in .env.local and restart the service.'
+        ' Chat uses LAKERA_AI_KEY or LAKERA_API_KEY from the server environment when set (overrides saved keys). If chat returns 401 but this probe succeeded, update or remove those vars in the service env file and restart.'
     } else if (envLakeraKey) {
       mergeHint =
-        ' Chat uses LAKERA_AI_KEY from the server environment when set (overrides Settings / secure storage).'
+        ' Chat prefers LAKERA_AI_KEY, then LAKERA_API_KEY, from the server environment when set (overrides Settings / secure storage).'
     }
 
     return NextResponse.json({
