@@ -30,6 +30,7 @@ import {
   effectiveLakeraProjectId,
 } from '@/lib/effective-lakera-client-merge'
 import { config } from '@/lib/config'
+import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -148,6 +149,14 @@ export async function POST(request: NextRequest) {
 
     // Debug: booleans only — env vars override file storage (see lib/api-keys-storage merge).
     const effLakera = effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey)
+    let lakeraResolvedGuardHostname = '(unparsed)'
+    try {
+      lakeraResolvedGuardHostname = new URL(
+        resolveLakeraGuardEndpoint(serverKeys.lakeraEndpoint)
+      ).hostname
+    } catch {
+      /* keep default */
+    }
     console.log('API Keys Status:', {
       serverKeys: {
         openAiKey: !!serverKeys.openAiKey,
@@ -155,6 +164,13 @@ export async function POST(request: NextRequest) {
         lakeraProjectId: !!serverKeys.lakeraProjectId,
         lakeraEndpoint: !!serverKeys.lakeraEndpoint,
       },
+      /** If any is "environment", Settings changes for that field are ignored until env is updated or unset. */
+      lakeraEffectiveSources: {
+        lakeraAiKey: process.env.LAKERA_AI_KEY?.trim() ? 'environment' : 'encrypted_storage_or_none',
+        lakeraProjectId: process.env.LAKERA_PROJECT_ID?.trim() ? 'environment' : 'encrypted_storage_or_none',
+        lakeraEndpoint: process.env.LAKERA_ENDPOINT?.trim() ? 'environment' : 'encrypted_storage_or_none',
+      },
+      lakeraResolvedGuardHostname,
       lakeraEnforcement: {
         enforceStrict: config.lakeraEnforceStrict,
         requireProjectId: config.lakeraRequireProjectId,
