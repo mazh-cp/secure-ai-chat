@@ -89,19 +89,18 @@ export async function POST(request: NextRequest) {
     // Validate and prepare keys to save
     const keysToSave: StoredApiKeys = {}
 
-    console.log('Received keys to save:', {
-      openAiKey: keys.openAiKey ? `${keys.openAiKey.substring(0, 10)}...` : 'empty',
-      anthropicApiKey: keys.anthropicApiKey
-        ? `${keys.anthropicApiKey.substring(0, 10)}...`
-        : 'empty',
-      geminiApiKey: keys.geminiApiKey ? `${keys.geminiApiKey.substring(0, 6)}...` : 'empty',
-      azureOpenAiKey: keys.azureOpenAiKey ? `${keys.azureOpenAiKey.substring(0, 10)}...` : 'empty',
-      azureOpenAiEndpoint: keys.azureOpenAiEndpoint
-        ? `${keys.azureOpenAiEndpoint.substring(0, 30)}...`
-        : 'empty',
-      azureOpenAiApiVersion: keys.azureOpenAiApiVersion || 'empty',
-      lakeraAiKey: keys.lakeraAiKey ? `${keys.lakeraAiKey.substring(0, 10)}...` : 'empty',
-      lakeraProjectId: keys.lakeraProjectId || 'empty',
+    const keyFieldPresent = (v: unknown) => typeof v === 'string' && v.trim().length > 0
+    // Never log key material or project IDs — journald is often world-readable to admins.
+    console.log('Received keys to save (presence only):', {
+      openAiKey: keyFieldPresent(keys.openAiKey),
+      anthropicApiKey: keyFieldPresent(keys.anthropicApiKey),
+      geminiApiKey: keyFieldPresent(keys.geminiApiKey),
+      azureOpenAiKey: keyFieldPresent(keys.azureOpenAiKey),
+      azureOpenAiEndpoint: keyFieldPresent(keys.azureOpenAiEndpoint),
+      azureOpenAiApiVersion: keyFieldPresent(keys.azureOpenAiApiVersion),
+      lakeraAiKey: keyFieldPresent(keys.lakeraAiKey),
+      lakeraProjectId: keyFieldPresent(keys.lakeraProjectId),
+      lakeraEndpoint: keyFieldPresent(keys.lakeraEndpoint),
     })
 
     if (keys.openAiKey !== undefined) {
@@ -285,12 +284,13 @@ export async function POST(request: NextRequest) {
 
     // Get existing keys and merge
     const existingKeys = await getApiKeys()
-    console.log('Existing keys before save:', {
+    console.log('Existing keys before save (merged env+file):', {
       openAiKey: !!existingKeys.openAiKey,
       anthropicApiKey: !!existingKeys.anthropicApiKey,
       geminiApiKey: !!existingKeys.geminiApiKey,
       lakeraAiKey: !!existingKeys.lakeraAiKey,
       lakeraProjectId: !!existingKeys.lakeraProjectId,
+      lakeraEndpoint: !!existingKeys.lakeraEndpoint,
     })
 
     // Save keys (will only save non-env-vars)
