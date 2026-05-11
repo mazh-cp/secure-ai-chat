@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.11'
-export const RELEASE_DATE = '2026-04-24'
+export const APP_VERSION = '1.1.12'
+export const RELEASE_DATE = '2026-05-11'
 
 export interface ReleaseNoteItem {
   title: string
@@ -13,21 +13,11 @@ export interface ReleaseNoteItem {
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Added',
-    items: [
-      '**Google Gemini (text)** — New chat provider; API key in Settings; env **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`**.',
-    ],
-  },
-  {
-    title: 'Fixed',
-    items: [
-      '**Local dev 404** — Polling-based webpack watch options to avoid **`EMFILE`** breaking all routes.',
-    ],
-  },
-  {
     title: 'Changed',
     items: [
-      'Default production upgrade tag **`v1.1.11`**.',
+      '**Theme tokens** — Loaded from **`layout.tsx`** before global styles.',
+      '**Tailwind / PostCSS** — Declared as app **`dependencies`** for reliable production installs.',
+      'Default production upgrade tag **`v1.1.12`**.',
     ],
   },
 ]

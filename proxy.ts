@@ -133,7 +133,7 @@ export async function proxy(request: NextRequest) {
   // Add Check Point WAF response headers (if needed)
   // These help Check Point WAF track the application
   response.headers.set('X-Application-Name', 'secure-ai-chat')
-  response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.1.11')
+  response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.1.12')
 
   // Log API call asynchronously (non-blocking)
   const duration = Date.now() - startTime

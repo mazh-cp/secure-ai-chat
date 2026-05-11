@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+// Load design tokens before globals so variables exist before Tailwind / app styles.
+// Imported here (not via @import inside globals.css) so Webpack always runs the CSS pipeline.
+import '@/lib/theme/tokens.css'
 import './globals.css'
 import Layout from '@/components/Layout'
 import { ThemeProvider } from '@/contexts/ThemeContext'

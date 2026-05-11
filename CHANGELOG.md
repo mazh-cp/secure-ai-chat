@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.12] - 2026-05-11
+
+### Changed
+
+- **Theme tokens CSS** — Import **`@/lib/theme/tokens.css`** from **`app/layout.tsx`** before **`globals.css`** instead of **`@import`** inside **`globals.css`**, so the bundler always processes token variables before Tailwind layers.
+- **Dependencies** — **`tailwindcss`**, **`postcss`**, and **`autoprefixer`** are **`dependencies`** (with **`postcss` plugins** in **`package.json`**) for consistent installs where devDependencies are omitted; **`@types/better-sqlite3`** listed alongside **`better-sqlite3`**.
+- **Upgrade pin** — Default **`GIT_REF=v1.1.12`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, **`install-new-ubuntu-vm.sh`**, and **`UPGRADE_COMMANDS.md`**.
+- **`proxy.ts`** — `X-Application-Version` header fallback **1.1.12** when **`NEXT_PUBLIC_APP_VERSION`** is unset.
+
 ## [1.1.11] - 2026-04-24
 
 ### Added
