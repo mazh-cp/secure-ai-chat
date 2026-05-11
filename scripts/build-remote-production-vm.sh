@@ -17,6 +17,9 @@
 # Track main on the VM instead of v1.1.12:
 #   GIT_REF=main SSH_TARGET=user@host bash scripts/build-remote-production-vm.sh
 #
+# Latest main + build:fresh (same as upgrade-remote-production-main-fresh.sh on VM):
+#   USE_MAIN_FRESH=1 SSH_TARGET=user@host bash scripts/build-remote-production-vm.sh
+#
 # Use legacy v2 wrapper (1.0.x-style defaults):
 #   USE_V3=0 USE_V2=1 GIT_REF=main SSH_TARGET=user@host bash scripts/build-remote-production-vm.sh
 #
@@ -25,13 +28,16 @@
 #   SSH_OPTS        — extra ssh args
 #   USE_V3          — 1 (default): upgrade-remote-production-v3.sh
 #   USE_V2          — used when USE_V3=0 (default 1)
-#   GIT_REF         — default v1.1.2 when USE_V3=1; main when USE_V3=0
+#   GIT_REF         — default v1.1.12 when USE_V3=1; main when USE_V3=0 or USE_MAIN_FRESH=1
 #   USE_BUILD_FRESH — default 1 when USE_V3=1; 0 when USE_V3=0
 #   APP_DIR, RUN_TYPECHECK, HEALTH_RETRIES — forwarded like run-remote-production-upgrade.sh
 #   REPO_RAW        — GitHub raw base if fork
 #
 # On the VM only (equivalent to v3 defaults):
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-remote-production-v3.sh | bash
+#
+# On the VM — pull latest main + build:fresh (fixes on main):
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-remote-production-main-fresh.sh | bash
 #
 set -euo pipefail
 
@@ -44,6 +50,15 @@ if [ -z "$TARGET" ]; then
   echo "Usage: SSH_TARGET=user@host bash scripts/build-remote-production-vm.sh" >&2
   echo "   or: bash scripts/build-remote-production-vm.sh user@host" >&2
   exit 1
+fi
+
+export USE_MAIN_FRESH="${USE_MAIN_FRESH:-0}"
+
+if [ "${USE_MAIN_FRESH}" = "1" ] || [ "${USE_MAIN_FRESH}" = "true" ]; then
+  export USE_MAIN_FRESH=1
+  export GIT_REF="${GIT_REF:-main}"
+  echo "==> USE_MAIN_FRESH=1 (upgrade-remote-production-main-fresh.sh, GIT_REF=$GIT_REF)"
+  exec bash "$SCRIPT_DIR/run-remote-production-upgrade.sh" "$TARGET"
 fi
 
 export USE_V3="${USE_V3:-1}"
