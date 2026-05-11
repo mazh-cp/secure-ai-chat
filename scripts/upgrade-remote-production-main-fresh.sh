@@ -15,7 +15,7 @@
 #
 # Pin a tag or branch instead of main:
 #
-#   curl -fsSL .../upgrade-remote-production-main-fresh.sh | GIT_REF=v1.1.12 bash
+#   curl -fsSL .../upgrade-remote-production-main-fresh.sh | GIT_REF=v1.1.13 bash
 #
 # Custom app directory:
 #

@@ -1,6 +1,6 @@
 # Secure AI Chat - User Guide
 
-**Guide revision:** v1.1.12 (see [CHANGELOG.md](CHANGELOG.md) and in-app release notes for the exact app version).
+**Guide revision:** v1.1.13 (see [CHANGELOG.md](CHANGELOG.md) and in-app release notes for the exact app version).
 
 Welcome to Secure AI Chat! This guide covers secure conversations, file uploads, RAG, Lakera scanning, and all supported chat providers—including **Google Gemini** (Google AI Studio) alongside OpenAI, Anthropic, and Azure OpenAI.
 
@@ -252,6 +252,7 @@ Lakera Guard provides comprehensive security for your AI interactions:
 - **Endpoint**: Defaults to `https://api.lakera.ai/v2/guard`
 - All stored securely on the server
 - Project ID remains visible for policy verification
+- **Server-only options** (see `.env.example`): **`LAKERA_GUARD_MONITORING_ONLY`** (watching mode: policy flags on chat do not return 403 for eligible hits), **`LAKERA_GUARD_INPUT_SCOPE=raw|augmented`** (what text input Guard scans), **`LAKERA_GUARD_DEV_INFO`** (extra Lakera response fields for debugging). Operators can **`GET /api/lakera/last`** for a best-effort snapshot of the last Guard decision on that server process (when app login is enabled, a valid session is required).
 
 **Azure OpenAI Configuration:**
 

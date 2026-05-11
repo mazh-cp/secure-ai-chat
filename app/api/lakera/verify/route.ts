@@ -119,6 +119,27 @@ export async function POST(request: NextRequest) {
         ' Chat prefers LAKERA_AI_KEY, then LAKERA_API_KEY, from the server environment when set (overrides Settings / secure storage).'
     }
 
+    let verifyHost = 'unknown'
+    try {
+      verifyHost = new URL(guardUrl).hostname
+    } catch {
+      /* keep default */
+    }
+    const { recordLakeraLastGuard, sanitizeGuardChatScanForClient } = await import('@/lib/lakera-guard-last')
+    recordLakeraLastGuard({
+      recordedAt: new Date().toISOString(),
+      source: 'lakera_verify',
+      guardHostname: verifyHost,
+      decision: sanitizeGuardChatScanForClient({
+        scanned: true,
+        flagged: extracted.flagged,
+        categories: extracted.categories,
+        scores: extracted.scores,
+        threatLevel: 'low',
+        requestUuid: extracted.requestUuid,
+      }),
+    })
+
     return NextResponse.json({
       ok: true,
       requestUuid: extracted.requestUuid ?? null,

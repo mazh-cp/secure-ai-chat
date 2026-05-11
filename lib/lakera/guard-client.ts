@@ -142,6 +142,9 @@ export async function postLakeraGuard(params: {
     payload: true,
     breakdown: true,
   }
+  if (config.lakeraGuardDevInfo) {
+    body.dev_info = true
+  }
   if (params.metadata) {
     body.metadata = {
       user_id: params.metadata.user_id,

@@ -77,6 +77,25 @@ export const config = {
     process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === '1' ||
     process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === 'true' ||
     process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === 'yes',
+
+  /**
+   * Watching / pilot mode: run Lakera on chat but do not return 403 when Guard flags content
+   * (eligible flags only — see `lib/lakera-guard-monitoring.ts`). Still blocks local high-severity prescan.
+   * Not recommended for production unless you accept the risk.
+   */
+  lakeraGuardMonitoringOnly: envTruthy('LAKERA_GUARD_MONITORING_ONLY'),
+
+  /**
+   * Chat input Guard: `augmented` (default) scans the last user turn after RAG/file injection;
+   * `raw` scans only the raw user message (parity with minimal demos).
+   */
+  lakeraGuardInputScope:
+    process.env.LAKERA_GUARD_INPUT_SCOPE?.trim().toLowerCase() === 'raw'
+      ? ('raw' as const)
+      : ('augmented' as const),
+
+  /** Include Lakera `dev_info` in Guard JSON (larger payload; debugging / demos). */
+  lakeraGuardDevInfo: envTruthy('LAKERA_GUARD_DEV_INFO'),
 }
 
 /** Vars that must be set in production (empty = no hard requirement for app to start). */

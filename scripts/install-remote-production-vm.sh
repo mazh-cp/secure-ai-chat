@@ -13,7 +13,7 @@
 #
 # --- Pin a different tag or branch (vars after the pipe — not on curl) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | GIT_REF=main bash
-#   curl -fsSL .../install-remote-production-vm.sh | GIT_REF=v1.1.12 bash
+#   curl -fsSL .../install-remote-production-vm.sh | GIT_REF=v1.1.13 bash
 #
 # --- Faster install (skip secrets/typecheck/lint gate; not recommended for prod) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | USE_BUILD_FRESH=0 bash
@@ -36,7 +36,7 @@ set -euo pipefail
 INSTALL_SCRIPT_URL="${INSTALL_SCRIPT_URL:-https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install_ubuntu_clean.sh}"
 
 # Pin release for reproducible deploys (override with GIT_REF=main for latest main)
-export BRANCH="${GIT_REF:-${BRANCH:-v1.1.12}}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.1.13}}"
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 export APP_USER="${APP_USER:-secureai}"
 export APP_GROUP="${APP_GROUP:-secureai}"

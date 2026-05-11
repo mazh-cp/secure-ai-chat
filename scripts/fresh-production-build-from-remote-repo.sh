@@ -47,7 +47,7 @@ if [ -n "${1:-}" ]; then
 fi
 
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
-export BRANCH="${GIT_REF:-${BRANCH:-v1.1.12}}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.1.13}}"
 export APP_USER="${APP_USER:-secureai}"
 export APP_GROUP="${APP_GROUP:-secureai}"
 export NODE_VERSION="${NODE_VERSION:-24.13.0}"

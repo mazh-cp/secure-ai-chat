@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.13] - 2026-05-12
+
+### Added
+
+- **Lakera Guard watching mode** — **`LAKERA_GUARD_MONITORING_ONLY=1`**: chat continues when Lakera flags policy hits that are eligible for bypass (see **`lib/lakera-guard-monitoring.ts`**); local high-severity regex prescan and infrastructure errors (`lakera_project_required`, `lakera_api_error`, `lakera_client_error`) still block.
+- **Chat input Guard scope** — **`LAKERA_GUARD_INPUT_SCOPE=raw`** scans only the raw user message; default **`augmented`** keeps scanning the RAG/file-augmented last user turn (stronger for context-based attacks).
+- **`LAKERA_GUARD_DEV_INFO=1`** — Adds **`dev_info: true`** to Guard JSON (aligned with [guard-demo-client](https://github.com/mazh-cp/guard-demo-client) Lakera payload); larger responses—use for debugging/demos.
+- **`GET /api/lakera/last`** — Returns the last sanitized Guard snapshot for this Node process (best-effort; not shared across replicas); requires app session when **`SECURE_CHAT_LOGIN_PASSWORD`** is set.
+- **`POST /api/chat` response** — **`lakeraStatus`** object with sanitized **`input`** / **`output`** decisions (no payload text), plus flags for monitoring mode, **`inputScope`**, and **`guardDevInfo`**.
+
+### Changed
+
+- **`POST /api/lakera/verify`** — Records the latest snapshot for **`GET /api/lakera/last`** after a successful probe.
+- **Upgrade pin** — Default **`GIT_REF=v1.1.13`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, **`install-new-ubuntu-vm.sh`**, **`install-remote-vm-v1.1.sh`**, **`fresh-production-build-from-remote-repo.sh`**, and **`UPGRADE_COMMANDS.md`**.
+- **`proxy.ts`** — `X-Application-Version` header fallback **1.1.13** when **`NEXT_PUBLIC_APP_VERSION`** is unset.
+
 ## [1.1.12] - 2026-05-11
 
 ### Fixed

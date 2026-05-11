@@ -13,7 +13,7 @@
 #   SSH_TARGET   — user@host (optional if first argument is set)
 #   SSH_OPTS     — extra ssh args, e.g. "-i ~/.ssh/id_ed25519"
 #   USE_MAIN_FRESH — if 1, run upgrade-remote-production-main-fresh.sh (default GIT_REF=main, USE_BUILD_FRESH=1)
-#   USE_V3       — if 1, run upgrade-remote-production-v3.sh (1.1.x line: default GIT_REF=v1.1.12, USE_BUILD_FRESH=1)
+#   USE_V3       — if 1, run upgrade-remote-production-v3.sh (1.1.x line: default GIT_REF=v1.1.13, USE_BUILD_FRESH=1)
 #   USE_V2       — if 1 (default when USE_V3=0), run upgrade-remote-production-v2.sh
 #   GIT_REF      — optional; forwarded when non-empty (overrides v3 default tag on remote)
 #   APP_DIR      — optional remote app path

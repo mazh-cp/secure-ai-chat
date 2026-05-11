@@ -32,6 +32,8 @@ import {
 import { config } from '@/lib/config'
 import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 import { lakeraGuardApiKeyEnvVarUsed } from '@/lib/api-keys-storage'
+import { lakeraChatFlagAllowedInMonitoringMode } from '@/lib/lakera-guard-monitoring'
+import { recordLakeraLastGuard, sanitizeGuardChatScanForClient } from '@/lib/lakera-guard-last'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -178,6 +180,9 @@ export async function POST(request: NextRequest) {
         requireProjectId: config.lakeraRequireProjectId,
         enforceInputOutputScan: config.lakeraEnforceInputOutputScan,
         failClosedOnAuthError: config.lakeraFailClosedOnAuthError,
+        monitoringOnly: config.lakeraGuardMonitoringOnly,
+        inputScope: config.lakeraGuardInputScope,
+        guardDevInfo: config.lakeraGuardDevInfo,
       },
       lakeraEnvSet: {
         LAKERA_AI_KEY: !!process.env.LAKERA_AI_KEY?.trim(),
@@ -668,19 +673,26 @@ IMPORTANT INSTRUCTIONS:
       }
     }
 
-    // Lakera input scan AFTER RAG/file injection: screen what the model actually receives (user text + file/RAG context) for PII/DLP and prompt attacks.
+    // Lakera input scan AFTER RAG/file injection (default), or raw user only when LAKERA_GUARD_INPUT_SCOPE=raw.
     const runInputScan =
       Boolean(apiKeys.lakeraAiKey) &&
       (config.lakeraEnforceInputOutputScan || scanOptions?.scanInput !== false)
     if (latestUserMessage && runInputScan && apiKeys.lakeraAiKey) {
       const lakeraKey = apiKeys.lakeraAiKey
       let inputTextForGuard = latestUserMessage.content
-      for (let i = enhancedMessages.length - 1; i >= 0; i--) {
-        if (enhancedMessages[i].role === 'user') {
-          inputTextForGuard = enhancedMessages[i].content
-          break
+      if (config.lakeraGuardInputScope === 'augmented') {
+        for (let i = enhancedMessages.length - 1; i >= 0; i--) {
+          if (enhancedMessages[i].role === 'user') {
+            inputTextForGuard = enhancedMessages[i].content
+            break
+          }
         }
       }
+
+      const inputGuardOptions =
+        config.lakeraGuardInputScope === 'raw' || !latestUserMessage.content
+          ? undefined
+          : { inputUserQuestionPrefix: latestUserMessage.content }
 
       inputScanResult = await screenChatWithLakera(
         inputTextForGuard,
@@ -694,10 +706,28 @@ IMPORTANT INSTRUCTIONS:
           ip_address: userIP,
           internal_request_id: requestId,
         },
-        { inputUserQuestionPrefix: latestUserMessage.content }
+        inputGuardOptions
       )
 
-      if (inputScanResult.flagged) {
+      let guardHostInput = 'unknown'
+      try {
+        guardHostInput = new URL(resolveLakeraGuardEndpoint(apiKeys.lakeraEndpoint)).hostname
+      } catch {
+        /* keep default */
+      }
+      recordLakeraLastGuard({
+        recordedAt: new Date().toISOString(),
+        source: 'chat_input',
+        guardHostname: guardHostInput,
+        inputScope: config.lakeraGuardInputScope,
+        monitoringOnly: config.lakeraGuardMonitoringOnly,
+        decision: sanitizeGuardChatScanForClient(inputScanResult),
+      })
+
+      const inputMonitorBypass =
+        config.lakeraGuardMonitoringOnly && lakeraChatFlagAllowedInMonitoringMode(inputScanResult)
+
+      if (inputScanResult.flagged && !inputMonitorBypass) {
         const { addSystemLog } = await import('@/lib/system-logging')
         addSystemLog(
           'warning',
@@ -750,6 +780,11 @@ IMPORTANT INSTRUCTIONS:
             },
           },
           { status: 403 }
+        )
+      }
+      if (inputScanResult.flagged && inputMonitorBypass) {
+        console.warn(
+          '[Lakera Guard] LAKERA_GUARD_MONITORING_ONLY: input flagged by Guard policy but chat continues (watching mode).'
         )
       }
     }
@@ -1048,8 +1083,24 @@ IMPORTANT INSTRUCTIONS:
           : undefined
       )
 
-      // If output is flagged, block it
-      if (outputScanResult.flagged) {
+      let guardHostOut = 'unknown'
+      try {
+        guardHostOut = new URL(resolveLakeraGuardEndpoint(apiKeys.lakeraEndpoint)).hostname
+      } catch {
+        /* keep default */
+      }
+      recordLakeraLastGuard({
+        recordedAt: new Date().toISOString(),
+        source: 'chat_output',
+        guardHostname: guardHostOut,
+        monitoringOnly: config.lakeraGuardMonitoringOnly,
+        decision: sanitizeGuardChatScanForClient(outputScanResult),
+      })
+
+      const outputMonitorBypass =
+        config.lakeraGuardMonitoringOnly && lakeraChatFlagAllowedInMonitoringMode(outputScanResult)
+
+      if (outputScanResult.flagged && !outputMonitorBypass) {
         // Log security block for Check Point WAF
         const { addSystemLog } = await import('@/lib/system-logging')
         addSystemLog(
@@ -1105,6 +1156,11 @@ IMPORTANT INSTRUCTIONS:
           { status: 403 }
         )
       }
+      if (outputScanResult.flagged && outputMonitorBypass) {
+        console.warn(
+          '[Lakera Guard] LAKERA_GUARD_MONITORING_ONLY: output flagged by Guard policy but response returned to client (watching mode).'
+        )
+      }
     }
 
     const logData = {
@@ -1144,6 +1200,13 @@ IMPORTANT INSTRUCTIONS:
       content: aiResponse,
       inputScanResult,
       outputScanResult,
+      lakeraStatus: {
+        monitoringOnly: config.lakeraGuardMonitoringOnly,
+        guardDevInfo: config.lakeraGuardDevInfo,
+        inputScope: config.lakeraGuardInputScope,
+        input: sanitizeGuardChatScanForClient(inputScanResult),
+        output: sanitizeGuardChatScanForClient(outputScanResult),
+      },
       logData,
       rag: { chunks: [] },
     })

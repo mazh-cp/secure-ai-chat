@@ -33,7 +33,7 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 
 ## Compared to v1.1.10
 
-**Behavioral baseline:** Lakera enforcement options, RAG and file ingestion, and chat via **OpenAI**, **Anthropic**, and **Azure OpenAI** are intended to match **v1.1.10** unless a later entry in [CHANGELOG.md](CHANGELOG.md) says otherwise. **v1.1.12** restores Lakera **hosted** Guard base URL handling for **any `*.lakera.ai` hostname** (same normalization rules as v1.1.10), so regional or non-`api` Lakera SaaS URLs behave like they did on 1.1.10.
+**Behavioral baseline:** Lakera enforcement options, RAG and file ingestion, and chat via **OpenAI**, **Anthropic**, and **Azure OpenAI** are intended to match **v1.1.10** unless a later entry in [CHANGELOG.md](CHANGELOG.md) says otherwise. **v1.1.12+** restores Lakera **hosted** Guard base URL handling for **any `*.lakera.ai` hostname** (same normalization rules as v1.1.10), so regional or non-`api` Lakera SaaS URLs behave like they did on 1.1.10.
 
 **What changed since v1.1.10 (on purpose):**
 

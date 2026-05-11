@@ -1,6 +1,6 @@
 # One-Step Production Upgrade Commands
 
-**Latest**: v1.1.12 (main)  
+**Latest**: v1.1.13 (main)  
 **Last Updated**: 2026-05-11
 
 ## 🚀 Production upgrade — **recommended wrapper** (`production-upgrade.sh`)
@@ -16,14 +16,14 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 **Overrides** (after the pipe):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=v1.1.12 USE_BUILD_FRESH=1 bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/production-upgrade.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=v1.1.13 USE_BUILD_FRESH=1 bash
 ```
 
 ---
 
 ## 🚀 Upgrade remote VM — **1.1.x line (recommended): v3**
 
-### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.12`, `USE_BUILD_FRESH=1`)
+### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.13`, `USE_BUILD_FRESH=1`)
 
 Use this for new production cycles after **1.0.22**. It runs **`npm run build:fresh`** on the VM (client + git leak checks, typecheck, lint, verify standalone) when **`USE_BUILD_FRESH=1`** (default).
 
@@ -46,7 +46,7 @@ export SSH_TARGET=adminuser@YOUR_VM_IP
 USE_V3=1 bash scripts/run-remote-production-upgrade.sh
 ```
 
-**Laptop helper** (`build-remote-production-vm.sh` defaults **`USE_V3=1`**, **`GIT_REF=v1.1.12`**, **`USE_BUILD_FRESH=1`**):
+**Laptop helper** (`build-remote-production-vm.sh` defaults **`USE_V3=1`**, **`GIT_REF=v1.1.13`**, **`USE_BUILD_FRESH=1`**):
 
 ```bash
 export SSH_TARGET=adminuser@YOUR_VM_IP
@@ -56,17 +56,17 @@ bash scripts/build-remote-production-vm.sh
 **Tag must exist on GitHub** (or the script falls back to `main`):
 
 ```bash
-git tag v1.1.12 && git push origin v1.1.12
+git tag v1.1.13 && git push origin v1.1.13
 ```
 
 ---
 
-## 🚀 Upgrade remote VM to v1.1.12 (direct curl, no v3 wrapper)
+## 🚀 Upgrade remote VM to v1.1.13 (direct curl, no v3 wrapper)
 
-**Pin tag with the core script** (after `git tag v1.1.12 && git push origin v1.1.12`):
+**Pin tag with the core script** (after `git tag v1.1.13 && git push origin v1.1.13`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.1.12 USE_BUILD_FRESH=1 bash
+curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/upgrade-curl-production.sh | GIT_REF=v1.1.13 USE_BUILD_FRESH=1 bash
 ```
 
 ---
@@ -255,9 +255,9 @@ For more information, see:
 
 That file is not on GitHub `main` yet. Use **Option A1** above, or push `scripts/upgrade-remote-production-v2.sh` to `mazh-cp/secure-ai-chat` on `main`.
 
-### `Ref v1.1.12 not found` (or any `v*` tag)
+### `Ref v1.1.13 not found` (or any `v*` tag)
 
-The tag is not on GitHub yet. Either push it (`git tag v1.1.12 && git push origin v1.1.12`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
+The tag is not on GitHub yet. Either push it (`git tag v1.1.13 && git push origin v1.1.13`) or use **`GIT_REF=main`**. Recent `upgrade-curl-production.sh` falls back to **`main`** automatically when a `v*` tag is missing.
 
 ### Permission Errors
 
