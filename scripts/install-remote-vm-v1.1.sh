@@ -1,35 +1,45 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Secure AI Chat — install on a newer Ubuntu VM (22.04 / 24.04 LTS+)
+# Secure AI Chat — remote VM install (v1.1.x line, 2026)
 #
-# This script only validates the environment and exports production-friendly
-# defaults, then runs the same installer as install-remote-production-vm.sh
-# (which wraps install_ubuntu_clean.sh: apt deps, user secureai, nvm Node,
-# clone, npm ci, build:fresh, systemd, UFW).
+# Combines production defaults from install-remote-production-vm.sh with the
+# environment checks from install-new-ubuntu-vm.sh. Use this for new Ubuntu
+# cloud VMs when you want one documented entry point.
 #
 # Prerequisites
 #   • Ubuntu x86_64, 22.04 or newer (24.04 LTS recommended)
-#   • Run as a normal user with sudo (not root); cloud images usually OK
-#   • Outbound HTTPS (GitHub, registry.npmjs.org, Node download if needed)
+#   • Run as a normal user with sudo (not root), unless ALLOW_ROOT_INSTALL=1
+#   • Outbound HTTPS (GitHub, registry.npmjs.org, Node download via nvm)
 #
-# One-liner (on the VM):
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | bash
+# One-liner (on the VM) — default pinned tag v1.1.12, /opt/secure-ai-chat, build:fresh:
 #
-# Pin a release tag (recommended for production; vars after the pipe):
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | GIT_REF=v1.1.12 bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | bash
 #
-# Track main instead of a tag:
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | GIT_REF=main bash
+# Track main (latest from default branch):
 #
-# Custom paths (advanced):
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | INSTALL_DIR=/opt/secure-ai-chat APP_USER=secureai GIT_REF=v1.1.12 bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | GIT_REF=main bash
 #
-# Combined remote install (same defaults + OS check): install-remote-vm-v1.1.sh
+# Pin another tag (put variables on the bash side of the pipe, not on curl):
 #
-# Skip Ubuntu version warning only (not recommended):
-#   curl -fsSL .../install-new-ubuntu-vm.sh | SKIP_OS_CHECK=1 bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | GIT_REF=v1.1.12 bash
+#
+# Custom install directory and user:
+#
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | INSTALL_DIR=/home/adminuser/secure-ai-chat APP_USER=adminuser bash
+#
+# Faster build (skips secrets/typecheck/lint gate — not recommended for production):
+#
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | USE_BUILD_FRESH=0 bash
+#
+# After install
+#   • Keys: sudo nano /opt/secure-ai-chat/.env.local (or your INSTALL_DIR)
+#   • Restart: sudo systemctl restart secure-ai-chat
+#   • Future upgrades on same VM (fresh production build from repo):
+#       curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/fresh-production-build-from-remote-repo.sh | bash
+#     Or: scripts/upgrade-remote-production-v3.sh (same underlying upgrade-curl-production.sh)
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
+# Underlying: scripts/install_ubuntu_clean.sh (apt, user, nvm Node, clone, npm ci, build, systemd, UFW)
 # -----------------------------------------------------------------------------
 
 set -euo pipefail
@@ -48,7 +58,7 @@ if [ "${EUID:-0}" -eq 0 ] && [ -z "${ALLOW_ROOT_INSTALL:-}" ]; then
 fi
 
 if ! command -v sudo >/dev/null 2>&1; then
-  echo -e "${RED}sudo is required.${NC} Install sudo or run from a standard Ubuntu cloud image." >&2
+  echo -e "${RED}sudo is required.${NC}" >&2
   exit 1
 fi
 
@@ -58,19 +68,19 @@ if [ "${SKIP_OS_CHECK:-0}" != "1" ] && [ -r /etc/os-release ]; then
   if [ "${ID:-}" = "ubuntu" ]; then
     ver="${VERSION_ID%%.*}"
     if [ -n "${ver}" ] && [ "${ver}" -lt 22 ] 2>/dev/null; then
-      echo -e "${YELLOW}Warning:${NC} Ubuntu ${VERSION_ID:-?} is below 22.04; this stack targets 22.04+ / 24.04 LTS. Continue at your own risk." >&2
-      echo "Set SKIP_OS_CHECK=1 to suppress this check." >&2
+      echo -e "${YELLOW}Warning:${NC} Ubuntu ${VERSION_ID:-?} is below 22.04; this stack targets 22.04+ / 24.04 LTS." >&2
+      echo "Set SKIP_OS_CHECK=1 to suppress." >&2
       sleep 2
     else
       echo -e "${GREEN}Detected:${NC} ${PRETTY_NAME:-Ubuntu ${VERSION_ID:-}}"
     fi
   else
-    echo -e "${YELLOW}Warning:${NC} OS is ${ID:-unknown}, not Ubuntu. Installer is written for Ubuntu; other distros may fail." >&2
+    echo -e "${YELLOW}Warning:${NC} OS is ${ID:-unknown}, not Ubuntu. Continue at your own risk." >&2
     sleep 2
   fi
 fi
 
-# Same defaults as install-remote-production-vm.sh (keep in sync when bumping releases)
+# Keep in sync with install-remote-production-vm.sh / lib/app-release.ts when cutting releases
 export BRANCH="${GIT_REF:-${BRANCH:-v1.1.12}}"
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 export APP_USER="${APP_USER:-secureai}"
@@ -81,7 +91,7 @@ export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
 export REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
 
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Secure AI Chat — new Ubuntu VM install (22.04+ / 24.04)     ║${NC}"
+echo -e "${BLUE}║   Secure AI Chat — remote VM install (v1.1.x, Ubuntu 22.04+)     ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}Git ref (clone):${NC}      $BRANCH"

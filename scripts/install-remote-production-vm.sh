@@ -11,20 +11,22 @@
 # --- Same install with Ubuntu 22.04+ version check (alias) ---
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | bash
 #
-# --- Pin a different tag or branch ---
-#   GIT_REF=main curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | bash
-#   GIT_REF=v1.1.3 curl -fsSL ... | bash
+# --- Pin a different tag or branch (vars after the pipe — not on curl) ---
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | GIT_REF=main bash
+#   curl -fsSL .../install-remote-production-vm.sh | GIT_REF=v1.1.12 bash
 #
 # --- Faster install (skip secrets/typecheck/lint gate; not recommended for prod) ---
-#   USE_BUILD_FRESH=0 curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-production-vm.sh | USE_BUILD_FRESH=0 bash
 #
 # --- Custom install directory / user (e.g. match adminuser home layout) ---
-#   INSTALL_DIR=/home/adminuser/secure-ai-chat APP_USER=adminuser curl -fsSL ... | bash
+#   curl -fsSL .../install-remote-production-vm.sh | INSTALL_DIR=/home/adminuser/secure-ai-chat APP_USER=adminuser bash
+#
+# --- Newer combined entry (OS check + same defaults): install-remote-vm-v1.1.sh ---
 #
 # --- After install ---
 #   • Configure API keys: sudo nano /opt/secure-ai-chat/.env.local (or your INSTALL_DIR)
 #   • Restart: sudo systemctl restart secure-ai-chat
-#   • Future upgrades (same machine): pipe upgrade-remote-production-v3.sh (default GIT_REF=v1.1.12)
+#   • Future upgrades: fresh-production-build-from-remote-repo.sh or upgrade-remote-production-v3.sh (default GIT_REF=v1.1.12)
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 
