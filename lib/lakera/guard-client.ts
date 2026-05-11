@@ -5,7 +5,11 @@
 
 import { config } from '@/lib/config'
 import { buildGuardMessagesFromAugmentedUserTurn } from '@/lib/lakera-guard-messages'
-import { lakeraProjectIdForGuard, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
+import {
+  lakeraProjectIdForGuard,
+  normalizeLakeraApiKeyForGuard,
+  resolveLakeraGuardEndpoint,
+} from '@/lib/lakera-guard-endpoint'
 import { detectCommonInjectionPatterns } from '@/lib/lakera-prescan'
 import { detectStructuredSensitiveLeakInAssistantOutput } from '@/lib/lakera-output-structured-leak'
 import {
@@ -147,7 +151,7 @@ export async function postLakeraGuard(params: {
     }
   }
 
-  const bearerKey = params.lakeraKey.trim().replace(/^Bearer\s+/i, '')
+  const bearerKey = normalizeLakeraApiKeyForGuard(params.lakeraKey)
 
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), Math.max(1000, config.lakeraTimeoutMs))

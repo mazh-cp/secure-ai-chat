@@ -5,6 +5,8 @@
  * those must never be forwarded to Lakera Guard.
  */
 
+import { normalizeLakeraApiKeyForGuard } from '@/lib/lakera-guard-endpoint'
+
 function trimOrEmpty(v: unknown): string {
   if (typeof v !== 'string') return ''
   return v.trim()
@@ -15,10 +17,10 @@ export function effectiveLakeraAiKey(
   client: string | null | undefined
 ): string | null {
   const s = trimOrEmpty(server)
-  if (s) return s
+  if (s) return normalizeLakeraApiKeyForGuard(s)
   const c = trimOrEmpty(client)
   if (!c || c === 'configured') return null
-  return c
+  return normalizeLakeraApiKeyForGuard(c)
 }
 
 export function effectiveLakeraProjectId(

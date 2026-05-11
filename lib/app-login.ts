@@ -81,7 +81,13 @@ export function requireSecureChatSession(request: NextRequest): NextResponse | n
   const token = request.cookies.get(SECURE_CHAT_SESSION_COOKIE)?.value
   if (verifySessionToken(token)) return null
   return NextResponse.json(
-    { error: 'Authentication required', requiresLogin: true },
+    {
+      error: 'Authentication required',
+      requiresLogin: true,
+      code: 'SECURE_CHAT_SESSION',
+      hint:
+        'Log in again at this same browser URL. Behind a new reverse proxy or gateway, ensure Cookie is forwarded to the app and set X-Forwarded-Proto: https (or Forwarded: proto=https) when TLS terminates at the gateway. For internal HTTP to the app use SESSION_COOKIE_SECURE=0.',
+    },
     { status: 401 }
   )
 }
@@ -89,11 +95,19 @@ export function requireSecureChatSession(request: NextRequest): NextResponse | n
 /** True when the browser→origin connection is HTTPS (direct TLS or reverse proxy). */
 function isBrowserHttps(request?: NextRequest): boolean {
   if (!request) return false
+  if (process.env.NODE_ENV === 'production') {
+    const trust = process.env.TRUST_PROXY_HTTPS?.trim().toLowerCase()
+    if (trust === '1' || trust === 'true') return true
+  }
   const xf = request.headers.get('x-forwarded-proto')
   if (xf) {
     const first = xf.split(',')[0]?.trim().toLowerCase()
     if (first === 'https') return true
   }
+  if (request.headers.get('front-end-https')?.toLowerCase() === 'on') return true
+  if (request.headers.get('x-forwarded-ssl')?.toLowerCase() === 'on') return true
+  const forwarded = request.headers.get('forwarded')
+  if (forwarded && /(?:^|;\s*)proto=https(?:\s*;|$)/i.test(forwarded)) return true
   return request.nextUrl.protocol === 'https:'
 }
 

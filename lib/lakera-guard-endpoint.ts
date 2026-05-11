@@ -56,13 +56,22 @@ export function lakeraProjectIdForGuard(raw?: string | null): string | undefined
   return t ? t : undefined
 }
 
+/** Strip quotes/BOM/Bearer prefix so keys pasted from docs or .env work with regional Guard gateways. */
+export function normalizeLakeraApiKeyForGuard(raw: string): string {
+  let k = raw.trim().replace(/^\uFEFF/, '').replace(/^Bearer\s+/i, '')
+  if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+    k = k.slice(1, -1).trim()
+  }
+  return k.replace(/[\r\n\t]/g, '')
+}
+
 /** Short operator hint when Lakera HTTP status is surfaced to the UI. */
 export function lakeraGuardHttpUserHint(status: number): string | undefined {
   if (status === 404) {
     return 'Use endpoint https://api.lakera.ai/v2/guard or your region (e.g. https://eu-west-1.api.lakera.ai/v2/guard). /v1/guard and /guard are invalid.'
   }
   if (status === 401) {
-    return 'Check Lakera API key and that Authorization uses Bearer; rotate key in Lakera platform if needed.'
+    return 'Invalid or revoked Lakera API key, or key not allowed for this Guard host/region. Regenerate in Lakera platform, paste without Bearer/ quotes, save Settings, retry. Same key works on global and regional *.api.lakera.ai hosts.'
   }
   return undefined
 }

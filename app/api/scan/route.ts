@@ -30,9 +30,12 @@ function lakeraHttpErrorNextResponse(
   }
 
   if (status === 401) {
+    const hint = lakeraGuardHttpUserHint(401)
     return NextResponse.json(
       {
-        error: 'Invalid Lakera API key. Please verify your API key in Settings.',
+        error: hint
+          ? `Invalid Lakera API key (401). ${hint}`
+          : 'Invalid Lakera API key. Please verify your API key in Settings.',
         details: errorDetails,
       },
       { status: 401 }
