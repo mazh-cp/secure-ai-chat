@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.12] - 2026-05-11
 
+### Fixed
+
+- **Lakera hosted Guard URL normalization** — **`lib/lakera-guard-endpoint.ts`** again treats **`lakera.ai`** and **any `*.lakera.ai`** host as Lakera SaaS for path normalization (**parity with v1.1.10**). A v1.1.11–style restriction to **`*.api.lakera.ai`** only could break regional or other valid Lakera bases that are not under **`api.lakera.ai`**.
+
 ### Changed
 
 - **Theme tokens CSS** — Import **`@/lib/theme/tokens.css`** from **`app/layout.tsx`** before **`globals.css`** instead of **`@import`** inside **`globals.css`**, so the bundler always processes token variables before Tailwind layers.
@@ -15,7 +19,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Google Gemini (text chat)** — Provider **Google Gemini** in the chat UI; **`POST /api/chat`** with `provider: 'google'`; **`lib/geminiAdapter.ts`** (`generateContent` on **Generative Language API**); **`geminiApiKey`** in **`StoredApiKeys`** / Settings (paste-only); server env **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`**; **`GET /api/models?provider=google`**; same Lakera and RAG pipeline as other providers.
+- **Google Gemini (text chat)** — Provider **Google Gemini** in the chat UI; **`POST /api/chat`** with `provider: 'google'`; **`lib/geminiAdapter.ts`** calls **`generateContent`** on Google’s **Generative Language API** (`generativelanguage.googleapis.com`, **Google AI Studio** keys)—**not** Vertex AI with a service account; **`geminiApiKey`** in **`StoredApiKeys`** / Settings; server env **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`**; **`GET /api/models?provider=google`**; same Lakera input/output scan and RAG pipeline as other providers.
 
 ### Fixed
 

@@ -1,8 +1,8 @@
 # Secure AI Chat - User Guide
 
-**Version 1.0.16**
+**Guide revision:** v1.1.12 (see [CHANGELOG.md](CHANGELOG.md) and in-app release notes for the exact app version).
 
-Welcome to Secure AI Chat! This guide will help you get the most out of the application's features, from secure conversations to file uploads and security scanning. This version includes local persistent storage (DATA_DIR), async processing pipeline with status lifecycle, Lakera chunk-level scanning, and blank-screen prevention.
+Welcome to Secure AI Chat! This guide covers secure conversations, file uploads, RAG, Lakera scanning, and all supported chat providers—including **Google Gemini** (Google AI Studio) alongside OpenAI, Anthropic, and Azure OpenAI.
 
 ---
 
@@ -26,19 +26,22 @@ Welcome to Secure AI Chat! This guide will help you get the most out of the appl
 
 1. **Configure API Keys**
    - Navigate to the **Settings** page (⚙️ icon in the sidebar)
-   - Add your **OpenAI API Key** (required for OpenAI provider)
-   - Add your **Azure OpenAI API Key** and **Endpoint** (required for Azure OpenAI provider)
+   - Add at least one **chat** API key (you can configure several):
+     - **OpenAI** — for the OpenAI provider
+     - **Anthropic** — for Claude (`ANTHROPIC_API_KEY` in env is also supported)
+     - **Azure OpenAI** — API key and **Endpoint** (required for that provider)
+     - **Google Gemini** — API key from [Google AI Studio](https://aistudio.google.com/apikey) (optional env: **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`**). This is the consumer **Generative Language API** key, not a Vertex AI service account.
    - Add your **Lakera AI API Key** and **Project ID** (for security scanning)
    - Optionally add your **Check Point TE API Key** (for file sandboxing)
    - **Validate Azure OpenAI credentials** using the validation button (shows real-time feedback)
    - Click **Save Keys** to store them securely
 
 2. **Choose Your Provider and Model**
-   - On the Chat page, use the **Provider** dropdown to select between **OpenAI** or **Azure OpenAI**
-   - Use the **Model** dropdown to select your preferred model
+   - On the Chat page, use the **Provider** dropdown: **OpenAI**, **Anthropic**, **Azure OpenAI**, or **Google Gemini**
+   - Use the **Model** dropdown to select your preferred model (choices depend on the provider)
    - When switching to Azure OpenAI, `gpt-4o-mini` is automatically selected (recommended)
    - Your provider and model preferences are saved automatically
-   - **Note**: You can use either provider - the chat page remains accessible if at least one provider is configured
+   - **Note**: The chat page is available if **at least one** of the configured chat providers has a valid key
 
 3. **Enable Security Features**
    - Toggle **Input Scan** and **Output Scan** on the Chat page for Lakera Guard protection
@@ -85,6 +88,10 @@ If a message is blocked, you'll see a clear message explaining why and can rephr
 - **gpt-4-turbo** - Latest capabilities
 - **gpt-5.x** models - Latest generation (OpenAI only, not available for Azure)
 
+**Anthropic Provider:**
+
+- Uses your Anthropic API key; model list reflects Claude models exposed by the app for your account
+
 **Azure OpenAI Provider:**
 
 - Uses your Azure OpenAI deployment names (must match exactly, case-sensitive)
@@ -94,11 +101,18 @@ If a message is blocked, you'll see a clear message explaining why and can rephr
 - **gpt-4-turbo** - Turbo variant
 - **Note**: GPT-5 models are not supported by Azure OpenAI
 
+**Google Gemini Provider:**
+
+- Uses a **Google AI Studio** API key (Settings **Google Gemini API Key**, or **`GEMINI_API_KEY`** / **`GOOGLE_API_KEY`** in the environment)
+- Models are **Gemini** IDs (for example **Gemini 2.0 Flash** as a sensible default); the UI lists curated options, and the server validates `gemini-*` style IDs for custom models
+- **Lakera** input/output scanning and **RAG** over uploaded files work the same way as for other chat providers
+- **Not** Google Cloud **Vertex AI** with a service account—only the HTTP **Generative Language API** path used by AI Studio keys
+
 **Switching Providers:**
 
-- Use the Provider dropdown to switch between OpenAI and Azure OpenAI
+- Use the Provider dropdown to switch between OpenAI, Anthropic, Azure OpenAI, and Google Gemini
 - The model selector automatically updates based on your provider choice
-- If one provider has invalid keys, you can still use the other provider
+- If one provider has invalid or missing keys, you can still use another configured provider
 - Your provider and model preferences are saved and persist across sessions
 
 ---
@@ -214,10 +228,22 @@ Lakera Guard provides comprehensive security for your AI interactions:
 
 **OpenAI API Key:**
 
-- Required for chat functionality
+- Required if you use the OpenAI provider
 - Stored securely on the server
 - Validated automatically when saved
 - Status indicator shows if key is valid
+
+**Anthropic API Key:**
+
+- Required if you use the Anthropic (Claude) provider
+- Can also be supplied via **`ANTHROPIC_API_KEY`** in the environment
+
+**Google Gemini API Key:**
+
+- Required if you use the **Google Gemini** provider
+- Obtain a key from [Google AI Studio](https://aistudio.google.com/apikey)
+- Optional environment variables: **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`** (server reads either; see `.env.example`)
+- Stored like other keys; used only for **Generative Language API** text chat in this app
 
 **Lakera AI Configuration:**
 

@@ -19,6 +19,7 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 - ☸️ **Kubernetes Ready**: Deployment manifests with liveness/readiness probes
 - 📋 **Release Notes**: Dedicated page for version history and changelog
 - 🔍 **RAG (Retrieval Augmented Generation)**: Chat can access and answer questions about uploaded files
+- ✨ **Google Gemini (v1.1.11+)**: Optional chat provider via [Google AI Studio](https://aistudio.google.com/apikey); same Lakera input/output scan and RAG pipeline as OpenAI, Anthropic, and Azure
 - 🛡️ **File Scanning**: Lakera AI and Checkpoint TE integration for file security
 - 🔐 **Check Point WAF Integration**: Full support for Check Point WAF as reverse proxy with logging and monitoring
 
@@ -29,6 +30,14 @@ A modern, secure AI chat application built with Next.js, TypeScript, and a focus
 - **Styling**: Tailwind CSS
 - **Security**: Custom security headers, encryption utilities
 - **Date Formatting**: date-fns
+
+## Compared to v1.1.10
+
+**Behavioral baseline:** Lakera enforcement options, RAG and file ingestion, and chat via **OpenAI**, **Anthropic**, and **Azure OpenAI** are intended to match **v1.1.10** unless a later entry in [CHANGELOG.md](CHANGELOG.md) says otherwise. **v1.1.12** restores Lakera **hosted** Guard base URL handling for **any `*.lakera.ai` hostname** (same normalization rules as v1.1.10), so regional or non-`api` Lakera SaaS URLs behave like they did on 1.1.10.
+
+**What changed since v1.1.10 (on purpose):**
+
+- **Google Gemini** — Added in **v1.1.11**. In the chat UI, pick provider **Google Gemini**, paste a [Google AI Studio](https://aistudio.google.com/apikey) API key in Settings (or set **`GEMINI_API_KEY`** or **`GOOGLE_API_KEY`** in `.env.local`). The server calls Google’s **Generative Language API** (`generativelanguage.googleapis.com` / `generateContent`), not Vertex AI with a service account. Model list: **`GET /api/models?provider=google`**; defaults and validation live in **`lib/geminiAdapter.ts`**. Lakera and RAG behavior mirror other providers.
 
 ## Prerequisites
 
