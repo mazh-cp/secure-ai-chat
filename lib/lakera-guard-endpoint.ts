@@ -6,10 +6,14 @@
 
 export const LAKERA_GUARD_URL_DEFAULT = 'https://api.lakera.ai/v2/guard'
 
-/** Lakera-hosted Guard (global + regional); other hosts are returned unchanged (self-hosted, proxies). */
+/**
+ * Lakera SaaS hosts where we normalize `/`, `/v2`, `/v1/guard`, etc. to `/v2/guard`.
+ * Must match v1.1.10-era behavior (`hostname.endsWith('lakera.ai')`), not only `*.api.lakera.ai`,
+ * so alternate documented hosts (e.g. legacy regional names) still get path fixes.
+ */
 function isLakeraHostedGuardHost(hostname: string): boolean {
   const h = hostname.toLowerCase()
-  return h === 'api.lakera.ai' || h.endsWith('.api.lakera.ai')
+  return h === 'lakera.ai' || h.endsWith('.lakera.ai')
 }
 
 /** Canonical path for Lakera SaaS Guard v2. */
