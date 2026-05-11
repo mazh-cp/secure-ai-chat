@@ -22,7 +22,7 @@ import {
   shouldThrottleByTokens,
   getTokenLimitAsync,
 } from '@/lib/token-counter'
-import { injectRagContext } from '@/lib/rag-context'
+import { injectRagContext, RAG_DATA_PRIVACY_INSTRUCTIONS } from '@/lib/rag-context'
 import { requireSecureChatSession } from '@/lib/app-login'
 import {
   effectiveLakeraAiKey,
@@ -633,9 +633,9 @@ export async function POST(request: NextRequest) {
 IMPORTANT INSTRUCTIONS:
 1. You have access to ${availableFilesList.length} uploaded file(s). The file content will be provided in the user's message below.
 2. For general knowledge questions (e.g. "what is Python?", "how does X work?", "hello") — answer directly from your knowledge. Do NOT restrict answers to files.
-3. When the user asks about data, records, users, or content that might be in the uploaded files — search through the file content and provide the relevant information. Do NOT mention file names, row numbers, or document identifiers in your answer; only share the substance of the content.
+3. When the user asks about data, records, users, or content that might be in the uploaded files — search through the file content and answer with the minimum necessary fields. Do NOT mention file names, row numbers, or document identifiers in your answer; only share the substance of the content.
 4. If the user asked about file content but it is NOT in the files — say so clearly, then you may use general knowledge if helpful.
-5. Use the file content only when the question is about file content or data.`,
+5. Use the file content only when the question is about file content or data.${RAG_DATA_PRIVACY_INSTRUCTIONS}`,
         })
       }
       if (latestUserMessage) {

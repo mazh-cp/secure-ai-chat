@@ -17,6 +17,21 @@ export function detectStructuredSensitiveLeakInAssistantOutput(text: string): bo
 
   const lower = t.toLowerCase()
 
+  // Standalone high-signal patterns (Lakera may not flag factual regurgitation from RAG)
+  if (/\b\d{3}-\d{2}-\d{4}\b/.test(t)) return true
+  const dobCue =
+    /\b(date of birth|birth\s*date|d\.?o\.?b\.?\b|born on|birthday)\b/i.test(lower) ||
+    /\bage\s*[:-]\s*\d{1,3}\b/i.test(lower)
+  const dobValue = /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b(?:19|20)\d{2}-\d{2}-\d{2}\b/.test(t)
+  if (dobCue && dobValue) return true
+
+  const incomeCue =
+    /\b(income|salary|compensation|earnings|annual pay|gross pay|net pay|hourly (rate|wage)|base pay)\b/i.test(
+      lower
+    )
+  if (incomeCue && hasDollarAmount(t)) return true
+  if (incomeCue && /\b\d{1,3}(?:,\d{3}){1,3}\b/.test(t)) return true
+
   const med =
     /\bmedical\s+condition\b/i.test(lower) ||
     /\bdiagnos(is|ed)\b/i.test(lower) ||
