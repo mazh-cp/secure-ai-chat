@@ -20,7 +20,7 @@
 #
 #   curl -fsSL .../fresh-production-build-from-remote-repo.sh | bash -s -- /opt/secure-ai-chat
 #
-# Or env style:
+# Or env style (use this if auto-detect fails — e.g. app not under /opt or adminuser home):
 #
 #   curl -fsSL .../fresh-production-build-from-remote-repo.sh | APP_DIR=/opt/secure-ai-chat GIT_REF=v1.1.12 bash
 #

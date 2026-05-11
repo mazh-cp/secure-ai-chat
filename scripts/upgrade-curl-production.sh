@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Secure AI Chat - Curl one-liner upgrade for production VM
 # Repo: https://github.com/mazh-cp/secure-ai-chat
-# Default path: /home/adminuser/secure-ai-chat (override with APP_DIR)
+# Default APP_DIR: auto-detect (prefers /opt/secure-ai-chat, then common home paths; override with APP_DIR)
 # Default ref: main (override with GIT_REF). Use main for latest; tags (e.g. v1.0.20) are supported.
 #
 # Optional (export before piping, or use scripts/upgrade-remote-production-v2.sh):
@@ -36,21 +36,31 @@
 set -euo pipefail
 
 # Bumped when upgrade behavior changes (appears in logs so support can see which script ran).
-UPGRADE_CURL_SCRIPT_REV="${UPGRADE_CURL_SCRIPT_REV:-20260417c}"
+UPGRADE_CURL_SCRIPT_REV="${UPGRADE_CURL_SCRIPT_REV:-20260511a}"
 
 # Configuration: APP_DIR from env, or first argument (for "bash -s -- /path"), or auto-detect
-if [ -n "${1:-}" ] && [ -d "${1}" ]; then
-  APP_DIR="$1"
-elif [ -z "${APP_DIR:-}" ]; then
-  if [ -d "/home/adminuser/secure-ai-chat" ] && [ -f "/home/adminuser/secure-ai-chat/package.json" ]; then
-    APP_DIR="/home/adminuser/secure-ai-chat"
-  elif [ -d "/opt/secure-ai-chat" ] && [ -f "/opt/secure-ai-chat/package.json" ]; then
-    APP_DIR="/opt/secure-ai-chat"
-  else
-    APP_DIR="/home/adminuser/secure-ai-chat"
+# Use sudo test where needed: /opt installs are often root-owned; adminuser cannot [ -d ] / [ -f ] them.
+if [ -n "${1:-}" ]; then
+  if sudo test -d "${1}" 2>/dev/null || test -d "${1}" 2>/dev/null; then
+    APP_DIR="$1"
   fi
 fi
-APP_DIR="${APP_DIR:-/home/adminuser/secure-ai-chat}"
+if [ -z "${APP_DIR:-}" ]; then
+  _try_opt="/opt/secure-ai-chat"
+  _try_admin_home="/home/adminuser/secure-ai-chat"
+  _try_login_home="${HOME}/secure-ai-chat"
+  if { sudo test -d "$_try_opt" 2>/dev/null && sudo test -f "$_try_opt/package.json" 2>/dev/null; }; then
+    APP_DIR="$_try_opt"
+  elif { sudo test -d "$_try_admin_home" 2>/dev/null && sudo test -f "$_try_admin_home/package.json" 2>/dev/null; }; then
+    APP_DIR="$_try_admin_home"
+  elif { sudo test -d "$_try_login_home" 2>/dev/null && sudo test -f "$_try_login_home/package.json" 2>/dev/null; }; then
+    APP_DIR="$_try_login_home"
+  else
+    # Prefer /opt in messages — matches install-remote-production-vm / production-upgrade defaults
+    APP_DIR="$_try_opt"
+  fi
+fi
+APP_DIR="${APP_DIR:-/opt/secure-ai-chat}"
 GIT_REF="${GIT_REF:-main}"
 GIT_REF_FALLBACK="${GIT_REF_FALLBACK:-main}"
 REPO_URL="https://github.com/mazh-cp/secure-ai-chat.git"
