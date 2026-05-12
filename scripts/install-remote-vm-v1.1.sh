@@ -6,6 +6,10 @@
 # environment checks from install-new-ubuntu-vm.sh. Use this for new Ubuntu
 # cloud VMs when you want one documented entry point.
 #
+# Always performs a full purge of any prior instance before installing:
+#   stop service → remove unit → kill stray node → wipe install dir
+#   (preserves .env.local and .secure-storage across reinstalls)
+#
 # Prerequisites
 #   • Ubuntu x86_64, 22.04 or newer (24.04 LTS recommended)
 #   • Run as a normal user with sudo (not root), unless ALLOW_ROOT_INSTALL=1
