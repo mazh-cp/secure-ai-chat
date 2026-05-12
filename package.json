@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@types/form-data": "^2.2.1",
-    "@types/node": "^22.19.15",
+    "@types/node": "^25.6.2",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@types/better-sqlite3": "^7.6.11",
