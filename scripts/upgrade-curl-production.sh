@@ -297,6 +297,43 @@ if [ -d "$BACKUP_DIR/.storage" ]; then
   sudo cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" 2>/dev/null || cp -a "$BACKUP_DIR/.storage" "$APP_DIR/" || true
 fi
 
+# --- Config migration: inject new required vars into .env.local if absent ---
+# This runs after backup restore so every upgrade (not just fresh installs) picks up
+# variables added in newer releases. Safe to run repeatedly — only appends if missing.
+say "Checking .env.local for required configuration..."
+ENV_FILE="$APP_DIR/.env.local"
+if ! sudo test -f "$ENV_FILE" 2>/dev/null; then
+  # No .env.local yet — create a minimal one so the app can start
+  PKG_VER_NOW=$(sudo grep -m1 '"version"' "$APP_DIR/package.json" 2>/dev/null | sed 's/.*"version": *"\([^"]*\)".*/\1/' || echo '0.0.0')
+  APP_PORT_NOW=$(sudo grep -m1 '^PORT=' "$ENV_FILE" 2>/dev/null | cut -d'=' -f2 || echo '3000')
+  sudo -u "$APP_USER" tee "$ENV_FILE" >/dev/null <<ENVEOF
+OPENAI_API_KEY=
+LAKERA_AI_KEY=
+LAKERA_ENDPOINT=https://api.lakera.ai/v2/guard
+LAKERA_PROJECT_ID=
+NEXT_PUBLIC_APP_NAME=Secure AI Chat
+NEXT_PUBLIC_APP_VERSION=${PKG_VER_NOW}
+PORT=${APP_PORT_NOW}
+HOSTNAME=0.0.0.0
+NODE_ENV=production
+SHARED_ORG_OWNER_ID=org
+ENVEOF
+  warn "Created minimal .env.local — add OPENAI_API_KEY (and LAKERA_AI_KEY if using Lakera Guard)"
+fi
+
+# Inject SHARED_ORG_OWNER_ID if not already present.
+# Without it every browser session gets a different UUID owner, so files uploaded in one session
+# are invisible to another and RAG silently returns no context.
+if ! sudo grep -q '^SHARED_ORG_OWNER_ID=' "$ENV_FILE" 2>/dev/null; then
+  echo '' | sudo tee -a "$ENV_FILE" >/dev/null
+  echo '# Shared file + RAG namespace — all sessions share one corpus (required for RAG on single-org VMs)' | sudo tee -a "$ENV_FILE" >/dev/null
+  echo 'SHARED_ORG_OWNER_ID=org' | sudo tee -a "$ENV_FILE" >/dev/null
+  ok "Injected SHARED_ORG_OWNER_ID=org into .env.local (was missing — RAG fix)"
+else
+  ok "SHARED_ORG_OWNER_ID already set in .env.local"
+fi
+sudo chown "$APP_USER:$APP_USER" "$ENV_FILE" 2>/dev/null || true
+
 # install_ubuntu_clean installs nvm under APP_DIR/.nvm using HOME=INSTALL_DIR for the app user.
 # sudo -u secureai leaves HOME=/home/secureai — then system Node/npm run → EBADENGINE + npm 9.2 "Invalid comparator" on overrides.
 APP_HOME="$APP_DIR"
