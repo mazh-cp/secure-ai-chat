@@ -11,7 +11,6 @@ import {
   resolveLakeraGuardEndpoint,
 } from '@/lib/lakera-guard-endpoint'
 import { detectCommonInjectionPatterns } from '@/lib/lakera-prescan'
-import { detectStructuredSensitiveLeakInAssistantOutput } from '@/lib/lakera-output-structured-leak'
 import {
   mergeLakeraEffectiveFlag,
   sortLakeraThreatCategoriesForDisplay,
@@ -257,6 +256,8 @@ export interface GuardChatScanResult {
 export type ChatGuardCallOptions = {
   inputUserQuestionPrefix?: string
   outputPairedUserContent?: string
+  /** Tool/function call response messages to scan alongside the user turn (future-proofing for function-calling flows). */
+  toolMessages?: Array<{ role: 'tool'; content: string; tool_call_id?: string }>
 }
 
 /**
@@ -333,6 +334,12 @@ export async function screenChatWithLakera(
         content: message,
       },
     ]
+  }
+
+  // Inject tool/function call response messages immediately before the user turn.
+  // Enables Guard to screen function-calling flows (OpenAI tool_calls, Anthropic tool_use).
+  if (guardCallOptions?.toolMessages?.length) {
+    messagesForGuard = [...guardCallOptions.toolMessages, ...messagesForGuard]
   }
 
   // Prepend prior conversation turns as context for multi-turn injection detection.
@@ -454,19 +461,10 @@ export async function screenChatWithLakera(
     flagged = effective.flagged
     categories = effective.categories
 
-    if (
-      context === 'output' &&
-      !flagged &&
-      message.trim() &&
-      detectStructuredSensitiveLeakInAssistantOutput(message)
-    ) {
-      flagged = true
-      categories = {
-        ...(categories || {}),
-        pii: true,
-        structured_sensitive_output: true,
-      }
-    }
+    // Output PII detection is handled by Lakera Guard's native payload detector
+    // (payload: true is sent on every Guard request). Using LAKERA_ENFORCE_INPUT_OUTPUT_SCAN=1
+    // ensures output scans always run. The previous local regex block is removed to eliminate
+    // policy drift between the Guard portal and local rules — Guard portal policy is authoritative.
 
     const threatCategories = categories
       ? sortLakeraThreatCategoriesForDisplay(
