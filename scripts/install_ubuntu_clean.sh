@@ -307,6 +307,9 @@ NEXT_PUBLIC_APP_VERSION=${PKG_VERSION}
 PORT=$APP_PORT
 HOSTNAME=0.0.0.0
 NODE_ENV=production
+# Shared file namespace: all browsers upload to and retrieve from the same corpus.
+# Required for RAG to work consistently across sessions on a single-user / single-org VM.
+SHARED_ORG_OWNER_ID=org
 EOF
   log_success ".env.local created"
 else

@@ -202,20 +202,22 @@ export async function buildRagContext(
     owner_id: scope.userId ?? undefined,
     session_id: undefined,
   })
-  if (process.env.NODE_ENV !== 'production' && files.length === 0 && scope.userId) {
+  // If owner-scoped query returns nothing, fall back to all files in the registry.
+  // This handles fresh installs (cookie diverges from a rebuilt registry) and cases where
+  // SHARED_ORG_OWNER_ID is not set. Set SHARED_ORG_OWNER_ID for deterministic single-tenant scoping.
+  if (files.length === 0 && scope.userId) {
     const anyFiles = listFiles()
     if (anyFiles.length > 0) {
       console.warn(
-        '[RAG] listFiles(owner_id) returned 0 files but registry has',
+        '[RAG] owner_id scoping returned 0 files but registry has',
         anyFiles.length,
-        '- owner_id may not match upload. owner_id=',
-        scope.userId
+        '— falling back to all files. Set SHARED_ORG_OWNER_ID in .env.local for consistent single-tenant scoping. owner_id=',
+        scope.userId?.slice(0, 12)
       )
       files = anyFiles
+    } else {
+      console.warn('[RAG] registry is empty — no files to retrieve for owner_id=', scope.userId?.slice(0, 12))
     }
-  }
-  if (process.env.NODE_ENV !== 'production' && files.length === 0) {
-    console.log('[RAG] listFiles returned 0 files for owner_id=', scope.userId ?? 'null')
   }
 
   let chunks: RagChunk[] = []

@@ -399,9 +399,10 @@ export async function POST(request: NextRequest) {
     let ragContextFromRetrieve: Awaited<
       ReturnType<typeof import('@/lib/rag-context').buildRagContext>
     > | null = null
-    // Only run RAG for file/data questions (e.g. "who is dealing with X"). General questions (e.g. "what is depression") use model only.
-    const useRAG =
-      enableRAG !== false && latestUserMessage && isFileOrDataQuestion(latestUserMessage.content)
+    // Always attempt RAG when enabled — buildRagContext relevance scoring handles queries with no matching
+    // chunks (returns empty, LLM answers from general knowledge). The old isFileOrDataQuestion gate was
+    // too narrow and silently skipped retrieval for legitimate file queries like "explain the results".
+    const useRAG = enableRAG !== false && !!latestUserMessage
     if (useRAG) {
       try {
         const { getOwnerId } = await import('@/lib/owner')
