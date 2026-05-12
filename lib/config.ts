@@ -58,8 +58,16 @@ export const config = {
   /**
    * If a Lakera API key is in use, refuse to call Guard without project_id (forces your portal policy).
    * Also enabled when LAKERA_ENFORCE_STRICT=1.
+   * In production with a Lakera key configured, this defaults to true — Guard without a project_id
+   * applies Lakera's default policy, not your tuned project policy.
+   * Set LAKERA_REQUIRE_PROJECT_ID=false to opt out if you intentionally use the default policy.
    */
-  lakeraRequireProjectId: lakeraEnforceStrict || envTruthy('LAKERA_REQUIRE_PROJECT_ID'),
+  lakeraRequireProjectId:
+    lakeraEnforceStrict ||
+    envTruthy('LAKERA_REQUIRE_PROJECT_ID') ||
+    (isProduction &&
+      !!(process.env.LAKERA_AI_KEY || process.env.LAKERA_API_KEY) &&
+      process.env.LAKERA_REQUIRE_PROJECT_ID !== 'false'),
   /**
    * When a Lakera key is configured, always run input/output Guard on chat regardless of client toggles.
    * Also enabled when LAKERA_ENFORCE_STRICT=1.
@@ -77,6 +85,23 @@ export const config = {
     process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === '1' ||
     process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === 'true' ||
     process.env.LAKERA_PRESCAN_MERGE_AFTER_GUARD === 'yes',
+
+  /**
+   * Pilot/shadow mode: run Lakera Guard on chat but do not block on Guard flags.
+   * Hard-blocks still apply for local prescan high-severity hits and infrastructure errors.
+   * Intended for policy calibration during staged rollout — NOT for hardened production posture.
+   */
+  lakeraGuardMonitoringOnly: envTruthy('LAKERA_GUARD_MONITORING_ONLY'),
+
+  /**
+   * Chat input Guard scanning scope:
+   * 'augmented' (default) — scan the user message after RAG/file context has been injected
+   * 'raw'                 — scan only the raw user message (parity with minimal demos)
+   */
+  lakeraGuardInputScope:
+    process.env.LAKERA_GUARD_INPUT_SCOPE?.trim().toLowerCase() === 'raw'
+      ? ('raw' as const)
+      : ('augmented' as const),
 }
 
 /** Vars that must be set in production (empty = no hard requirement for app to start). */

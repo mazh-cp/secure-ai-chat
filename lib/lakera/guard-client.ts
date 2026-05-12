@@ -11,11 +11,11 @@ import {
   resolveLakeraGuardEndpoint,
 } from '@/lib/lakera-guard-endpoint'
 import { detectCommonInjectionPatterns } from '@/lib/lakera-prescan'
-import { detectStructuredSensitiveLeakInAssistantOutput } from '@/lib/lakera-output-structured-leak'
 import {
   mergeLakeraEffectiveFlag,
   sortLakeraThreatCategoriesForDisplay,
 } from '@/lib/lakera-sensitive-block'
+import { isCircuitOpen, recordGuardSuccess, recordGuardFailure } from './guard-circuit-breaker'
 import {
   classifyLakeraBlock,
   buildLakeraChatBlockMessage,
@@ -153,6 +153,16 @@ export async function postLakeraGuard(params: {
 
   const bearerKey = normalizeLakeraApiKeyForGuard(params.lakeraKey)
 
+  // Circuit breaker: fast-fail without a network round-trip when Guard is consistently down.
+  // fail-closed logic in the caller (screenChatWithLakera / screenTextAsFileUpload) still applies.
+  if (isCircuitOpen()) {
+    return {
+      ok: false,
+      status: 503,
+      errorDetails: 'Circuit breaker open — Guard temporarily bypassed after repeated failures',
+    }
+  }
+
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), Math.max(1000, config.lakeraTimeoutMs))
   try {
@@ -166,6 +176,11 @@ export async function postLakeraGuard(params: {
       signal: controller.signal,
     })
     if (!response.ok) {
+      // Count 5xx and 429 as availability failures for the circuit breaker.
+      // 4xx are Guard responding correctly (auth, bad request) — not availability failures.
+      if (response.status >= 500 || response.status === 429) {
+        recordGuardFailure()
+      }
       let errorDetails: Record<string, unknown> | string | null = null
       try {
         const contentType = response.headers.get('content-type')
@@ -190,7 +205,12 @@ export async function postLakeraGuard(params: {
       return { ok: false, status: response.status, errorDetails }
     }
     const data = (await response.json()) as LakeraApiResponse
+    recordGuardSuccess()
     return { ok: true, data }
+  } catch (err) {
+    // Network-level errors (timeout, ECONNREFUSED) count as availability failures
+    recordGuardFailure()
+    throw err
   } finally {
     clearTimeout(t)
   }
@@ -236,6 +256,8 @@ export interface GuardChatScanResult {
 export type ChatGuardCallOptions = {
   inputUserQuestionPrefix?: string
   outputPairedUserContent?: string
+  /** Tool/function call response messages to scan alongside the user turn (future-proofing for function-calling flows). */
+  toolMessages?: Array<{ role: 'tool'; content: string; tool_call_id?: string }>
 }
 
 /**
@@ -248,7 +270,8 @@ export async function screenChatWithLakera(
   lakeraProjectId: string | null | undefined,
   context?: 'input' | 'output',
   metadata?: GuardMetadata,
-  guardCallOptions?: ChatGuardCallOptions
+  guardCallOptions?: ChatGuardCallOptions,
+  priorTurns?: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<GuardChatScanResult> {
   if (!lakeraKey?.trim()) {
     return { scanned: false, flagged: false }
@@ -311,6 +334,21 @@ export async function screenChatWithLakera(
         content: message,
       },
     ]
+  }
+
+  // Inject tool/function call response messages immediately before the user turn.
+  // Enables Guard to screen function-calling flows (OpenAI tool_calls, Anthropic tool_use).
+  if (guardCallOptions?.toolMessages?.length) {
+    messagesForGuard = [...guardCallOptions.toolMessages, ...messagesForGuard]
+  }
+
+  // Prepend prior conversation turns as context for multi-turn injection detection.
+  // Lakera Guard uses prior messages as background context without rescreening them,
+  // enabling detection of split-payload attacks spread across multiple messages.
+  // Capped at 20 messages (10 user+assistant pairs) to stay within Guard request size limits.
+  if (priorTurns && priorTurns.length > 0) {
+    const contextWindow = priorTurns.slice(-20)
+    messagesForGuard = [...contextWindow, ...messagesForGuard]
   }
 
   if (process.env.NODE_ENV !== 'production' && !projectId) {
@@ -423,19 +461,10 @@ export async function screenChatWithLakera(
     flagged = effective.flagged
     categories = effective.categories
 
-    if (
-      context === 'output' &&
-      !flagged &&
-      message.trim() &&
-      detectStructuredSensitiveLeakInAssistantOutput(message)
-    ) {
-      flagged = true
-      categories = {
-        ...(categories || {}),
-        pii: true,
-        structured_sensitive_output: true,
-      }
-    }
+    // Output PII detection is handled by Lakera Guard's native payload detector
+    // (payload: true is sent on every Guard request). Using LAKERA_ENFORCE_INPUT_OUTPUT_SCAN=1
+    // ensures output scans always run. The previous local regex block is removed to eliminate
+    // policy drift between the Guard portal and local rules — Guard portal policy is authoritative.
 
     const threatCategories = categories
       ? sortLakeraThreatCategoriesForDisplay(

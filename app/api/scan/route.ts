@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserIP } from '@/lib/logging'
 import { sendLakeraTelemetryFromLog } from '@/lib/lakera-telemetry'
+import { requireSecureChatSession } from '@/lib/app-login'
+import { checkRateLimit } from '@/lib/rate-limiter'
 import {
   lakeraGuardHttpUserHint,
   lakeraProjectIdForGuard,
@@ -88,6 +90,23 @@ function lakeraHttpErrorNextResponse(
 }
 
 export async function POST(request: NextRequest) {
+  // Auth gate: require the same session as /api/chat to prevent unauthenticated Lakera quota drain.
+  const authDenied = await requireSecureChatSession(request)
+  if (authDenied) return authDenied
+
+  // Rate limit keyed by IP: prevent Lakera Guard policy enumeration via scan endpoint probing.
+  const clientIP = getUserIP(request)
+  const rateCheck = checkRateLimit(clientIP, 'scan-endpoint')
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: 'Too many scan requests. Please wait before retrying.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rateCheck.retryAfter ?? 60000) / 1000)) },
+      }
+    )
+  }
+
   try {
     const body = await request.json()
     const { fileContent, fileName, apiKeys: clientApiKeys } = body

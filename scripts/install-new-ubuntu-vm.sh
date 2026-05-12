@@ -16,13 +16,13 @@
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | bash
 #
 # Pin a release tag (recommended for production; vars after the pipe):
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | GIT_REF=v1.1.12 bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | GIT_REF=v1.1.13 bash
 #
 # Track main instead of a tag:
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | GIT_REF=main bash
 #
 # Custom paths (advanced):
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | INSTALL_DIR=/opt/secure-ai-chat APP_USER=secureai GIT_REF=v1.1.12 bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-new-ubuntu-vm.sh | INSTALL_DIR=/opt/secure-ai-chat APP_USER=secureai GIT_REF=v1.1.13 bash
 #
 # Combined remote install (same defaults + OS check): install-remote-vm-v1.1.sh
 #
@@ -71,7 +71,7 @@ if [ "${SKIP_OS_CHECK:-0}" != "1" ] && [ -r /etc/os-release ]; then
 fi
 
 # Same defaults as install-remote-production-vm.sh (keep in sync when bumping releases)
-export BRANCH="${GIT_REF:-${BRANCH:-v1.1.12}}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.1.13}}"
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 export APP_USER="${APP_USER:-secureai}"
 export APP_GROUP="${APP_GROUP:-secureai}"
