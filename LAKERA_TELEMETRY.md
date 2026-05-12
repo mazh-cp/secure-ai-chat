@@ -1,269 +1,152 @@
-# Lakera Telemetry / Logging Integration
+# Lakera Guard Observability & Telemetry
 
-**Purpose**: Send Lakera scan results and logs back to Platform.lakera.ai for analytics and monitoring
-
----
-
-## 📋 Overview
-
-This integration automatically sends Lakera scan results back to Platform.lakera.ai, enabling:
-
-- Analytics and insights on security events
-- Threat intelligence and pattern detection
-- Performance monitoring and optimization
-- Compliance and audit trails
+**Version:** v1.1.13+  
+**Status:** Accurate as of current implementation in `lib/lakera-telemetry.ts`
 
 ---
 
-## 🔧 Configuration
+## How Platform Visibility Works
 
-### Environment Variables
+Lakera Guard **automatically logs every POST `/v2/guard` call** on the platform dashboard when `project_id` is supplied. There is no separate telemetry API you need to call to get portal visibility.
 
-Add these to your `.env.local` or production environment:
+### Operator workflow
 
-```bash
-# Enable/disable Lakera telemetry (default: true)
-LAKERA_TELEMETRY_ENABLED=true
-
-# Custom telemetry endpoint (optional, uses default if not set)
-# Default: https://api.lakera.ai/v2/telemetry
-# Alternative: https://platform.lakera.ai/api/v2/telemetry
-LAKERA_TELEMETRY_ENDPOINT=https://api.lakera.ai/v2/telemetry
+```
+1. Chat/scan request arrives
+2. App calls POST /v2/guard with:
+     project_id  → routes to your project policy
+     metadata    → { user_id, session_id, ip_address, internal_request_id }
+3. Guard returns { flagged, payload, breakdown, metadata.request_uuid }
+4. App records request_uuid in local system log (service: lakera_guard)
+5. To investigate: search platform.lakera.ai by request_uuid or project_id
 ```
 
-### Settings UI Configuration
-
-No additional configuration needed! The telemetry automatically uses:
-
-- Your **Lakera API Key** (configured in Settings)
-- Your **Lakera Project ID** (configured in Settings, if provided)
+`request_uuid` is the correlation key — it appears in both your local system logs and the Lakera portal. Every flagged scan can be looked up directly.
 
 ---
 
-## 📊 What Data is Sent
+## Local Audit Logging (always-on)
 
-### Telemetry Payload
+After every Guard call, the app writes a structured audit row via `lib/system-logging.ts`:
 
-The following data is sent to Platform.lakera.ai:
+```
+service:    lakera_guard
+context:    chat_input | chat_output | file_upload | rag_ingestion | rag_retrieval
+flagged:    true / false
+request_uuid: <from Guard response metadata>
+project_id: <your project id, or null if unset>
+category_keys: [prompt_injection, pii, ...]
+detectors_triggered: N
+detector_types: [...]
+policy_ids: [...]
+```
 
-```typescript
+View these in the app's **System Logs** panel or via `GET /api/logs/system`.
+
+### Disabling local audit rows
+
+```bash
+LAKERA_GUARD_AUDIT_LOG=false   # disables local lakera_guard system log rows
+```
+
+> **Warning:** Disabling audit rows removes your only local record of Guard decisions if the Lakera portal is unavailable. Do not disable in regulated environments without compensating controls.
+
+---
+
+## Optional HTTP Companion POST (opt-in)
+
+The app can POST a JSON payload to a custom ingest endpoint after each scan. This is **off by default** and is **not** required for Lakera portal visibility.
+
+```bash
+LAKERA_TELEMETRY_HTTP=true                  # enable (default: disabled)
+LAKERA_TELEMETRY_ENDPOINT=https://...       # custom ingest URL (optional)
+```
+
+> **Note:** `https://api.lakera.ai/v2/telemetry` is **not a valid endpoint** — it returns HTTP 404. Only set `LAKERA_TELEMETRY_ENDPOINT` if you have a custom log ingest pipeline. If you get 404 errors and `LAKERA_TELEMETRY_HTTP` is enabled, disable it.
+
+---
+
+## Last Guard Snapshot (v1.1.13+)
+
+Each process keeps an in-process snapshot of the last Guard decision:
+
+```
+GET /api/lakera/last
+```
+
+Response:
+```json
 {
-  timestamp: "2026-01-09T23:45:00.000Z",
-  event_type: "scan" | "blocked" | "allowed",
-  context: {
-    type: "chat" | "file_upload",
-    source: "chat" | "file_upload"
-  },
-  scan_result: {
-    flagged: boolean,
-    categories: { prompt_injection: true, ... },
-    scores: { threat: 0.85, ... },
-    threat_level: "low" | "medium" | "high" | "critical"
-  },
-  metadata: {
-    user_ip: "192.168.1.1",
-    file_name: "document.pdf",
-    file_type: "pdf",
-    file_size: 1024000,
-    message_length: 150,
-    detected_patterns: ["System Override", "Jailbreak Attempt"]
-  },
-  project_id: "your-project-id" // Optional
+  "snapshot": {
+    "recordedAt": "2026-05-12T10:00:00.000Z",
+    "source": "chat_input",
+    "guardHostname": "api.lakera.ai",
+    "inputScope": "augmented",
+    "monitoringOnly": false,
+    "decision": {
+      "scanned": true,
+      "flagged": false,
+      "requestUuid": "abc-123",
+      "threatLevel": "low"
+    }
+  }
 }
 ```
 
-### What is NOT Sent
-
-- **Full message/content**: Only metadata (length, file info) is sent
-- **Sensitive user data**: User IP can be excluded if needed
-- **API keys**: Never sent in telemetry
+Useful for: verifying Guard is active, live debugging, operator health checks.  
+Note: In multi-instance deployments, each Node process has its own snapshot only.
 
 ---
 
-## 🚀 How It Works
-
-### Automatic Telemetry
-
-Telemetry is automatically sent after each Lakera scan:
-
-1. **Chat Input/Output Scans**: Sent after each message scan
-2. **File Upload Scans**: Sent after each file scan
-
-### Non-Blocking
-
-- Telemetry is sent **asynchronously** (fire and forget)
-- Failures **do not** block the main application flow
-- Errors are logged but don't affect user experience
-
----
-
-## 📝 Implementation Details
-
-### Files Modified
-
-1. **`lib/lakera-telemetry.ts`** (New)
-   - Core telemetry functions
-   - Payload conversion utilities
-   - Error handling
-
-2. **`app/api/scan/route.ts`** (Modified)
-   - Sends telemetry after file scans
-   - Uses `sendLakeraTelemetryFromLog()`
-
-3. **`app/api/chat/route.ts`** (Modified)
-   - Sends telemetry after input/output scans
-   - Uses `sendLakeraTelemetryFromLog()`
-
-### Telemetry Endpoint
-
-The default endpoint is:
-
-```
-https://api.lakera.ai/v2/telemetry
-```
-
-If this doesn't work, try:
-
-```
-https://platform.lakera.ai/api/v2/telemetry
-```
-
-You can override via `LAKERA_TELEMETRY_ENDPOINT` environment variable.
-
----
-
-## 🔒 Security & Privacy
-
-### Data Protection
-
-- ✅ **Authentication**: Uses your Lakera API key (Bearer token)
-- ✅ **Project Isolation**: Uses your Lakera Project ID (if configured)
-- ✅ **Minimal Data**: Only sends necessary metadata, not full content
-- ✅ **Optional IP**: User IP can be excluded if needed
-- ✅ **HTTPS Only**: All telemetry sent over encrypted HTTPS
-
-### Compliance
-
-- Telemetry is sent **only** to Lakera Platform (your trusted security provider)
-- No data is sent to third parties
-- You control what is sent via environment variables
-
----
-
-## 🐛 Troubleshooting
-
-### Telemetry Not Sending
-
-1. **Check Environment Variable**:
-
-   ```bash
-   echo $LAKERA_TELEMETRY_ENABLED
-   # Should be "true" or not set (defaults to true)
-   ```
-
-2. **Check Lakera API Key**:
-   - Ensure Lakera API key is configured in Settings
-   - Verify API key is valid
-
-3. **Check Server Logs**:
-   ```bash
-   # Check application logs for telemetry errors
-   sudo journalctl -u secure-ai-chat | grep -i telemetry
-   ```
-
-### Disable Telemetry
-
-To disable telemetry completely:
+## Monitoring-Only Mode (v1.1.13+)
 
 ```bash
-# Set in .env.local or production environment
-LAKERA_TELEMETRY_ENABLED=false
+LAKERA_GUARD_MONITORING_ONLY=1
 ```
 
-Or remove the telemetry calls from the code if needed.
+Run Guard in shadow/pilot mode: Guard scans run and are logged, but **eligible flags do not block requests**. Hard-blocks (local prescan hits, infrastructure errors) still apply.
+
+Use during initial policy calibration to understand your Guard hit rate before enabling enforcement. **Not recommended for hardened production** — it accepts the risk of letting flagged content through.
 
 ---
 
-## 📚 API Reference
+## Environment Variables Reference
 
-### Functions
-
-#### `sendLakeraTelemetry(payload, apiKey, projectId?)`
-
-Sends telemetry payload to Lakera Platform.
-
-**Parameters**:
-
-- `payload`: `LakeraTelemetryPayload` - Telemetry data
-- `apiKey`: `string` - Lakera API key
-- `projectId?`: `string` - Optional Lakera Project ID
-
-**Returns**: `Promise<LakeraTelemetryResponse>`
-
-#### `sendLakeraTelemetryFromLog(logEntry, apiKey, projectId?)`
-
-Converts log entry to telemetry and sends it (convenience function).
-
-**Parameters**:
-
-- `logEntry`: Application log entry with Lakera decision
-- `apiKey`: `string` - Lakera API key
-- `projectId?`: `string` - Optional Lakera Project ID
-
-**Returns**: `Promise<void>` (fire and forget)
-
-#### `convertLogToTelemetry(logEntry)`
-
-Converts application log entry to Lakera telemetry payload.
-
-**Parameters**:
-
-- `logEntry`: Application log entry
-
-**Returns**: `LakeraTelemetryPayload | null` (null if not Lakera-related)
+| Variable | Default | Description |
+|---|---|---|
+| `LAKERA_AI_KEY` / `LAKERA_API_KEY` | — | Guard API key (required) |
+| `LAKERA_PROJECT_ID` | — | Your project ID (required in production; see below) |
+| `LAKERA_ENDPOINT` | `https://api.lakera.ai/v2/guard` | Guard URL (use for regional endpoints) |
+| `LAKERA_FAIL_CLOSED` | `true` in prod | Block on Guard errors (fail-closed) |
+| `LAKERA_FAIL_CLOSED_ON_AUTH_ERROR` | `false` | Block on 401 (bad key) |
+| `LAKERA_ENFORCE_STRICT` | `false` | Master switch: require project_id + enforce scans + block on 401 |
+| `LAKERA_REQUIRE_PROJECT_ID` | `true` in prod with key | Require project_id or block |
+| `LAKERA_ENFORCE_INPUT_OUTPUT_SCAN` | `false` | Always run chat input+output scans |
+| `LAKERA_GUARD_MONITORING_ONLY` | `false` | Shadow mode: scan but don't block |
+| `LAKERA_GUARD_INPUT_SCOPE` | `augmented` | `augmented` (after RAG injection) or `raw` |
+| `LAKERA_GUARD_AUDIT_LOG` | `true` | Write local `lakera_guard` system log rows |
+| `LAKERA_TELEMETRY_HTTP` | `false` | Enable HTTP companion POST to custom ingest |
+| `LAKERA_TELEMETRY_ENDPOINT` | — | Custom ingest URL (only with `LAKERA_TELEMETRY_HTTP=true`) |
+| `LAKERA_PRESCAN_MERGE_AFTER_GUARD` | `false` | Merge local regex pre-scan into Guard result (legacy) |
+| `LAKERA_TIMEOUT_MS` | `10000` | Guard request timeout in ms |
 
 ---
 
-## 🔍 Verification
+## Project ID: Why It Matters
 
-### Check if Telemetry is Working
+**Without `project_id`**, Guard applies Lakera's built-in default policy — not the policies you configured in your project on `platform.lakera.ai`.
 
-1. **Enable Logging**:
+In production with a Lakera key set, `LAKERA_REQUIRE_PROJECT_ID` defaults to `true`. Without a Project ID, all requests will be blocked with category `lakera_project_required`. Set your Project ID in Settings or via `LAKERA_PROJECT_ID`.
 
-   ```bash
-   # Check console logs for telemetry messages
-   npm run dev
-   # Look for: "Sending telemetry to Lakera Platform" or "Telemetry sent successfully"
-   ```
-
-2. **Check Lakera Platform**:
-   - Log in to Platform.lakera.ai
-   - Navigate to your project dashboard
-   - Check for incoming telemetry events
-
-3. **Test Scan**:
-   - Perform a chat message or file upload scan
-   - Check server logs for telemetry confirmation
+To opt out (intentionally use default policy):
+```bash
+LAKERA_REQUIRE_PROJECT_ID=false
+```
 
 ---
 
-## 📖 Additional Resources
+## References
 
-- **Lakera Platform**: https://platform.lakera.ai/
-- **Lakera API Documentation**: https://platform.lakera.ai/docs
-- **Lakera Guard API**: https://api.lakera.ai/v2/guard
-
----
-
-## ✅ Benefits
-
-1. **Analytics**: Track security events and threats across your application
-2. **Threat Intelligence**: Get insights on attack patterns and trends
-3. **Performance**: Monitor scan performance and optimize configurations
-4. **Compliance**: Maintain audit trails for security events
-5. **Visibility**: Centralized view of all security scans in Lakera Platform
-
----
-
-**Last Updated**: 2026-01-XX  
-**Maintained By**: Development Team
+- [Lakera Guard API Documentation](https://docs.lakera.ai/docs/api/guard)
+- [Lakera Platform Dashboard](https://platform.lakera.ai)
+- Implementation: `lib/lakera-telemetry.ts`, `lib/lakera-guard-audit.ts`, `lib/lakera/guard-client.ts`
