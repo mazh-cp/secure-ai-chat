@@ -16,6 +16,7 @@ import {
   mergeLakeraEffectiveFlag,
   sortLakeraThreatCategoriesForDisplay,
 } from '@/lib/lakera-sensitive-block'
+import { isCircuitOpen, recordGuardSuccess, recordGuardFailure } from './guard-circuit-breaker'
 import {
   classifyLakeraBlock,
   buildLakeraChatBlockMessage,
@@ -153,6 +154,16 @@ export async function postLakeraGuard(params: {
 
   const bearerKey = normalizeLakeraApiKeyForGuard(params.lakeraKey)
 
+  // Circuit breaker: fast-fail without a network round-trip when Guard is consistently down.
+  // fail-closed logic in the caller (screenChatWithLakera / screenTextAsFileUpload) still applies.
+  if (isCircuitOpen()) {
+    return {
+      ok: false,
+      status: 503,
+      errorDetails: 'Circuit breaker open — Guard temporarily bypassed after repeated failures',
+    }
+  }
+
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), Math.max(1000, config.lakeraTimeoutMs))
   try {
@@ -166,6 +177,11 @@ export async function postLakeraGuard(params: {
       signal: controller.signal,
     })
     if (!response.ok) {
+      // Count 5xx and 429 as availability failures for the circuit breaker.
+      // 4xx are Guard responding correctly (auth, bad request) — not availability failures.
+      if (response.status >= 500 || response.status === 429) {
+        recordGuardFailure()
+      }
       let errorDetails: Record<string, unknown> | string | null = null
       try {
         const contentType = response.headers.get('content-type')
@@ -190,7 +206,12 @@ export async function postLakeraGuard(params: {
       return { ok: false, status: response.status, errorDetails }
     }
     const data = (await response.json()) as LakeraApiResponse
+    recordGuardSuccess()
     return { ok: true, data }
+  } catch (err) {
+    // Network-level errors (timeout, ECONNREFUSED) count as availability failures
+    recordGuardFailure()
+    throw err
   } finally {
     clearTimeout(t)
   }
