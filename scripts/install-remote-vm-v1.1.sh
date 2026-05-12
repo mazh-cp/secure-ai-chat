@@ -11,7 +11,7 @@
 #   • Run as a normal user with sudo (not root), unless ALLOW_ROOT_INSTALL=1
 #   • Outbound HTTPS (GitHub, registry.npmjs.org, Node download via nvm)
 #
-# One-liner (on the VM) — default pinned tag v1.1.12, /opt/secure-ai-chat, build:fresh:
+# One-liner (on the VM) — default pinned tag v1.1.13, /opt/secure-ai-chat, build:fresh:
 #
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | bash
 #
@@ -21,7 +21,7 @@
 #
 # Pin another tag (put variables on the bash side of the pipe, not on curl):
 #
-#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | GIT_REF=v1.1.12 bash
+#   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/install-remote-vm-v1.1.sh | GIT_REF=v1.1.13 bash
 #
 # Custom install directory and user:
 #
@@ -80,7 +80,7 @@ if [ "${SKIP_OS_CHECK:-0}" != "1" ] && [ -r /etc/os-release ]; then
 fi
 
 # Keep in sync with install-remote-production-vm.sh / lib/app-release.ts when cutting releases
-export BRANCH="${GIT_REF:-${BRANCH:-v1.1.12}}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.1.13}}"
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 export APP_USER="${APP_USER:-secureai}"
 export APP_GROUP="${APP_GROUP:-secureai}"
@@ -90,7 +90,7 @@ export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
 export REPO_URL="${REPO_URL:-https://github.com/mazh-cp/secure-ai-chat.git}"
 
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Secure AI Chat — remote VM install (v1.1.x, Ubuntu 22.04+)     ║${NC}"
+echo -e "${BLUE}║   Secure AI Chat — remote VM install (v1.1.13, Ubuntu 22.04+)    ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}Git ref (clone):${NC}      $BRANCH"
