@@ -32,6 +32,8 @@ import {
 import { config } from '@/lib/config'
 import { resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 import { lakeraGuardApiKeyEnvVarUsed } from '@/lib/api-keys-storage'
+import { lakeraChatFlagAllowedInMonitoringMode } from '@/lib/lakera-guard-monitoring'
+import { recordLakeraLastGuard, sanitizeGuardChatScanForClient } from '@/lib/lakera-guard-last'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -696,6 +698,32 @@ IMPORTANT INSTRUCTIONS:
         },
         { inputUserQuestionPrefix: latestUserMessage.content }
       )
+
+      // Record per-process snapshot for GET /api/lakera/last (non-blocking)
+      try {
+        const guardHostname = new URL(resolveLakeraGuardEndpoint(apiKeys.lakeraEndpoint)).hostname
+        recordLakeraLastGuard({
+          recordedAt: new Date().toISOString(),
+          source: 'chat_input',
+          guardHostname,
+          inputScope: config.lakeraGuardInputScope,
+          monitoringOnly: config.lakeraGuardMonitoringOnly,
+          decision: sanitizeGuardChatScanForClient(inputScanResult),
+        })
+      } catch { /* non-blocking — never fail chat over snapshot */ }
+
+      // Monitoring-only mode: allow eligible Guard flags through without blocking.
+      // Hard-blocks (local prescan hits, infra errors) always apply regardless of this mode.
+      if (inputScanResult.flagged && config.lakeraGuardMonitoringOnly) {
+        if (lakeraChatFlagAllowedInMonitoringMode(inputScanResult)) {
+          console.warn('[Lakera Guard monitoring-only] Flag allowed through (not blocked):', {
+            categories: inputScanResult.categories,
+            threatLevel: inputScanResult.threatLevel,
+            requestUuid: inputScanResult.requestUuid,
+          })
+          inputScanResult = { ...inputScanResult, flagged: false }
+        }
+      }
 
       if (inputScanResult.flagged) {
         const { addSystemLog } = await import('@/lib/system-logging')
