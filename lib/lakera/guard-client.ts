@@ -248,7 +248,8 @@ export async function screenChatWithLakera(
   lakeraProjectId: string | null | undefined,
   context?: 'input' | 'output',
   metadata?: GuardMetadata,
-  guardCallOptions?: ChatGuardCallOptions
+  guardCallOptions?: ChatGuardCallOptions,
+  priorTurns?: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<GuardChatScanResult> {
   if (!lakeraKey?.trim()) {
     return { scanned: false, flagged: false }
@@ -311,6 +312,15 @@ export async function screenChatWithLakera(
         content: message,
       },
     ]
+  }
+
+  // Prepend prior conversation turns as context for multi-turn injection detection.
+  // Lakera Guard uses prior messages as background context without rescreening them,
+  // enabling detection of split-payload attacks spread across multiple messages.
+  // Capped at 20 messages (10 user+assistant pairs) to stay within Guard request size limits.
+  if (priorTurns && priorTurns.length > 0) {
+    const contextWindow = priorTurns.slice(-20)
+    messagesForGuard = [...contextWindow, ...messagesForGuard]
   }
 
   if (process.env.NODE_ENV !== 'production' && !projectId) {

@@ -684,6 +684,14 @@ IMPORTANT INSTRUCTIONS:
         }
       }
 
+      // Build prior turns for multi-turn Guard coverage (exclude last user msg and system msgs).
+      // Guard uses these as context to detect split-payload injection across message boundaries.
+      const priorTurnsForGuard = messages
+        .slice(0, -1)
+        .filter((m): m is { role: 'user' | 'assistant'; content: string } =>
+          m.role === 'user' || m.role === 'assistant'
+        )
+
       inputScanResult = await screenChatWithLakera(
         inputTextForGuard,
         lakeraKey,
@@ -696,7 +704,8 @@ IMPORTANT INSTRUCTIONS:
           ip_address: userIP,
           internal_request_id: requestId,
         },
-        { inputUserQuestionPrefix: latestUserMessage.content }
+        { inputUserQuestionPrefix: latestUserMessage.content },
+        priorTurnsForGuard
       )
 
       // Record per-process snapshot for GET /api/lakera/last (non-blocking)
