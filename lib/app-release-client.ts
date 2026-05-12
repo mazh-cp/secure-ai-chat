@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.12'
-export const RELEASE_DATE = '2026-05-11'
+export const APP_VERSION = '1.1.13'
+export const RELEASE_DATE = '2026-05-12'
 
 export interface ReleaseNoteItem {
   title: string
@@ -13,11 +13,20 @@ export interface ReleaseNoteItem {
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
+    title: 'Security',
+    items: [
+      'Lakera Guard monitoring-only mode for safe policy calibration (`LAKERA_GUARD_MONITORING_ONLY`).',
+      'Multi-turn Guard coverage — prior conversation turns passed as context to detect split-payload attacks.',
+      '`project_id` enforced by default in production — Guard applies your project policy, not Lakera default.',
+      '`/api/scan` now requires session auth and is rate-limited by IP.',
+      'Circuit breaker prevents Guard outage latency cascades.',
+    ],
+  },
+  {
     title: 'Changed',
     items: [
-      '**Theme tokens** — Loaded from **`layout.tsx`** before global styles.',
-      '**Tailwind / PostCSS** — Declared as app **`dependencies`** for reliable production installs.',
-      'Default production upgrade tag **`v1.1.12`**.',
+      'New `GET /api/lakera/last` — last Guard decision snapshot for operator dashboards.',
+      'Default production upgrade tag **`v1.1.13`**.',
     ],
   },
 ]

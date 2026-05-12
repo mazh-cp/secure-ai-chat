@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.13] - 2026-05-12
+
+### Security
+
+- **Lakera Guard monitoring-only mode** — `LAKERA_GUARD_MONITORING_ONLY=1` enables shadow/pilot mode for policy calibration: Guard scans run and are logged, but eligible flags do not block requests. Hard-blocks (local prescan hits, infrastructure errors) still apply. Implemented in **`lib/lakera-guard-monitoring.ts`** (new) and wired into **`app/api/chat/route.ts`**.
+- **`GET /api/lakera/last`** — new endpoint exposes a per-process snapshot of the last Guard decision (`source`, `guardHostname`, `inputScope`, `monitoringOnly`, `decision`) for operator dashboards and live debugging. Implemented in **`lib/lakera-guard-last.ts`** (new) and **`app/api/lakera/last/route.ts`** (new).
+- **Multi-turn Guard coverage** — `screenChatWithLakera()` now accepts an optional `priorTurns` parameter; the chat route passes the prior conversation history (capped at 20 messages) as context before calling Guard, enabling detection of split-payload injection attacks spread across multiple messages. Fixes **Critical gap C3**.
+- **`project_id` enforced in production by default** — `LAKERA_REQUIRE_PROJECT_ID` now defaults to `true` when `NODE_ENV=production` and a Lakera key is configured. Without `project_id`, Guard applies Lakera's default policy instead of the operator's tuned project policy. Opt out with `LAKERA_REQUIRE_PROJECT_ID=false`. Fixes **Critical gap C2**.
+- **`/api/scan` authentication + rate limiting** — `POST /api/scan` now requires `requireSecureChatSession()` (returns 401 for unauthenticated callers) and `checkRateLimit()` keyed by client IP with `Retry-After` header. Prevents unauthenticated Lakera quota drain and Guard policy enumeration. Fixes **High gap M5**.
+- **Circuit breaker for Lakera Guard HTTP** — `lib/lakera/guard-circuit-breaker.ts` (new) implements a CLOSED/OPEN/HALF_OPEN state machine in `postLakeraGuard()`. Opens after 5 consecutive 5xx/429 errors, fast-fails for 30 s, then probes. Prevents latency cascades when Guard is unavailable. Fixes **High gap H2**.
+- **Tool message scanning** — `ChatGuardCallOptions.toolMessages` added to `screenChatWithLakera()` to support scanning function-calling flows (OpenAI `tool_calls`, Anthropic `tool_use`) alongside the user turn.
+- **Output PII policy unification** — standalone local regex output PII block (`detectStructuredSensitiveLeakInAssistantOutput`) removed from `guard-client.ts`; Guard portal policy via `payload: true` is now the single authoritative output PII detection plane, eliminating policy drift.
+
+### Added
+
+- **`lib/lakera-guard-monitoring.ts`** — shadow mode helper; hard-block categories exempt from monitoring pass-through.
+- **`lib/lakera-guard-last.ts`** — in-process last Guard decision snapshot with sanitized client-safe type.
+- **`app/api/lakera/last/route.ts`** — `GET /api/lakera/last` endpoint.
+- **`lib/lakera/guard-circuit-breaker.ts`** — circuit breaker state machine for Guard HTTP calls.
+- **`lib/config.ts`** — `lakeraGuardMonitoringOnly`, `lakeraGuardInputScope` config flags.
+
+### Changed
+
+- **`LAKERA_GUARD_INPUT_SCOPE`** — `augmented` (default, scan after RAG injection) or `raw` (scan raw user message only).
+- **Upgrade pin** — Default **`GIT_REF=v1.1.13`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, **`install-new-ubuntu-vm.sh`**.
+- **`proxy.ts`** — `X-Application-Version` header fallback **1.1.13**.
+
+### Documentation
+
+- **`LAKERA_TELEMETRY.md`** rewritten — removes reference to non-existent `https://api.lakera.ai/v2/telemetry` endpoint (HTTP 404); documents `request_uuid` correlation with Lakera portal, monitoring-only mode, `GET /api/lakera/last`, complete env-var reference table, and `project_id` enforcement rationale.
+- **`.env.example`** — documents `LAKERA_GUARD_MONITORING_ONLY`, `LAKERA_GUARD_INPUT_SCOPE`, `LAKERA_REQUIRE_PROJECT_ID` opt-out.
+
 ## [1.1.12] - 2026-05-11
 
 ### Fixed
