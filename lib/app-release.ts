@@ -3,7 +3,7 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.13'
+export const APP_VERSION = '1.1.14'
 
 export const RELEASE_DATE = '2026-05-12'
 
@@ -18,7 +18,7 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.13]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.14]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Security',
@@ -37,7 +37,7 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
     title: 'Changed',
     items: [
       '`LAKERA_GUARD_INPUT_SCOPE` — set to `raw` to scan only the original user message instead of the RAG-augmented turn.',
-      'Default pinned upgrade tag **`GIT_REF=v1.1.13`**; **`proxy.ts`** fallback version **1.1.13**.',
+      'Default pinned upgrade tag **`GIT_REF=v1.1.14`**; **`proxy.ts`** fallback version **1.1.14**.',
     ],
   },
   {

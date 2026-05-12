@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.14] - 2026-05-12
+
+### Fixed
+
+- **RAG silently returning no context in production** — `buildRagContext` owner-ID fallback now runs in production (previously dev-only). Fresh installs or mismatched session cookies no longer cause file-based Q&A to silently fall back to general-knowledge answers.
+- **`isFileOrDataQuestion` gate removed** — queries like *"explain the results"* or *"what are the trends?"* previously matched the `generalOnly` heuristic and skipped RAG entirely. `buildRagContext` relevance scoring now handles irrelevant queries (returns empty, LLM answers from general knowledge).
+- **`SHARED_ORG_OWNER_ID=org` set by default on fresh installs** — without this, every browser session receives a different UUID owner-ID; files uploaded in one session were invisible to another, breaking RAG across sessions.
+- **Upgrade script injects `SHARED_ORG_OWNER_ID`** — `upgrade-curl-production.sh` now patches `.env.local` on every upgrade run: appends `SHARED_ORG_OWNER_ID=org` if absent, skips silently if already set. Existing installations gain the RAG fix without a full reinstall.
+- **Install script purges prior instance unconditionally** — `install_ubuntu_clean.sh` now always stops the service, removes the systemd unit, kills stray node processes, and wipes the install directory before cloning. Removes the opt-in `FORCE_CLEAN` flag.
+
 ## [1.1.13] - 2026-05-12
 
 ### Security

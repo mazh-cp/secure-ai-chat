@@ -3,7 +3,7 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.13'
+export const APP_VERSION = '1.1.14'
 export const RELEASE_DATE = '2026-05-12'
 
 export interface ReleaseNoteItem {
@@ -26,7 +26,7 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
     title: 'Changed',
     items: [
       'New `GET /api/lakera/last` — last Guard decision snapshot for operator dashboards.',
-      'Default production upgrade tag **`v1.1.13`**.',
+      'Default production upgrade tag **`v1.1.14`**.',
     ],
   },
 ]

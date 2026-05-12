@@ -2,7 +2,7 @@
 # Secure AI Chat — build and roll out on a remote production VM over SSH.
 #
 # Defaults target the 1.1.x upgrade line (upgrade-remote-production-v3.sh):
-#   USE_V3=1, GIT_REF=v1.1.13, USE_BUILD_FRESH=1
+#   USE_V3=1, GIT_REF=v1.1.14, USE_BUILD_FRESH=1
 #
 # Prerequisites on the VM:
 #   - Git clone of this repo (see install_ubuntu_clean.sh or your layout)
@@ -14,7 +14,7 @@
 #   export SSH_TARGET=adminuser@YOUR_VM_PUBLIC_IP
 #   bash scripts/build-remote-production-vm.sh
 #
-# Track main on the VM instead of v1.1.13:
+# Track main on the VM instead of v1.1.14:
 #   GIT_REF=main SSH_TARGET=user@host bash scripts/build-remote-production-vm.sh
 #
 # Latest main + build:fresh (same as upgrade-remote-production-main-fresh.sh on VM):
@@ -28,7 +28,7 @@
 #   SSH_OPTS        — extra ssh args
 #   USE_V3          — 1 (default): upgrade-remote-production-v3.sh
 #   USE_V2          — used when USE_V3=0 (default 1)
-#   GIT_REF         — default v1.1.13 when USE_V3=1; main when USE_V3=0 or USE_MAIN_FRESH=1
+#   GIT_REF         — default v1.1.14 when USE_V3=1; main when USE_V3=0 or USE_MAIN_FRESH=1
 #   USE_BUILD_FRESH — default 1 when USE_V3=1; 0 when USE_V3=0
 #   APP_DIR, RUN_TYPECHECK, HEALTH_RETRIES — forwarded like run-remote-production-upgrade.sh
 #   REPO_RAW        — GitHub raw base if fork
@@ -64,7 +64,7 @@ fi
 export USE_V3="${USE_V3:-1}"
 
 if [ "${USE_V3}" = "1" ] || [ "${USE_V3}" = "true" ]; then
-  export GIT_REF="${GIT_REF:-v1.1.13}"
+  export GIT_REF="${GIT_REF:-v1.1.14}"
   export USE_BUILD_FRESH="${USE_BUILD_FRESH:-1}"
   export USE_V2="${USE_V2:-0}"
 else
