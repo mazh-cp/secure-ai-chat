@@ -29,6 +29,11 @@ All notable changes to this project will be documented in this file.
 
 - **`docs/local-models.md`** (new) — per-runtime setup (Ollama, LM Studio, llama.cpp, vLLM), the mock provider's output-scanner triggers, the SSRF reasoning, and how to verify the guardrails still fire.
 
+### Changed
+
+- **Upgrade pin** — Default **`GIT_REF=v1.2.0`** in **`upgrade-remote-production-v3.sh`**, **`build-remote-production-vm.sh`**, **`install-remote-production-vm.sh`**, **`install-new-ubuntu-vm.sh`**, **`install-remote-vm-v1.1.sh`**, and **`fresh-production-build-from-remote-repo.sh`**.
+- **`npm run start:local`** — starts the standalone server bound to **127.0.0.1** (`scripts/start-standalone.js`) instead of `next start`, which Next.js rejects when `output: 'standalone'` is set. **`npm run local`** is an alias.
+
 ## [1.1.14] - 2026-05-12
 
 ### Fixed

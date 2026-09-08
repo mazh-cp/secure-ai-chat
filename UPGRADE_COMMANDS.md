@@ -1,7 +1,7 @@
 # One-Step Production Upgrade Commands
 
-**Latest**: v1.1.12 (main)  
-**Last Updated**: 2026-05-11
+**Latest**: v1.2.0 (main)  
+**Last Updated**: 2026-09-08
 
 ## 🚀 Production upgrade — **recommended wrapper** (`production-upgrade.sh`)
 
@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts
 
 ## 🚀 Upgrade remote VM — **1.1.x line (recommended): v3**
 
-### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.1.12`, `USE_BUILD_FRESH=1`)
+### Option A0 — **`upgrade-remote-production-v3.sh`** (default `GIT_REF=v1.2.0`, `USE_BUILD_FRESH=1`)
 
 Use this for new production cycles after **1.0.22**. It runs **`npm run build:fresh`** on the VM (client + git leak checks, typecheck, lint, verify standalone) when **`USE_BUILD_FRESH=1`** (default).
 
@@ -46,7 +46,7 @@ export SSH_TARGET=adminuser@YOUR_VM_IP
 USE_V3=1 bash scripts/run-remote-production-upgrade.sh
 ```
 
-**Laptop helper** (`build-remote-production-vm.sh` defaults **`USE_V3=1`**, **`GIT_REF=v1.1.12`**, **`USE_BUILD_FRESH=1`**):
+**Laptop helper** (`build-remote-production-vm.sh` defaults **`USE_V3=1`**, **`GIT_REF=v1.2.0`**, **`USE_BUILD_FRESH=1`**):
 
 ```bash
 export SSH_TARGET=adminuser@YOUR_VM_IP
