@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { azureOpenAiAuthHeaders, normalizeAzureEndpoint } from '@/lib/azure-openai'
 import { GEMINI_MODEL_OPTIONS } from '@/lib/geminiAdapter'
+import { DEFAULT_LOCAL_BASE_URL, MOCK_MODEL_ID, probeLocalModels } from '@/lib/localModelAdapter'
 
 // Mark route as dynamic since it uses query parameters
 export const dynamic = 'force-dynamic'
@@ -56,6 +57,31 @@ export async function GET(request: NextRequest) {
     const serverKeys = await getApiKeys()
     const { searchParams } = new URL(request.url)
     const provider = (searchParams.get('provider') || 'openai').toLowerCase()
+
+    if (provider === 'mock') {
+      return NextResponse.json({
+        models: [{ id: MOCK_MODEL_ID, name: `${MOCK_MODEL_ID} (in-process, no model)` }],
+      })
+    }
+
+    if (provider === 'local') {
+      // Enumerate whatever the local server is serving. The base URL is
+      // SSRF-validated inside probeLocalModels before any request goes out.
+      const baseUrl = searchParams.get('baseUrl')?.trim() || DEFAULT_LOCAL_BASE_URL
+      const result = await probeLocalModels(baseUrl)
+      if (!result.ok) {
+        return NextResponse.json(
+          {
+            error:
+              result.error || `Could not reach a local model server at ${baseUrl}. Is it running?`,
+          },
+          { status: 400 }
+        )
+      }
+      return NextResponse.json({
+        models: (result.models || []).map(m => ({ id: m.id, name: m.id })),
+      })
+    }
 
     if (provider === 'anthropic') {
       const apiKey = serverKeys.anthropicApiKey

@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.1.14'
+export const APP_VERSION = '1.2.0'
 
-export const RELEASE_DATE = '2026-05-12'
+export const RELEASE_DATE = '2026-09-08'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,32 +18,28 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.1.14]) */
+/** Release notes for current version (matches CHANGELOG.md [1.2.0]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Security',
+    title: 'Added',
     items: [
-      '**Lakera Guard monitoring-only mode** — `LAKERA_GUARD_MONITORING_ONLY=1` enables shadow/pilot mode for safe policy calibration without blocking traffic.',
-      '**`GET /api/lakera/last`** — per-process snapshot of the last Guard decision for operator dashboards and live debugging.',
-      '**Multi-turn Guard coverage** — prior conversation turns are now passed to Guard as context, enabling detection of split-payload injection attacks spread across multiple messages.',
-      '**`project_id` enforced in production** — `LAKERA_REQUIRE_PROJECT_ID` defaults to `true` when a Lakera key is configured, ensuring Guard applies your tuned project policy rather than the Lakera default.',
-      '**`/api/scan` auth + rate limiting** — endpoint now requires session authentication and is rate-limited by IP to prevent unauthenticated Lakera quota drain and policy enumeration.',
-      '**Circuit breaker for Guard HTTP** — `CLOSED/OPEN/HALF_OPEN` state machine in `postLakeraGuard()` prevents latency cascades when Guard is unavailable.',
-      '**Tool message scanning** — `ChatGuardCallOptions.toolMessages` supports function-calling flows in future OpenAI/Anthropic tool-use integrations.',
-      '**Output PII policy unification** — local regex output PII block removed; Guard portal policy (via `payload: true`) is now the single authoritative PII detection plane.',
+      '**Local model provider** — chat against any OpenAI-compatible server (Ollama, LM Studio, llama.cpp, vLLM, LocalAI). Set the base URL in Settings and pick the model in the chat header; prompts never leave the host.',
+      '**Mock provider** — deterministic in-process replies with no key, no network and no GPU, so the Lakera input/output scanners can be exercised on their own (CI, offline demos, laptops without a GPU).',
+      '**`GET /api/models?provider=local`** — enumerates whatever the local server is serving, so the model picker works the same way it does for hosted providers.',
     ],
   },
   {
-    title: 'Changed',
+    title: 'Security',
     items: [
-      '`LAKERA_GUARD_INPUT_SCOPE` — set to `raw` to scan only the original user message instead of the RAG-augmented turn.',
-      'Default pinned upgrade tag **`GIT_REF=v1.1.14`**; **`proxy.ts`** fallback version **1.1.14**.',
+      '**SSRF guard on the local model base URL** — the URL is supplied by the browser and fetched server-side, so `assertLocalBaseUrlAllowed()` restricts the scheme, rejects embedded credentials, and resolves the hostname requiring every answer to be a loopback address before any request leaves the process.',
+      '**`LOCAL_MODEL_ALLOWED_HOSTS`** — the only way to widen beyond loopback, read from the environment and never from the request payload so a client cannot widen its own reach.',
+      '**No new unauthenticated surface** — the local and mock providers reuse the existing `requireSecureChatSession` gate and rate limiting on `/api/chat`, `/api/scan` and `/api/models`.',
     ],
   },
   {
     title: 'Documentation',
     items: [
-      '**`LAKERA_TELEMETRY.md`** rewritten — removes reference to non-existent `/v2/telemetry` endpoint, documents `request_uuid` correlation, monitoring-only mode, last-snapshot endpoint, and full env-var reference table.',
+      '**`docs/local-models.md`** — setup for each local runtime, the mock provider triggers, the SSRF reasoning, and how to verify the guardrails still fire.',
     ],
   },
 ]

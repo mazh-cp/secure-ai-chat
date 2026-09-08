@@ -53,6 +53,10 @@ export interface StoredApiKeys {
   lakeraAiKey?: string
   lakeraProjectId?: string
   lakeraEndpoint?: string
+  /** OpenAI-compatible local model server, e.g. http://localhost:11434/v1. Host config, not a credential. */
+  localBaseUrl?: string
+  /** Optional bearer token for local servers started with --api-key (vLLM, LiteLLM proxies). */
+  localApiKey?: string
 }
 
 // Encryption key (in production, use a secure key management service)
@@ -412,11 +416,38 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       keysToSave.azureOpenAiApiVersion = existingKeys.azureOpenAiApiVersion
     }
 
+    // Handle local model settings (base URL is host config; token is optional)
+    if (keys.localBaseUrl !== undefined) {
+      const baseUrl = keys.localBaseUrl?.trim()
+      if (baseUrl) {
+        keysToSave.localBaseUrl = baseUrl.replace(/\/+$/, '')
+      } else if (existingKeys.localBaseUrl) {
+        keysToSave.localBaseUrl = existingKeys.localBaseUrl
+      }
+    } else if (existingKeys.localBaseUrl) {
+      keysToSave.localBaseUrl = existingKeys.localBaseUrl
+    }
+
+    if (keys.localApiKey !== undefined) {
+      const token = keys.localApiKey?.trim()
+      if (token) {
+        keysToSave.localApiKey = token
+      } else if (existingKeys.localApiKey) {
+        keysToSave.localApiKey = existingKeys.localApiKey
+      }
+    } else if (existingKeys.localApiKey) {
+      keysToSave.localApiKey = existingKeys.localApiKey
+    }
+
     // Handle Lakera AI key
     if (keys.lakeraAiKey !== undefined) {
       if (keys.lakeraAiKey && keys.lakeraAiKey.trim() && !lakeraGuardApiKeyFromProcessEnv()) {
         keysToSave.lakeraAiKey = keys.lakeraAiKey.trim()
-      } else if (!keys.lakeraAiKey && existingKeys.lakeraAiKey && !lakeraGuardApiKeyFromProcessEnv()) {
+      } else if (
+        !keys.lakeraAiKey &&
+        existingKeys.lakeraAiKey &&
+        !lakeraGuardApiKeyFromProcessEnv()
+      ) {
         keysToSave.lakeraAiKey = existingKeys.lakeraAiKey
       }
     } else if (existingKeys.lakeraAiKey && !lakeraGuardApiKeyFromProcessEnv()) {
@@ -453,7 +484,9 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
       keysToSave.anthropicApiKey = existingKeys.anthropicApiKey
     }
 
-    const geminiEnvSet = !!(process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim())
+    const geminiEnvSet = !!(
+      process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+    )
     if (keys.geminiApiKey !== undefined) {
       if (keys.geminiApiKey && keys.geminiApiKey.trim() && !geminiEnvSet) {
         keysToSave.geminiApiKey = keys.geminiApiKey.trim()
@@ -545,8 +578,7 @@ async function saveApiKeys(keys: StoredApiKeys): Promise<void> {
           envKeys.lakeraEndpoint = resolveLakeraGuardEndpoint(envKey)
         }
       }
-      const geminiEnv =
-        process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
+      const geminiEnv = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()
       if (
         geminiEnv &&
         geminiEnv.length >= 20 &&

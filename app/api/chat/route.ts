@@ -12,6 +12,15 @@ import {
   type ChatMessage as AdapterChatMessage,
 } from '@/lib/aiAdapter'
 import { callGemini, validateGeminiModelId } from '@/lib/geminiAdapter'
+import {
+  DEFAULT_LOCAL_BASE_URL,
+  DEFAULT_LOCAL_MODEL,
+  InvalidBaseUrlError,
+  LocalModelError,
+  MOCK_MODEL_ID,
+  callLocalModel,
+  callMockModel,
+} from '@/lib/localModelAdapter'
 import { checkRateLimit, getRateLimitStatus } from '@/lib/rate-limiter'
 import {
   validateTokenLimit,
@@ -139,8 +148,12 @@ export async function POST(request: NextRequest) {
           ? 'azure'
           : requestProvider === 'google'
             ? 'google'
-            : 'openai'
-    ) as 'openai' | 'anthropic' | 'azure' | 'google'
+            : requestProvider === 'local'
+              ? 'local'
+              : requestProvider === 'mock'
+                ? 'mock'
+                : 'openai'
+    ) as 'openai' | 'anthropic' | 'azure' | 'google' | 'local' | 'mock'
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array is required' }, { status: 400 })
@@ -150,13 +163,26 @@ export async function POST(request: NextRequest) {
     const { getApiKeys } = await import('@/lib/api-keys-storage')
     const serverKeys = await getApiKeys()
 
+    // Local model settings: server-side secure storage wins, client is a fallback
+    // for browsers that still hold values from before they were stored server-side.
+    // The client never supplies the token when storage holds one - /api/keys/retrieve
+    // returns only 'configured' for it, never the value.
+    const clientLocalBaseUrl =
+      typeof clientApiKeys?.localBaseUrl === 'string' ? clientApiKeys.localBaseUrl.trim() : ''
+    const localBaseUrl =
+      serverKeys.localBaseUrl?.trim() || clientLocalBaseUrl || DEFAULT_LOCAL_BASE_URL
+    const clientLocalApiKey =
+      typeof clientApiKeys?.localApiKey === 'string' && clientApiKeys.localApiKey !== 'configured'
+        ? clientApiKeys.localApiKey.trim()
+        : ''
+    const localApiKey = serverKeys.localApiKey?.trim() || clientLocalApiKey
+
     // Debug: booleans only — env vars override file storage (see lib/api-keys-storage merge).
     const effLakera = effectiveLakeraAiKey(serverKeys.lakeraAiKey, clientApiKeys?.lakeraAiKey)
     let lakeraResolvedGuardHostname = '(unparsed)'
     try {
-      lakeraResolvedGuardHostname = new URL(
-        resolveLakeraGuardEndpoint(serverKeys.lakeraEndpoint)
-      ).hostname
+      lakeraResolvedGuardHostname = new URL(resolveLakeraGuardEndpoint(serverKeys.lakeraEndpoint))
+        .hostname
     } catch {
       /* keep default */
     }
@@ -170,8 +196,12 @@ export async function POST(request: NextRequest) {
       /** If any is "environment", Settings changes for that field are ignored until env is updated or unset. */
       lakeraEffectiveSources: {
         lakeraAiKey: lakeraGuardApiKeyEnvVarUsed() ? 'environment' : 'encrypted_storage_or_none',
-        lakeraProjectId: process.env.LAKERA_PROJECT_ID?.trim() ? 'environment' : 'encrypted_storage_or_none',
-        lakeraEndpoint: process.env.LAKERA_ENDPOINT?.trim() ? 'environment' : 'encrypted_storage_or_none',
+        lakeraProjectId: process.env.LAKERA_PROJECT_ID?.trim()
+          ? 'environment'
+          : 'encrypted_storage_or_none',
+        lakeraEndpoint: process.env.LAKERA_ENDPOINT?.trim()
+          ? 'environment'
+          : 'encrypted_storage_or_none',
       },
       lakeraEnvLakeraKeyVar: lakeraGuardApiKeyEnvVarUsed(),
       lakeraResolvedGuardHostname,
@@ -259,7 +289,13 @@ export async function POST(request: NextRequest) {
           ? apiKeys.azureOpenAiKey
           : provider === 'google'
             ? apiKeys.geminiApiKey
-            : apiKeys.openAiKey
+            : // Local servers usually need no token (Ollama, LM Studio); vLLM and
+              // LiteLLM proxies may. Mock needs nothing at all.
+              provider === 'local'
+              ? localApiKey
+              : provider === 'mock'
+                ? ''
+                : apiKeys.openAiKey
 
     console.log('Active API Key Status:', {
       provider,
@@ -321,6 +357,18 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+    } else if (provider === 'local') {
+      // No key check: running without one is the point of this provider.
+      //
+      // The base URL is validated in assertLocalBaseUrlAllowed() before any
+      // request leaves the process - it restricts the scheme, rejects embedded
+      // credentials, and resolves the host to prove it is loopback. Plain HTTP
+      // is correct here precisely because the destination is loopback (or a
+      // host an operator named in LOCAL_MODEL_ALLOWED_HOSTS); there is no
+      // network hop to protect, and local runtimes such as Ollama and LM Studio
+      // serve HTTP only. A failure surfaces as InvalidBaseUrlError -> HTTP 400.
+    } else if (provider === 'mock') {
+      // Nothing to validate - no key, no endpoint, no network.
     } else if (provider === 'google') {
       if (
         !activeApiKey ||
@@ -689,8 +737,9 @@ IMPORTANT INSTRUCTIONS:
       // Guard uses these as context to detect split-payload injection across message boundaries.
       const priorTurnsForGuard = messages
         .slice(0, -1)
-        .filter((m): m is { role: 'user' | 'assistant'; content: string } =>
-          m.role === 'user' || m.role === 'assistant'
+        .filter(
+          (m): m is { role: 'user' | 'assistant'; content: string } =>
+            m.role === 'user' || m.role === 'assistant'
         )
 
       inputScanResult = await screenChatWithLakera(
@@ -720,7 +769,9 @@ IMPORTANT INSTRUCTIONS:
           monitoringOnly: config.lakeraGuardMonitoringOnly,
           decision: sanitizeGuardChatScanForClient(inputScanResult),
         })
-      } catch { /* non-blocking — never fail chat over snapshot */ }
+      } catch {
+        /* non-blocking — never fail chat over snapshot */
+      }
 
       // Monitoring-only mode: allow eligible Guard flags through without blocking.
       // Hard-blocks (local prescan hits, infra errors) always apply regardless of this mode.
@@ -811,9 +862,7 @@ IMPORTANT INSTRUCTIONS:
             message: latestUserMessage?.content,
             threatLevel: inputScanResult.threatLevel,
             detectedPatterns: inputScanResult.categories
-              ? Object.keys(inputScanResult.categories).filter(
-                  k => inputScanResult.categories![k]
-                )
+              ? Object.keys(inputScanResult.categories).filter(k => inputScanResult.categories![k])
               : undefined,
             lakeraRequestUuid: inputScanResult.requestUuid,
           },
@@ -838,7 +887,15 @@ IMPORTANT INSTRUCTIONS:
             : 'gpt-4o'
           : provider === 'google'
             ? validateGeminiModelId(typeof model === 'string' ? model : '')
-            : validateModel(model || 'gpt-4o-mini')
+            : // Local servers name their own models (llama3.2, qwen2.5, a GGUF path).
+              // Passing these through validateModel would rewrite them to an OpenAI id.
+              provider === 'local'
+              ? typeof model === 'string' && model.trim()
+                ? model.trim()
+                : DEFAULT_LOCAL_MODEL
+              : provider === 'mock'
+                ? MOCK_MODEL_ID
+                : validateModel(model || 'gpt-4o-mini')
 
     // Convert messages to adapter format
     const adapterMessages: AdapterChatMessage[] = enhancedMessages.map(msg => ({
@@ -1048,7 +1105,22 @@ IMPORTANT INSTRUCTIONS:
             )
           : provider === 'google'
             ? await callGemini(adapterMessages, activeApiKey!, validatedModel, adapterOptions)
-            : await callOpenAIAdapter(adapterMessages, activeApiKey, validatedModel, adapterOptions)
+            : provider === 'local'
+              ? await callLocalModel(
+                  adapterMessages,
+                  localBaseUrl,
+                  validatedModel,
+                  adapterOptions,
+                  localApiKey
+                )
+              : provider === 'mock'
+                ? callMockModel(adapterMessages, adapterOptions)
+                : await callOpenAIAdapter(
+                    adapterMessages,
+                    activeApiKey,
+                    validatedModel,
+                    adapterOptions
+                  )
 
     // Log fallback if used
     if (adapterResult.usedFallback) {
@@ -1189,6 +1261,18 @@ IMPORTANT INSTRUCTIONS:
     console.error('Chat API error:', error)
     let errorMessage = error instanceof Error ? error.message : 'An error occurred'
     let statusCode = 500
+
+    // A rejected local base URL is caller error, not a server fault, and must not
+    // be retried or reported as an outage.
+    if (error instanceof InvalidBaseUrlError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    // Local server problems the operator can fix (model not pulled, server down)
+    // carry their own status so they are not reported as an app fault.
+    if (error instanceof LocalModelError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
 
     // Handle network/fetch errors specifically
     if (

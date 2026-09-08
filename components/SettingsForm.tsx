@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent, KeyboardEvent, ClipboardEvent } from 'r
 import Link from 'next/link'
 
 import { LAKERA_GUARD_URL_DEFAULT } from '@/lib/lakera-guard-endpoint'
+import { DEFAULT_LOCAL_BASE_URL_NAME as LOCAL_BASE_URL_DEFAULT } from '@/components/ModelSelector'
 
 interface ApiKeys {
   openAiKey: string
@@ -15,6 +16,10 @@ interface ApiKeys {
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
+  /** OpenAI-compatible local server (Ollama, LM Studio, llama.cpp, vLLM). Host config, not a credential. */
+  localBaseUrl: string
+  /** Only needed for servers started with --api-key (vLLM, LiteLLM proxies). */
+  localApiKey: string
 }
 
 interface AppSettings {
@@ -26,6 +31,8 @@ interface AppSettings {
 export default function SettingsForm() {
   const [keys, setKeys] = useState<ApiKeys>({
     openAiKey: '',
+    localBaseUrl: LOCAL_BASE_URL_DEFAULT,
+    localApiKey: '',
     anthropicApiKey: '',
     geminiApiKey: '',
     azureOpenAiKey: '',
@@ -579,7 +586,11 @@ export default function SettingsForm() {
     if (!pastedText) return
 
     // For endpoints, only allow valid URLs
-    if (fieldName === 'lakeraEndpoint' || fieldName === 'azureOpenAiEndpoint') {
+    if (
+      fieldName === 'lakeraEndpoint' ||
+      fieldName === 'azureOpenAiEndpoint' ||
+      fieldName === 'localBaseUrl'
+    ) {
       if (pastedText.startsWith('http://') || pastedText.startsWith('https://')) {
         setKeys(prev => ({ ...prev, [fieldName]: pastedText }))
       }
@@ -679,6 +690,10 @@ export default function SettingsForm() {
         lakeraAiKey: 'lakeraAiKey',
         lakeraProjectId: 'lakeraProjectId',
         lakeraEndpoint: 'lakeraEndpoint',
+        // Local model settings are host config, not credentials: they live in the
+        // browser only and have no server-side secure-storage entry to clear.
+        localBaseUrl: 'localBaseUrl',
+        localApiKey: 'localApiKey',
       }
 
       const serverKeyName = serverKeyMap[fieldName]
@@ -782,6 +797,8 @@ export default function SettingsForm() {
           lakeraAiKey: '',
           lakeraEndpoint: LAKERA_GUARD_URL_DEFAULT,
           lakeraProjectId: '',
+          localBaseUrl: LOCAL_BASE_URL_DEFAULT,
+          localApiKey: '',
         })
 
         // Clear localStorage cache
@@ -1196,6 +1213,61 @@ export default function SettingsForm() {
                 placeholder="2025-04-01-preview"
                 {...secureInputProps}
               />
+            </div>
+
+            {/* Local Model Base URL — used by the "Local model" provider */}
+            <div>
+              <label htmlFor="localBaseUrl" className={`${labelClass} flex items-center gap-2`}>
+                <span>Local Model Base URL</span>
+                <div
+                  className={
+                    keys.localBaseUrl && keys.localBaseUrl.startsWith('http')
+                      ? 'h-2 w-2 rounded-full bg-green-500 transition-all'
+                      : 'h-2 w-2 rounded-full bg-red-500 transition-all'
+                  }
+                  title={keys.localBaseUrl ? 'Base URL provided' : 'Base URL not provided'}
+                  style={{
+                    boxShadow:
+                      keys.localBaseUrl && keys.localBaseUrl.startsWith('http')
+                        ? '0 0 8px rgba(34, 197, 94, 0.6)'
+                        : '0 0 8px rgba(239, 68, 68, 0.6)',
+                  }}
+                />
+              </label>
+              <input
+                type="text"
+                id="localBaseUrl"
+                name="localBaseUrl"
+                value={keys.localBaseUrl}
+                placeholder={LOCAL_BASE_URL_DEFAULT}
+                {...secureInputProps}
+              />
+              <p className="text-sm text-theme-subtle mt-1">
+                OpenAI-compatible endpoint including the <code className="text-xs">/v1</code>{' '}
+                suffix. Ollama: <code className="text-xs">http://localhost:11434/v1</code> · LM
+                Studio: <code className="text-xs">http://localhost:1234/v1</code> · vLLM:{' '}
+                <code className="text-xs">http://localhost:8000/v1</code>. The server only fetches
+                loopback addresses; other hosts must be allowed by an operator via{' '}
+                <code className="text-xs">LOCAL_MODEL_ALLOWED_HOSTS</code>.
+              </p>
+            </div>
+
+            {/* Local Model Bearer Token (optional) */}
+            <div>
+              <label htmlFor="localApiKey" className={`${labelClass} flex items-center gap-2`}>
+                <span>Local Model Token (optional)</span>
+              </label>
+              <input
+                type="password"
+                id="localApiKey"
+                name="localApiKey"
+                value={keys.localApiKey}
+                placeholder="Only if your server was started with --api-key (Ctrl/Cmd + V)"
+                {...secureInputProps}
+              />
+              <p className="text-sm text-theme-subtle mt-1">
+                Ollama and LM Studio need no token. vLLM and LiteLLM proxies may.
+              </p>
             </div>
 
             {/* Anthropic API Key */}

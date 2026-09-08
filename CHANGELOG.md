@@ -2,12 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-09-08
+
+### Added
+
+- **Local model provider** — chat against any OpenAI-compatible server (Ollama, LM Studio, llama.cpp, vLLM, LocalAI). Select **Local model** in the provider dropdown, set the base URL in **Settings → Local Model Base URL**, and pick the model in the chat header. Prompts never leave the host. Implemented in **`lib/localModelAdapter.ts`** (new) and wired into **`app/api/chat/route.ts`** alongside the existing OpenAI/Azure/Anthropic/Gemini adapters.
+- **Mock provider** — **Mock (no model)** answers in-process with no API key, no network call and no GPU, so the Lakera input and output scanners can be exercised on their own. Replies are deterministic, which makes it usable in CI. Asking for the system prompt or for PII returns content designed to trip the _output_ scanner; the synthetic identifiers are drawn from documentation-reserved ranges and are not real data.
+- **`GET /api/models?provider=local`** — enumerates the models a local server is serving, so the picker behaves the same as it does for hosted providers. `provider=mock` returns the single in-process model without touching the network.
+- **Settings fields** — _Local Model Base URL_ and an optional _Local Model Token_ (only needed for servers started with `--api-key`, such as vLLM or a LiteLLM proxy).
+
+### Security
+
+- **SSRF guard on the local model base URL** — the base URL is supplied by the browser and fetched server-side, so `assertLocalBaseUrlAllowed()` accepts only `http`/`https`, rejects URLs carrying credentials, and resolves the hostname requiring _every_ DNS answer to be a loopback address before any request leaves the process. A hostname pointing at an internal IP (cloud metadata, internal services) is rejected up front rather than relying on the fetch to fail.
+- **`LOCAL_MODEL_ALLOWED_HOSTS`** — the only way to widen beyond loopback. Read from the environment and never from the request payload, so a client cannot widen its own reach. Rejections surface as HTTP 400, not 500, so they are not retried or reported as an outage.
+- **No new unauthenticated surface** — the local and mock providers reuse the existing `requireSecureChatSession` gate and IP rate limiting already applied to `/api/chat`, `/api/scan` and `/api/models`. No new auth mechanism was introduced.
+- Plain HTTP is intentional for this provider and only for it: the destination is loopback, so there is no network hop to protect, and local runtimes such as Ollama and LM Studio serve HTTP only. No TLS verification is relaxed anywhere.
+
+### Fixed
+
+- **Provider dropdown no longer disappears on a model-list error** — `ModelSelector` previously early-returned its error message _in place of_ the whole component, so a user with no API key could never reach the provider picker, making the two keyless providers unselectable. The error now renders beside the dropdown instead of replacing it.
+- **Chat stays enabled for keyless providers** — the "no chat API key configured" gate disabled the composer for `local` and `mock` too, which are usable without any key. The gate now treats them as configured, and the warning banner points at them as the no-key option.
+- **Local-server failures return 4xx/5xx that match their cause** — a model that is not pulled returned HTTP 500; it now returns 400 with the `ollama pull` hint, an unreachable server returns 503, and a timeout returns 504, via a new `LocalModelError` carrying its own status. Previously these looked like application faults and would be retried or alerted on.
+- **Mock system-prompt disclosure is never empty** — this app passes system instructions as a system-role message rather than an adapter option, so the mock's disclosure reply came back blank. It now reads the system message, falling back to representative text, so the reply is always something an output scanner can match.
+
+### Documentation
+
+- **`docs/local-models.md`** (new) — per-runtime setup (Ollama, LM Studio, llama.cpp, vLLM), the mock provider's output-scanner triggers, the SSRF reasoning, and how to verify the guardrails still fire.
+
 ## [1.1.14] - 2026-05-12
 
 ### Fixed
 
 - **RAG silently returning no context in production** — `buildRagContext` owner-ID fallback now runs in production (previously dev-only). Fresh installs or mismatched session cookies no longer cause file-based Q&A to silently fall back to general-knowledge answers.
-- **`isFileOrDataQuestion` gate removed** — queries like *"explain the results"* or *"what are the trends?"* previously matched the `generalOnly` heuristic and skipped RAG entirely. `buildRagContext` relevance scoring now handles irrelevant queries (returns empty, LLM answers from general knowledge).
+- **`isFileOrDataQuestion` gate removed** — queries like _"explain the results"_ or _"what are the trends?"_ previously matched the `generalOnly` heuristic and skipped RAG entirely. `buildRagContext` relevance scoring now handles irrelevant queries (returns empty, LLM answers from general knowledge).
 - **`SHARED_ORG_OWNER_ID=org` set by default on fresh installs** — without this, every browser session receives a different UUID owner-ID; files uploaded in one session were invisible to another, breaking RAG across sessions.
 - **Upgrade script injects `SHARED_ORG_OWNER_ID`** — `upgrade-curl-production.sh` now patches `.env.local` on every upgrade run: appends `SHARED_ORG_OWNER_ID=org` if absent, skips silently if already set. Existing installations gain the RAG fix without a full reinstall.
 - **Install script purges prior instance unconditionally** — `install_ubuntu_clean.sh` now always stops the service, removes the systemd unit, kills stray node processes, and wipes the install directory before cloning. Removes the opt-in `FORCE_CLEAN` flag.

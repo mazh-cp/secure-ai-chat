@@ -45,6 +45,10 @@ export async function GET(request: NextRequest) {
         lakeraAiKey: keys.lakeraAiKey ? 'configured' : null,
         lakeraProjectId: keys.lakeraProjectId ? 'configured' : null,
         lakeraEndpoint: keys.lakeraEndpoint || LAKERA_GUARD_URL_DEFAULT,
+        // Host config, safe to return verbatim (it is a loopback URL, not a secret).
+        localBaseUrl: keys.localBaseUrl || null,
+        // The token itself is never returned - presence only, like the other keys.
+        localApiKey: keys.localApiKey ? 'configured' : null,
       },
       // Also return configured status for easier checking
       configured: {
@@ -86,6 +90,8 @@ export async function GET(request: NextRequest) {
           geminiApiKey: null,
           azureOpenAiKey: null,
           azureOpenAiEndpoint: null,
+          localBaseUrl: null,
+          localApiKey: null,
           azureOpenAiApiVersion: '2025-04-01-preview',
           lakeraAiKey: null,
           lakeraProjectId: null,

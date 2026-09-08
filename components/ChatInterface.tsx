@@ -4,7 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
-import ModelSelector, { type ChatProvider } from './ModelSelector'
+import ModelSelector, {
+  DEFAULT_LOCAL_MODEL_NAME,
+  MOCK_MODEL_NAME,
+  isKeylessProvider,
+  type ChatProvider,
+  type KeyedProvider,
+} from './ModelSelector'
 import { Message } from '@/types/chat'
 import { addLog } from '@/lib/logging'
 import { getAssociatedRisksFromLakeraDecision } from '@/types/risks'
@@ -26,6 +32,10 @@ interface ApiKeys {
   lakeraAiKey: string
   lakeraEndpoint: string
   lakeraProjectId: string
+  /** OpenAI-compatible local server, e.g. http://localhost:11434/v1 (host config, not a credential) */
+  localBaseUrl?: string
+  /** Only needed for servers started with --api-key (vLLM, LiteLLM) */
+  localApiKey?: string
 }
 
 export default function ChatInterface() {
@@ -73,6 +83,18 @@ export default function ChatInterface() {
         if (!t || !t.startsWith('gemini')) return DEFAULT_GEMINI_MODEL
         return prev
       })
+    }
+    if (p === 'local') {
+      // Carrying a hosted model id over to a local server guarantees a 404.
+      setSelectedModel(prev => {
+        const t = (prev || '').trim().toLowerCase()
+        const looksHosted =
+          !t || t.startsWith('gpt-') || t.startsWith('claude-') || t.startsWith('gemini')
+        return looksHosted ? DEFAULT_LOCAL_MODEL_NAME : prev
+      })
+    }
+    if (p === 'mock') {
+      setSelectedModel(MOCK_MODEL_NAME)
     }
   }
 
@@ -141,8 +163,7 @@ export default function ChatInterface() {
             })
 
             // Clear any stale state if API says no keys
-            const anyChatKeyServer =
-              hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey
+            const anyChatKeyServer = hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey
             if (!anyChatKeyServer && apiKeys) {
               setApiKeys(null)
             }
@@ -209,7 +230,9 @@ export default function ChatInterface() {
         providerStored === 'openai' ||
         providerStored === 'anthropic' ||
         providerStored === 'azure' ||
-        providerStored === 'google'
+        providerStored === 'google' ||
+        providerStored === 'local' ||
+        providerStored === 'mock'
       )
         setProvider(providerStored)
     }
@@ -227,9 +250,12 @@ export default function ChatInterface() {
       apiKeys.azureOpenAiKey === 'configured' ||
       (apiKeys.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
     const hasGemini =
-      apiKeys.geminiApiKey === 'configured' ||
-      (apiKeys.geminiApiKey && apiKeys.geminiApiKey !== '')
+      apiKeys.geminiApiKey === 'configured' || (apiKeys.geminiApiKey && apiKeys.geminiApiKey !== '')
     setProvider(current => {
+      // Local and mock need no key, so they are always "configured". Without
+      // this they would fall through the lookup below as undefined and get
+      // switched away from the moment keys load.
+      if (isKeylessProvider(current)) return current
       const has = {
         openai: hasOpenAi,
         anthropic: hasAnthropic,
@@ -237,7 +263,7 @@ export default function ChatInterface() {
         google: hasGemini,
       } as const
       if (has[current]) return current
-      const order: ChatProvider[] = ['openai', 'anthropic', 'azure', 'google']
+      const order: KeyedProvider[] = ['openai', 'anthropic', 'azure', 'google']
       for (const p of order) {
         if (has[p]) return p
       }
@@ -315,8 +341,10 @@ export default function ChatInterface() {
     const hasGeminiKey =
       apiKeys?.geminiApiKey === 'configured' ||
       (apiKeys?.geminiApiKey && apiKeys.geminiApiKey !== '')
-    const hasChatKey =
-      provider === 'anthropic'
+    // Local and mock run on this host and need no key at all.
+    const hasChatKey = isKeylessProvider(provider)
+      ? true
+      : provider === 'anthropic'
         ? hasAnthropicKey
         : provider === 'azure'
           ? hasAzureKey
@@ -512,9 +540,12 @@ export default function ChatInterface() {
     apiKeys?.azureOpenAiKey === 'configured' ||
     (apiKeys?.azureOpenAiKey && apiKeys.azureOpenAiKey !== '')
   const hasGeminiKey =
-    apiKeys?.geminiApiKey === 'configured' ||
-    (apiKeys?.geminiApiKey && apiKeys.geminiApiKey !== '')
-  const hasChatKey = hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey
+    apiKeys?.geminiApiKey === 'configured' || (apiKeys?.geminiApiKey && apiKeys.geminiApiKey !== '')
+  const hasAnyHostedKey = hasOpenAiKey || hasAnthropicKey || hasAzureKey || hasGeminiKey
+  // The local and mock providers are always usable, so the chat UI must stay
+  // enabled for them even when no hosted key is configured - otherwise the two
+  // keyless providers are unreachable, which defeats the point of having them.
+  const hasChatKey = hasAnyHostedKey || isKeylessProvider(provider)
 
   return (
     <div className="flex flex-col h-full">
@@ -533,7 +564,8 @@ export default function ChatInterface() {
             <Link href="/settings" className="underline hover:text-brand-berry transition-colors">
               Settings
             </Link>
-            .
+            , or pick <strong>Local model</strong> / <strong>Mock (no model)</strong> below to run
+            without a key.
           </p>
         </div>
       )}

@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.1.14'
-export const RELEASE_DATE = '2026-05-12'
+export const APP_VERSION = '1.2.0'
+export const RELEASE_DATE = '2026-09-08'
 
 export interface ReleaseNoteItem {
   title: string
@@ -13,20 +13,19 @@ export interface ReleaseNoteItem {
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
-    title: 'Security',
+    title: 'Added',
     items: [
-      'Lakera Guard monitoring-only mode for safe policy calibration (`LAKERA_GUARD_MONITORING_ONLY`).',
-      'Multi-turn Guard coverage — prior conversation turns passed as context to detect split-payload attacks.',
-      '`project_id` enforced by default in production — Guard applies your project policy, not Lakera default.',
-      '`/api/scan` now requires session auth and is rate-limited by IP.',
-      'Circuit breaker prevents Guard outage latency cascades.',
+      'Local model provider — chat against any OpenAI-compatible server (Ollama, LM Studio, llama.cpp, vLLM). Prompts never leave the host.',
+      'Mock provider — deterministic in-process replies with no key, no network and no GPU, for testing the Lakera scanners on their own.',
+      'Model picker now enumerates models from a local server via `GET /api/models?provider=local`.',
     ],
   },
   {
-    title: 'Changed',
+    title: 'Security',
     items: [
-      'New `GET /api/lakera/last` — last Guard decision snapshot for operator dashboards.',
-      'Default production upgrade tag **`v1.1.14`**.',
+      'SSRF guard on the local model base URL — loopback only, credentials rejected, hostname resolved before any request goes out.',
+      '`LOCAL_MODEL_ALLOWED_HOSTS` is the only way to widen beyond loopback, and is read server-side only.',
+      'Local and mock providers add no new unauthenticated surface — the existing session gate and rate limiting still apply.',
     ],
   },
 ]
