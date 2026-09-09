@@ -80,7 +80,10 @@ export default function ModelSelector({
           } catch {
             baseUrl = ''
           }
-          query += `&baseUrl=${encodeURIComponent(baseUrl)}`
+          // Omit empty baseUrl so the server uses saved Settings / default.
+          if (baseUrl.trim()) {
+            query += `&baseUrl=${encodeURIComponent(baseUrl.trim())}`
+          }
         }
 
         const response = await fetch(`/api/models?${query}`, {

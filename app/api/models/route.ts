@@ -65,9 +65,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (provider === 'local') {
-      // Enumerate whatever the local server is serving. The base URL is
-      // SSRF-validated inside probeLocalModels before any request goes out.
-      const baseUrl = searchParams.get('baseUrl')?.trim() || DEFAULT_LOCAL_BASE_URL
+      // Enumerate whatever the local server is serving. Prefer an explicit
+      // query baseUrl, then the server-saved Settings value, then the Ollama
+      // default. SSRF-validated inside probeLocalModels before any request.
+      const fromQuery = searchParams.get('baseUrl')?.trim() || ''
+      const fromSettings = serverKeys.localBaseUrl?.trim() || ''
+      const baseUrl = fromQuery || fromSettings || DEFAULT_LOCAL_BASE_URL
       const result = await probeLocalModels(baseUrl)
       if (!result.ok) {
         return NextResponse.json(
