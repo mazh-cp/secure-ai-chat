@@ -17,9 +17,11 @@ export async function indexFileForRAG(
     lakeraApiKeyOverride?: string
     lakeraEndpointOverride?: string
     lakeraProjectIdOverride?: string | null
+    preScannedContentSha?: string
   }
 ): Promise<{ indexed: boolean; quarantined?: boolean }> {
   const result = await ingestDocument(fileContent, {
+    preScannedContentSha: meta?.preScannedContentSha,
     docId: fileId,
     filename: fileName,
     userId: meta?.owner_id ?? undefined,

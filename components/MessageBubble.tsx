@@ -10,6 +10,10 @@ interface MessageBubbleProps {
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const scanResult = message.scanResult
+  // Guard outages (quota, HTTP errors, missing project) are fail-closed blocks, not detected threats.
+  const scanUnavailable = Boolean(
+    scanResult?.categories?.lakera_api_error || scanResult?.categories?.lakera_project_required
+  )
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-2`}>
@@ -35,33 +39,37 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                   <div className="flex items-center space-x-2">
                     <span className="text-red-300">🚫</span>
                     <span className="text-sm font-semibold text-red-300">
-                      {scanResult.blockPolicy === 'pii'
-                        ? 'Sensitive data policy'
-                        : scanResult.blockPolicy === 'content_moderation'
-                          ? 'Content moderation'
-                          : scanResult.blockPolicy === 'security'
-                            ? 'Security policy'
-                            : 'Threat detected'}
+                      {scanUnavailable
+                        ? 'Security scan unavailable'
+                        : scanResult.blockPolicy === 'pii'
+                          ? 'Sensitive data policy'
+                          : scanResult.blockPolicy === 'content_moderation'
+                            ? 'Content moderation'
+                            : scanResult.blockPolicy === 'security'
+                              ? 'Security policy'
+                              : 'Threat detected'}
                     </span>
                   </div>
                   {scanResult.message && (
                     <p className="text-sm text-red-200/80 mt-1">{scanResult.message}</p>
                   )}
-                  {scanResult.categories && Object.keys(scanResult.categories).length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <p className="text-sm font-medium text-red-200">Detected Categories:</p>
-                      <ul className="text-sm text-red-100/80 space-y-0.5">
-                        {Object.entries(scanResult.categories)
-                          .filter(([, flagged]) => flagged)
-                          .map(([category]) => (
-                            <li key={category} className="flex items-center space-x-1">
-                              <span>•</span>
-                              <span className="capitalize">{category.replace(/_/g, ' ')}</span>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  )}
+                  {!scanUnavailable &&
+                    scanResult.categories &&
+                    Object.keys(scanResult.categories).length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm font-medium text-red-200">Detected Categories:</p>
+                        <ul className="text-sm text-red-100/80 space-y-0.5">
+                          {Object.entries(scanResult.categories)
+                            .filter(([, flagged]) => flagged)
+                            .map(([category]) => (
+                              <li key={category} className="flex items-center space-x-1">
+                                <span>•</span>
+                                <span className="capitalize">{category.replace(/_/g, ' ')}</span>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                   {scanResult.scores && Object.keys(scanResult.scores).length > 0 && (
                     <div className="mt-2">
                       <p className="text-sm text-red-200/80">

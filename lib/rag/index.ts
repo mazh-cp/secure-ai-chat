@@ -62,23 +62,36 @@ export function contentHash(text: string): string {
  */
 export async function ingestDocument(
   extractedText: string,
-  meta: ScanMeta & { filename: string; docId: string; tenantId?: string }
+  meta: ScanMeta & {
+    filename: string
+    docId: string
+    tenantId?: string
+    /** SHA-256 of text the upload scan already passed as safe; skips a duplicate Guard call when identical. */
+    preScannedContentSha?: string
+  }
 ): Promise<IndexResult> {
   const docId = meta.docId
 
+  const alreadyScanned =
+    !!meta.preScannedContentSha &&
+    crypto.createHash('sha256').update(extractedText, 'utf8').digest('hex') ===
+      meta.preScannedContentSha
+
   // 1) Scan at ingestion
-  const scanResult = await scanIngestion(extractedText, {
-    docId: meta.docId,
-    filename: meta.filename,
-    tenantId: meta.tenantId,
-    userId: meta.userId,
-    sessionId: meta.sessionId,
-    ipAddress: meta.ipAddress,
-    source: meta.source ?? 'file_upload',
-    lakeraApiKeyOverride: meta.lakeraApiKeyOverride,
-    lakeraEndpointOverride: meta.lakeraEndpointOverride,
-    lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
-  })
+  const scanResult = alreadyScanned
+    ? { allowed: true }
+    : await scanIngestion(extractedText, {
+        docId: meta.docId,
+        filename: meta.filename,
+        tenantId: meta.tenantId,
+        userId: meta.userId,
+        sessionId: meta.sessionId,
+        ipAddress: meta.ipAddress,
+        source: meta.source ?? 'file_upload',
+        lakeraApiKeyOverride: meta.lakeraApiKeyOverride,
+        lakeraEndpointOverride: meta.lakeraEndpointOverride,
+        lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
+      })
 
   if (!scanResult.allowed) {
     return {

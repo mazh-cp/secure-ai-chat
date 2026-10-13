@@ -50,10 +50,13 @@ export async function POST(request: NextRequest) {
           results.push({ fileId: file.id, indexed: false, error: 'File content not found' })
           continue
         }
+        const scannedSha = file.scanDetails?.scannedContentSha
         const result = await indexFileForRAG(file.id, content, file.name, {
           owner_id: owner,
           session_id: file.session_id ?? undefined,
           ...lakeraMeta,
+          preScannedContentSha:
+            file.scanStatus === 'safe' && typeof scannedSha === 'string' ? scannedSha : undefined,
         })
         results.push({
           fileId: file.id,

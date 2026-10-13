@@ -228,16 +228,24 @@ export async function POST(request: NextRequest) {
     } else if (!skipServerLakeraScan && keys.lakeraAiKey?.trim() && lakeraScanRequested) {
       const { prepareContentForFileScan, screenTextAsFileUpload } =
         await import('@/lib/lakera/guard-client')
-      const { resolveLakeraGuardEndpoint, lakeraGuardHttpUserHint } = await import(
-        '@/lib/lakera-guard-endpoint'
-      )
+      const { resolveLakeraGuardEndpoint, lakeraGuardHttpUserHint } =
+        await import('@/lib/lakera-guard-endpoint')
       const guardUrl = resolveLakeraGuardEndpoint(keys.lakeraEndpoint)
       if (!guardUrl.startsWith('http://') && !guardUrl.startsWith('https://')) {
         scanStatusStr = 'error'
         scanResultVal = 'Invalid Lakera endpoint. Must start with http:// or https://'
         scanDetailsVal = { serverLakeraScan: true, invalidEndpoint: true }
       } else {
-        const { contentToScan } = prepareContentForFileScan(content, fileNameStr)
+        const { contentToScan, isBase64Placeholder } = prepareContentForFileScan(
+          content,
+          fileNameStr
+        )
+        // Fingerprint only when Guard saw the full text (not truncated, not a binary placeholder),
+        // so RAG indexing can skip rescanning exactly that text.
+        const scannedContentSha =
+          !isBase64Placeholder && contentToScan === String(content ?? '')
+            ? crypto.createHash('sha256').update(contentToScan, 'utf8').digest('hex')
+            : undefined
         const fr = await screenTextAsFileUpload({
           contentToScan,
           lakeraKey: keys.lakeraAiKey,
@@ -287,7 +295,7 @@ export async function POST(request: NextRequest) {
         } else if (fr.scanned && !fr.flagged) {
           scanStatusStr = 'safe'
           scanResultVal = 'File content appears safe'
-          scanDetailsVal = baseDetails
+          scanDetailsVal = { ...baseDetails, scannedContentSha }
         } else {
           scanStatusStr = 'pending'
           scanResultVal = 'Lakera scan incomplete; open Files to rescan'

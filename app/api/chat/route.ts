@@ -688,11 +688,17 @@ IMPORTANT INSTRUCTIONS:
       (config.lakeraEnforceInputOutputScan || scanOptions?.scanInput !== false)
     if (latestUserMessage && runInputScan && apiKeys.lakeraAiKey) {
       const lakeraKey = apiKeys.lakeraAiKey
+      // RAG chunks already passed the per-chunk retrieval scan; re-sending them here doubled Lakera
+      // usage per file question. Only legacy file context (never retrieval-scanned) is rescanned.
+      const ragChunksAlreadyScanned =
+        lakeraRetrievalScan && !!ragContextFromRetrieve && ragContextFromRetrieve.chunks.length > 0
       let inputTextForGuard = latestUserMessage.content
-      for (let i = enhancedMessages.length - 1; i >= 0; i--) {
-        if (enhancedMessages[i].role === 'user') {
-          inputTextForGuard = enhancedMessages[i].content
-          break
+      if (!ragChunksAlreadyScanned) {
+        for (let i = enhancedMessages.length - 1; i >= 0; i--) {
+          if (enhancedMessages[i].role === 'user') {
+            inputTextForGuard = enhancedMessages[i].content
+            break
+          }
         }
       }
 
