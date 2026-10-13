@@ -32,6 +32,7 @@ import {
   getTokenLimitAsync,
 } from '@/lib/token-counter'
 import { injectRagContext, RAG_DATA_PRIVACY_INSTRUCTIONS } from '@/lib/rag-context'
+import { shouldUseRagForQuery } from '@/lib/rag-intent'
 import { requireSecureChatSession } from '@/lib/app-login'
 import {
   effectiveLakeraAiKey,
@@ -47,44 +48,6 @@ import { recordLakeraLastGuard, sanitizeGuardChatScanForClient } from '@/lib/lak
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
-}
-
-/**
- * Returns true only when the user is clearly asking about data/documents (who, list, find, etc.).
- * General knowledge questions (e.g. "what is depression") return false → model-only answer, no RAG, no Sources.
- */
-function isFileOrDataQuestion(query: string): boolean {
-  if (!query || typeof query !== 'string') return false
-  const q = query.trim().toLowerCase()
-  // Explicit file/data intent: who, which people, list, find, in the file, from the data, users with, records, etc.
-  const fileDataPatterns = [
-    /\b(who|which\s+people|which\s+person|list|find|show|get)\s+(is|are|has|have|with|on|using|holding|dealing|suffering|from)/i,
-    /\b(in\s+(the\s+)?(file|data|document|upload))/i,
-    /\b(from\s+(the\s+)?(file|data|document|upload))/i,
-    /\b(users?|people|persons?|records?|rows?)\s+(with|who|that|where)/i,
-    /\b(how\s+many)\s+(users?|people|records?)/i,
-    /\b(data|records?|file\s+content)\s+(about|for|from)/i,
-    /\b(search|look)\s+(in|through)\s+(the\s+)?(file|data|documents?)/i,
-    /\b(tell\s+me\s+about|what\s+do\s+you\s+know\s+about|information\s+about|details?\s+(on|for|about))\b/i,
-    /\b(who\s+is|who\s+are|who\s+works|who\s+has|who\s+have|which\s+company|which\s+companies)\b/i,
-    /\b(visa|h-?1b|h1b|work\s+authorization|immigration|green\s+card|permanent\s+resident)\b/i,
-    /\b(uploaded|my\s+upload|I\s+uploaded)\b.*\b(file|document|csv|data|spreadsheet|txt)\b/i,
-    /\b(file|document|csv|spreadsheet)\b.*\b(uploaded|I\s+uploaded|my\s+upload)\b/i,
-    /\b(according\s+to|based\s+on)\s+(the\s+)?(file|document|upload|csv|data|spreadsheet)\b/i,
-    /\b(summarize|outline|parse)\b.*\b(file|document|upload|csv|spreadsheet)\b/i,
-    /\bwhat(?:'s|s|\s+is)\s+in\s+(the\s+)?(file|document|upload|csv|spreadsheet)\b/i,
-  ]
-  if (fileDataPatterns.some(re => re.test(q))) return true
-  const entityOrOrgCue =
-    /\b(company|companies|corporation|corporate|business|firm|organization|org|individual|individuals|employee|employees|person|people|customer|client|vendor|supplier|contact|profile|stakeholder|director|manager|executive|founder|ceo|cfo|corp\.?|inc\.?|llc|ltd\.?)\b/i.test(
-      q
-    )
-  if (entityOrOrgCue) return true
-  // Purely general-knowledge phrasing: "what is X", "define X", "explain X" with no data cue
-  const generalOnly =
-    /^(what\s+is|what\s+are|define|explain|how\s+does|why\s+do(es)?|when\s+did)\s+/i.test(q) &&
-    !/\b(file|data|document|upload|user|record|who|list|find)\b/i.test(q)
-  return !generalOnly
 }
 
 type ScanResult = GuardChatScanResult
@@ -447,10 +410,10 @@ export async function POST(request: NextRequest) {
     let ragContextFromRetrieve: Awaited<
       ReturnType<typeof import('@/lib/rag-context').buildRagContext>
     > | null = null
-    // Always attempt RAG when enabled — buildRagContext relevance scoring handles queries with no matching
-    // chunks (returns empty, LLM answers from general knowledge). The old isFileOrDataQuestion gate was
-    // too narrow and silently skipped retrieval for legitimate file queries like "explain the results".
-    const useRAG = enableRAG !== false && !!latestUserMessage
+    // Keyword relevance alone matched general questions ("what is cholesterol") to file rows, so
+    // retrieval is gated on lookup intent; general-knowledge questions get a model-only answer.
+    const useRAG =
+      enableRAG !== false && !!latestUserMessage && shouldUseRagForQuery(latestUserMessage.content)
     if (useRAG) {
       try {
         const { getOwnerId } = await import('@/lib/owner')
