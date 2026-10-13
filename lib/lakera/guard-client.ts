@@ -22,6 +22,33 @@ import {
   type LakeraBlockPolicy,
 } from '@/lib/lakera-guard-classify'
 
+const GUARD_429_MAX_RETRIES = 2
+const LAKERA_QUOTA_EXCEEDED = 'ErrQuotaExceeded'
+
+function isLakeraQuotaExceeded(errorDetails: unknown): boolean {
+  if (!errorDetails) return false
+  if (typeof errorDetails === 'string') return errorDetails.includes(LAKERA_QUOTA_EXCEEDED)
+  return (errorDetails as { error?: unknown }).error === LAKERA_QUOTA_EXCEEDED
+}
+
+function lakeraUnavailableMessage(status: number, errorDetails: unknown): string {
+  if (status === 429 && isLakeraQuotaExceeded(errorDetails)) {
+    return 'Lakera usage limit reached for this account (quota exceeded). Request blocked (fail-closed). Raise the Lakera plan limit or wait for the quota to reset.'
+  }
+  return `Security scan unavailable (${status}). Request blocked (fail-closed).`
+}
+const GUARD_429_MAX_DELAY_MS = 2000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function guardRetryDelayMs(retryAfter: string | null, attempt: number): number {
+  const seconds = retryAfter ? Number(retryAfter) : NaN
+  const requested = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 400 * 2 ** attempt
+  return Math.min(requested, GUARD_429_MAX_DELAY_MS)
+}
+
 /** Raw JSON shape from POST /v2/guard */
 export interface LakeraApiResponse {
   flagged: boolean
@@ -166,15 +193,25 @@ export async function postLakeraGuard(params: {
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), Math.max(1000, config.lakeraTimeoutMs))
   try {
-    const response = await fetch(params.guardUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${bearerKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    })
+    let response: Response
+    for (let attempt = 0; ; attempt++) {
+      response = await fetch(params.guardUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${bearerKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      // Lakera's short-window rate limit returns 429 on brief bursts; a quick retry usually succeeds.
+      // ErrQuotaExceeded is also a 429 but will not clear on retry, so it is returned immediately.
+      if (response.status !== 429 || attempt >= GUARD_429_MAX_RETRIES) break
+      const peek = await response.clone().text().catch(() => '')
+      if (peek.includes(LAKERA_QUOTA_EXCEEDED)) break
+      await response.body?.cancel().catch(() => {})
+      await sleep(guardRetryDelayMs(response.headers.get('retry-after'), attempt))
+    }
     if (!response.ok) {
       // Count 5xx and 429 as availability failures for the circuit breaker.
       // 4xx are Guard responding correctly (auth, bad request) — not availability failures.
@@ -367,13 +404,17 @@ export async function screenChatWithLakera(
     })
 
     if (!posted.ok) {
-      console.error('Lakera API error:', posted.status)
+      console.error(
+        'Lakera API error:',
+        posted.status,
+        isLakeraQuotaExceeded(posted.errorDetails) ? '(ErrQuotaExceeded: account usage limit reached)' : ''
+      )
       if (lakeraFailClosedBlockOnHttpError(posted.status)) {
         return {
           scanned: true,
           flagged: true,
           categories: { lakera_api_error: true },
-          message: `Security scan unavailable (${posted.status}). Request blocked (fail-closed).`,
+          message: lakeraUnavailableMessage(posted.status, posted.errorDetails),
           threatLevel: 'high',
         }
       }
@@ -659,6 +700,11 @@ export async function screenTextAsFileUpload(args: {
     })
 
     if (!posted.ok) {
+      console.error(
+        'Lakera file scan error:',
+        posted.status,
+        isLakeraQuotaExceeded(posted.errorDetails) ? '(ErrQuotaExceeded: account usage limit reached)' : ''
+      )
       if (lakeraFailClosedBlockOnHttpError(posted.status)) {
         return {
           scanned: true,

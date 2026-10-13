@@ -139,20 +139,43 @@ export async function scanIngestion(text: string, meta: ScanMeta): Promise<Inges
  * Scan retrieved chunks before passing to LLM.
  * Drops or redacts flagged chunks; marks retrieval tainted if too many dropped.
  */
+// One Guard call per chunk (up to 56 per question) tripped Lakera's 429 rate limit, so chunks
+// are scanned in batches; only a flagged batch is re-scanned per chunk to drop the bad ones.
+const RETRIEVAL_BATCH_MAX_CHARS = 16_000
+
+type RetrievalChunk = { id: string; text: string; metadata?: Record<string, unknown> }
+
+function batchChunks(chunks: RetrievalChunk[]): RetrievalChunk[][] {
+  const batches: RetrievalChunk[][] = []
+  let current: RetrievalChunk[] = []
+  let size = 0
+  for (const chunk of chunks) {
+    if (current.length > 0 && size + chunk.text.length > RETRIEVAL_BATCH_MAX_CHARS) {
+      batches.push(current)
+      current = []
+      size = 0
+    }
+    current.push(chunk)
+    size += chunk.text.length
+  }
+  if (current.length > 0) batches.push(current)
+  return batches
+}
+
 export async function scanRetrieval(
-  chunks: Array<{ id: string; text: string; metadata?: Record<string, unknown> }>,
+  chunks: RetrievalChunk[],
   meta: ScanMeta
 ): Promise<RetrievalScanResult> {
   const safeChunks: typeof chunks = []
   let droppedCount = 0
 
-  for (const chunk of chunks) {
+  const scanRetrievalText = async (text: string, docId?: string) => {
     const lakeraInput: LakeraScanInput = {
-      text: chunk.text,
+      text,
       context: 'retrieval',
       source: meta.source ?? 'rag_retrieval',
       meta: {
-        docId: chunk.metadata?.docId as string | undefined,
+        docId,
         tenantId: meta.tenantId,
         ip_address: meta.ipAddress,
         user_id: meta.userId,
@@ -162,13 +185,46 @@ export async function scanRetrieval(
       lakeraEndpointOverride: meta.lakeraEndpointOverride,
       lakeraProjectIdOverride: meta.lakeraProjectIdOverride,
     }
-
     const result = await scanTextWithLakera(lakeraInput)
     const decision = applyPolicy('retrieval', result.severity, result.categories)
+    return { result, allowed: decision === 'allow' || decision === 'allow_restricted' }
+  }
 
-    if (decision === 'allow' || decision === 'allow_restricted') {
-      safeChunks.push(chunk)
-    } else {
+  const isGuardUnavailable = (result: LakeraScanResult) =>
+    result.categories.includes('lakera_api_error') ||
+    result.categories.includes('lakera_project_required')
+
+  const batches = batchChunks(chunks)
+  let guardUnavailable = false
+
+  for (let b = 0; b < batches.length && !guardUnavailable; b++) {
+    const batch = batches[b]
+    if (batch.length > 1) {
+      const batchScan = await scanRetrievalText(batch.map(c => c.text).join('\n\n---\n\n'))
+      if (batchScan.allowed) {
+        safeChunks.push(...batch)
+        continue
+      }
+      // Per-chunk retries against a failing or rate-limited Guard only add load; fail closed.
+      if (isGuardUnavailable(batchScan.result)) {
+        guardUnavailable = true
+        break
+      }
+    }
+
+    for (const chunk of batch) {
+      const { result, allowed } = await scanRetrievalText(
+        chunk.text,
+        chunk.metadata?.docId as string | undefined
+      )
+      if (allowed) {
+        safeChunks.push(chunk)
+        continue
+      }
+      if (isGuardUnavailable(result)) {
+        guardUnavailable = true
+        break
+      }
       droppedCount++
       if (result.requestUuid) {
         let projectId: string | null | undefined = meta.lakeraProjectIdOverride ?? undefined
@@ -192,6 +248,7 @@ export async function scanRetrieval(
     }
   }
 
+  if (guardUnavailable) droppedCount = chunks.length - safeChunks.length
   const tainted = droppedCount > 0 && safeChunks.length < 2
 
   return {

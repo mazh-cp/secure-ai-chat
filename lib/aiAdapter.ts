@@ -59,6 +59,33 @@ function chatCompletionsUsesMaxCompletionTokens(model: string): boolean {
   return m.startsWith('o1') || m.startsWith('o2') || m.startsWith('o3') || m.startsWith('o4')
 }
 
+function chatCompletionsOmitsTemperature(model: string): boolean {
+  return chatCompletionsUsesMaxCompletionTokens(model) || isGPT5Model(model)
+}
+
+function errorRejectsTemperature(message: string): boolean {
+  const m = message.toLowerCase()
+  return m.includes('temperature') && (m.includes('unsupported') || m.includes('not supported'))
+}
+
+/** Raw Responses API JSON carries text in output[].content[] (`output_text` is an SDK-only helper). */
+function extractResponsesOutputText(data: unknown): string {
+  if (!data || typeof data !== 'object') return ''
+  const d = data as { output_text?: unknown; output?: unknown }
+  if (typeof d.output_text === 'string' && d.output_text) return d.output_text
+  if (!Array.isArray(d.output)) return ''
+  const texts: string[] = []
+  for (const item of d.output) {
+    const content = (item as { content?: unknown })?.content
+    if (!Array.isArray(content)) continue
+    for (const part of content) {
+      const p = part as { type?: unknown; text?: unknown }
+      if (p?.type === 'output_text' && typeof p.text === 'string') texts.push(p.text)
+    }
+  }
+  return texts.join('')
+}
+
 /** OpenAI 400 body often says to use max_completion_tokens instead of max_tokens. */
 function errorSuggestsMaxCompletionTokens(message: string): boolean {
   const m = message.toLowerCase()
@@ -103,10 +130,10 @@ async function callGPT5ResponsesAPI(
   openAiKey: string,
   options: AdapterOptions
 ): Promise<string> {
+  // GPT-5.x reasoning models reject `temperature` with HTTP 400, so it is never sent here.
   const requestBody: Record<string, unknown> = {
     model,
     input,
-    temperature: options.temperature ?? 0.7,
   }
 
   // GPT-5.x uses max_output_tokens instead of max_tokens
@@ -186,8 +213,9 @@ async function callGPT5ResponsesAPI(
 
   const data = await response.json()
 
-  // GPT-5 Responses API response structure
-  // Try multiple possible response fields
+  const outputText = extractResponsesOutputText(data)
+  if (outputText) return outputText
+
   if (data.response) {
     return data.response
   } else if (data.content) {
@@ -219,16 +247,17 @@ async function callGPT4ChatCompletionsAPI(
   }
 
   let useMaxCompletionTokens = chatCompletionsUsesMaxCompletionTokens(model)
+  let sendTemperature = !chatCompletionsOmitsTemperature(model)
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const requestBody: Record<string, unknown> = {
       model,
       messages: [
         ...(options.systemPrompt ? [{ role: 'system', content: options.systemPrompt }] : []),
         ...messages,
       ],
-      temperature: options.temperature ?? 0.7,
     }
+    if (sendTemperature) requestBody.temperature = options.temperature ?? 0.7
 
     if (options.maxTokens !== undefined) {
       if (useMaxCompletionTokens) {
@@ -316,11 +345,15 @@ async function callGPT4ChatCompletionsAPI(
 
       if (
         response.status === 400 &&
-        attempt === 0 &&
         !useMaxCompletionTokens &&
         errorSuggestsMaxCompletionTokens(errorMessage)
       ) {
         useMaxCompletionTokens = true
+        continue
+      }
+
+      if (response.status === 400 && sendTemperature && errorRejectsTemperature(errorMessage)) {
+        sendTemperature = false
         continue
       }
 
@@ -623,15 +656,16 @@ async function callAzureChatCompletionsAPI(
   const url = `${base}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`
 
   let useMaxCompletionTokens = chatCompletionsUsesMaxCompletionTokens(deployment)
+  let sendTemperature = !chatCompletionsOmitsTemperature(deployment)
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const requestBody: Record<string, unknown> = {
       messages: [
         ...(options.systemPrompt ? [{ role: 'system', content: options.systemPrompt }] : []),
         ...messages,
       ],
-      temperature: options.temperature ?? 0.7,
     }
+    if (sendTemperature) requestBody.temperature = options.temperature ?? 0.7
 
     if (options.maxTokens !== undefined) {
       if (useMaxCompletionTokens) {
@@ -672,11 +706,15 @@ async function callAzureChatCompletionsAPI(
 
         if (
           response.status === 400 &&
-          attempt === 0 &&
           !useMaxCompletionTokens &&
           errorSuggestsMaxCompletionTokens(errorMessage)
         ) {
           useMaxCompletionTokens = true
+          continue
+        }
+
+        if (response.status === 400 && sendTemperature && errorRejectsTemperature(errorMessage)) {
+          sendTemperature = false
           continue
         }
 
