@@ -19,11 +19,23 @@ interface OpenAIModelsResponse {
   data: OpenAIModel[]
 }
 
-/** Static list of Anthropic Claude models (Messages API compatible) */
+/** Static list of Anthropic Claude models (Messages API compatible), newest first */
 const ANTHROPIC_MODELS: { id: string; name: string }[] = [
+  // Claude 5 family (latest)
+  { id: 'claude-opus-5-5', name: 'Claude Opus 5.5' },
+  { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5' },
+  { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5' },
+  { id: 'claude-fable-5-1', name: 'Claude Fable 5.1' },
+  // Claude 4 family
+  { id: 'claude-opus-4-5', name: 'Claude Opus 4.5' },
+  { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
   { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4 (May 2025)' },
+  // Claude 3.7
+  { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet' },
+  // Claude 3.5
   { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
   { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
+  // Claude 3
   { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
   { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
   { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },

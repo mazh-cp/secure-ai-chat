@@ -69,6 +69,16 @@ export function normalizeLakeraApiKeyForGuard(raw: string): string {
   return k.replace(/[\r\n\t]/g, '')
 }
 
+/**
+ * Resolve the Guard Results URL (`/v2/guard/results`).
+ * Derives from the configured guard endpoint by replacing the terminal path segment.
+ */
+export function resolveLakeraGuardResultsEndpoint(raw?: string | null): string {
+  const guardUrl = resolveLakeraGuardEndpoint(raw)
+  // Replace /v2/guard (with or without trailing slash) → /v2/guard/results
+  return guardUrl.replace(/\/v2\/guard\/?$/, '/v2/guard/results')
+}
+
 /** Short operator hint when Lakera HTTP status is surfaced to the UI. */
 export function lakeraGuardHttpUserHint(status: number): string | undefined {
   if (status === 404) {

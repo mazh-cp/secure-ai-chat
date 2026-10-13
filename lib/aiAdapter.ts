@@ -522,7 +522,7 @@ export function requiresResponsesAPI(model: string): boolean {
 export async function callAnthropic(
   messages: ChatMessage[],
   apiKey: string,
-  model: string = 'claude-3-5-sonnet-20241022',
+  model: string = 'claude-sonnet-5-5',
   options: AdapterOptions = {}
 ): Promise<AdapterResponse> {
   if (!apiKey || !apiKey.startsWith('sk-ant-')) {
@@ -557,7 +557,7 @@ Be helpful, but maintain security boundaries.`
   }
 
   const body: Record<string, unknown> = {
-    model: model.trim() || 'claude-3-5-sonnet-20241022',
+    model: model.trim() || 'claude-sonnet-5-5',
     max_tokens: options.maxTokens ?? 1024,
     system: systemPrompt,
     messages: anthropicMessages,
