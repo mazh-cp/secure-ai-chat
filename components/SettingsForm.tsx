@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 import { LAKERA_GUARD_URL_DEFAULT } from '@/lib/lakera-guard-endpoint'
 import { DEFAULT_LOCAL_BASE_URL_NAME as LOCAL_BASE_URL_DEFAULT } from '@/components/ModelSelector'
+import OllamaModelManager from '@/components/OllamaModelManager'
 
 interface ApiKeys {
   openAiKey: string
@@ -1269,6 +1270,8 @@ export default function SettingsForm() {
                 Ollama and LM Studio need no token. vLLM and LiteLLM proxies may.
               </p>
             </div>
+
+            <OllamaModelManager />
 
             {/* Anthropic API Key */}
             <div>

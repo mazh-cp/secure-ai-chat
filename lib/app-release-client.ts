@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.2.0'
-export const RELEASE_DATE = '2026-09-08'
+export const APP_VERSION = '1.1.14'
+export const RELEASE_DATE = '2026-10-13'
 
 export interface ReleaseNoteItem {
   title: string
@@ -15,17 +15,23 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      'Local model provider — chat against any OpenAI-compatible server (Ollama, LM Studio, llama.cpp, vLLM). Prompts never leave the host.',
-      'Mock provider — deterministic in-process replies with no key, no network and no GPU, for testing the Lakera scanners on their own.',
-      'Model picker now enumerates models from a local server via `GET /api/models?provider=local`.',
+      'Extended Anthropic model coverage — 13 Claude models across Claude 5, 4, 3.7, 3.5, and 3 families.',
+      '200k context window registered for all Claude models; new model IDs no longer fall through to the 8 192-token default.',
+      'Lakera Guard /v2/guard/results support via POST /api/lakera/results with input validation.',
+    ],
+  },
+  {
+    title: 'Changed',
+    items: [
+      'Default Anthropic model updated to claude-sonnet-5-5.',
+      'Anthropic model list ordered newest-first in the model picker.',
     ],
   },
   {
     title: 'Security',
     items: [
-      'SSRF guard on the local model base URL — loopback only, credentials rejected, hostname resolved before any request goes out.',
-      '`LOCAL_MODEL_ALLOWED_HOSTS` is the only way to widen beyond loopback, and is read server-side only.',
-      'Local and mock providers add no new unauthenticated surface — the existing session gate and rate limiting still apply.',
+      'Lakera results route requires session auth; message count and character limits enforced before upstream calls.',
+      'All prior security controls preserved — headers, TE/WAF/DLP integrations, injection guardrails.',
     ],
   },
 ]

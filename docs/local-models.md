@@ -30,16 +30,41 @@ needs only a base URL and a model name. Set the base URL once in
 
 ### Ollama
 
+Install and run Ollama on the **same host** as Secure AI Chat:
+
 ```bash
 ollama serve
 ```
 
+- Base URL in Settings: `http://localhost:11434/v1`
+- Chat → **Local model** lists whatever Ollama has installed
+
+#### In-app install (Settings)
+
+Under **Settings → Local Model**, the **Ollama models** panel can:
+
+1. **Pull** a model by official library name (e.g. `llama3.2`). Browse names at [https://ollama.com/library](https://ollama.com/library). The app calls Ollama’s native `POST /api/pull` on loopback — it does not scrape the library site.
+2. **Import** a `.gguf` file: the file is staged under `DATA_DIR/ollama-imports/`, then `ollama create <name> -f Modelfile` runs with a fixed argv (no shell interpolation). The `ollama` CLI must be on `PATH`.
+3. **List / delete** installed models.
+
+After pull or import, open Chat → **Local model** (or refresh) so the picker reloads.
+
+Environment:
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `OLLAMA_MANAGE_ENABLED` | on | Set to `0` / `false` to disable pull, import, and delete (status/list still work) |
+| `OLLAMA_IMPORT_MAX_BYTES` | 8 GiB | Max upload size for `.gguf` import |
+
+Reverse proxies in front of the app must raise request body limits for large imports. Prefer **Pull** for multi‑GB library models.
+
+Management APIs (`/api/ollama/*`) require the same session as chat, are rate-limited by IP, and only talk to the SSRF-approved origin derived from the saved Local Model Base URL (never a client-supplied host). GGUF binaries are **not** scanned by Threat Emulation / Lakera file upload — import is an operator action on an authenticated session.
+
+CLI equivalent (still valid):
+
 ```bash
 ollama pull llama3.2
 ```
-
-- Base URL: `http://localhost:11434/v1`
-- Model: `llama3.2` (the picker enumerates whatever is pulled)
 
 ### LM Studio
 
@@ -97,9 +122,10 @@ Plain HTTP is correct for this provider precisely because the destination is
 loopback — there is no network hop to protect, and Ollama and LM Studio serve
 HTTP only. No TLS verification is relaxed anywhere.
 
-**Authentication is unchanged.** `/api/chat`, `/api/scan` and `/api/models` keep
-the existing `requireSecureChatSession` gate and rate limiting. The local and
-mock providers add no new unauthenticated surface.
+**Authentication is unchanged.** `/api/chat`, `/api/scan`, `/api/models`, and
+`/api/ollama/*` keep the existing `requireSecureChatSession` gate and rate
+limiting. The local and mock providers and Ollama management add no new
+unauthenticated surface.
 
 **A local model server has no authentication of its own.** Bind it to loopback
 and do not expose the port to the network.

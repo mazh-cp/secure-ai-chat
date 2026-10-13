@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-09-25
+
+### Added
+
+- **In-app Ollama model install** — Settings → **Ollama models** can pull from the official library by name, import a `.gguf` via `ollama create`, and list/delete installed models. Chat → **Local model** continues to auto-list the same instance. Implemented in **`lib/ollama-manage.ts`**, **`app/api/ollama/*`**, and **`components/OllamaModelManager.tsx`**.
+- **`OLLAMA_MANAGE_ENABLED`** / **`OLLAMA_IMPORT_MAX_BYTES`** — kill switch and import size cap (default 8 GiB).
+
+### Fixed
+
+- **`GET /api/models?provider=local`** — uses the server-saved Local Model Base URL when the client omits `baseUrl`, so the chat picker matches Settings.
+
 ## [1.2.0] - 2026-09-08
 
 ### Added

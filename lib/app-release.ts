@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.2.0'
+export const APP_VERSION = '1.1.14'
 
-export const RELEASE_DATE = '2026-09-08'
+export const RELEASE_DATE = '2026-10-13'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,28 +18,29 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.2.0]) */
+/** Release notes for current version (matches CHANGELOG.md [1.1.14]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
     items: [
-      '**Local model provider** — chat against any OpenAI-compatible server (Ollama, LM Studio, llama.cpp, vLLM, LocalAI). Set the base URL in Settings and pick the model in the chat header; prompts never leave the host.',
-      '**Mock provider** — deterministic in-process replies with no key, no network and no GPU, so the Lakera input/output scanners can be exercised on their own (CI, offline demos, laptops without a GPU).',
-      '**`GET /api/models?provider=local`** — enumerates whatever the local server is serving, so the model picker works the same way it does for hosted providers.',
+      '**Extended Anthropic model coverage** — 13 Claude models now registered across Claude 5 (Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1), Claude 4 (Opus 4.5, Sonnet 4.5, Sonnet 4 May 2025), Claude 3.7 Sonnet, Claude 3.5 (Sonnet, Haiku), and Claude 3 (Opus, Sonnet, Haiku).',
+      '**200k context window for all Claude models** — explicit token-limit entries in `lib/token-counter.ts` ensure new model IDs never fall through to the 8 192-token default.',
+      '**Lakera Guard `/v2/guard/results` support** — new `POST /api/lakera/results` route with input validation (max 32 messages, 120 k chars/message) for calibration and UI detector-confidence overlays.',
+      '**`resolveLakeraGuardResultsEndpoint()`** — derives the `/v2/guard/results` URL from the configured Guard base URL without additional env vars.',
+    ],
+  },
+  {
+    title: 'Changed',
+    items: [
+      '**Default Anthropic model** updated from `claude-3-5-sonnet-20241022` → `claude-sonnet-5-5` in `lib/aiAdapter.ts`.',
+      '**Model list ordering** — Anthropic models listed newest-first for better UX in the model picker.',
     ],
   },
   {
     title: 'Security',
     items: [
-      '**SSRF guard on the local model base URL** — the URL is supplied by the browser and fetched server-side, so `assertLocalBaseUrlAllowed()` restricts the scheme, rejects embedded credentials, and resolves the hostname requiring every answer to be a loopback address before any request leaves the process.',
-      '**`LOCAL_MODEL_ALLOWED_HOSTS`** — the only way to widen beyond loopback, read from the environment and never from the request payload so a client cannot widen its own reach.',
-      '**No new unauthenticated surface** — the local and mock providers reuse the existing `requireSecureChatSession` gate and rate limiting on `/api/chat`, `/api/scan` and `/api/models`.',
-    ],
-  },
-  {
-    title: 'Documentation',
-    items: [
-      '**`docs/local-models.md`** — setup for each local runtime, the mock provider triggers, the SSRF reasoning, and how to verify the guardrails still fire.',
+      '**Lakera results route gated** — `POST /api/lakera/results` requires `requireSecureChatSession`; message count and per-message character limits enforced before any upstream call.',
+      '**All prior security controls preserved** — injection guardrails, role restrictions, security headers (CSP, X-Frame-Options, HSTS in production), and Check Point TE/WAF/DLP integrations unchanged.',
     ],
   },
 ]

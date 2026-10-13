@@ -35,7 +35,27 @@ export const MODEL_TOKEN_LIMITS: Record<string, number> = {
   'gpt-5.4': 128000,
   'gpt-5.5': 128000,
 
-  // Anthropic: OpenAI model_limits API does not apply; ~200k context for Claude 3/3.5/4 API models
+  // Anthropic: all Claude models share a 200 k context window; explicit entries ensure
+  // prefix matching never falls through to DEFAULT_TOKEN_LIMIT for new model IDs.
+  // Claude 5 family
+  'claude-opus-5-5': 200000,
+  'claude-sonnet-5-5': 200000,
+  'claude-haiku-5-5': 200000,
+  'claude-fable-5-1': 200000,
+  // Claude 4 family
+  'claude-opus-4-5': 200000,
+  'claude-sonnet-4-5': 200000,
+  'claude-sonnet-4-20250514': 200000,
+  // Claude 3.7
+  'claude-3-7-sonnet-20250219': 200000,
+  // Claude 3.5
+  'claude-3-5-sonnet-20241022': 200000,
+  'claude-3-5-haiku-20241022': 200000,
+  // Claude 3
+  'claude-3-opus-20240229': 200000,
+  'claude-3-sonnet-20240229': 200000,
+  'claude-3-haiku-20240307': 200000,
+  // Generic prefix fallback (covers any future claude-* IDs not yet listed)
   claude: 200000,
 
   // Google Gemini (approximate context; dynamic fetch skipped for gemini-* in model-limits-fetcher)
