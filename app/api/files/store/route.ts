@@ -283,6 +283,22 @@ export async function POST(request: NextRequest) {
             lakeraErrorDetails: fr.lakeraErrorDetails ?? null,
             resolvedGuardUrl: guardUrl,
           }
+        } else if (fr.categories?.lakera_api_error || fr.categories?.lakera_project_required) {
+          // A Guard outage (quota, HTTP error) is not a verdict: 'flagged' hid the file from chat
+          // permanently. Indexing and per-chunk retrieval scans still run, fail-closed, later.
+          scanStatusStr = 'error'
+          const quota =
+            fr.lakeraHttpStatus === 429 &&
+            JSON.stringify(fr.lakeraErrorDetails ?? '').includes('ErrQuotaExceeded')
+          scanResultVal = quota
+            ? 'Lakera scan unavailable: account usage limit reached. Content is scanned again before use.'
+            : `Lakera scan unavailable${fr.lakeraHttpStatus ? ` (${fr.lakeraHttpStatus})` : ''}. Content is scanned again before use.`
+          scanDetailsVal = {
+            ...baseDetails,
+            lakeraHttpStatus: fr.lakeraHttpStatus,
+            lakeraErrorDetails: fr.lakeraErrorDetails ?? null,
+            resolvedGuardUrl: guardUrl,
+          }
         } else if (fr.scanned && fr.flagged) {
           scanStatusStr = 'flagged'
           const catMsg = fr.categories

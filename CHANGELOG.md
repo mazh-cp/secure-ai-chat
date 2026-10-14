@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3] - 2026-10-14
+
+### Fixed
+
+- **Files hidden from chat after a Lakera outage** — when Lakera was unavailable or out of quota, the upload scan result (`lakera_api_error`) was saved as `flagged` by both **`app/api/files/store/route.ts`** and **`app/files/page.tsx`**, and chat skips flagged files, so those files never reached chat even after the quota recovered. Outages are now saved as `error` ("Lakera scan unavailable"); real threat verdicts are still `flagged`. Content of these files is still scanned, fail-closed, at RAG indexing and per chunk at retrieval.
+- **File questions answered without file data** — the 1.3.1 intent gate in **`lib/rag-intent.ts`** retrieved only for a fixed list of lookup phrasings and skipped ordinary questions such as "H1B visa holders", "whose visa expires in 2026" or "top 5 highest paid employees". Retrieval is now the default; only clear general-knowledge questions ("what is cholesterol", "explain…", "who discovered…") and small talk skip it, unless they point at people or records ("our staff", "Linda's", "his").
+
+### Added
+
+- **`[chat RAG]` diagnostics** — **`app/api/chat/route.ts`** logs one line per chat with counts only (no content, names or question text): skipped reason, files visible to the owner, files indexed, files flagged, chunks sent to the model.
+- **Quota visibility in retrieval/ingestion scans** — **`lib/security/lakera.ts`** logs Guard errors with the `ErrQuotaExceeded` marker, so quota counts in the service log cover every scan path.
+
+### Upgrade notes
+
+- After the Lakera quota is restored, delete and re-upload any file the Files page shows as flagged / "Security threats detected" from a quota outage; statuses saved before this release do not change by themselves.
+
 ## [1.3.2] - 2026-10-13
 
 ### Changed

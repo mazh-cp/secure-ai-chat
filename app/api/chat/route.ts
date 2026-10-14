@@ -411,9 +411,14 @@ export async function POST(request: NextRequest) {
       ReturnType<typeof import('@/lib/rag-context').buildRagContext>
     > | null = null
     // Keyword relevance alone matched general questions ("what is cholesterol") to file rows, so
-    // retrieval is gated on lookup intent; general-knowledge questions get a model-only answer.
+    // clear general-knowledge questions skip retrieval and get a model-only answer.
     const useRAG =
       enableRAG !== false && !!latestUserMessage && shouldUseRagForQuery(latestUserMessage.content)
+    if (!useRAG && latestUserMessage) {
+      console.log('[chat RAG] skipped', {
+        reason: enableRAG === false ? 'disabled_by_client' : 'general_knowledge_question',
+      })
+    }
     if (useRAG) {
       try {
         const { getOwnerId } = await import('@/lib/owner')
@@ -448,6 +453,14 @@ export async function POST(request: NextRequest) {
         if (ragContextFromRetrieve.chunks.length > 0) {
           ragChunks = ragContextFromRetrieve.chunks
         }
+        // Counts only (no content or identifiers) so production logs show which RAG stage came up empty.
+        console.log('[chat RAG] retrieval', {
+          filesVisibleToOwner: uploadedFiles.length,
+          filesRagIndexed: uploadedFiles.filter(f => f.rag_indexed_at).length,
+          filesFlaggedOrQuarantined: uploadedFiles.filter(f => f.scanStatus === 'flagged').length,
+          chunksSentToModel: ragContextFromRetrieve.chunks.length,
+          lakeraRetrievalScan,
+        })
         if (uploadedFiles.length === 0 && owner) {
           console.warn(
             '[chat RAG] registry has no files for owner_id prefix=',

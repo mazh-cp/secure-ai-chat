@@ -127,6 +127,17 @@ export async function scanTextWithLakera(input: LakeraScanInput): Promise<Lakera
     })
 
     if (!posted.ok) {
+      const details = posted.errorDetails
+      const quotaExceeded =
+        (typeof details === 'string' && details.includes('ErrQuotaExceeded')) ||
+        (!!details &&
+          typeof details === 'object' &&
+          (details as { error?: unknown }).error === 'ErrQuotaExceeded')
+      console.error(
+        `Lakera ${input.context} scan error:`,
+        posted.status,
+        quotaExceeded ? '(ErrQuotaExceeded: account usage limit reached)' : ''
+      )
       const authFail = posted.status === 401
       const blockOnHttpError =
         config.lakeraFailClosed && (!authFail || config.lakeraFailClosedOnAuthError)

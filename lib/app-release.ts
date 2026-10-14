@@ -3,9 +3,9 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.3.2'
+export const APP_VERSION = '1.3.3'
 
-export const RELEASE_DATE = '2026-10-13'
+export const RELEASE_DATE = '2026-10-14'
 
 /** Build identifier; set at build time or leave empty for dev (server-side only in API) */
 export function getBuildId(): string {
@@ -18,7 +18,7 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.3.2]) */
+/** Release notes for current version (matches CHANGELOG.md [1.3.3]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
@@ -31,7 +31,7 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Changed',
     items: [
-      '**RAG only for lookup questions** — uploaded-file context is retrieved only for lookups such as "who is taking cholesterol medication" or "which patients…". General questions such as "what is cholesterol" get a model-only answer (`lib/rag-intent.ts`).',
+      '**Uploaded files searched by default** — chat retrieves file context for any question that is not clearly general knowledge. "What is cholesterol", "explain…", "symptoms of…" and greetings get a model-only answer; questions about people, records or the documents ("H1B visa holders", "top 5 highest paid employees", "what is Linda\'s visa status") use the files (`lib/rag-intent.ts`).',
       '**Default Anthropic model** is now `claude-sonnet-5-5`; Anthropic models are listed newest-first.',
       '**Lower Lakera usage** — retrieved RAG chunks are scanned in batches instead of one Guard call per chunk, and text already scanned (RAG chunks in the chat input scan, uploads at RAG indexing) is not sent to Guard twice.',
     ],
@@ -39,6 +39,9 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Fixed',
     items: [
+      '**Files hidden from chat after a Lakera outage** — an upload scan that failed because Lakera was unavailable or out of quota was saved as `flagged` (a threat), so chat skipped the file permanently. It is now saved as `error` ("scan unavailable"); the content is still scanned, fail-closed, at indexing and per chunk at retrieval.',
+      '**Missing file answers** — the 1.3.1 question filter only retrieved for a fixed list of lookup phrasings and skipped ordinary file questions; it now only excludes clear general-knowledge questions.',
+      '**Diagnostics** — each chat logs a `[chat RAG]` line with counts only (files visible, indexed, flagged, chunks sent to the model), and retrieval/ingestion scans now log Lakera quota errors with the `ErrQuotaExceeded` marker.',
       '**GPT-5.x and o-series models** — `temperature` is no longer sent (these models reject it), with a retry without it for any OpenAI/Azure model that reports it unsupported. Responses API text is now read from `output[].content[]`.',
       '**Lakera 429 handling** — transient rate limits are retried (up to 2 times, `Retry-After` capped at 2s). Quota exhaustion (`ErrQuotaExceeded`) is not retried and is reported as "Lakera usage limit reached" instead of "Security scan unavailable (429)".',
       '**Chat labels** — Guard outages show "Security scan unavailable" instead of "Threat detected".',

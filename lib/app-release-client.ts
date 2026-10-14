@@ -3,8 +3,8 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.3.2'
-export const RELEASE_DATE = '2026-10-13'
+export const APP_VERSION = '1.3.3'
+export const RELEASE_DATE = '2026-10-14'
 
 export interface ReleaseNoteItem {
   title: string
@@ -23,7 +23,7 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Changed',
     items: [
-      'Uploaded files are searched only for lookup questions (e.g. "who is taking cholesterol medication"); general questions get a model-only answer.',
+      'Uploaded files are searched for any question that is not clearly general knowledge; "what is cholesterol" still gets a model-only answer.',
       'Default Anthropic model is claude-sonnet-5-5; Anthropic models listed newest-first.',
       'Lower Lakera usage: batched RAG scans and no duplicate scans of the same text.',
     ],
@@ -31,6 +31,8 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Fixed',
     items: [
+      'Files uploaded while Lakera was unavailable are no longer hidden from chat as threats.',
+      'Ordinary file questions (e.g. "H1B visa holders") now retrieve file data.',
       'GPT-5.x and o-series models no longer fail with "temperature is not supported".',
       'Brief Lakera rate limits are retried; an exhausted Lakera quota is reported clearly.',
       'Lakera outages are labelled "Security scan unavailable" instead of "Threat detected".',

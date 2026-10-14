@@ -1430,14 +1430,25 @@ export default function FilesPage() {
         })
       }
 
+      // A Guard outage (quota/HTTP error) is not a threat verdict; 'flagged' would hide the file
+      // from chat permanently, while 'error' keeps it eligible for the later fail-closed scans.
+      const scanUnavailable = Boolean(
+        data.details?.categories?.lakera_api_error ||
+        data.details?.categories?.lakera_project_required
+      )
       setFiles(prev =>
         prev.map(f => {
           if (f.id === fileId) {
             const updatedFile: UploadedFile = {
               ...f,
-              scanStatus: data.flagged ? ('flagged' as const) : ('safe' as const),
-              scanResult:
-                data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
+              scanStatus: scanUnavailable
+                ? ('error' as const)
+                : data.flagged
+                  ? ('flagged' as const)
+                  : ('safe' as const),
+              scanResult: scanUnavailable
+                ? 'Lakera scan unavailable (service error or usage limit). Content is scanned again before use.'
+                : data.message || (data.flagged ? 'Security threats detected' : 'File is safe'),
               scanDetails: data.details
                 ? {
                     categories: data.details.categories,
