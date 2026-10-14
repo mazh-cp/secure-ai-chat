@@ -20,21 +20,6 @@ function authSecret(): string {
   return process.env.SECURE_CHAT_AUTH_SECRET || process.env.SECURE_CHAT_LOGIN_PASSWORD || ''
 }
 
-/** Explicit opt-out for network-restricted deployments that intentionally run without login. */
-function unauthenticatedAccessAllowed(): boolean {
-  const v = process.env.ALLOW_UNAUTHENTICATED?.trim().toLowerCase()
-  return v === '1' || v === 'true'
-}
-
-/** Production without a login password and without the explicit opt-out: the API is locked. */
-export function isSecureChatLoginMissingInProduction(): boolean {
-  return (
-    !isSecureChatLoginConfigured() &&
-    process.env.NODE_ENV === 'production' &&
-    !unauthenticatedAccessAllowed()
-  )
-}
-
 export function createSessionToken(): string {
   const secret = authSecret()
   if (!secret) throw new Error('SECURE_CHAT_AUTH_SECRET or SECURE_CHAT_LOGIN_PASSWORD must be set')
@@ -89,22 +74,9 @@ export function verifyLoginUsername(username: string): boolean {
   return ctEqualStrings(username, expected)
 }
 
-/**
- * 401 when login is configured and the session is invalid. Without a configured login, production
- * fails closed with 503 unless ALLOW_UNAUTHENTICATED=1; development stays open for local work.
- */
+/** When login is configured and session invalid, return 401 NextResponse; else null. */
 export function requireSecureChatSession(request: NextRequest): NextResponse | null {
-  if (!isSecureChatLoginConfigured()) {
-    if (!isSecureChatLoginMissingInProduction()) return null
-    return NextResponse.json(
-      {
-        error: 'Login not configured',
-        code: 'SECURE_CHAT_LOGIN_NOT_CONFIGURED',
-        hint: 'Provide SECURE_CHAT_LOGIN_PASSWORD and SECURE_CHAT_AUTH_SECRET to the service environment from your secret store and restart. To run without login on a network-restricted host, set ALLOW_UNAUTHENTICATED=1.',
-      },
-      { status: 503 }
-    )
-  }
+  if (!isSecureChatLoginConfigured()) return null
   const token = request.cookies.get(SECURE_CHAT_SESSION_COOKIE)?.value
   if (verifySessionToken(token)) return null
   return NextResponse.json(

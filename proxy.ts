@@ -126,7 +126,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Central session gate: many routes (e.g. POST /api/keys) had no per-route check.
+  // Central session gate (active only when the optional login is configured): many routes had no
+  // per-route check, so enforcing it here keeps the login complete when it is turned on.
   if (!isPublicApiPath(url.pathname)) {
     const authBlock = requireSecureChatSession(request)
     if (authBlock) {
@@ -165,7 +166,7 @@ export async function proxy(request: NextRequest) {
   // Add Check Point WAF response headers (if needed)
   // These help Check Point WAF track the application
   response.headers.set('X-Application-Name', 'secure-ai-chat')
-  response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.3.1')
+  response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.3.2')
 
   // Log API call asynchronously (non-blocking)
   const duration = Date.now() - startTime

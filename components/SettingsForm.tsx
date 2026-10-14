@@ -95,6 +95,8 @@ export default function SettingsForm() {
     | 'clear-lakera-ai'
     | 'clear-lakera-project-id'
     | 'clear-lakera-endpoint'
+    | 'save-keys'
+    | 'save-te-key'
     | null
   >(null)
   const [keyToClear, setKeyToClear] = useState<keyof ApiKeys | null>(null)
@@ -339,8 +341,25 @@ export default function SettingsForm() {
     }
   }
 
+  // Opens the PIN dialog when the server says a save replaces an existing value.
+  const promptPinIfRequired = async (
+    response: Response,
+    action: 'save-keys' | 'save-te-key'
+  ): Promise<boolean> => {
+    if (response.status !== 401) return false
+    const data = await response
+      .clone()
+      .json()
+      .catch(() => ({}))
+    if (!data.requiresPin) return false
+    setPinDialogAction(action)
+    setPinForVerification('')
+    setShowPinDialog(true)
+    return true
+  }
+
   // Save Check Point TE API key (server-side)
-  const handleSaveCheckpointTeKey = async () => {
+  const handleSaveCheckpointTeKey = async (pinValue?: string) => {
     if (!checkpointTeKey.trim()) {
       return
     }
@@ -354,8 +373,10 @@ export default function SettingsForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ apiKey: checkpointTeKey }),
+        body: JSON.stringify({ apiKey: checkpointTeKey, ...(pinValue ? { pin: pinValue } : {}) }),
       })
+
+      if (!pinValue && (await promptPinIfRequired(response, 'save-te-key'))) return
 
       if (response.ok) {
         const data = await response.json()
@@ -523,7 +544,11 @@ export default function SettingsForm() {
     }
 
     // PIN verified, perform the action
-    if (pinDialogAction === 'remove-te-key') {
+    if (pinDialogAction === 'save-keys') {
+      await performSaveKeys(pinForVerification)
+    } else if (pinDialogAction === 'save-te-key') {
+      await handleSaveCheckpointTeKey(pinForVerification)
+    } else if (pinDialogAction === 'remove-te-key') {
       await performRemoveCheckpointTeKey()
     } else if (pinDialogAction === 'clear-all') {
       await performClearAll()
@@ -607,6 +632,10 @@ export default function SettingsForm() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    await performSaveKeys()
+  }
+
+  const performSaveKeys = async (pinValue?: string) => {
     setIsSaving(true)
     setSaveStatus('idle')
 
@@ -619,8 +648,10 @@ export default function SettingsForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ keys }),
+        body: JSON.stringify({ keys, ...(pinValue ? { pin: pinValue } : {}) }),
       })
+
+      if (!pinValue && (await promptPinIfRequired(response, 'save-keys'))) return
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -1680,7 +1711,7 @@ export default function SettingsForm() {
                 {checkpointTeKey && (
                   <button
                     type="button"
-                    onClick={handleSaveCheckpointTeKey}
+                    onClick={() => handleSaveCheckpointTeKey()}
                     disabled={isSavingTeKey || !checkpointTeKey.trim()}
                     className="glass-button text-theme px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     style={{
@@ -1974,23 +2005,27 @@ export default function SettingsForm() {
             >
               <h3 className="text-lg font-semibold text-theme mb-4">PIN Verification Required</h3>
               <p className="text-sm text-theme-subtle mb-4">
-                {pinDialogAction === 'remove-te-key'
-                  ? 'Please enter your PIN to remove the Check Point TE API key.'
-                  : pinDialogAction === 'clear-all'
-                    ? 'Please enter your PIN to clear all API keys.'
-                    : pinDialogAction === 'clear-openai'
-                      ? 'Please enter your PIN to clear the OpenAI API key.'
-                      : pinDialogAction === 'clear-anthropic'
-                        ? 'Please enter your PIN to clear the Anthropic API key.'
-                        : pinDialogAction === 'clear-gemini'
-                          ? 'Please enter your PIN to clear the Google Gemini API key.'
-                          : pinDialogAction === 'clear-lakera-ai'
-                            ? 'Please enter your PIN to clear the Lakera AI key.'
-                            : pinDialogAction === 'clear-lakera-project-id'
-                              ? 'Please enter your PIN to clear the Lakera Project ID.'
-                              : pinDialogAction === 'clear-lakera-endpoint'
-                                ? 'Please enter your PIN to reset the Lakera Endpoint.'
-                                : 'Please enter your PIN to perform this action.'}
+                {pinDialogAction === 'save-keys'
+                  ? 'This replaces an existing API key, project ID or endpoint. Please enter your PIN to confirm.'
+                  : pinDialogAction === 'save-te-key'
+                    ? 'This replaces the existing Check Point TE API key. Please enter your PIN to confirm.'
+                    : pinDialogAction === 'remove-te-key'
+                      ? 'Please enter your PIN to remove the Check Point TE API key.'
+                      : pinDialogAction === 'clear-all'
+                        ? 'Please enter your PIN to clear all API keys.'
+                        : pinDialogAction === 'clear-openai'
+                          ? 'Please enter your PIN to clear the OpenAI API key.'
+                          : pinDialogAction === 'clear-anthropic'
+                            ? 'Please enter your PIN to clear the Anthropic API key.'
+                            : pinDialogAction === 'clear-gemini'
+                              ? 'Please enter your PIN to clear the Google Gemini API key.'
+                              : pinDialogAction === 'clear-lakera-ai'
+                                ? 'Please enter your PIN to clear the Lakera AI key.'
+                                : pinDialogAction === 'clear-lakera-project-id'
+                                  ? 'Please enter your PIN to clear the Lakera Project ID.'
+                                  : pinDialogAction === 'clear-lakera-endpoint'
+                                    ? 'Please enter your PIN to reset the Lakera Endpoint.'
+                                    : 'Please enter your PIN to perform this action.'}
               </p>
               <div className="space-y-4">
                 <div>

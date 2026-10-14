@@ -11,6 +11,8 @@ import {
 } from '@/lib/checkpoint-te'
 import { getSecureStorageDir } from '@/lib/app-paths'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
+import { requirePinForProtectedChange } from '@/lib/pin-guard'
+import { getUserIP } from '@/lib/logging'
 
 /**
  * GET - Check if Check Point TE API key is configured
@@ -87,6 +89,16 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    const existingTeKey = await getTeApiKey()
+    if (existingTeKey && existingTeKey !== trimmedKey) {
+      const pinBlock = await requirePinForProtectedChange(
+        request,
+        body.pin,
+        'replace the existing Check Point TE API key'
+      )
+      if (pinBlock) return pinBlock
     }
 
     // Store the key (persists to encrypted file)
@@ -174,7 +186,7 @@ export async function DELETE(request: NextRequest) {
       }
 
       // Verify PIN
-      const isValid = await verifyPinCode(pin)
+      const isValid = await verifyPinCode(pin, getUserIP(request))
       if (!isValid) {
         return NextResponse.json(
           {

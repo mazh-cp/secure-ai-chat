@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { setPin, verifyPinCode, isPinConfigured, removePin } from '@/lib/pin-verification'
+import { getUserIP } from '@/lib/logging'
+import {
+  setPin,
+  verifyPinCode,
+  isPinConfigured,
+  removePin,
+  pinLockoutRemainingMs,
+} from '@/lib/pin-verification'
+
+function pinLockedResponse(clientKey: string): NextResponse | null {
+  const ms = pinLockoutRemainingMs(clientKey)
+  if (ms <= 0) return null
+  const retryAfter = Math.ceil(ms / 1000)
+  return NextResponse.json(
+    {
+      error: `Too many incorrect PIN attempts. Try again in ${Math.ceil(retryAfter / 60)} minute(s).`,
+    },
+    { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+  )
+}
 
 /**
  * GET - Check if verification PIN is configured
@@ -26,6 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action, pin, currentPin } = body
+    const clientKey = getUserIP(request)
 
     if (!action || typeof action !== 'string') {
       return NextResponse.json(
@@ -50,8 +70,9 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // Verify current PIN
-        const isValid = await verifyPinCode(currentPin)
+        const locked = pinLockedResponse(clientKey)
+        if (locked) return locked
+        const isValid = await verifyPinCode(currentPin, clientKey)
         if (!isValid) {
           return NextResponse.json({ error: 'Current PIN is incorrect' }, { status: 401 })
         }
@@ -76,10 +97,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'PIN is required for verification' }, { status: 400 })
       }
 
-      const isValid = await verifyPinCode(pin)
+      const locked = pinLockedResponse(clientKey)
+      if (locked) return locked
+      const isValid = await verifyPinCode(pin, clientKey)
 
       if (!isValid) {
-        return NextResponse.json({ error: 'PIN is incorrect' }, { status: 401 })
+        return (
+          pinLockedResponse(clientKey) ??
+          NextResponse.json({ error: 'PIN is incorrect' }, { status: 401 })
+        )
       }
 
       return NextResponse.json({
@@ -130,13 +156,14 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Verify PIN
-    const isValid = await verifyPinCode(pin)
+    const clientKey = getUserIP(request)
+    const locked = pinLockedResponse(clientKey)
+    if (locked) return locked
+    const isValid = await verifyPinCode(pin, clientKey)
     if (!isValid) {
       return NextResponse.json({ error: 'PIN is incorrect' }, { status: 401 })
     }
 
-    // Remove PIN
     await removePin()
 
     return NextResponse.json({

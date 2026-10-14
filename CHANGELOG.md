@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-10-13
+
+### Changed
+
+- **No app login required** — the 1.3.1 production login requirement (503 "Login not configured", setup notice, `ALLOW_UNAUTHENTICATED`) is removed; chat, files, Dashboard and Settings open without a login. The optional login still covers every non-public API route through **`proxy.ts`** when `SECURE_CHAT_LOGIN_PASSWORD` is provided.
+
+### Security
+
+- **PIN to replace or delete stored credentials** — with a verification PIN set, **`POST /api/keys`** requires it when a save would change an existing API key, Lakera project ID, Lakera endpoint or Azure endpoint, and **`POST /api/te/config`** requires it to replace an existing Check Point TE key. Deletes (`DELETE /api/keys`, `DELETE /api/te/config`) keep requiring it. First-time values and unchanged re-saves need no PIN. Shared check in **`lib/pin-guard.ts`**; Settings opens the PIN dialog and retries the save.
+- **PIN attempt limiting** — **`lib/pin-verification.ts`** locks a client out for 15 minutes after 5 wrong PINs (HTTP 429 with `Retry-After`), with a global ceiling of 25 failures per 15 minutes because client IPs come from forwarded headers.
+
+### Upgrade notes
+
+- Set a verification PIN in **Settings → Verification PIN** if one is not configured; without it, keys and project IDs can be replaced or deleted without verification.
+- Deployments that configured `SECURE_CHAT_LOGIN_PASSWORD` for 1.3.1 keep the login; remove it from the service environment to run without login.
+
 ## [1.3.1] - 2026-10-13
 
 ### Added

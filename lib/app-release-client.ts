@@ -3,7 +3,7 @@
  * Use this in client components. Server/API can use lib/app-release.ts.
  */
 
-export const APP_VERSION = '1.3.1'
+export const APP_VERSION = '1.3.2'
 export const RELEASE_DATE = '2026-10-13'
 
 export interface ReleaseNoteItem {
@@ -39,8 +39,9 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Security',
     items: [
-      'Every API route now requires a login session (except health, version, release notes and the login flow).',
-      'Production requires a configured login; without one the app shows a setup notice instead of running open.',
+      'No app login required; the optional login still covers every API route when it is configured.',
+      'With a verification PIN set, replacing or deleting an existing API key, project ID, endpoint or TE key requires the PIN.',
+      'Repeated wrong PINs lock the client out for 15 minutes.',
       'No built-in session-signing secret.',
       'Fail-closed is preserved: chat and uploads stay blocked when Lakera is unavailable.',
       'Upload scans are reused only for identical, fully scanned text; large and binary files are always rescanned.',

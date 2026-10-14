@@ -12,6 +12,8 @@ import {
 } from '@/lib/api-keys-storage'
 import { getSecureStorageDir } from '@/lib/app-paths'
 import { verifyPinCode, isPinConfigured } from '@/lib/pin-verification'
+import { requirePinForProtectedChange } from '@/lib/pin-guard'
+import { getUserIP } from '@/lib/logging'
 import { LAKERA_GUARD_URL_DEFAULT, resolveLakeraGuardEndpoint } from '@/lib/lakera-guard-endpoint'
 
 /**
@@ -228,7 +230,10 @@ export async function POST(request: NextRequest) {
           console.log('Gemini API key validated and will be saved')
         } else {
           return NextResponse.json(
-            { error: 'Invalid Gemini API key format. Use a key from Google AI Studio (at least 20 characters).' },
+            {
+              error:
+                'Invalid Gemini API key format. Use a key from Google AI Studio (at least 20 characters).',
+            },
             { status: 400 }
           )
         }
@@ -286,6 +291,29 @@ export async function POST(request: NextRequest) {
 
     // Get existing keys and merge
     const existingKeys = await getApiKeys()
+
+    // Replacing a stored key, project ID or endpoint is as sensitive as deleting it (an endpoint
+    // change would redirect keys and chats), so it needs the PIN; first-time values do not.
+    const replacedFields = (Object.keys(keysToSave) as Array<keyof StoredApiKeys>).filter(field => {
+      if (field === 'azureOpenAiApiVersion') return false
+      const current = existingKeys[field]
+      if (typeof current !== 'string' || !current.trim()) return false
+      const normalizedCurrent =
+        field === 'lakeraEndpoint'
+          ? resolveLakeraGuardEndpoint(current)
+          : field === 'azureOpenAiEndpoint'
+            ? current.trim().replace(/\/+$/, '')
+            : current.trim()
+      return keysToSave[field] !== normalizedCurrent
+    })
+    if (replacedFields.length > 0) {
+      const pinBlock = await requirePinForProtectedChange(
+        request,
+        body.pin,
+        'replace existing keys or project IDs'
+      )
+      if (pinBlock) return pinBlock
+    }
     console.log('Existing keys before save (merged env+file):', {
       openAiKey: !!existingKeys.openAiKey,
       anthropicApiKey: !!existingKeys.anthropicApiKey,
@@ -430,7 +458,7 @@ export async function DELETE(request: NextRequest) {
       }
 
       // Verify PIN
-      const isValid = await verifyPinCode(pin)
+      const isValid = await verifyPinCode(pin, getUserIP(request))
       if (!isValid) {
         return NextResponse.json({ error: 'Invalid PIN', requiresPin: true }, { status: 401 })
       }

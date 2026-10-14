@@ -3,7 +3,7 @@
  * Keep in sync with CHANGELOG.md when cutting a new release.
  */
 
-export const APP_VERSION = '1.3.1'
+export const APP_VERSION = '1.3.2'
 
 export const RELEASE_DATE = '2026-10-13'
 
@@ -18,7 +18,7 @@ export interface ReleaseNoteItem {
   items: string[]
 }
 
-/** Release notes for current version (matches CHANGELOG.md [1.3.1]) */
+/** Release notes for current version (matches CHANGELOG.md [1.3.2]) */
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Added',
@@ -47,8 +47,9 @@ export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
     title: 'Security',
     items: [
-      '**Central API session gate** — every `/api/*` route now requires a session except health, version, release notes, the login flow and `/api/waf/health`. 27 routes previously had no check, including `POST /api/keys`.',
-      '**Login required in production** — without `SECURE_CHAT_LOGIN_PASSWORD`, API routes return 503 "Login not configured" and the UI shows a setup notice. `ALLOW_UNAUTHENTICATED=1` is an explicit opt-out for network-restricted hosts.',
+      '**No app login required** — chat, files, Dashboard and Settings open without a login (the 1.3.1 production login requirement is removed). The optional login still applies to every non-public API route when `SECURE_CHAT_LOGIN_PASSWORD` is provided.',
+      '**PIN to replace or delete stored credentials** — when a verification PIN is set, the server requires it to replace or delete an existing API key, Lakera project ID, Lakera/Azure endpoint or Check Point TE key. Adding a value for the first time needs no PIN. Settings opens the PIN dialog and retries the save.',
+      '**PIN attempt limiting** — 5 wrong PINs from one client lock that client out for 15 minutes (HTTP 429), with a global ceiling of 25 failures per 15 minutes.',
       '**No hardcoded session secret** — the built-in HMAC fallback is removed; sessions use `SECURE_CHAT_AUTH_SECRET` or the login password.',
       '**Fail-closed preserved** — when Lakera is unavailable or out of quota, chat and uploads are still blocked; flagged RAG batches are rescanned per chunk so only the offending chunk is dropped.',
       '**Upload scan reuse is exact** — RAG indexing skips its Guard call only when the text matches a SHA-256 of what the upload scan passed as safe; truncated (>50k chars) and binary files are always rescanned.',
