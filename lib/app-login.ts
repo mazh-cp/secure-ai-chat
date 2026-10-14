@@ -1,7 +1,7 @@
 /**
  * Optional app-wide login (single shared password for small deployments).
  * Set SECURE_CHAT_LOGIN_PASSWORD to enable. Optionally SECURE_CHAT_LOGIN_USERNAME.
- * Use SECURE_CHAT_AUTH_SECRET for HMAC signing (defaults to password — change in production).
+ * Use SECURE_CHAT_AUTH_SECRET for HMAC signing (falls back to the password; never a built-in default).
  */
 
 import crypto from 'crypto'
@@ -17,21 +17,35 @@ export function isSecureChatLoginConfigured(): boolean {
 }
 
 function authSecret(): string {
+  return process.env.SECURE_CHAT_AUTH_SECRET || process.env.SECURE_CHAT_LOGIN_PASSWORD || ''
+}
+
+/** Explicit opt-out for network-restricted deployments that intentionally run without login. */
+function unauthenticatedAccessAllowed(): boolean {
+  const v = process.env.ALLOW_UNAUTHENTICATED?.trim().toLowerCase()
+  return v === '1' || v === 'true'
+}
+
+/** Production without a login password and without the explicit opt-out: the API is locked. */
+export function isSecureChatLoginMissingInProduction(): boolean {
   return (
-    process.env.SECURE_CHAT_AUTH_SECRET ||
-    process.env.SECURE_CHAT_LOGIN_PASSWORD ||
-    'change-me-in-production'
+    !isSecureChatLoginConfigured() &&
+    process.env.NODE_ENV === 'production' &&
+    !unauthenticatedAccessAllowed()
   )
 }
 
 export function createSessionToken(): string {
+  const secret = authSecret()
+  if (!secret) throw new Error('SECURE_CHAT_AUTH_SECRET or SECURE_CHAT_LOGIN_PASSWORD must be set')
   const exp = Date.now() + SESSION_MAX_AGE_SEC * 1000
   const body = Buffer.from(JSON.stringify({ exp }), 'utf8').toString('base64url')
-  const sig = crypto.createHmac('sha256', authSecret()).update(body).digest('base64url')
+  const sig = crypto.createHmac('sha256', secret).update(body).digest('base64url')
   return `${body}.${sig}`
 }
 
 export function verifySessionToken(token: string | undefined): boolean {
+  if (!authSecret()) return false
   if (!token || !token.includes('.')) return false
   const i = token.lastIndexOf('.')
   const body = token.slice(0, i)
@@ -75,9 +89,22 @@ export function verifyLoginUsername(username: string): boolean {
   return ctEqualStrings(username, expected)
 }
 
-/** When login is configured and session invalid, return 401 NextResponse; else null. */
+/**
+ * 401 when login is configured and the session is invalid. Without a configured login, production
+ * fails closed with 503 unless ALLOW_UNAUTHENTICATED=1; development stays open for local work.
+ */
 export function requireSecureChatSession(request: NextRequest): NextResponse | null {
-  if (!isSecureChatLoginConfigured()) return null
+  if (!isSecureChatLoginConfigured()) {
+    if (!isSecureChatLoginMissingInProduction()) return null
+    return NextResponse.json(
+      {
+        error: 'Login not configured',
+        code: 'SECURE_CHAT_LOGIN_NOT_CONFIGURED',
+        hint: 'Provide SECURE_CHAT_LOGIN_PASSWORD and SECURE_CHAT_AUTH_SECRET to the service environment from your secret store and restart. To run without login on a network-restricted host, set ALLOW_UNAUTHENTICATED=1.',
+      },
+      { status: 503 }
+    )
+  }
   const token = request.cookies.get(SECURE_CHAT_SESSION_COOKIE)?.value
   if (verifySessionToken(token)) return null
   return NextResponse.json(
@@ -85,8 +112,7 @@ export function requireSecureChatSession(request: NextRequest): NextResponse | n
       error: 'Authentication required',
       requiresLogin: true,
       code: 'SECURE_CHAT_SESSION',
-      hint:
-        'Log in again at this same browser URL. Behind a new reverse proxy or gateway, ensure Cookie is forwarded to the app and set X-Forwarded-Proto: https (or Forwarded: proto=https) when TLS terminates at the gateway. For internal HTTP to the app use SESSION_COOKIE_SECURE=0.',
+      hint: 'Log in again at this same browser URL. Behind a new reverse proxy or gateway, ensure Cookie is forwarded to the app and set X-Forwarded-Proto: https (or Forwarded: proto=https) when TLS terminates at the gateway. For internal HTTP to the app use SESSION_COOKIE_SECURE=0.',
     },
     { status: 401 }
   )

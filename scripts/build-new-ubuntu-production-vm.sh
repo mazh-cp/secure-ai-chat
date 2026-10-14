@@ -8,7 +8,7 @@
 #
 # ========================= ONE-LINERS (on the VM) =========================
 #
-# Stable release pin (default of this script: v1.3.0):
+# Stable release pin (default of this script: v1.3.1):
 #
 #   curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/build-new-ubuntu-production-vm.sh | bash
 #
@@ -33,10 +33,10 @@
 # ========================= FROM YOUR LAPTOP (SSH) =========================
 #
 #   export SSH_TARGET=adminuser@YOUR_VM_IP
-#   ssh "$SSH_TARGET" 'curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/build-new-ubuntu-production-vm.sh | GIT_REF=v1.3.0 bash'
+#   ssh "$SSH_TARGET" 'curl -fsSL https://raw.githubusercontent.com/mazh-cp/secure-ai-chat/main/scripts/build-new-ubuntu-production-vm.sh | GIT_REF=v1.3.1 bash'
 #
 # Put env overrides on the RIGHT of the pipe (bash sees them). Wrong:
-#   GIT_REF=v1.3.0 curl ... | bash
+#   GIT_REF=v1.3.1 curl ... | bash
 #
 # Repo: https://github.com/mazh-cp/secure-ai-chat
 # -----------------------------------------------------------------------------
@@ -88,7 +88,7 @@ if [ "${SKIP_OS_CHECK:-0}" != "1" ] && [ -r /etc/os-release ]; then
 fi
 
 # Production defaults (override with env vars AFTER the pipe)
-export BRANCH="${GIT_REF:-${BRANCH:-v1.3.0}}"
+export BRANCH="${GIT_REF:-${BRANCH:-v1.3.1}}"
 export INSTALL_DIR="${INSTALL_DIR:-/opt/secure-ai-chat}"
 export APP_USER="${APP_USER:-secureai}"
 export APP_GROUP="${APP_GROUP:-secureai}"

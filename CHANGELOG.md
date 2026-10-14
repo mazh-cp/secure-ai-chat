@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-10-13
+
+### Added
+
+- **Extended Anthropic model coverage** — 13 Claude models in **`app/api/models/route.ts`**: Claude 5 (Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1), Claude 4 (Opus 4.5, Sonnet 4.5, Sonnet 4 May 2025), Claude 3.7 Sonnet, Claude 3.5 (Sonnet, Haiku) and Claude 3 (Opus, Sonnet, Haiku), listed newest-first.
+- **200k context window for all Claude models** — explicit entries in **`lib/token-counter.ts`** so new model IDs never fall back to the 8,192-token default.
+- **`POST /api/lakera/results`** — proxies Lakera Guard `/v2/guard/results` for calibration and detector-confidence overlays (**`lib/lakera/guard-results-client.ts`**, `resolveLakeraGuardResultsEndpoint()`). Session-gated; max 32 messages and 120k characters per message.
+- **`docs/CHECKPOINT_WAF_INTEGRATION_SUMMARY.md`** — consolidated from the retired V1.0.1 folder.
+- **`scripts/upgrade-remote-production-v4.sh`** — one-liner production upgrade for this release.
+
+### Changed
+
+- **RAG only for lookup questions** — **`lib/rag-intent.ts`** gates retrieval on lookup intent (who/which/list/how many, people taking or prescribed something, named individuals, explicit references to the files). General questions such as "what is cholesterol" get a model-only answer instead of being mixed with uploaded file data.
+- **Default Anthropic model** — `claude-3-5-sonnet-20241022` → `claude-sonnet-5-5`.
+- **Batched RAG retrieval scans** — **`lib/security/rag-scan.ts`** scans retrieved chunks in ~16k-character batches instead of one Guard call per chunk (up to 56 per question). A flagged batch is rescanned per chunk so only the offending chunk is dropped.
+- **No duplicate Guard scans** — the chat input scan covers only the user question when the RAG chunks already passed the retrieval scan, and RAG indexing skips its scan when the text is identical to what the upload scan passed as safe.
+
+### Fixed
+
+- **GPT-5.x and o-series "temperature is not supported"** — `temperature` is no longer sent on the Responses API or to o-series models; Chat Completions and Azure retry without it when a model rejects it. Responses API text is read from `output[].content[]`.
+- **Lakera 429s** — transient rate limits are retried up to twice (`Retry-After`, capped at 2s). `ErrQuotaExceeded` is not retried and is reported as "Lakera usage limit reached for this account".
+- **Chat bubble labels** — Guard outages (quota, HTTP errors, missing project) show "Security scan unavailable" instead of "Threat detected".
+
+### Security
+
+- **Central API session gate** — **`proxy.ts`** now enforces `requireSecureChatSession` on every `/api/*` route except `/api/health`, `/api/version`, `/api/release-notes`, `/api/auth/{status,login,logout}` and `/api/waf/health` (which checks its own token). 27 routes previously had no session check, including `POST /api/keys` (save/replace API keys and the Lakera endpoint), `/api/debug/storage`, `/api/logs/system`, `/api/te/*` and `/api/rag/embed`.
+- **Login required in production** — with no `SECURE_CHAT_LOGIN_PASSWORD`, production API routes return **503 "Login not configured"** and the UI shows a setup notice instead of running unauthenticated. `ALLOW_UNAUTHENTICATED=1` is an explicit opt-out for network-restricted hosts. Development (`NODE_ENV!=production`) is unchanged.
+- **No hardcoded session secret** — the `'change-me-in-production'` HMAC fallback is removed; sessions are signed with `SECURE_CHAT_AUTH_SECRET` (or the login password) and verification fails when neither is set.
+- **Fail-closed preserved** — chat and uploads remain blocked when Lakera is unavailable or out of quota; a Guard error during retrieval scanning stops scanning and withholds the chunks rather than retrying per chunk.
+- **Upload scan reuse is exact** — the store route records a SHA-256 of the exact text Guard saw, only when it was not truncated (≤50k characters) or a binary placeholder; indexing skips only on a matching hash with a `safe` verdict.
+
+### Upgrade notes
+
+- **Breaking: production needs a login.** Before upgrading, provide `SECURE_CHAT_LOGIN_PASSWORD` and `SECURE_CHAT_AUTH_SECRET` to the service environment (from your secret store), or set `ALLOW_UNAUTHENTICATED=1` if the host is network-restricted and intentionally runs without login. Otherwise the app shows "Login is not configured" and API calls return 503.
+- Environment variables override keys saved in Settings. If `.env.local` contains an empty `LAKERA_AI_KEY=` or `LAKERA_PROJECT_ID=` line after a filled one, systemd uses the last (empty) value and the app falls back to the Settings key. Keep exactly one line per variable.
+
 ## [1.3.0] - 2026-09-25
 
 ### Added

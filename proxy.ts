@@ -1,4 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSecureChatSession } from '@/lib/app-login'
+
+/** API routes reachable without a session: probes, login flow, and public release info. */
+const PUBLIC_API_PATHS = new Set([
+  '/api/health',
+  '/api/version',
+  '/api/release-notes',
+  '/api/auth/status',
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/waf/health',
+])
+
+function isPublicApiPath(pathname: string): boolean {
+  return PUBLIC_API_PATHS.has(pathname.replace(/\/+$/, '') || '/')
+}
 
 /**
  * Check Point WAF Integration Proxy
@@ -110,6 +126,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Central session gate: many routes (e.g. POST /api/keys) had no per-route check.
+  if (!isPublicApiPath(url.pathname)) {
+    const authBlock = requireSecureChatSession(request)
+    if (authBlock) {
+      console.warn('[WAF] Security event:', {
+        method: request.method,
+        path: url.pathname,
+        statusCode: authBlock.status,
+        ipAddress: getClientIP(request),
+        blocked: true,
+        reason: 'session_required',
+      })
+      return authBlock
+    }
+  }
+
   // Extract request metadata
   const metadata: WAFRequestMetadata = {
     method: request.method,
@@ -133,7 +165,7 @@ export async function proxy(request: NextRequest) {
   // Add Check Point WAF response headers (if needed)
   // These help Check Point WAF track the application
   response.headers.set('X-Application-Name', 'secure-ai-chat')
-  response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.3.0')
+  response.headers.set('X-Application-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.3.1')
 
   // Log API call asynchronously (non-blocking)
   const duration = Date.now() - startTime
